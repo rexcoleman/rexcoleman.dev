@@ -1,0 +1,76 @@
+baseURL: "https://rexcoleman.dev/"
+languageCode: "en-us"
+title: "Rex Coleman"
+theme: "PaperMod"
+
+params:
+  env: production
+  description: "Security architect building AI systems that survive adversaries. 15yr cybersecurity (FireEye/Mandiant) → ML systems engineering @ Georgia Tech OMSCS."
+  author: "Rex Coleman"
+  defaultTheme: auto
+  ShowReadingTime: true
+  ShowShareButtons: false
+  ShowPostNavLinks: true
+  ShowBreadCrumbs: false
+  ShowCodeCopyButtons: true
+  ShowToc: true
+  comments: false
+
+  homeInfoParams:
+    Title: "Building AI systems that survive adversaries."
+    Content: >
+      Security architect. 15yr cybersecurity (FireEye/Mandiant) →
+      ML systems engineering @ Georgia Tech OMSCS.
+
+  socialIcons:
+    - name: github
+      url: "https://github.com/rexcoleman"
+    - name: linkedin
+      url: "https://linkedin.com/in/rexcoleman"
+    - name: rss
+      url: "/index.xml"
+
+  cover:
+    linkFullImages: true
+    hidden: true
+
+  editPost:
+    disabled: true
+
+menu:
+  main:
+    - name: Posts
+      url: /posts/
+      weight: 10
+    - name: Projects
+      url: /projects/
+      weight: 20
+    - name: Now
+      url: /now/
+      weight: 30
+    - name: About
+      url: /about/
+      weight: 40
+    - name: Search
+      url: /search/
+      weight: 50
+
+outputs:
+  home:
+    - HTML
+    - RSS
+    - JSON
+
+markup:
+  highlight:
+    codeFences: true
+    guessSyntax: true
+    lineNos: false
+    style: monokai
+  goldmark:
+    renderer:
+      unsafe: true
+
+sitemap:
+  changefreq: weekly
+  priority: 0.5
