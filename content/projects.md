@@ -7,9 +7,9 @@ ShowReadingTime: false
 
 ## govML
 
-Reusable governance framework for ML projects — 32 templates, 7 quickstart profiles, 7 generators + agent orchestrator. From experiment design through publication. Enforces reproducibility, decision traceability, and quality gates.
+Open-source governance framework for ML projects — 39 templates, 4 profiles (including contract-track for CS 7641-level rigor), 8+ generators, leakage test automation. Contract-driven development with machine-checkable provenance. Used across 7 real projects.
 
-**Stack:** Python, YAML, Bash · **Status:** Active (v2.4)
+**Stack:** Python, YAML, Bash · **Status:** Active (v2.6)
 
 [GitHub](https://github.com/rexcoleman/govML) · [Write-up](/posts/govml-methodology/)
 
