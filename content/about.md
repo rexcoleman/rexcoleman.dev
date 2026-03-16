@@ -5,11 +5,11 @@ ShowToc: false
 ShowReadingTime: false
 ---
 
-I spent 15 years in cybersecurity — data analytics and enterprise sales at FireEye and Mandiant, then founding two startups (blockchain security, cybersecurity consulting). I've seen how organizations evaluate security solutions and what makes security programs break under pressure.
+There's a gap between ML research and production security. Researchers publish attacks that don't account for real-world constraints. Security teams deploy models without adversarial evaluation. Nobody builds the bridge.
 
-Now I'm pointing that perspective at AI systems.
+That's what I'm building.
 
-I'm completing my MS in Computer Science at Georgia Tech (Machine Learning specialization) while building tools that bridge the gap between AI capability and AI security. My current focus:
+I spent 15 years in cybersecurity — data analytics and enterprise sales at FireEye and Mandiant, then founding two startups. Now I'm completing my MS in Computer Science at Georgia Tech (Machine Learning specialization) and shipping open-source tools that close the gap between AI capability and AI security. Current focus:
 
 **AI Security Architecture** — adversarial evaluation of ML systems across 4 paradigms (supervised, reinforcement, unsupervised, optimization). Building RL agent attack frameworks, model behavioral fingerprinting, and adversarial training optimization for LLM defenses.
 

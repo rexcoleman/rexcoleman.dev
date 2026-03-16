@@ -5,7 +5,7 @@ theme: "PaperMod"
 
 params:
   env: production
-  description: "Building AI security systems across the full ML stack. Adversarial control analysis applied to 6 security domains. Georgia Tech OMSCS (ML specialization). Creator of govML."
+  description: "AI + cybersecurity. Building what's missing between ML research and production security. 9 open-source projects, 4 ML paradigms. Creator of govML."
   author: "Rex Coleman"
   defaultTheme: auto
   ShowReadingTime: true
@@ -19,7 +19,7 @@ params:
   profileMode:
     enabled: true
     title: "Rex Coleman"
-    subtitle: "Building AI systems that survive adversaries."
+    subtitle: "Building what's missing between ML research and production security."
     imageUrl: ""
     imageTitle: ""
     buttons:
@@ -29,11 +29,12 @@ params:
         url: /projects/
 
   homeInfoParams:
-    Title: "Building AI systems that survive adversaries."
+    Title: "Building what's missing between ML research and production security."
     Content: >
-      AI + cybersecurity at the intersection of 4 ML paradigms.
-      7 projects shipped. Open-source governance via [govML](https://github.com/rexcoleman/govML).
-      Georgia Tech OMSCS (Machine Learning). CFA charterholder.
+      9 open-source projects across 4 ML paradigms (RL, unsupervised, supervised, optimization).
+      Adversarial control analysis applied to agent security, model integrity, and network defense.
+      [govML](https://github.com/rexcoleman/govML) — the governance framework that enforces reproducibility across all of it.
+      Georgia Tech OMSCS (ML). CFA. CISSP.
 
   socialIcons:
     - name: github
