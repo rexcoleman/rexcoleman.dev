@@ -32,3 +32,43 @@ Adversarial evaluation of ML-based IDS with adversarial control analysis. 57 att
 **Stack:** Python, ART, scikit-learn · **Data:** CICIDS2017
 
 [GitHub](https://github.com/rexcoleman/adversarial-ids-ml) · [Write-up](/posts/adversarial-ids/)
+
+---
+
+## Agent Security Red-Team Framework
+
+Systematic red-teaming of autonomous AI agents. 7 attack classes (5 not in OWASP/MITRE), 19 scenarios, 100% success with reasoning chain hijacking against default-configured agents. Layered defense architecture with LLM-as-judge. Tested on LangChain + CrewAI.
+
+**Stack:** Python, LangChain, LangGraph, CrewAI · **Cost:** ~$2 in API tokens
+
+[GitHub](https://github.com/rexcoleman/agent-redteam-framework) · [Write-up](/posts/agent-redteam/)
+
+---
+
+## AI Supply Chain Security Scanner
+
+Static analysis scanner for ML project dependencies. 20 findings across 5 real projects (13 CRITICAL). Detects unsafe deserialization (pickle.load), known CVEs in ML libraries, and supply chain risks. Rule-based — no ML, pure security engineering.
+
+**Stack:** Python, AST analysis · **Domains:** 6th ACA domain
+
+[GitHub](https://github.com/rexcoleman/ai-supply-chain-scanner)
+
+---
+
+## Financial Anomaly Detection (CFA-Informed)
+
+Fraud detection on synthetic financial data with CFA-domain features. XGBoost AUC 0.987. CFA features capture 91% of ML signal. 81% adversary-resistant floor from system-controlled features. Controllability analysis validated for 5th domain.
+
+**Stack:** Python, XGBoost, SHAP · **Data:** PaySim 100K transactions
+
+[GitHub](https://github.com/rexcoleman/financial-anomaly-detection)
+
+---
+
+## PQC Migration Analyzer
+
+Post-quantum cryptography migration tool. Scanned 21K crypto-related CVEs. ML scorer (+14pp vs baseline) for prioritizing migration. 70% of vulnerable crypto is in dependencies, not your code.
+
+**Stack:** Python, scikit-learn · **Data:** NVD + NIST PQC standards
+
+[GitHub](https://github.com/rexcoleman/pqc-migration-analyzer)
