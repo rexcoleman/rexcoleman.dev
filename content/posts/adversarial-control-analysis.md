@@ -72,4 +72,4 @@ Same principle. Four paradigms. Every level of the AI stack.
 
 ---
 
-*All projects are open source and governed by [govML](https://github.com/rexcoleman/govML). Rex Coleman is an MSCS student (Machine Learning) at Georgia Tech. Previously 15 years in cybersecurity (FireEye/Mandiant). CFA charterholder. Creator of govML.*
+*Rex Coleman builds what's missing between ML research and production security. 9 open-source projects across 4 ML paradigms. Georgia Tech OMSCS (ML). CFA. CISSP. Creator of [govML](https://github.com/rexcoleman/govML). [rexcoleman.dev](https://rexcoleman.dev)*

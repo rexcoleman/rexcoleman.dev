@@ -113,4 +113,4 @@ The framework is open source: [agent-redteam-framework on GitHub](https://github
 
 ---
 
-*Rex Coleman is an MSCS student (Machine Learning) at Georgia Tech, building at the intersection of AI security and ML systems engineering. Previously 15 years in cybersecurity (FireEye/Mandiant — analytics, enterprise sales, cross-functional leadership), founder of two startups (blockchain, cybersecurity), and CFA charterholder. Creator of [govML](https://github.com/rexcoleman/govML).*
+*Rex Coleman builds what's missing between ML research and production security. 9 open-source projects across 4 ML paradigms. Georgia Tech OMSCS (ML). CFA. CISSP. Creator of [govML](https://github.com/rexcoleman/govML). [rexcoleman.dev](https://rexcoleman.dev)*

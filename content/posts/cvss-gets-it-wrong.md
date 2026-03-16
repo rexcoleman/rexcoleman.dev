@@ -97,3 +97,8 @@ Full pipeline (ingest → features → models → SHAP → adversarial eval) is 
 [github.com/rexcoleman/vuln-prioritization-ml-](https://github.com/rexcoleman/vuln-prioritization-ml-)
 
 Built with [govML](https://github.com/rexcoleman/govML) governance — 11 architectural decisions logged, every experiment reproducible.
+
+
+---
+
+*Rex Coleman builds what's missing between ML research and production security. 9 open-source projects across 4 ML paradigms. Georgia Tech OMSCS (ML). CFA. CISSP. Creator of [govML](https://github.com/rexcoleman/govML). [rexcoleman.dev](https://rexcoleman.dev)*

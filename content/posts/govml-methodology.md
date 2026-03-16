@@ -88,3 +88,8 @@ bash scripts/init_project.sh /your/project --profile supervised --fill
 ```
 
 If you run ML experiments and want reproducibility without the overhead, this is the framework I built to solve that problem for myself. Every template was extracted from real project friction, not designed speculatively.
+
+
+---
+
+*Rex Coleman builds what's missing between ML research and production security. 9 open-source projects across 4 ML paradigms. Georgia Tech OMSCS (ML). CFA. CISSP. Creator of [govML](https://github.com/rexcoleman/govML). [rexcoleman.dev](https://rexcoleman.dev)*

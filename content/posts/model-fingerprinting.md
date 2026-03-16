@@ -138,3 +138,8 @@ The same pattern the security industry learned with malware: signatures first, b
 Code, experiment contract, data contracts, and full results: [github.com/rexcoleman/model-behavioral-fingerprint](https://github.com/rexcoleman/model-behavioral-fingerprint)
 
 Built with [govML](https://github.com/rexcoleman/ml-governance-templates) for experiment tracking and reproducibility.
+
+
+---
+
+*Rex Coleman builds what's missing between ML research and production security. 9 open-source projects across 4 ML paradigms. Georgia Tech OMSCS (ML). CFA. CISSP. Creator of [govML](https://github.com/rexcoleman/govML). [rexcoleman.dev](https://rexcoleman.dev)*

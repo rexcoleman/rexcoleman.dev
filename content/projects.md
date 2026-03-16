@@ -35,6 +35,26 @@ Adversarial evaluation of ML-based IDS with adversarial control analysis. 57 att
 
 ---
 
+## RL Agent Vulnerability Framework
+
+Systematic RL-specific attacks on autonomous agents. 4 attack classes (reward poisoning, observation perturbation, policy extraction, behavioral backdoors), 2 custom Gymnasium environments, 50 trained agents including transformer policy. Observation perturbation degrades agents 20-50x more than reward poisoning. OWASP Agentic 7/10 mapped.
+
+**Stack:** Python, Gymnasium, Stable-Baselines3, PyTorch · **Paradigm:** Reinforcement Learning
+
+[GitHub](https://github.com/rexcoleman/rl-agent-vulnerability) · [Write-up](/posts/rl-agent-vulnerability/)
+
+---
+
+## Model Behavioral Fingerprinting
+
+Unsupervised backdoor detection for ML models. 6 anomaly detectors × 5 representations = 30-combination benchmark plus contrastive learning (SimCLR). Trust score output (0-100). Behavioral fingerprinting detects what static analysis misses.
+
+**Stack:** Python, scikit-learn, PyTorch · **Paradigm:** Unsupervised Learning
+
+[GitHub](https://github.com/rexcoleman/model-behavioral-fingerprint) · [Write-up](/posts/model-fingerprinting/)
+
+---
+
 ## Agent Security Red-Team Framework
 
 Systematic red-teaming of autonomous AI agents. 7 attack classes (5 not in OWASP/MITRE), 19 scenarios, 100% success with reasoning chain hijacking against default-configured agents. Layered defense architecture with LLM-as-judge. Tested on LangChain + CrewAI.

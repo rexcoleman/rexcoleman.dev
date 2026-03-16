@@ -84,3 +84,8 @@ Everything is open source with full govML governance (decision log, phase gates,
 [github.com/rexcoleman/adversarial-ids-ml](https://github.com/rexcoleman/adversarial-ids-ml)
 
 Built with [govML](https://github.com/rexcoleman/govML) — the governance framework that makes this reproducible.
+
+
+---
+
+*Rex Coleman builds what's missing between ML research and production security. 9 open-source projects across 4 ML paradigms. Georgia Tech OMSCS (ML). CFA. CISSP. Creator of [govML](https://github.com/rexcoleman/govML). [rexcoleman.dev](https://rexcoleman.dev)*
