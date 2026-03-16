@@ -5,22 +5,35 @@ theme: "PaperMod"
 
 params:
   env: production
-  description: "Security architect building AI systems that survive adversaries. 15yr cybersecurity (FireEye/Mandiant) → ML systems engineering @ Georgia Tech OMSCS."
+  description: "Building AI security systems across the full ML stack. Adversarial control analysis applied to 6 security domains. Georgia Tech OMSCS (ML specialization). Creator of govML."
   author: "Rex Coleman"
   defaultTheme: auto
   ShowReadingTime: true
-  ShowShareButtons: false
+  ShowShareButtons: true
   ShowPostNavLinks: true
-  ShowBreadCrumbs: false
+  ShowBreadCrumbs: true
   ShowCodeCopyButtons: true
   ShowToc: true
   comments: false
 
+  profileMode:
+    enabled: true
+    title: "Rex Coleman"
+    subtitle: "Building AI systems that survive adversaries."
+    imageUrl: ""
+    imageTitle: ""
+    buttons:
+      - name: Posts
+        url: /posts/
+      - name: Projects
+        url: /projects/
+
   homeInfoParams:
     Title: "Building AI systems that survive adversaries."
     Content: >
-      Security architect. 15yr cybersecurity (FireEye/Mandiant) →
-      ML systems engineering @ Georgia Tech OMSCS.
+      AI + cybersecurity at the intersection of 4 ML paradigms.
+      7 projects shipped. Open-source governance via [govML](https://github.com/rexcoleman/govML).
+      Georgia Tech OMSCS (Machine Learning). CFA charterholder.
 
   socialIcons:
     - name: github
@@ -36,6 +49,10 @@ params:
 
   editPost:
     disabled: true
+
+  assets:
+    favicon: ""
+    disableFingerprinting: false
 
 menu:
   main:
