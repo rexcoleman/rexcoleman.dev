@@ -142,4 +142,4 @@ Built with [govML](https://github.com/rexcoleman/ml-governance-templates) for ex
 
 ---
 
-*Rex Coleman builds what's missing between ML research and production security. 9 open-source projects across 4 ML paradigms. Georgia Tech OMSCS (ML). CFA. CISSP. Creator of [govML](https://github.com/rexcoleman/govML). [rexcoleman.dev](https://rexcoleman.dev)*
+*Rex Coleman builds what's missing between ML research and production security. 9 open-source projects across 4 ML paradigms. MSCS Georgia Tech (ML). CFA. CISSP. Creator of [govML](https://github.com/rexcoleman/govML). [rexcoleman.dev](https://rexcoleman.dev)*

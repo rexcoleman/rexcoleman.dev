@@ -12,8 +12,8 @@ ShowReadingTime: false
 I'm building [Singularity Cybersecurity](https://singularitycyber.com) — an AI-powered research lab that secures the agent economy. We run continuous experiments to discover and ship security tools for the millions of people deploying AI agents with zero security posture.
 
 **Currently shipping:**
-- **SkillVet** — scans third-party agent skills for malicious patterns [experiment #1]
-- **AgentArmor** — hardens agent deployment configurations in one command [experiment #2]
+- **AgentArmor** — hardens agent deployment configurations in one command [experiment #1]
+- **SkillVet** — scans third-party agent skills for malicious patterns [experiment #2]
 - **RedClaw** — automated red-team toolkit for AI agent deployments [experiment #3]
 
 The lab runs on local AI agents (OpenClaw on Mac Mini) — we use the same technology we're securing.
@@ -37,7 +37,7 @@ The lab runs on local AI agents (OpenClaw on Mac Mini) — we use the same techn
 
 ## Learning
 
-- Georgia Tech OMSCS — Machine Learning specialization (4/10 courses complete)
+- MSCS Georgia Tech — Machine Learning specialization (4/10 courses complete)
 - CS 7641 ML complete: top-1% rigor across SL, OL, UL, RL — those patterns now govern all frontier projects
 
 ## Reading

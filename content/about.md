@@ -25,7 +25,7 @@ Data Analyst (FireEye 2011-15) → Sales Executive (FireEye/Mandiant 2015-19, Fi
 
 ## Credentials
 
-CFA Charterholder · CISSP · BSc Biochemistry & Molecular Biology · MS Computer Science (in progress, Georgia Tech OMSCS — Machine Learning specialization)
+CFA Charterholder · CISSP · BSc Biochemistry & Molecular Biology · MS Computer Science (in progress, MSCS Georgia Tech — Machine Learning specialization)
 
 ## Connect
 
