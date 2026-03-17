@@ -23,11 +23,13 @@ The lab runs on local AI agents (OpenClaw on Mac Mini) — we use the same techn
 - **FP-12: RL Agent Vulnerability** — 162 attacks across 40 trained agents. Observation perturbation 20-50x more effective than reward poisoning. Mapped to 7/10 OWASP Agentic categories. [Complete]
 - **FP-13: Model Behavioral Fingerprinting** — Unsupervised anomaly detection on model activations. 30-combination benchmark (6 detectors x 5 representations). "Antivirus for AI models."
 - **FP-14: Adversarial Training Optimization** — Which optimizer + schedule produces the best robustness-utility tradeoff for LLM safety?
-- **govML v2.6** — contract-track profile (36 templates), leakage test generator, A+ quality checklist. [GitHub](https://github.com/rexcoleman/govML)
+- **govML v2.6** — 42 templates, 4 profiles, 20 generators, leakage test automation, A+ quality checklist. [GitHub](https://github.com/rexcoleman/govML)
 
-## Shipped (7 projects complete)
+## Shipped (9 projects complete)
 
 - [Agent Red-Team Framework](/posts/agent-redteam/) — 100% success with reasoning chain hijacking against default-configured agents. 7 attack classes, 19 scenarios.
+- [RL Agent Vulnerability](/posts/rl-agent-vulnerability/) — 4 attack classes across 40 trained agents. Observation perturbation degrades agents 20-50x more than reward poisoning.
+- [Model Behavioral Fingerprinting](/posts/model-fingerprinting/) — Unsupervised backdoor detection. 6 anomaly detectors × 5 representations.
 - [Adversarial IDS](/posts/adversarial-ids/) — Feature controllability reduces attack success 35% on network IDS.
 - [Vulnerability Prioritization](/posts/cvss-gets-it-wrong/) — ML beats CVSS by +24pp AUC for exploit prediction.
 - [AI Supply Chain Scanner](https://github.com/rexcoleman/ai-supply-chain-scanner) — pickle.load is the SQL injection of ML. 20 findings across 5 projects.

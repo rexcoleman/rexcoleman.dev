@@ -15,7 +15,7 @@ I spent 15 years in cybersecurity — data analytics and enterprise sales at Fir
 
 **AI Security Architecture** — adversarial evaluation of ML systems across 4 paradigms (supervised, reinforcement, unsupervised, optimization). Building RL agent attack frameworks, model behavioral fingerprinting, and adversarial training optimization for LLM defenses.
 
-**ML Systems Governance** — [govML](https://github.com/rexcoleman/govML), an open-source framework (39 templates, 4 profiles, 8+ generators) that enforces reproducibility and decision traceability across ML projects. Contract-driven development with machine-checkable provenance.
+**ML Systems Governance** — [govML](https://github.com/rexcoleman/govML), an open-source framework (42 templates, 4 profiles, 20 generators) that enforces reproducibility and decision traceability across ML projects. Contract-driven development with machine-checkable provenance.
 
 **Adversarial Control Analysis** — a methodology for designing ML systems where the inputs that drive decisions are outside adversary influence. Applied across 6 security domains with consistent results. The principle: classify inputs by who controls them, and the defense architecture designs itself.
 
