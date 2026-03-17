@@ -23,7 +23,7 @@ The lab runs on local AI agents (OpenClaw on Mac Mini) — we use the same techn
 - **FP-12: RL Agent Vulnerability** — 162 attacks across 40 trained agents. Observation perturbation 20-50x more effective than reward poisoning. Mapped to 7/10 OWASP Agentic categories. [Complete]
 - **FP-13: Model Behavioral Fingerprinting** — Unsupervised anomaly detection on model activations. 30-combination benchmark (6 detectors x 5 representations). "Antivirus for AI models."
 - **FP-14: Adversarial Training Optimization** — Which optimizer + schedule produces the best robustness-utility tradeoff for LLM safety?
-- **govML v2.6** — 42 templates, 4 profiles, 20 generators, leakage test automation, A+ quality checklist. [GitHub](https://github.com/rexcoleman/govML)
+- **govML v2.7** — 42 templates, 4 profiles, 19 generators, leakage test automation, A+ quality checklist. [GitHub](https://github.com/rexcoleman/govML)
 
 ## Shipped (9 projects complete)
 

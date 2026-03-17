@@ -7,7 +7,7 @@ ShowReadingTime: false
 
 ## govML
 
-Open-source governance framework for ML projects — 42 templates, 4 profiles (including contract-track for CS 7641-level rigor), 20 generators, leakage test automation. Contract-driven development with machine-checkable provenance. Used across 9 projects with 469+ tests.
+Open-source governance framework for ML projects — 42 templates, 4 profiles (including contract-track for CS 7641-level rigor), 19 generators, leakage test automation. Contract-driven development with machine-checkable provenance. Used across 9 projects with 469+ tests.
 
 **Stack:** Python, YAML, Bash · **Status:** Active (v2.6)
 

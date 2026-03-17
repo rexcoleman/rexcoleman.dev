@@ -18,7 +18,7 @@ The root cause: governance was prose in a document, not executable infrastructur
 
 ## What I Built
 
-**govML** is an open-source governance framework for ML projects — 32 templates, 7 quickstart profiles, 7 generators, and an agent orchestrator prototype.
+**govML** is an open-source governance framework for ML projects — 42 templates, 4 quickstart profiles, 19 generators, and an agent orchestrator prototype.
 
 The architecture has three layers:
 
@@ -71,11 +71,11 @@ The key accelerators: `--fill` for bulk placeholder substitution, `PROJECT_BRIEF
 
 ## The Numbers
 
-- 32 templates across 4 directories (core, management, report, publishing)
-- 7 quickstart profiles (minimal → full)
-- 7 generators + agent orchestrator prototype
-- 24 issues identified, 15 resolved in v2.4
-- Tested across 7 real projects (4 academic, 2 frontier research, 1 systems benchmark)
+- 42 templates across 4 directories (core, management, report, publishing)
+- 4 quickstart profiles (minimal → contract-track)
+- 19 generators (sweep orchestration, manifest verification, phase gates, leakage tests, blog drafting, and more)
+- Continuously improved through v2.7 — issues surface and resolve each project cycle
+- Tested across 9 projects with 469+ tests (4 academic, 4 frontier research, 1 systems benchmark)
 
 ## Try It
 
