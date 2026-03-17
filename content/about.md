@@ -5,11 +5,13 @@ ShowToc: false
 ShowReadingTime: false
 ---
 
-There's a gap between ML research and production security. Researchers publish attacks that don't account for real-world constraints. Security teams deploy models without adversarial evaluation. Nobody builds the bridge.
+Millions of people are deploying AI agents with zero security posture. They're installing unvetted skills, exposing credentials, and running agents on unsecured infrastructure. Nobody is building the security layer for the agent economy.
 
 That's what I'm building.
 
-I spent 15 years in cybersecurity — data analytics and enterprise sales at FireEye and Mandiant, then founding two startups. Now I'm completing my MS in Computer Science at Georgia Tech (Machine Learning specialization) and shipping open-source tools that close the gap between AI capability and AI security. Current focus:
+I'm the founder of [Singularity Cybersecurity](https://singularitycyber.com) — an AI-powered research lab that continuously discovers, builds, and ships security tools for the agent economy. We test problem-solution fit through rapid experiments, publishing everything we learn along the way.
+
+I spent 15 years in cybersecurity — data analytics and enterprise sales at FireEye and Mandiant, then founding two ventures (Watchtower, Singularity Cybersecurity). Now I'm completing my MS in Computer Science at Georgia Tech (Machine Learning specialization) and shipping open-source tools that close the gap between AI capability and AI security. Current focus:
 
 **AI Security Architecture** — adversarial evaluation of ML systems across 4 paradigms (supervised, reinforcement, unsupervised, optimization). Building RL agent attack frameworks, model behavioral fingerprinting, and adversarial training optimization for LLM defenses.
 
@@ -19,7 +21,7 @@ I spent 15 years in cybersecurity — data analytics and enterprise sales at Fir
 
 ## Background
 
-Data Analyst (FireEye 2011-15) → Sales Executive (FireEye/Mandiant 2015-19, Fidelis 2019-20) → Founder/CEO (Watchtower, Singularity 2020-present) → MS Computer Science at Georgia Tech (Machine Learning specialization) → building at the intersection of AI and security.
+Data Analyst (FireEye 2011-15) → Sales Executive (FireEye/Mandiant 2015-19, Fidelis 2019-20) → Founder/CEO ([Singularity Cybersecurity](https://singularitycyber.com) 2021-present) → MS Computer Science at Georgia Tech (Machine Learning specialization) → securing the agent economy.
 
 ## Credentials
 
@@ -27,4 +29,4 @@ CFA Charterholder · CISSP · BSc Biochemistry & Molecular Biology · MS Compute
 
 ## Connect
 
-[GitHub](https://github.com/rexcoleman) · [LinkedIn](https://linkedin.com/in/rexcoleman) · [RSS](/index.xml)
+[Singularity Cybersecurity](https://singularitycyber.com) · [GitHub](https://github.com/rexcoleman) · [LinkedIn](https://linkedin.com/in/rexcoleman) · [RSS](/index.xml)

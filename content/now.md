@@ -5,15 +5,25 @@ ShowToc: false
 ShowReadingTime: false
 ---
 
-*Last updated: March 16, 2026*
+*Last updated: March 17, 2026*
 
-## Building
+## Singularity Cybersecurity
 
-- **Frontier Portfolio v2** — 3 new projects spanning RL, UL, and optimization paradigms applied to frontier security problems. Classical + modern ML architectures (transformers, contrastive learning, RAG).
-- **FP-12: RL Agent Vulnerability** — Reward poisoning, policy extraction, and behavioral backdoors on RL-trained agents. 5 algorithms (Q-Learning through PPO + transformer policy). Mapped to 7/10 OWASP Agentic categories. [Starting next]
+I'm building [Singularity Cybersecurity](https://singularitycyber.com) — an AI-powered research lab that secures the agent economy. We run continuous experiments to discover and ship security tools for the millions of people deploying AI agents with zero security posture.
+
+**Currently shipping:**
+- **SkillVet** — scans third-party agent skills for malicious patterns [experiment #1]
+- **AgentArmor** — hardens agent deployment configurations in one command [experiment #2]
+- **RedClaw** — automated red-team toolkit for AI agent deployments [experiment #3]
+
+The lab runs on local AI agents (OpenClaw on Mac Mini) — we use the same technology we're securing.
+
+## Research Portfolio
+
+- **FP-12: RL Agent Vulnerability** — 162 attacks across 40 trained agents. Observation perturbation 20-50x more effective than reward poisoning. Mapped to 7/10 OWASP Agentic categories. [Complete]
 - **FP-13: Model Behavioral Fingerprinting** — Unsupervised anomaly detection on model activations. 30-combination benchmark (6 detectors x 5 representations). "Antivirus for AI models."
-- **FP-14: Adversarial Training Optimization** — Which optimizer + schedule produces the best robustness-utility tradeoff for LLM safety? Matched compute budget analysis on open-weight models.
-- **govML v2.6** — contract-track profile (36 templates), leakage test generator, A+ quality checklist. 87% adoption across 4 project repos. [GitHub](https://github.com/rexcoleman/govML)
+- **FP-14: Adversarial Training Optimization** — Which optimizer + schedule produces the best robustness-utility tradeoff for LLM safety?
+- **govML v2.6** — contract-track profile (36 templates), leakage test generator, A+ quality checklist. [GitHub](https://github.com/rexcoleman/govML)
 
 ## Shipped (7 projects complete)
 

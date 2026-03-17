@@ -1,0 +1,9 @@
+How to Secure Your OpenClaw in 30 Minutes
+
+You set up OpenClaw. It's running. Your agent is browsing the web, installing skills, managing your files. Maybe it's coding for you while you sleep. Maybe it's monitoring trending topics and drafting content every two hours.
+
+Here's the thing: if you haven't thought about security, your agent is a wide-open door. It has file system access, API credentials, and the ability to execute code. A compromised agent isn't a compromised browser tab — it's a compromised employee with the keys to everything.
+
+Key finding: My red-team research found prompt injection achieving 80% success rates against default-configured agents, and reasoning chain hijacking — where the injected prompt redirects the agent's entire thought process — hit 100%.
+
+Full post: https://rexcoleman.dev/posts/secure-openclaw-30-minutes/
