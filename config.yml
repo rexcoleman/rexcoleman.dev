@@ -5,7 +5,7 @@ theme: "PaperMod"
 
 params:
   env: production
-  description: "AI + cybersecurity. Building what's missing between ML research and production security. 9 open-source projects, 4 ML paradigms. Creator of govML."
+  description: "Securing AI from the architecture up. Research, tools, and methodology for AI security. Creator of govML."
   author: "Rex Coleman"
   defaultTheme: dark
   ShowReadingTime: true
@@ -20,7 +20,7 @@ params:
     enabled: false
 
   homeInfoParams:
-    Title: "Building what's missing between ML research and production security."
+    Title: "Securing AI from the architecture up."
     Content: ""
 
   socialIcons:
