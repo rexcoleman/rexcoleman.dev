@@ -3,6 +3,7 @@ title: "Antivirus for AI Models: Behavioral Fingerprinting Detects What Static A
 date: 2026-03-16
 description: "How do you know a model downloaded from Hugging Face hasn't been backdoored? I built a behavioral fingerprinting system that uses unsupervised anomaly detection to answer that question."
 tags: ["ai-security", "model-supply-chain", "anomaly-detection", "unsupervised-learning", "machine-learning"]
+format: "technical-blog"
 author: "Rex Coleman"
 ShowToc: true
 TocOpen: false
@@ -57,6 +58,8 @@ Every detector on raw features exceeds random chance (AUROC > 0.50):
 | GMM | 0.589 | 25.0% |
 
 Best single run: One-Class SVM + PCA, AUROC 0.770.
+
+![Detection heatmap — AUROC scores across all detector and representation combinations, showing Local Outlier Factor on raw features as the top performer](/images/posts/model-fingerprinting/detection_heatmap.png)
 
 Is AUROC 0.62 impressive? No. But this is a zero-label approach on deliberately subtle (diffuse) synthetic backdoors. The signal is real. On more concentrated backdoors -- the kind deployed in practice -- detection power likely improves significantly.
 
@@ -149,3 +152,7 @@ Built with [govML](https://github.com/rexcoleman/ml-governance-templates) for ex
 ---
 
 *Rex Coleman is securing AI from the architecture up — building AI security systems across 4 ML paradigms, publishing the methodology, and shipping open-source tools. [rexcoleman.dev](https://rexcoleman.dev) · [GitHub](https://github.com/rexcoleman) · [Singularity Cybersecurity](https://singularitycyber.com)*
+
+---
+
+*If this was useful, [subscribe on Substack](https://substack.com/@rexcoleman) for weekly AI security research — findings, tools, and curated signal.*

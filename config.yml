@@ -47,6 +47,12 @@ params:
 
 menu:
   main:
+    - name: Research
+      url: /research/
+      weight: 5
+    - name: TIL
+      url: /til/
+      weight: 8
     - name: Projects
       url: /projects/
       weight: 10

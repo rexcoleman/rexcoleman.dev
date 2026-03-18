@@ -3,6 +3,7 @@ title: "I Red-Teamed AI Agents: Here's How They Break (and How to Fix Them)"
 date: 2026-03-16
 description: "19 attack scenarios against LangChain and CrewAI agents. 100% success with reasoning chain hijacking. 7 attack classes systematized — 5 not in OWASP or MITRE ATLAS."
 tags: ["ai-security", "agent-security", "red-team", "llm-security", "adversarial-ml"]
+format: "technical-blog"
 author: "Rex Coleman"
 ShowToc: true
 TocOpen: false
@@ -79,6 +80,8 @@ I built three defense layers and measured their effectiveness:
 
 The layered defense reduces overall attack success by 60%. But reasoning chain hijacking only drops from 100% to 67%. The gap is real.
 
+![Defense effectiveness across attack classes — layered defense reduces average success by 60%, but reasoning chain hijacking remains partially resistant](/images/posts/agent-redteam/defense_effectiveness.png)
+
 ### Layer 3: LLM-as-Judge (the reasoning hijack fix)
 
 Pattern-based defenses can't catch reasoning hijack because there are no malicious patterns. So I built a semantic defense: a separate LLM call that evaluates whether a request contains hidden exfiltration intent, even when the instructions look completely legitimate.
@@ -117,6 +120,14 @@ The reasoning chain is the least observable input — it's internal to the agent
 
 The framework is open source: [agent-redteam-framework on GitHub](https://github.com/rexcoleman/agent-redteam-framework). Built with [govML](https://github.com/rexcoleman/govML) governance. All findings governed by the same quality gates, same claim strength tags, same reproducibility standards.
 
+### Limitations
+
+This evaluation targeted a single default-configured LangChain ReAct agent using Claude as the backend. Results may differ with other LLM backends, custom configurations, or multi-agent architectures. The 19 attack scenarios, while systematic, don't cover the full attack surface — social engineering chains, multi-step persistent attacks, and resource exhaustion were not tested. The defense effectiveness measurements reflect default implementations, not tuned deployments.
+
 ---
 
 *Rex Coleman is securing AI from the architecture up — building AI security systems across 4 ML paradigms, publishing the methodology, and shipping open-source tools. [rexcoleman.dev](https://rexcoleman.dev) · [GitHub](https://github.com/rexcoleman) · [Singularity Cybersecurity](https://singularitycyber.com)*
+
+---
+
+*If this was useful, [subscribe on Substack](https://substack.com/@rexcoleman) for weekly AI security research — findings, tools, and curated signal.*

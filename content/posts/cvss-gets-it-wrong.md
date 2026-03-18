@@ -3,6 +3,7 @@ title: "Why CVSS Gets It Wrong: ML-Powered Vulnerability Prioritization"
 date: 2026-03-14
 description: "I trained an ML model on 338,000 CVEs to find out what actually predicts exploitation. CVSS scores severity. Attackers measure opportunity. The model reveals what they look for."
 tags: ["ai-security", "machine-learning", "vulnerability-management", "shap", "feature-controllability"]
+format: "technical-blog"
 author: "Rex Coleman"
 ShowToc: true
 TocOpen: false
@@ -14,7 +15,7 @@ images:
   - /images/og-cvss-gets-it-wrong.png
 ---
 
-After 15 years of incident response at Mandiant, I watched security teams burn countless hours patching CVSS 9.8 vulnerabilities that never got exploited — while CVSS 7.5s got weaponized and led to breaches. CVSS measures severity. Attackers measure opportunity. I trained an ML model on 338,000 real CVEs to find out what actually predicts which vulnerabilities get exploited in the wild — and the answer is not what CVSS thinks it is.
+After years in cybersecurity watching security teams burn hours on the wrong vulnerabilities, I watched teams patching CVSS 9.8 vulnerabilities that never got exploited — while CVSS 7.5s got weaponized and led to breaches. CVSS measures severity. Attackers measure opportunity. I trained an ML model on 338,000 real CVEs to find out what actually predicts which vulnerabilities get exploited in the wild — and the answer is not what CVSS thinks it is.
 
 ## The Data
 
@@ -59,7 +60,7 @@ CVSS predicts exploitability with an AUC of 0.662 — barely better than random 
 
 The top predictors of real-world exploitation, ranked by SHAP importance:
 
-**#1: How many CVEs a vendor has (vendor_cve_count).** This is the single strongest predictor, and it's not what most people expect. Vendors with large CVE histories — Microsoft, Apache, Oracle, Linux kernel — get exploited disproportionately. Not because their code is worse, but because attackers invest where the payoff is highest. A vulnerability in software deployed across millions of endpoints is worth weaponizing; a vulnerability in a niche product isn't. From 15 years of Mandiant incident response, the pattern is consistent: threat actors maintain exploit toolkits for high-deployment-count vendors and add new CVEs to existing toolchains. The attacker's calculus is "how many targets does this give me access to?" — and vendor CVE count is a proxy for deployment ubiquity.
+**#1: How many CVEs a vendor has (vendor_cve_count).** This is the single strongest predictor, and it's not what most people expect. Vendors with large CVE histories — Microsoft, Apache, Oracle, Linux kernel — get exploited disproportionately. Not because their code is worse, but because attackers invest where the payoff is highest. A vulnerability in software deployed across millions of endpoints is worth weaponizing; a vulnerability in a niche product isn't. From studying years of threat intelligence reporting, the pattern is consistent: threat actors maintain exploit toolkits for high-deployment-count vendors and add new CVEs to existing toolchains. The attacker's calculus is "how many targets does this give me access to?" — and vendor CVE count is a proxy for deployment ubiquity.
 
 **#2: How old the CVE is (cve_age_days).** Weaponization is not instant. The vulnerability lifecycle follows a predictable arc: disclosure → proof-of-concept (days to weeks) → integration into exploit kits (weeks to months) → active exploitation in the wild (months to years). A CVE that's been public for 6 months without a known exploit is less urgent than one that's been public for 2 years with active weaponization. Age is a feature CVSS ignores entirely.
 
@@ -70,6 +71,8 @@ The top predictors of real-world exploitation, ranked by SHAP importance:
 **#12: Remote code execution keyword.** RCE is the ultimate attacker goal: arbitrary code execution means game over.
 
 CVSS score? **#5.** The formula everyone uses for prioritization is the fifth most important feature. Vendor history, vulnerability age, and description complexity all matter more.
+
+![SHAP feature importance — top 20 features driving exploitation prediction, with vendor CVE count and vulnerability age dominating over CVSS score](/images/posts/cvss-gets-it-wrong/shap_bar_top20_seed42.png)
 
 ## Adversarial Robustness: 0% Evasion
 
@@ -104,7 +107,14 @@ Full pipeline (ingest → features → models → SHAP → adversarial eval) is 
 
 Built with [govML](https://github.com/rexcoleman/govML) governance — 11 architectural decisions logged, every experiment reproducible.
 
+### What's Next
+
+The ablation study continues — I'm testing which data source combinations are sufficient vs redundant for vulnerability prediction. I also applied the same adversarial robustness methodology to network IDS: [Adversarial ML on IDS →](/posts/adversarial-ids/)
 
 ---
 
 *Rex Coleman is securing AI from the architecture up — building AI security systems across 4 ML paradigms, publishing the methodology, and shipping open-source tools. [rexcoleman.dev](https://rexcoleman.dev) · [GitHub](https://github.com/rexcoleman) · [Singularity Cybersecurity](https://singularitycyber.com)*
+
+---
+
+*If this was useful, [subscribe on Substack](https://substack.com/@rexcoleman) for weekly AI security research — findings, tools, and curated signal.*

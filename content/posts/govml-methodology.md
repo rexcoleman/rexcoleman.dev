@@ -3,6 +3,7 @@ title: "How I Govern AI-Assisted ML Projects"
 date: 2026-03-14
 description: "I built an open-source governance framework for ML projects after watching 14 manual audit cycles nearly break my workflow. Here's how govML works and why governance-as-code is the only way to scale ML research."
 tags: ["ml-governance", "build-in-public", "machine-learning", "govml"]
+format: "technical-blog"
 author: "Rex Coleman"
 ShowToc: true
 TocOpen: false
@@ -40,6 +41,8 @@ Layer 3: ORCHESTRATION (agent)
   AI-driven workflow that manages the experiment lifecycle with human
   approval at decision points
 ```
+
+![govML agent boundary architecture — three-layer design separating governance templates, enforcement generators, and AI orchestration](/images/posts/govml-methodology/agent_boundary.png)
 
 ### How It Works in Practice
 
@@ -95,7 +98,18 @@ bash scripts/init_project.sh /your/project --profile supervised --fill
 
 If you run ML experiments and want reproducibility without the overhead, this is the framework I built to solve that problem for myself. Every template was extracted from real project friction, not designed speculatively.
 
+### Limitations
+
+govML has been validated by a single user across 9 projects. Team-scale adoption, cross-organization deployment, and integration with existing MLOps pipelines remain untested. The generator coverage (19 generators) addresses the most common audit failure patterns but doesn't yet cover all edge cases. The MCP-based enforcement requires Claude Code — teams using other AI assistants need manual template application.
+
+### What's Next
+
+govML governed every project in my research portfolio. See it in action: [I Red-Teamed AI Agents](/posts/agent-redteam/) (govML-governed) · [CVSS Gets It Wrong](/posts/cvss-gets-it-wrong/) (govML-governed) · [Adversarial IDS](/posts/adversarial-ids/) (govML-governed). The agent orchestrator and community adoption are the next priorities.
 
 ---
 
 *Rex Coleman is securing AI from the architecture up — building AI security systems across 4 ML paradigms, publishing the methodology, and shipping open-source tools. [rexcoleman.dev](https://rexcoleman.dev) · [GitHub](https://github.com/rexcoleman) · [Singularity Cybersecurity](https://singularitycyber.com)*
+
+---
+
+*If this was useful, [subscribe on Substack](https://substack.com/@rexcoleman) for weekly AI security research — findings, tools, and curated signal.*

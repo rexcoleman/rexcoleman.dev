@@ -3,6 +3,7 @@ title: "Adversarial ML on Network Intrusion Detection: What Adversarial Control 
 date: 2026-03-14
 description: "I built and red-teamed an ML-based intrusion detection system. The key finding: which features an attacker controls matters more than which model you choose."
 tags: ["ai-security", "adversarial-ml", "machine-learning", "feature-controllability"]
+format: "technical-blog"
 author: "Rex Coleman"
 ShowToc: true
 TocOpen: false
@@ -14,7 +15,7 @@ images:
   - /images/og-adversarial-ids.png
 ---
 
-After 15 years at Mandiant watching network intrusion detection systems fail against real adversaries, I built one — then tried to break it.
+After studying how adversaries evade detection systems, I built one — then tried to break it.
 
 The finding that surprised me: the model architecture barely matters for robustness. What matters is which features the attacker can manipulate.
 
@@ -34,7 +35,7 @@ Before designing attacks, I did something that most adversarial ML papers skip: 
 | **Defender-observable only** | 14 | Flow duration, inter-arrival time, TCP window size — properties of the network path that the attacker can't directly manipulate |
 | **Environment** | 7 | Timestamp, source/dest port ranges — contextual |
 
-This split is the core contribution. It comes from practitioner knowledge: after watching real network attacks for 15 years, I know which packet fields an attacker actually controls and which are determined by the network infrastructure.
+This split is the core contribution. It comes from practitioner knowledge: from understanding how real attackers operate, I know which packet fields an attacker actually controls and which are determined by the network infrastructure.
 
 ## The Key Finding
 
@@ -91,7 +92,18 @@ Everything is open source with full govML governance (decision log, phase gates,
 
 Built with [govML](https://github.com/rexcoleman/govML) — the governance framework that makes this reproducible.
 
+### Limitations
+
+This analysis uses the CICIDS2017 dataset, which is now nearly a decade old and contains synthetic attack traffic. The adversarial evaluation tested a single model architecture on one dataset. Production IDS environments face different traffic patterns, concept drift, and adaptive adversaries not captured here. The feature controllability findings are directional, not definitive — further validation across datasets and model types is needed.
+
+### What's Next
+
+I applied this same adversarial thinking to AI agents — the results were worse. [Read: I Red-Teamed AI Agents →](/posts/agent-redteam/) Then I went deeper into RL-specific attacks: [Beyond Prompt Injection →](/posts/rl-agent-vulnerability/)
 
 ---
 
 *Rex Coleman is securing AI from the architecture up — building AI security systems across 4 ML paradigms, publishing the methodology, and shipping open-source tools. [rexcoleman.dev](https://rexcoleman.dev) · [GitHub](https://github.com/rexcoleman) · [Singularity Cybersecurity](https://singularitycyber.com)*
+
+---
+
+*If this was useful, [subscribe on Substack](https://substack.com/@rexcoleman) for weekly AI security research — findings, tools, and curated signal.*

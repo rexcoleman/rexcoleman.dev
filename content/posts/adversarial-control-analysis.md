@@ -3,6 +3,7 @@ title: "One Principle, Six Domains: Adversarial Control Analysis for AI Security
 date: 2026-03-16
 description: "The same security principle — classify inputs by who controls them — works across network IDS, vulnerability management, AI agents, post-quantum crypto, fraud detection, and AI supply chains."
 tags: ["ai-security", "methodology", "adversarial-ml", "security-architecture"]
+format: "perspective"
 author: "Rex Coleman"
 ShowToc: true
 TocOpen: false
@@ -66,7 +67,7 @@ ACA works because security is fundamentally about **asymmetric control**. Attack
 
 Most ML security research treats all features equally perturbable. Most security frameworks focus on the attack surface without mapping the control surface. ACA bridges both: it uses the control map to focus defenses where they'll survive adversarial pressure.
 
-## What's Next
+## What I'm Doing About It
 
 I'm extending ACA to three new ML paradigms:
 
@@ -79,3 +80,7 @@ Same principle. Four paradigms. Every level of the AI stack.
 ---
 
 *Rex Coleman is securing AI from the architecture up — building AI security systems across 4 ML paradigms, publishing the methodology, and shipping open-source tools. [rexcoleman.dev](https://rexcoleman.dev) · [GitHub](https://github.com/rexcoleman) · [Singularity Cybersecurity](https://singularitycyber.com)*
+
+---
+
+*If this was useful, [subscribe on Substack](https://substack.com/@rexcoleman) for weekly AI security research — findings, tools, and curated signal.*

@@ -3,6 +3,7 @@ title: "Why Third-Party Skills Are the Biggest Agent Attack Vector"
 date: 2026-03-20
 description: "820+ malicious skills on ClawHub. Third-party skills execute on every heartbeat — persistent access to your agent's memory, context, and capabilities. Here's why this is worse than prompt injection."
 tags: ["agent-security", "supply-chain", "openclaw", "singularity-cybersecurity"]
+format: "perspective"
 author: "Rex Coleman"
 draft: true
 ShowToc: true
@@ -95,6 +96,18 @@ Agent skill marketplaces need the same treatment. But the attack surface is larg
 
 That's a fundamentally different — and harder — security problem.
 
+### Limitations
+
+The 820 malicious skill count comes from community reporting and ClawHub registry analysis, not independent verification. ClawHub's actual moderation practices and detection rates are not publicly documented. The comparison to prompt injection (bounded vs persistent exposure) is analytical — no controlled experiment directly measures the differential risk. Malicious skill definitions vary across the community.
+
+### What I'm Doing About It
+
+At Singularity Cybersecurity, we're building tools to address this gap — starting with SkillVet (behavioral sandbox scanning) and AgentArmor (runtime behavioral monitoring). The practical hardening guide is already live: [How to Secure Your OpenClaw in 30 Minutes →](/posts/secure-openclaw-30-minutes/)
+
 ---
 
-*820 malicious skills. 20% of the registry. This problem is growing faster than defenses are shipping. The data is from [community signal analysis](/posts/secure-openclaw-30-minutes/) and [our agent red-team research](/posts/agent-redteam/).*
+*Rex Coleman is securing AI from the architecture up — building AI security systems across 4 ML paradigms, publishing the methodology, and shipping open-source tools. [rexcoleman.dev](https://rexcoleman.dev) · [GitHub](https://github.com/rexcoleman) · [Singularity Cybersecurity](https://singularitycyber.com)*
+
+---
+
+*If this was useful, [subscribe on Substack](https://substack.com/@rexcoleman) for weekly AI security research — findings, tools, and curated signal.*

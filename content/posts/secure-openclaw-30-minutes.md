@@ -3,6 +3,7 @@ title: "How to Secure Your OpenClaw in 30 Minutes"
 date: 2026-03-17
 description: "Your AI agent is running 24/7. Here are the 5 biggest security risks and a step-by-step hardening guide."
 tags: ["agent-security", "openclaw", "tutorial", "singularity-cybersecurity"]
+format: "tutorial"
 author: "Rex Coleman"
 ShowToc: true
 TocOpen: true
@@ -171,4 +172,8 @@ Agent security is a new domain. The people building agents right now are writing
 
 ---
 
-*This post draws on research from my agent red-team framework (FP-02), analysis of OpenClaw security surface from Moonshots EP #237 (Alex Finn interview), and disclosed vulnerabilities in agent frameworks. All claims are grounded in documented findings, not speculation.*
+*Rex Coleman is securing AI from the architecture up — building AI security systems across 4 ML paradigms, publishing the methodology, and shipping open-source tools. [rexcoleman.dev](https://rexcoleman.dev) · [GitHub](https://github.com/rexcoleman) · [Singularity Cybersecurity](https://singularitycyber.com)*
+
+---
+
+*If this was useful, [subscribe on Substack](https://substack.com/@rexcoleman) for weekly AI security research — findings, tools, and curated signal.*
