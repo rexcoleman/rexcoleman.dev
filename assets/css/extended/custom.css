@@ -1,0 +1,138 @@
+/* =============================================================
+   Rex Coleman — Brand Design System
+   Overrides PaperMod CSS variables for dark-mode-native brand
+   ============================================================= */
+
+/* ── Design tokens ──────────────────────────────────────────── */
+:root {
+    --theme: #0C111C;
+    --entry: #12192A;
+    --primary: #EDF0F5;
+    --secondary: #828EA3;
+    --tertiary: #323A4E;
+    --content: #EDF0F5;
+    --code-bg: #0F172A;
+    --border: #323A4E;
+}
+
+/* PaperMod also gates dark-mode overrides under .dark — repeat
+   so both :root and .dark are covered regardless of theme toggle */
+.dark {
+    --theme: #0C111C;
+    --entry: #12192A;
+    --primary: #EDF0F5;
+    --secondary: #828EA3;
+    --tertiary: #323A4E;
+    --content: #EDF0F5;
+    --code-bg: #0F172A;
+    --border: #323A4E;
+}
+
+/* ── Body / page background ─────────────────────────────────── */
+body {
+    background-color: #0C111C;
+}
+
+/* ── Links ──────────────────────────────────────────────────── */
+a {
+    color: #00E0A0;
+    text-decoration: none;
+}
+
+a:hover {
+    text-decoration: underline;
+}
+
+/* Keep nav / menu links inheriting primary text color */
+.nav a,
+.menu a {
+    color: var(--primary);
+}
+
+.nav a:hover,
+.menu a:hover {
+    color: #00E0A0;
+}
+
+/* ── Post titles: accent on hover ───────────────────────────── */
+.post-title a,
+.entry-header h2 a,
+.entry h2 a {
+    color: var(--primary);
+    text-decoration: none;
+    transition: color 0.15s ease;
+}
+
+.post-title a:hover,
+.entry-header h2 a:hover,
+.entry h2 a:hover {
+    color: #00E0A0;
+    text-decoration: none;
+}
+
+/* ── Code blocks ────────────────────────────────────────────── */
+pre,
+pre code {
+    background-color: #0F172A !important;
+}
+
+code {
+    background-color: #0F172A;
+    padding: 0.15em 0.35em;
+    border-radius: 4px;
+}
+
+/* ── Footer ─────────────────────────────────────────────────── */
+footer {
+    background-color: #080C16;
+    border-top: 1px solid #323A4E;
+}
+
+/* ── Borders / cards / entry surfaces ───────────────────────── */
+.post-entry,
+.page-header,
+.toc {
+    background-color: #12192A;
+    border: 1px solid #323A4E;
+    border-radius: 6px;
+}
+
+hr {
+    border-color: #323A4E;
+}
+
+/* ── Scrollbar (Chromium / Edge) ────────────────────────────── */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: #0C111C;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #323A4E;
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #00E0A0;
+}
+
+/* Firefox scrollbar */
+* {
+    scrollbar-color: #323A4E #0C111C;
+    scrollbar-width: thin;
+}
+
+/* ── Selection highlight ────────────────────────────────────── */
+::selection {
+    background-color: #00E0A0;
+    color: #0C111C;
+}
+
+::-moz-selection {
+    background-color: #00E0A0;
+    color: #0C111C;
+}

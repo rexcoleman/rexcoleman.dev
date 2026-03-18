@@ -7,7 +7,7 @@ params:
   env: production
   description: "AI + cybersecurity. Building what's missing between ML research and production security. 9 open-source projects, 4 ML paradigms. Creator of govML."
   author: "Rex Coleman"
-  defaultTheme: auto
+  defaultTheme: dark
   ShowReadingTime: true
   ShowShareButtons: true
   ShowPostNavLinks: true
@@ -55,7 +55,7 @@ params:
     disabled: true
 
   assets:
-    favicon: ""
+    favicon: "/images/favicon-32.png"
     disableFingerprinting: false
 
 menu:
