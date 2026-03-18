@@ -1,52 +1,79 @@
 /* =============================================================
-   Rex Coleman — Brand Design System v4
+   Rex Coleman — Brand Design System v5
 
-   Goal: Make rexcoleman.dev feel like singularitycyber.com
+   Goal: Match singularitycyber.com look and feel exactly.
 
-   Singularity DNA:
-   - System font stack (-apple-system, BlinkMacSystemFont, etc.)
-   - bg #0C111C, cards #12192A, border #323A4E
-   - Accent #00E0A0, muted #828EA3, text #EDF0F5
-   - 800px max-width, generous padding
-   - Clean section headers with bottom border
-   - Cards with 1px border + 8px radius
-   - No shadows, no gradients, no decoration
+   Strategy: Use !important on key overrides because PaperMod's
+   minified CSS uses [data-theme=dark] selectors that have higher
+   specificity than our :root and .dark overrides.
    ============================================================= */
 
-/* ── PaperMod variable overrides ───────────────────────────── */
-:root,
-.dark,
-[data-theme="dark"] {
-    --gap: 24px;
-    --content-gap: 20px;
-    --nav-width: 800px;
-    --main-width: 800px;
-    --header-height: 60px;
-    --footer-height: 60px;
-    --radius: 8px;
-    --theme: #0C111C;
-    --entry: #0C111C;
-    --primary: #EDF0F5;
-    --secondary: #828EA3;
-    --tertiary: #323A4E;
-    --content: #EDF0F5;
-    --code-bg: #0C111C;
-    --code-block-bg: #12192A;
-    --border: #323A4E;
-    color-scheme: dark;
+/* ── Nuclear reset: force dark everywhere ──────────────────── */
+html,
+html[data-theme="dark"],
+html[data-theme="light"] {
+    --theme: #0C111C !important;
+    --entry: #12192A !important;
+    --primary: #EDF0F5 !important;
+    --secondary: #828EA3 !important;
+    --tertiary: #323A4E !important;
+    --content: #EDF0F5 !important;
+    --code-bg: #12192A !important;
+    --code-block-bg: #12192A !important;
+    --border: #323A4E !important;
+    --nav-width: 800px !important;
+    --main-width: 800px !important;
+    --radius: 8px !important;
+    --gap: 24px !important;
+    color-scheme: dark !important;
 }
 
-/* ── Base ───────────────────────────────────────────────────── */
+/* ── Body ───────────────────────────────────────────────────── */
 body {
-    background: #0C111C;
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
-    color: #EDF0F5;
-    line-height: 1.7;
+    background: #0C111C !important;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif !important;
+    color: #EDF0F5 !important;
+    line-height: 1.7 !important;
 }
 
-/* Kill any light-mode list backgrounds */
-.list {
+/* Kill the .list background that PaperMod sets differently */
+body.list,
+.list,
+[data-theme="dark"] .list,
+[data-theme="light"] .list {
     background: #0C111C !important;
+}
+
+/* ── Hide theme toggle — we are dark-only ──────────────────── */
+#theme-toggle,
+.logo-switches button {
+    display: none !important;
+}
+
+/* ── Nav & Logo ─────────────────────────────────────────────── */
+.logo a {
+    color: #00E0A0 !important;
+    font-size: 1.1rem !important;
+    font-weight: 600 !important;
+    letter-spacing: 0.02em !important;
+}
+
+.nav {
+    max-width: calc(800px + 48px) !important;
+}
+
+#menu a,
+#menu span {
+    color: #EDF0F5 !important;
+    font-size: 0.95rem !important;
+}
+#menu a:hover,
+#menu span:hover {
+    color: #00E0A0 !important;
+}
+#menu .active {
+    color: #00E0A0 !important;
+    border-bottom: 2px solid #00E0A0 !important;
 }
 
 /* ── Links ──────────────────────────────────────────────────── */
@@ -55,257 +82,317 @@ a {
     text-decoration: none;
 }
 a:hover {
-    opacity: 0.9;
+    opacity: 0.85;
 }
 
-/* Nav links: primary text, accent on hover */
-.nav a, #menu a {
-    color: #EDF0F5;
+/* ── Page header ("Posts" title) ────────────────────────────── */
+.page-header {
+    background: transparent !important;
+    border: none !important;
+    margin-bottom: 8px !important;
 }
-.nav a:hover, #menu a:hover {
-    color: #00E0A0;
-}
-#menu .active {
-    border-bottom-color: #00E0A0;
+.page-header h1 {
+    font-size: 1.5rem !important;
+    font-weight: 600 !important;
+    color: #EDF0F5 !important;
+    padding-bottom: 8px !important;
+    border-bottom: 1px solid #323A4E !important;
 }
 
-/* Logo */
-.logo a {
+/* Breadcrumbs */
+.breadcrumbs a {
+    color: #828EA3 !important;
+}
+.breadcrumbs a:hover {
     color: #00E0A0 !important;
-    font-weight: 600;
-    letter-spacing: 0.02em;
 }
 
 /* ── Post listing cards ────────────────────────────────────── */
 .post-entry {
-    background: #12192A;
-    border: 1px solid #323A4E;
-    border-radius: 8px;
-    padding: 24px;
-    margin-bottom: 16px;
-    transition: border-color 0.15s ease;
+    background: #12192A !important;
+    border: 1px solid #323A4E !important;
+    border-radius: 8px !important;
+    padding: 24px !important;
+    margin-bottom: 16px !important;
+    transition: border-color 0.15s ease !important;
 }
 .post-entry:active {
-    transform: none;
+    transform: none !important;
 }
 .post-entry:hover {
-    border-color: #00E0A0;
+    border-color: #00E0A0 !important;
 }
 
-/* Post meta (date, reading time, author) */
-.entry-content {
-    color: #828EA3;
-}
-.entry-footer {
-    color: #828EA3;
-}
-
-/* Post titles */
+/* Post title in cards */
 .entry-header h2 {
-    font-size: 1.25rem;
-    font-weight: 600;
-    line-height: 1.3;
+    font-size: 1.15rem !important;
+    font-weight: 600 !important;
+    line-height: 1.4 !important;
+    margin-bottom: 8px !important;
 }
-.post-title a,
 .entry-header h2 a,
-.entry h2 a {
-    color: #EDF0F5;
-    text-decoration: none;
+.post-entry .entry-header h2 {
+    color: #EDF0F5 !important;
 }
-.post-title a:hover,
-.entry-header h2 a:hover,
-.entry h2 a:hover {
-    color: #00E0A0;
+
+/* Post excerpt in cards */
+.entry-content {
+    color: #828EA3 !important;
+    font-size: 0.9rem !important;
+    line-height: 1.6 !important;
+    margin: 8px 0 !important;
+}
+
+/* Post meta (date · reading time · author) — THIS was the "dark blue bar" */
+.entry-footer {
+    color: #828EA3 !important;
+    font-size: 0.8rem !important;
+    background: transparent !important;
+    border: none !important;
+    padding: 0 !important;
+    margin-top: 12px !important;
 }
 
 /* ── Single post page ──────────────────────────────────────── */
+.post-header {
+    margin-bottom: 32px !important;
+}
 .post-title {
-    font-size: 2.2rem;
-    font-weight: 700;
-    color: #EDF0F5;
+    font-size: 2.4rem !important;
+    font-weight: 700 !important;
+    line-height: 1.15 !important;
+    color: #EDF0F5 !important;
+}
+.post-description {
+    color: #828EA3 !important;
+    font-size: 1.1rem !important;
 }
 .post-meta {
-    color: #828EA3;
-}
-.post-content {
-    color: #EDF0F5;
-    line-height: 1.7;
-}
-.post-content a {
-    color: #00E0A0;
-    box-shadow: none;
-}
-.post-content a:hover {
-    text-decoration: underline;
+    color: #828EA3 !important;
+    font-size: 0.85rem !important;
 }
 
-/* Section headers in post content */
-.post-content h2 {
-    font-weight: 600;
-    padding-bottom: 8px;
-    border-bottom: 1px solid #323A4E;
+/* Post content */
+.post-content {
+    color: #EDF0F5 !important;
+    line-height: 1.7 !important;
+    font-size: 1rem !important;
 }
-.post-content h3 {
-    color: #EDF0F5;
-    font-weight: 600;
+.post-content a {
+    color: #00E0A0 !important;
+    box-shadow: none !important;
+}
+.post-content a:hover {
+    text-decoration: underline !important;
+    box-shadow: none !important;
+}
+.post-content a code {
+    box-shadow: none !important;
+}
+
+/* Headings in content */
+.post-content h1,
+.post-content h2 {
+    color: #EDF0F5 !important;
+    font-weight: 600 !important;
+    padding-bottom: 8px !important;
+    border-bottom: 1px solid #323A4E !important;
+    margin-top: 40px !important;
+}
+.post-content h3,
+.post-content h4 {
+    color: #EDF0F5 !important;
+    font-weight: 600 !important;
 }
 
 /* Tables */
 .post-content table th,
-.post-content table:not(.highlighttable, .highlight table, .gist .highlight) td {
-    border-bottom-color: #323A4E;
+.post-content table td {
+    border-bottom: 1px solid #323A4E !important;
+    padding: 10px 8px !important;
+    color: #EDF0F5 !important;
+}
+.post-content table th {
+    color: #00E0A0 !important;
+    font-weight: 600 !important;
 }
 
 /* Blockquotes */
 .post-content blockquote {
-    border-inline-start-color: #00E0A0;
-    color: #828EA3;
+    border-inline-start: 3px solid #00E0A0 !important;
+    color: #828EA3 !important;
+    padding: 4px 16px !important;
 }
 
 /* Horizontal rules */
+.post-content hr,
 hr {
-    background: #323A4E;
+    background: #323A4E !important;
+    border: none !important;
+    height: 1px !important;
+}
+
+/* Lists */
+.post-content li {
+    color: #EDF0F5 !important;
 }
 
 /* ── Code blocks ────────────────────────────────────────────── */
-pre, pre code {
-    background-color: #12192A !important;
+pre,
+pre code,
+.highlight pre,
+.post-content .highlight:not(table) {
+    background: #12192A !important;
+    border-radius: 8px !important;
 }
 code {
-    background-color: #12192A;
-    padding: 0.15em 0.35em;
-    border-radius: 4px;
-    font-size: 0.85em;
+    background: #12192A !important;
+    padding: 0.15em 0.4em !important;
+    border-radius: 4px !important;
+    font-size: 0.85em !important;
+    color: #EDF0F5 !important;
+}
+pre code {
+    padding: 16px !important;
+    font-size: 0.85em !important;
 }
 
 /* ── TOC ────────────────────────────────────────────────────── */
-.toc {
-    background: #12192A;
-    border: 1px solid #323A4E;
-    border-radius: 8px;
-}
+.toc,
 [data-theme="dark"] .toc {
-    background: #12192A;
+    background: #12192A !important;
+    border: 1px solid #323A4E !important;
+    border-radius: 8px !important;
+}
+.toc a {
+    color: #828EA3 !important;
+}
+.toc a:hover {
+    color: #00E0A0 !important;
+    box-shadow: none !important;
+}
+.toc .details {
+    color: #EDF0F5 !important;
 }
 
 /* ── Tags ───────────────────────────────────────────────────── */
 .post-tags a {
-    background: rgba(0, 224, 160, 0.1);
-    color: #00E0A0;
-    border: none;
-    font-size: 0.8rem;
-    padding: 4px 12px;
-    border-radius: 4px;
+    background: rgba(0, 224, 160, 0.1) !important;
+    color: #00E0A0 !important;
+    border: none !important;
+    font-size: 0.75rem !important;
+    padding: 4px 10px !important;
+    border-radius: 4px !important;
 }
 .post-tags a:hover {
-    background: rgba(0, 224, 160, 0.2);
+    background: rgba(0, 224, 160, 0.2) !important;
 }
 
-/* ── Pagination ─────────────────────────────────────────────── */
+/* ── Pagination / share ─────────────────────────────────────── */
 .paginav {
-    background: #12192A;
-    border: 1px solid #323A4E;
-    border-radius: 8px;
+    background: #12192A !important;
+    border: 1px solid #323A4E !important;
+    border-radius: 8px !important;
 }
 .paginav a {
-    color: #EDF0F5;
+    color: #EDF0F5 !important;
 }
-.paginav a:hover span:not(.title) {
-    color: #00E0A0;
-    box-shadow: none;
+.paginav .title {
+    color: #828EA3 !important;
+}
+.paginav span:hover:not(.title) {
+    box-shadow: none !important;
+    color: #00E0A0 !important;
 }
 
-/* Share buttons */
 .share-buttons {
-    background: #12192A;
-    border: 1px solid #323A4E;
-    border-radius: 8px;
+    background: #12192A !important;
+    border: 1px solid #323A4E !important;
+    border-radius: 8px !important;
 }
 
-/* ── Profile / home ─────────────────────────────────────────── */
-.profile .profile_inner h1 {
-    color: #00E0A0;
+/* ── Profile / Home ─────────────────────────────────────────── */
+.profile .profile_inner h1,
+.profile .profile_inner .name {
+    color: #00E0A0 !important;
+}
+.profile .profile_inner .tagline {
+    color: #828EA3 !important;
 }
 .buttons .button {
-    background: #323A4E;
+    background: #323A4E !important;
+    color: #EDF0F5 !important;
 }
 .buttons .button:hover {
-    background: #00E0A0;
-    color: #0C111C;
+    background: #00E0A0 !important;
+    color: #0C111C !important;
 }
 
-/* Home info section */
+.home-info {
+    color: #828EA3 !important;
+}
 .home-info .entry-content {
-    color: #828EA3;
+    color: #828EA3 !important;
+}
+.home-info .entry-content a {
+    color: #00E0A0 !important;
 }
 
 /* Social icons */
 .social-icons a svg {
-    fill: #828EA3;
+    fill: #828EA3 !important;
 }
 .social-icons a:hover svg {
-    fill: #00E0A0;
+    fill: #00E0A0 !important;
 }
 
 /* ── Footer ─────────────────────────────────────────────────── */
-footer {
-    background: #0C111C;
-    border-top: 1px solid #323A4E;
+.footer,
+footer.footer {
+    background: #0C111C !important;
+    border-top: 1px solid #323A4E !important;
+    color: #828EA3 !important;
 }
-footer a {
-    color: #00E0A0;
+.footer a {
+    color: #00E0A0 !important;
+    border-bottom: none !important;
+}
+.footer a:hover {
+    color: #00E0A0 !important;
+    border-bottom: none !important;
 }
 
 /* ── Search ─────────────────────────────────────────────────── */
 #searchbox input {
-    background: #12192A;
-    border: 1px solid #323A4E;
-    color: #EDF0F5;
+    background: #12192A !important;
+    border: 1px solid #323A4E !important;
+    color: #EDF0F5 !important;
 }
 #searchbox input:focus {
-    border-color: #00E0A0;
+    border-color: #00E0A0 !important;
 }
 #searchResults li {
-    background: #12192A;
-    border: 1px solid #323A4E;
-    border-radius: 8px;
+    background: #12192A !important;
+    border: 1px solid #323A4E !important;
+    border-radius: 8px !important;
+}
+
+/* ── Top link (back to top arrow) ───────────────────────────── */
+.top-link {
+    background: #323A4E !important;
+    color: #EDF0F5 !important;
+}
+.top-link:hover {
+    background: #00E0A0 !important;
+    color: #0C111C !important;
 }
 
 /* ── Scrollbar ──────────────────────────────────────────────── */
-::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
-}
-::-webkit-scrollbar-track {
-    background: #0C111C;
-}
-::-webkit-scrollbar-thumb {
-    background: #323A4E;
-    border-radius: 4px;
-}
-::-webkit-scrollbar-thumb:hover {
-    background: #00E0A0;
-}
-* {
-    scrollbar-color: #323A4E #0C111C;
-    scrollbar-width: thin;
-}
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: #0C111C; }
+::-webkit-scrollbar-thumb { background: #323A4E; border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: #00E0A0; }
+* { scrollbar-color: #323A4E #0C111C; scrollbar-width: thin; }
 
 /* ── Selection ──────────────────────────────────────────────── */
-::selection {
-    background: #00E0A0;
-    color: #0C111C;
-}
-
-/* ── Theme toggle — hide it (we're dark-only) ───────────────── */
-#theme-toggle {
-    display: none;
-}
-
-/* ── Breadcrumbs ────────────────────────────────────────────── */
-.breadcrumbs a {
-    color: #828EA3;
-}
-.breadcrumbs a:hover {
-    color: #00E0A0;
-}
+::selection { background: #00E0A0; color: #0C111C; }
