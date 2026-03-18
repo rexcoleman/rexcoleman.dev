@@ -1,159 +1,186 @@
-/* =============================================================
-   Rex Coleman — Brand Design System v5
+/*
+ * REX COLEMAN BLOG — Design System v6
+ *
+ * Matches singularitycyber.com v2 exactly.
+ * Same tokens, same font, same spacing, same feel.
+ *
+ * TOKENS (from singularitycyber.com):
+ *   --bg:        #0B0F19   warm blue-black
+ *   --surface:   #131825   card surface
+ *   --border:    #1E2536   subtle edge
+ *   --text:      #D1D5DB   body text
+ *   --text-dim:  #6B7280   secondary / muted
+ *   --heading:   #F3F4F6   headings
+ *   --accent:    #34D399   emerald green
+ *   --accent-bg: rgba(52,211,153,0.08)  tag backgrounds
+ *
+ * TYPOGRAPHY: Inter 400/500/600/700
+ * CONTAINER: 880px, body text capped at 600px
+ * CARDS: #131825, 1px #1E2536 border, 10px radius, 28px padding
+ */
 
-   Goal: Match singularitycyber.com look and feel exactly.
-
-   Strategy: Use !important on key overrides because PaperMod's
-   minified CSS uses [data-theme=dark] selectors that have higher
-   specificity than our :root and .dark overrides.
-   ============================================================= */
-
-/* ── Nuclear reset: force dark everywhere ──────────────────── */
+/* ── Override every PaperMod variable ──────────────────────── */
+:root,
+.dark,
+[data-theme="dark"],
+[data-theme="light"],
 html,
 html[data-theme="dark"],
 html[data-theme="light"] {
-    --theme: #0C111C !important;
-    --entry: #12192A !important;
-    --primary: #EDF0F5 !important;
-    --secondary: #828EA3 !important;
-    --tertiary: #323A4E !important;
-    --content: #EDF0F5 !important;
-    --code-bg: #12192A !important;
-    --code-block-bg: #12192A !important;
-    --border: #323A4E !important;
-    --nav-width: 800px !important;
-    --main-width: 800px !important;
-    --radius: 8px !important;
     --gap: 24px !important;
+    --content-gap: 20px !important;
+    --nav-width: 880px !important;
+    --main-width: 880px !important;
+    --header-height: 60px !important;
+    --footer-height: auto !important;
+    --radius: 10px !important;
+    --theme: #0B0F19 !important;
+    --entry: #131825 !important;
+    --primary: #F3F4F6 !important;
+    --secondary: #6B7280 !important;
+    --tertiary: #1E2536 !important;
+    --content: #D1D5DB !important;
+    --code-bg: #131825 !important;
+    --code-block-bg: #131825 !important;
+    --border: #1E2536 !important;
     color-scheme: dark !important;
 }
 
-/* ── Body ───────────────────────────────────────────────────── */
+/* ── Base ───────────────────────────────────────────────────── */
 body {
-    background: #0C111C !important;
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif !important;
-    color: #EDF0F5 !important;
-    line-height: 1.7 !important;
+    background: #0B0F19 !important;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif !important;
+    color: #D1D5DB !important;
+    line-height: 1.65 !important;
+    -webkit-font-smoothing: antialiased !important;
+    -moz-osx-font-smoothing: grayscale !important;
 }
 
-/* Kill the .list background that PaperMod sets differently */
 body.list,
 .list,
-[data-theme="dark"] .list,
-[data-theme="light"] .list {
-    background: #0C111C !important;
+[data-theme] .list {
+    background: #0B0F19 !important;
 }
 
-/* ── Hide theme toggle — we are dark-only ──────────────────── */
+/* ── Hide theme toggle ─────────────────────────────────────── */
 #theme-toggle,
 .logo-switches button {
     display: none !important;
 }
 
-/* ── Nav & Logo ─────────────────────────────────────────────── */
-.logo a {
-    color: #00E0A0 !important;
-    font-size: 1.1rem !important;
-    font-weight: 600 !important;
-    letter-spacing: 0.02em !important;
+/* ── Nav ────────────────────────────────────────────────────── */
+.header {
+    background: #0B0F19 !important;
+    border-bottom: 1px solid #1E2536 !important;
 }
 
 .nav {
-    max-width: calc(800px + 48px) !important;
+    max-width: calc(880px + 64px) !important;
+}
+
+.logo a {
+    color: #F3F4F6 !important;
+    font-size: 0.9rem !important;
+    font-weight: 600 !important;
+    letter-spacing: 0.04em !important;
 }
 
 #menu a,
 #menu span {
-    color: #EDF0F5 !important;
-    font-size: 0.95rem !important;
+    color: #6B7280 !important;
+    font-size: 0.85rem !important;
+    font-weight: 500 !important;
 }
 #menu a:hover,
 #menu span:hover {
-    color: #00E0A0 !important;
+    color: #34D399 !important;
 }
 #menu .active {
-    color: #00E0A0 !important;
-    border-bottom: 2px solid #00E0A0 !important;
+    color: #34D399 !important;
+    border-bottom-color: #34D399 !important;
 }
 
 /* ── Links ──────────────────────────────────────────────────── */
 a {
-    color: #00E0A0;
+    color: #34D399;
     text-decoration: none;
 }
 a:hover {
-    opacity: 0.85;
+    text-decoration: underline;
 }
 
-/* ── Page header ("Posts" title) ────────────────────────────── */
+/* ── Page header ────────────────────────────────────────────── */
 .page-header {
     background: transparent !important;
     border: none !important;
-    margin-bottom: 8px !important;
+    padding-bottom: 0 !important;
 }
 .page-header h1 {
-    font-size: 1.5rem !important;
-    font-weight: 600 !important;
-    color: #EDF0F5 !important;
-    padding-bottom: 8px !important;
-    border-bottom: 1px solid #323A4E !important;
+    font-size: 2.4rem !important;
+    font-weight: 700 !important;
+    color: #F3F4F6 !important;
+    letter-spacing: -0.025em !important;
+    border: none !important;
+    padding: 0 !important;
+    margin-bottom: 8px !important;
 }
 
-/* Breadcrumbs */
+.breadcrumbs {
+    margin-bottom: 4px !important;
+}
 .breadcrumbs a {
-    color: #828EA3 !important;
+    color: #6B7280 !important;
+    font-size: 0.85rem !important;
 }
 .breadcrumbs a:hover {
-    color: #00E0A0 !important;
+    color: #34D399 !important;
 }
 
 /* ── Post listing cards ────────────────────────────────────── */
 .post-entry {
-    background: #12192A !important;
-    border: 1px solid #323A4E !important;
-    border-radius: 8px !important;
-    padding: 24px !important;
-    margin-bottom: 16px !important;
+    background: #131825 !important;
+    border: 1px solid #1E2536 !important;
+    border-radius: 10px !important;
+    padding: 28px !important;
+    margin-bottom: 14px !important;
     transition: border-color 0.15s ease !important;
 }
 .post-entry:active {
     transform: none !important;
 }
 .post-entry:hover {
-    border-color: #00E0A0 !important;
+    border-color: #34D399 !important;
 }
 
-/* Post title in cards */
 .entry-header h2 {
-    font-size: 1.15rem !important;
+    font-size: 1.1rem !important;
     font-weight: 600 !important;
     line-height: 1.4 !important;
     margin-bottom: 8px !important;
+    color: #F3F4F6 !important;
 }
 .entry-header h2 a,
-.post-entry .entry-header h2 {
-    color: #EDF0F5 !important;
+.entry-hint-parent {
+    color: #F3F4F6 !important;
 }
 
-/* Post excerpt in cards */
 .entry-content {
-    color: #828EA3 !important;
-    font-size: 0.9rem !important;
+    color: #6B7280 !important;
+    font-size: 0.88rem !important;
     line-height: 1.6 !important;
-    margin: 8px 0 !important;
 }
 
-/* Post meta (date · reading time · author) — THIS was the "dark blue bar" */
 .entry-footer {
-    color: #828EA3 !important;
-    font-size: 0.8rem !important;
+    color: #6B7280 !important;
+    font-size: 0.78rem !important;
+    font-weight: 500 !important;
     background: transparent !important;
     border: none !important;
     padding: 0 !important;
     margin-top: 12px !important;
 }
 
-/* ── Single post page ──────────────────────────────────────── */
+/* ── Single post ────────────────────────────────────────────── */
 .post-header {
     margin-bottom: 32px !important;
 }
@@ -161,25 +188,36 @@ a:hover {
     font-size: 2.4rem !important;
     font-weight: 700 !important;
     line-height: 1.15 !important;
-    color: #EDF0F5 !important;
+    color: #F3F4F6 !important;
+    letter-spacing: -0.025em !important;
 }
 .post-description {
-    color: #828EA3 !important;
-    font-size: 1.1rem !important;
+    color: #6B7280 !important;
+    font-size: 1.05rem !important;
 }
 .post-meta {
-    color: #828EA3 !important;
-    font-size: 0.85rem !important;
+    color: #6B7280 !important;
+    font-size: 0.82rem !important;
+    font-weight: 500 !important;
 }
 
 /* Post content */
 .post-content {
-    color: #EDF0F5 !important;
-    line-height: 1.7 !important;
+    color: #D1D5DB !important;
+    line-height: 1.65 !important;
     font-size: 1rem !important;
 }
+
+/* Cap prose width for readability (~65 chars) */
+.post-content > p,
+.post-content > blockquote,
+.post-content > ul,
+.post-content > ol {
+    max-width: 600px;
+}
+
 .post-content a {
-    color: #00E0A0 !important;
+    color: #34D399 !important;
     box-shadow: none !important;
 }
 .post-content a:hover {
@@ -190,209 +228,228 @@ a:hover {
     box-shadow: none !important;
 }
 
-/* Headings in content */
+/* Headings */
 .post-content h1,
 .post-content h2 {
-    color: #EDF0F5 !important;
+    color: #F3F4F6 !important;
     font-weight: 600 !important;
     padding-bottom: 8px !important;
-    border-bottom: 1px solid #323A4E !important;
-    margin-top: 40px !important;
+    border-bottom: 1px solid #1E2536 !important;
+    margin-top: 48px !important;
+    margin-bottom: 16px !important;
 }
 .post-content h3,
 .post-content h4 {
-    color: #EDF0F5 !important;
+    color: #34D399 !important;
     font-weight: 600 !important;
+    margin-top: 32px !important;
 }
 
-/* Tables */
+/* Tables — full width, singularity card style */
+.post-content table {
+    width: 100% !important;
+}
 .post-content table th,
 .post-content table td {
-    border-bottom: 1px solid #323A4E !important;
-    padding: 10px 8px !important;
-    color: #EDF0F5 !important;
+    border-bottom: 1px solid #1E2536 !important;
+    padding: 10px 12px !important;
+    font-size: 0.9rem !important;
 }
 .post-content table th {
-    color: #00E0A0 !important;
+    color: #34D399 !important;
     font-weight: 600 !important;
+    font-size: 0.82rem !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.04em !important;
+}
+.post-content table td {
+    color: #D1D5DB !important;
 }
 
 /* Blockquotes */
 .post-content blockquote {
-    border-inline-start: 3px solid #00E0A0 !important;
-    color: #828EA3 !important;
-    padding: 4px 16px !important;
+    border-inline-start: 3px solid #34D399 !important;
+    color: #6B7280 !important;
+    padding: 4px 20px !important;
+    margin: 24px 0 !important;
 }
 
 /* Horizontal rules */
-.post-content hr,
-hr {
-    background: #323A4E !important;
+.post-content hr, hr {
+    background: #1E2536 !important;
     border: none !important;
     height: 1px !important;
+    margin: 40px 0 !important;
 }
 
 /* Lists */
 .post-content li {
-    color: #EDF0F5 !important;
+    color: #D1D5DB !important;
+    margin-top: 4px !important;
 }
 
-/* ── Code blocks ────────────────────────────────────────────── */
-pre,
-pre code,
+/* Strong / bold */
+.post-content strong {
+    color: #F3F4F6 !important;
+    font-weight: 600 !important;
+}
+
+/* ── Code ───────────────────────────────────────────────────── */
+pre, pre code,
 .highlight pre,
 .post-content .highlight:not(table) {
-    background: #12192A !important;
-    border-radius: 8px !important;
+    background: #131825 !important;
+    border-radius: 10px !important;
 }
 code {
-    background: #12192A !important;
+    background: #131825 !important;
     padding: 0.15em 0.4em !important;
     border-radius: 4px !important;
     font-size: 0.85em !important;
-    color: #EDF0F5 !important;
+    color: #D1D5DB !important;
 }
 pre code {
-    padding: 16px !important;
+    padding: 20px !important;
     font-size: 0.85em !important;
+    line-height: 1.5 !important;
 }
 
 /* ── TOC ────────────────────────────────────────────────────── */
 .toc,
-[data-theme="dark"] .toc {
-    background: #12192A !important;
-    border: 1px solid #323A4E !important;
-    border-radius: 8px !important;
+[data-theme] .toc {
+    background: #131825 !important;
+    border: 1px solid #1E2536 !important;
+    border-radius: 10px !important;
 }
 .toc a {
-    color: #828EA3 !important;
+    color: #6B7280 !important;
+    box-shadow: none !important;
 }
 .toc a:hover {
-    color: #00E0A0 !important;
+    color: #34D399 !important;
     box-shadow: none !important;
 }
 .toc .details {
-    color: #EDF0F5 !important;
+    color: #F3F4F6 !important;
+    font-weight: 600 !important;
 }
 
 /* ── Tags ───────────────────────────────────────────────────── */
 .post-tags a {
-    background: rgba(0, 224, 160, 0.1) !important;
-    color: #00E0A0 !important;
+    background: rgba(52, 211, 153, 0.08) !important;
+    color: #34D399 !important;
     border: none !important;
-    font-size: 0.75rem !important;
-    padding: 4px 10px !important;
-    border-radius: 4px !important;
+    font-size: 0.72rem !important;
+    font-weight: 500 !important;
+    padding: 4px 12px !important;
+    border-radius: 100px !important;
+    letter-spacing: 0.02em !important;
 }
 .post-tags a:hover {
-    background: rgba(0, 224, 160, 0.2) !important;
+    background: rgba(52, 211, 153, 0.16) !important;
+    text-decoration: none !important;
 }
 
-/* ── Pagination / share ─────────────────────────────────────── */
+/* ── Pagination ─────────────────────────────────────────────── */
 .paginav {
-    background: #12192A !important;
-    border: 1px solid #323A4E !important;
-    border-radius: 8px !important;
+    background: #131825 !important;
+    border: 1px solid #1E2536 !important;
+    border-radius: 10px !important;
 }
 .paginav a {
-    color: #EDF0F5 !important;
+    color: #D1D5DB !important;
 }
 .paginav .title {
-    color: #828EA3 !important;
+    color: #6B7280 !important;
+    font-weight: 500 !important;
 }
 .paginav span:hover:not(.title) {
     box-shadow: none !important;
-    color: #00E0A0 !important;
+    color: #34D399 !important;
 }
 
 .share-buttons {
-    background: #12192A !important;
-    border: 1px solid #323A4E !important;
-    border-radius: 8px !important;
+    background: #131825 !important;
+    border: 1px solid #1E2536 !important;
+    border-radius: 10px !important;
 }
 
 /* ── Profile / Home ─────────────────────────────────────────── */
-.profile .profile_inner h1,
-.profile .profile_inner .name {
-    color: #00E0A0 !important;
+.profile .profile_inner h1 {
+    color: #F3F4F6 !important;
+    font-size: 1.8rem !important;
+    font-weight: 700 !important;
 }
-.profile .profile_inner .tagline {
-    color: #828EA3 !important;
+.profile .profile_inner .buttons .button {
+    background: #131825 !important;
+    border: 1px solid #1E2536 !important;
+    color: #D1D5DB !important;
 }
-.buttons .button {
-    background: #323A4E !important;
-    color: #EDF0F5 !important;
-}
-.buttons .button:hover {
-    background: #00E0A0 !important;
-    color: #0C111C !important;
+.profile .profile_inner .buttons .button:hover {
+    border-color: #34D399 !important;
+    color: #34D399 !important;
 }
 
-.home-info {
-    color: #828EA3 !important;
-}
 .home-info .entry-content {
-    color: #828EA3 !important;
+    color: #6B7280 !important;
 }
 .home-info .entry-content a {
-    color: #00E0A0 !important;
+    color: #34D399 !important;
 }
 
 /* Social icons */
 .social-icons a svg {
-    fill: #828EA3 !important;
+    fill: #6B7280 !important;
 }
 .social-icons a:hover svg {
-    fill: #00E0A0 !important;
+    fill: #34D399 !important;
 }
 
 /* ── Footer ─────────────────────────────────────────────────── */
-.footer,
-footer.footer {
-    background: #0C111C !important;
-    border-top: 1px solid #323A4E !important;
-    color: #828EA3 !important;
+.footer, footer.footer {
+    background: #0B0F19 !important;
+    border-top: 1px solid #1E2536 !important;
+    color: #6B7280 !important;
 }
 .footer a {
-    color: #00E0A0 !important;
-    border-bottom: none !important;
-}
-.footer a:hover {
-    color: #00E0A0 !important;
-    border-bottom: none !important;
+    color: #34D399 !important;
+    border: none !important;
+    font-weight: 500 !important;
 }
 
 /* ── Search ─────────────────────────────────────────────────── */
 #searchbox input {
-    background: #12192A !important;
-    border: 1px solid #323A4E !important;
-    color: #EDF0F5 !important;
-}
-#searchbox input:focus {
-    border-color: #00E0A0 !important;
-}
-#searchResults li {
-    background: #12192A !important;
-    border: 1px solid #323A4E !important;
+    background: #131825 !important;
+    border: 1px solid #1E2536 !important;
+    color: #D1D5DB !important;
     border-radius: 8px !important;
 }
+#searchbox input:focus {
+    border-color: #34D399 !important;
+    outline: none !important;
+}
+#searchResults li {
+    background: #131825 !important;
+    border: 1px solid #1E2536 !important;
+    border-radius: 10px !important;
+}
 
-/* ── Top link (back to top arrow) ───────────────────────────── */
+/* ── Back to top ────────────────────────────────────────────── */
 .top-link {
-    background: #323A4E !important;
-    color: #EDF0F5 !important;
+    background: #1E2536 !important;
+    color: #D1D5DB !important;
 }
 .top-link:hover {
-    background: #00E0A0 !important;
-    color: #0C111C !important;
+    background: #34D399 !important;
+    color: #0B0F19 !important;
 }
 
 /* ── Scrollbar ──────────────────────────────────────────────── */
 ::-webkit-scrollbar { width: 8px; height: 8px; }
-::-webkit-scrollbar-track { background: #0C111C; }
-::-webkit-scrollbar-thumb { background: #323A4E; border-radius: 4px; }
-::-webkit-scrollbar-thumb:hover { background: #00E0A0; }
-* { scrollbar-color: #323A4E #0C111C; scrollbar-width: thin; }
+::-webkit-scrollbar-track { background: #0B0F19; }
+::-webkit-scrollbar-thumb { background: #1E2536; border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: #34D399; }
+* { scrollbar-color: #1E2536 #0B0F19; scrollbar-width: thin; }
 
 /* ── Selection ──────────────────────────────────────────────── */
-::selection { background: #00E0A0; color: #0C111C; }
+::selection { background: #34D399; color: #0B0F19; }
