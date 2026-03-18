@@ -441,13 +441,17 @@ pre code {
 }
 .first-entry.home-info .entry-content {
     color: #6B7280 !important;
-    font-size: 0.95rem !important;
+    font-size: 1rem !important;
     line-height: 1.65 !important;
-    max-width: 600px !important;
+    max-width: 100% !important;
     -webkit-line-clamp: unset !important;
 }
 .first-entry.home-info .entry-content a {
     color: #34D399 !important;
+}
+/* Hide social icons from hero — they're in the footer */
+.first-entry.home-info .entry-footer {
+    display: none !important;
 }
 
 /* Make home page post cards match /posts/ listing */

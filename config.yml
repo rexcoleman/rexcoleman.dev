@@ -24,8 +24,7 @@ params:
     Content: >
       AI agents are deploying faster than anyone can secure them. I build the defense layer —
       adversarial evaluation across 4 ML paradigms, open-source tools for the agent economy,
-      and a [governance framework](https://github.com/rexcoleman/govML) that makes it all reproducible.
-      [Singularity Cybersecurity](https://singularitycyber.com) · [About](/about/) · [Projects](/projects/)
+      and a governance framework that makes it all reproducible.
 
   socialIcons:
     - name: github
