@@ -51,18 +51,15 @@ params:
 
 menu:
   main:
-    - name: Posts
-      url: /posts/
-      weight: 10
     - name: Projects
       url: /projects/
-      weight: 20
+      weight: 10
     - name: About
       url: /about/
-      weight: 30
+      weight: 20
     - name: Now
       url: /now/
-      weight: 40
+      weight: 30
 
 outputs:
   home:
