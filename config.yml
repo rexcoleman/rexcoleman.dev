@@ -20,7 +20,7 @@ params:
     enabled: false
 
   homeInfoParams:
-    Title: "Securing AI from the architecture up."
+    Title: "Securing AI From The Architecture Up"
     Content: ""
 
   socialIcons:

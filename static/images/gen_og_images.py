@@ -133,7 +133,7 @@ def make_og(filename, title_lines, stats, tag, description=None):
     # Footer
     draw.rectangle([0, H - FOOTER_H, W, H], fill=FOOTER_BG)
     draw.text((PAD_L, H - FOOTER_H + 12), "rexcoleman.dev", font=FOOTER_FONT, fill=ACCENT)
-    tagline = "Building AI security systems"
+    tagline = "Securing AI From The Architecture Up"
     tw = draw.textbbox((0, 0), tagline, font=FOOTER_FONT)[2]
     draw.text((W - PAD_R - tw, H - FOOTER_H + 12), tagline, font=FOOTER_FONT, fill=GRAY)
 
@@ -145,7 +145,7 @@ if __name__ == "__main__":
     print("Generating OG images (design system v2)...\n")
 
     make_og("og-default.png",
-        ["Building AI Security", "Systems"],
+        ["Securing AI From", "The Architecture Up"],
         [("9", "projects"), ("4", "ML paradigms"), ("469+", "tests")],
         "AI SECURITY ARCHITECTURE")
 
