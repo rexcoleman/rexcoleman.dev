@@ -9,7 +9,7 @@ The AI frontier is moving faster than anyone can secure it. Millions of people a
 
 I'm building it.
 
-I'm the founder of [Singularity Cybersecurity](https://singularitycyber.com) — an AI-powered research lab that discovers, builds, and ships security tools for the agent economy.
+I'm the founder of [Singularity Cybersecurity](https://singularitycyber.com) — an AI security research lab — we run continuous experiments, publish the findings, and ship what works as open-source tools.
 
 ---
 

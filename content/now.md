@@ -9,7 +9,7 @@ ShowReadingTime: false
 
 ### Singularity Cybersecurity
 
-Building [Singularity Cybersecurity](https://singularitycyber.com) — an AI-powered research lab securing the agent economy. Three active experiments:
+Building [Singularity Cybersecurity](https://singularitycyber.com) — an AI security research lab. Three active experiments:
 
 **AgentArmor** — runtime behavioral monitoring for AI agents. Experiment #1.
 **SkillVet** — behavioral sandbox scanning for third-party agent skills. Experiment #2.
