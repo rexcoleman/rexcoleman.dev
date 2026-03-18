@@ -21,10 +21,7 @@ params:
 
   homeInfoParams:
     Title: "Building what's missing between ML research and production security."
-    Content: >
-      AI agents are deploying faster than anyone can secure them. I build the defense layer —
-      adversarial evaluation across 4 ML paradigms, open-source tools for the agent economy,
-      and a governance framework that makes it all reproducible.
+    Content: ""
 
   socialIcons:
     - name: github
