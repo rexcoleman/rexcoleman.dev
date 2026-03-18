@@ -17,24 +17,15 @@ params:
   comments: false
 
   profileMode:
-    enabled: true
-    title: "Rex Coleman"
-    subtitle: "Building what's missing between ML research and production security."
-    imageUrl: ""
-    imageTitle: ""
-    buttons:
-      - name: Posts
-        url: /posts/
-      - name: Projects
-        url: /projects/
+    enabled: false
 
   homeInfoParams:
     Title: "Building what's missing between ML research and production security."
     Content: >
       AI agents are deploying faster than anyone can secure them. I build the defense layer —
       adversarial evaluation across 4 ML paradigms, open-source tools for the agent economy,
-      and [govML](https://github.com/rexcoleman/govML), the governance framework that makes it all reproducible.
-      Founder of [Singularity Cybersecurity](https://singularitycyber.com).
+      and a [governance framework](https://github.com/rexcoleman/govML) that makes it all reproducible.
+      [Singularity Cybersecurity](https://singularitycyber.com) · [About](/about/) · [Projects](/projects/)
 
   socialIcons:
     - name: github

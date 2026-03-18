@@ -399,37 +399,67 @@ pre code {
     display: none !important;
 }
 
-/* ── Profile / Home ─────────────────────────────────────────── */
-.profile .profile_inner h1 {
-    color: #F3F4F6 !important;
-    font-size: 2.4rem !important;
-    font-weight: 700 !important;
-    letter-spacing: -0.025em !important;
+/* ── Home page (home-info mode) ─────────────────────────────── */
+.home-info {
+    padding: 48px 0 16px !important;
+    border-bottom: 1px solid #1E2536 !important;
+    margin-bottom: 32px !important;
 }
-/* Subtitle under profile name */
-.profile .profile_inner > span {
-    color: #6B7280 !important;
-    font-size: 1.1rem !important;
-    line-height: 1.6 !important;
-    display: block !important;
-    max-width: 600px !important;
-    margin: 0 auto !important;
-}
-.profile .profile_inner .buttons .button {
-    background: #131825 !important;
-    border: 1px solid #1E2536 !important;
-    color: #D1D5DB !important;
-}
-.profile .profile_inner .buttons .button:hover {
-    border-color: #34D399 !important;
-    color: #34D399 !important;
-}
-
 .home-info .entry-content {
     color: #6B7280 !important;
+    font-size: 0.95rem !important;
+    line-height: 1.65 !important;
+    max-width: 600px !important;
 }
 .home-info .entry-content a {
     color: #34D399 !important;
+}
+
+/* The home-info section gets class "first-entry" too — don't hide it.
+   Style it to not look like a post card. */
+.first-entry.home-info {
+    display: block !important;
+    background: transparent !important;
+    border: none !important;
+    border-bottom: 1px solid #1E2536 !important;
+    border-radius: 0 !important;
+    padding: 48px 0 32px !important;
+    margin-bottom: 24px !important;
+    min-height: auto !important;
+}
+.first-entry.home-info:hover {
+    border-color: #1E2536 !important;
+}
+.first-entry.home-info .entry-header h1 {
+    font-size: 1.8rem !important;
+    font-weight: 700 !important;
+    color: #F3F4F6 !important;
+    letter-spacing: -0.02em !important;
+    line-height: 1.3 !important;
+    margin-bottom: 12px !important;
+}
+.first-entry.home-info .entry-content {
+    color: #6B7280 !important;
+    font-size: 0.95rem !important;
+    line-height: 1.65 !important;
+    max-width: 600px !important;
+    -webkit-line-clamp: unset !important;
+}
+.first-entry.home-info .entry-content a {
+    color: #34D399 !important;
+}
+
+/* Make home page post cards match /posts/ listing */
+.main .post-entry {
+    background: #131825 !important;
+    border: 1px solid #1E2536 !important;
+    border-radius: 10px !important;
+    padding: 28px !important;
+    margin-bottom: 14px !important;
+    transition: border-color 0.15s ease !important;
+}
+.main .post-entry:hover {
+    border-color: #34D399 !important;
 }
 
 /* Social icons — these SVGs use stroke, not fill */
