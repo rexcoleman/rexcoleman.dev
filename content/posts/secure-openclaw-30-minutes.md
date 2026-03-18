@@ -21,6 +21,17 @@ Here's the thing: if you haven't thought about security, your agent is a wide-op
 
 I've been researching agent security as part of a [systematic red-team study](/posts/agent-redteam/) of AI agent frameworks. I also recently analyzed the security surface of OpenClaw specifically, drawing on disclosed vulnerabilities and operational patterns from power users running multi-agent setups 24/7. Here are the five biggest risks I found, and a 30-minute checklist to fix them.
 
+```
+┌─────────────────────────────────────────┐
+│              OpenClaw Agent              │
+├──────────┬──────────┬──────────┬────────┤
+│ Skills   │ Network  │ Memory   │ Creds  │
+│ (Risk 1) │ (Risk 2) │ (Risk 3) │(Risk 4)│
+├──────────┴──────────┴──────────┴────────┤
+│        No Version Control (Risk 5)      │
+└─────────────────────────────────────────┘
+```
+
 ## The 5 Biggest Risks
 
 ### 1. Third-party skills execute on every heartbeat

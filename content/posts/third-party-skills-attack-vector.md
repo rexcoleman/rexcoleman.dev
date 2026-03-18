@@ -5,7 +5,7 @@ description: "820+ malicious skills on ClawHub. Third-party skills execute on ev
 tags: ["agent-security", "supply-chain", "openclaw", "singularity-cybersecurity"]
 format: "perspective"
 author: "Rex Coleman"
-draft: true
+draft: false
 ShowToc: true
 TocOpen: true
 cover:
@@ -23,6 +23,15 @@ Last week I published a [30-minute hardening guide](/posts/secure-openclaw-30-mi
 But the number isn't what makes this the biggest attack vector. The architecture is.
 
 ## Why Skills Are Worse Than Prompt Injection
+
+```
+Prompt Injection          vs          Malicious Skill
+─────────────────                     ─────────────────
+Single conversation                   Every heartbeat cycle
+Bounded by context                    Persistent execution
+User might notice                     Runs silently
+Mitigated by guardrails              Bypasses all guardrails
+```
 
 Prompt injection gets all the attention. It's dramatic — a website tricks your agent into doing something it shouldn't. But prompt injection is **bounded exposure**. Your agent visits one bad page, processes one malicious input, and moves on. The exposure window is seconds.
 

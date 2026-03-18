@@ -21,7 +21,7 @@ The finding that surprised me: the model architecture barely matters for robustn
 
 ## The Setup
 
-I trained Random Forest, XGBoost, and Logistic Regression classifiers on the CICIDS2017 dataset (2.83M network flow records, 78 features, 15 traffic classes). Standard ML-on-IDS — nothing novel yet.
+I trained Random Forest, XGBoost, and Logistic Regression classifiers on the CICIDS2017 dataset (2.83M network flow records, 78 features, 15 traffic classes including benign, DoS, PortScan, brute force, and web attacks). I chose three architecturally different models — a bagging ensemble (RF), a boosting ensemble (XGBoost), and a linear model (LR) — to test whether the controllability finding was model-dependent or structural. The dataset was stratified 80/20 train/test with 5-seed averaging to control for initialization variance.
 
 Then I attacked them.
 
@@ -36,6 +36,8 @@ Before designing attacks, I did something that most adversarial ML papers skip: 
 | **Environment** | 7 | Timestamp, source/dest port ranges — contextual |
 
 This split is the core contribution. It comes from practitioner knowledge: from understanding how real attackers operate, I know which packet fields an attacker actually controls and which are determined by the network infrastructure.
+
+A concrete example makes the distinction clear. `fwd_pkt_len_mean` (mean forward packet length) is attacker-controllable — the attacker decides how much data to stuff into each packet. If they're exfiltrating data, they can fragment it into smaller packets to look like normal browsing, or they can pad packets to mimic video streaming. They have full control. By contrast, `flow_iat_mean` (mean inter-arrival time between packets) is defender-observable — it depends on network hop count, congestion, TCP stack behavior, and router queuing delays along the path. The attacker can't dictate how long their packets take to traverse three autonomous systems. A detection model that keys on inter-arrival timing is architecturally harder to evade than one that keys on packet sizes.
 
 ## The Key Finding
 
@@ -78,7 +80,7 @@ Raw PCAP / NetFlow Data
 
 ## What I Learned
 
-**Most adversarial ML research assumes the attacker controls everything.** Papers apply FGSM to all features simultaneously. In reality, network attackers control payload content but not TCP timing characteristics. The unconstrained threat model overstates risk; the constrained model reveals the architectural defense.
+**Most adversarial ML research assumes the attacker controls everything.** Papers apply FGSM to all features simultaneously. In reality, network attackers control payload content but not TCP timing characteristics. The unconstrained threat model overstates risk; the constrained model reveals the architectural defense. Under unconstrained attacks, evasion rates climbed as high as 38% against Logistic Regression and 12% against XGBoost. Under constrained attacks (attacker-controllable features only), detection held at 100% for noise-based methods. The gap between those two numbers — that's the gap between theoretical and realistic adversarial risk.
 
 **Domain expertise is the feature engineering.** The 57/14 controllable/observable split isn't in any dataset description or ML framework. It comes from understanding how TCP/IP works and how real attackers operate. SHAP can tell you which features matter; only a practitioner can tell you which features an attacker controls.
 
@@ -95,6 +97,10 @@ Built with [govML](https://github.com/rexcoleman/govML) — the governance frame
 ### Limitations
 
 This analysis uses the CICIDS2017 dataset, which is now nearly a decade old and contains synthetic attack traffic. The adversarial evaluation tested a single model architecture on one dataset. Production IDS environments face different traffic patterns, concept drift, and adaptive adversaries not captured here. The feature controllability findings are directional, not definitive — further validation across datasets and model types is needed.
+
+### Why This Matters Beyond IDS
+
+Feature controllability analysis is a design-time decision, not a post-hoc evaluation. If you're building any ML system that faces adversarial inputs — fraud detection, spam filtering, malware classification, autonomous vehicle perception — the first question isn't "which model is most robust?" It's "which features does the attacker control?" Answering that question before training determines whether your system is architecturally defensible or permanently vulnerable regardless of model choice.
 
 ### What's Next
 

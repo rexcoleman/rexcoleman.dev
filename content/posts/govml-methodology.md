@@ -23,11 +23,13 @@ Every ML project needs governance: reproducible experiments, documented decision
 
 The root cause: governance was prose in a document, not executable infrastructure. Contracts told me what to do but didn't do it for me.
 
+To make this concrete: in my first three projects, I accumulated 36 commits and 7 audit cycles fixing issues that templates would have prevented — missing data manifests, undocumented hyperparameter choices, experiments that couldn't be reproduced because the random seed wasn't logged. Every audit cycle was a full re-read of the codebase against a checklist I was carrying in my head. That's not a governance problem. That's an automation problem.
+
 ## What I Built
 
 **govML** is an open-source governance framework for ML projects — 42 templates, 4 quickstart profiles, 19 generators, and an agent orchestrator prototype.
 
-The architecture has three layers:
+The architecture has three layers, each solving a different failure mode:
 
 ```
 Layer 1: GOVERNANCE (templates)
@@ -41,6 +43,12 @@ Layer 3: ORCHESTRATION (agent)
   AI-driven workflow that manages the experiment lifecycle with human
   approval at decision points
 ```
+
+**Layer 1** solves the "what did I forget?" problem. Templates like `DATA_MANIFEST` force you to declare every dataset's hash, source URL, and license before training. `EXPERIMENT_PROTOCOL` requires you to specify your hypothesis, independent/dependent variables, and success criteria before running a single experiment. You can't skip what you don't know you need — the template surfaces it.
+
+**Layer 2** solves the "I know the rule but didn't check" problem. Generators are executable scripts that verify governance automatically. `gen_sweep.py` orchestrates hyperparameter sweeps with mandatory seed logging. `gen_manifest_check.py` verifies that every file referenced in the data manifest actually exists and matches its declared hash. When I added audit generators G13-G16 (report consistency, data-report alignment, rubric tracing, integrity checks), the manual audit cycles dropped from 14 to zero — not because the rules changed, but because enforcement became automatic.
+
+**Layer 3** solves the "who drives the workflow?" problem. The agent orchestrator (MCP-based, running through Claude Code) reads the project's governance templates, checks phase gate status, and proposes the next action. The human approves or rejects at each decision point. The agent handles the tedious sequencing — "run the sweep, verify the manifest, update the decision log, check the phase gate" — while the researcher retains judgment over what to investigate next.
 
 ![govML agent boundary architecture — three-layer design separating governance templates, enforcement generators, and AI orchestration](/images/posts/govml-methodology/agent_boundary.png)
 
@@ -95,6 +103,8 @@ git clone https://github.com/rexcoleman/govML.git
 cd govML
 bash scripts/init_project.sh /your/project --profile supervised --fill
 ```
+
+After running that command, you'll see 21 files scaffolded into your project directory: a `PROJECT_BRIEF.md` (fill this first), `DATA_MANIFEST.md`, `EXPERIMENT_PROTOCOL.md`, `DECISION_LOG.md`, phase gate templates, and a `PUBLICATION_PIPELINE.md`. The `--fill` flag pre-populates common placeholders (project name, date, author) from your `project.yaml` config, so you're editing a mostly-complete document rather than starting from a blank template. The `--profile supervised` flag selects the template set tuned for supervised learning projects; other profiles (`security-ml`, `unsupervised`, `contract-track`) adjust which templates are included and which generators are activated.
 
 If you run ML experiments and want reproducibility without the overhead, this is the framework I built to solve that problem for myself. Every template was extracted from real project friction, not designed speculatively.
 
