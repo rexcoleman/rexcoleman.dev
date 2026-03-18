@@ -5,45 +5,35 @@ ShowToc: false
 ShowReadingTime: false
 ---
 
-*Last updated: March 17, 2026*
+*Last updated: March 18, 2026*
 
-## Singularity Cybersecurity
+### Singularity Cybersecurity
 
-I'm building [Singularity Cybersecurity](https://singularitycyber.com) — an AI-powered research lab that secures the agent economy. We run continuous experiments to discover and ship security tools for the millions of people deploying AI agents with zero security posture.
+Building [Singularity Cybersecurity](https://singularitycyber.com) — an AI-powered research lab securing the agent economy. Three active experiments:
 
-**Currently shipping:**
-- **AgentArmor** — hardens agent deployment configurations in one command [experiment #1]
-- **SkillVet** — scans third-party agent skills for malicious patterns [experiment #2]
-- **RedClaw** — automated red-team toolkit for AI agent deployments [experiment #3]
+**AgentArmor** — runtime behavioral monitoring for AI agents. Experiment #1.
+**SkillVet** — behavioral sandbox scanning for third-party agent skills. Experiment #2.
+**RedClaw** — automated red-team toolkit with OWASP Agentic mapping. Experiment #3.
 
-The lab runs on local AI agents (OpenClaw on Mac Mini) — we use the same technology we're securing.
+---
 
-## Research Portfolio
+### Research
 
-- **FP-12: RL Agent Vulnerability** — 162 attacks across 40 trained agents. Observation perturbation 20-50x more effective than reward poisoning. Mapped to 7/10 OWASP Agentic categories. [Complete]
-- **FP-13: Model Behavioral Fingerprinting** — Unsupervised anomaly detection on model activations. 30-combination benchmark (6 detectors x 5 representations). "Antivirus for AI models."
-- **FP-14: Adversarial Training Optimization** — Which optimizer + schedule produces the best robustness-utility tradeoff for LLM safety?
-- **govML v2.7** — 42 templates, 4 profiles, 19 generators, leakage test automation, A+ quality checklist. [GitHub](https://github.com/rexcoleman/govML)
+**FP-12: RL Agent Vulnerability** — 40 agents, 4 attack classes, OWASP 7/10 mapped. Complete.
+**FP-13: Model Behavioral Fingerprinting** — 30-combination benchmark. "Antivirus for AI models."
+**FP-14: Adversarial Training Optimization** — robustness-utility tradeoff for LLM safety.
+**govML v2.7** — 42 templates, 4 profiles, 19 generators. [GitHub](https://github.com/rexcoleman/govML)
 
-## Shipped (9 projects complete)
+---
 
-- [Agent Red-Team Framework](/posts/agent-redteam/) — 100% success with reasoning chain hijacking against default-configured agents. 7 attack classes, 19 scenarios.
-- [RL Agent Vulnerability](/posts/rl-agent-vulnerability/) — 4 attack classes across 40 trained agents. Observation perturbation degrades agents 20-50x more than reward poisoning.
-- [Model Behavioral Fingerprinting](/posts/model-fingerprinting/) — Unsupervised backdoor detection. 6 anomaly detectors × 5 representations.
-- [Adversarial IDS](/posts/adversarial-ids/) — Feature controllability reduces attack success 35% on network IDS.
-- [Vulnerability Prioritization](/posts/cvss-gets-it-wrong/) — ML beats CVSS by +24pp AUC for exploit prediction.
-- [AI Supply Chain Scanner](https://github.com/rexcoleman/ai-supply-chain-scanner) — pickle.load is the SQL injection of ML. 20 findings across 5 projects.
-- [Financial Anomaly Detection](https://github.com/rexcoleman/financial-anomaly-detection) — CFA domain features capture 91% of ML signal on synthetic data.
-- [PQC Migration Analyzer](https://github.com/rexcoleman/pqc-migration-analyzer) — 70% of your crypto isn't yours to fix.
-- [govML](/posts/govml-methodology/) — Open-source ML governance framework.
+### Learning
 
-## Learning
+MSCS Georgia Tech — Machine Learning specialization. 4/10 courses complete.
 
-- MSCS Georgia Tech — Machine Learning specialization (4/10 courses complete)
-- CS 7641 ML complete: top-1% rigor across SL, OL, UL, RL — those patterns now govern all frontier projects
+---
 
-## Reading
+### Reading
 
-- *Thinking in Systems* — Donella Meadows
-- Anthropic research on AI safety evaluations
-- OWASP Agentic Security Top 10
+*Thinking in Systems* — Donella Meadows
+Anthropic research on AI safety evaluations
+OWASP Agentic Security Top 10

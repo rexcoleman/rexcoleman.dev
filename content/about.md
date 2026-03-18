@@ -9,24 +9,28 @@ The AI frontier is moving faster than anyone can secure it. Millions of people a
 
 I'm building it.
 
-I'm the founder of [Singularity Cybersecurity](https://singularitycyber.com) — an AI-powered research lab that continuously discovers, builds, and ships security tools for the agent economy. We test problem-solution fit through rapid experiments, publishing everything we learn along the way.
+I'm the founder of [Singularity Cybersecurity](https://singularitycyber.com) — an AI-powered research lab that discovers, builds, and ships security tools for the agent economy.
 
-I spent 15 years in cybersecurity — data analytics and enterprise sales at FireEye and Mandiant, then founding two ventures (Watchtower, Singularity Cybersecurity). Now I'm completing my MS in Computer Science at Georgia Tech (Machine Learning specialization) and shipping open-source tools that close the gap between AI capability and AI security. Current focus:
+---
+
+### What I work on
 
 **AI Security Architecture** — adversarial evaluation of ML systems across 4 paradigms (supervised, reinforcement, unsupervised, optimization). Building RL agent attack frameworks, model behavioral fingerprinting, and adversarial training optimization for LLM defenses.
 
-**ML Systems Governance** — [govML](https://github.com/rexcoleman/govML), an open-source framework (42 templates, 4 profiles, 19 generators) that enforces reproducibility and decision traceability across ML projects. Contract-driven development with machine-checkable provenance.
+**Adversarial Control Analysis** — a methodology for designing ML systems where the inputs that drive decisions are outside adversary influence. Applied across 6 security domains. The principle: classify inputs by who controls them, and the defense architecture designs itself.
 
-**Adversarial Control Analysis** — a methodology for designing ML systems where the inputs that drive decisions are outside adversary influence. Applied across 6 security domains with consistent results. The principle: classify inputs by who controls them, and the defense architecture designs itself.
+**govML** — [open-source governance framework](https://github.com/rexcoleman/govML) (42 templates, 4 profiles, 19 generators) that enforces reproducibility and decision traceability across ML projects.
 
-## Background
+---
 
-Data Analyst (FireEye 2011-15) → Sales Executive (FireEye/Mandiant 2015-19, Fidelis 2019-20) → Founder/CEO ([Singularity Cybersecurity](https://singularitycyber.com) 2021-present) → MS Computer Science at Georgia Tech (Machine Learning specialization) → securing the agent economy.
+### Background
 
-## Credentials
+Data Analyst (FireEye 2011-15) → Sales Executive (FireEye/Mandiant 2015-19, Fidelis 2019-20) → Founder/CEO ([Singularity Cybersecurity](https://singularitycyber.com) 2021-present) → MS Computer Science at Georgia Tech (Machine Learning specialization).
 
-CFA Charterholder · CISSP · BSc Biochemistry & Molecular Biology · MS Computer Science (in progress, MSCS Georgia Tech — Machine Learning specialization)
+CFA Charterholder · CISSP · BSc Biochemistry & Molecular Biology.
 
-## Connect
+---
+
+### Connect
 
 [Singularity Cybersecurity](https://singularitycyber.com) · [GitHub](https://github.com/rexcoleman) · [LinkedIn](https://linkedin.com/in/rexcoleman) · [RSS](/index.xml)
