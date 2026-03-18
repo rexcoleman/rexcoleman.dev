@@ -1,36 +1,48 @@
 /* =============================================================
-   Rex Coleman — Brand Design System
+   Rex Coleman — Brand Design System v3
    Overrides PaperMod CSS variables for dark-mode-native brand
+
+   Key fix (v3): post cards blend with background instead of
+   creating awkward dark-blue bars. The .list page background
+   matches --theme. Entry cards use transparent bg with subtle
+   bottom border (like singularitycyber.com's card approach).
    ============================================================= */
 
 /* ── Design tokens ──────────────────────────────────────────── */
 :root {
     --theme: #0C111C;
-    --entry: #12192A;
+    --entry: #0C111C;
     --primary: #EDF0F5;
     --secondary: #828EA3;
     --tertiary: #323A4E;
     --content: #EDF0F5;
-    --code-bg: #0F172A;
-    --border: #323A4E;
+    --code-bg: #0C111C;
+    --code-block-bg: #0A0E17;
+    --border: #1A2235;
 }
 
-/* PaperMod also gates dark-mode overrides under .dark — repeat
-   so both :root and .dark are covered regardless of theme toggle */
+/* PaperMod also gates dark-mode overrides under .dark */
 .dark {
     --theme: #0C111C;
-    --entry: #12192A;
+    --entry: #0C111C;
     --primary: #EDF0F5;
     --secondary: #828EA3;
     --tertiary: #323A4E;
     --content: #EDF0F5;
-    --code-bg: #0F172A;
-    --border: #323A4E;
+    --code-bg: #0C111C;
+    --code-block-bg: #0A0E17;
+    --border: #1A2235;
 }
 
 /* ── Body / page background ─────────────────────────────────── */
 body {
     background-color: #0C111C;
+}
+
+/* Force .list page background to match theme (PaperMod defaults
+   this to --code-bg which was a different shade) */
+.list {
+    background: #0C111C !important;
 }
 
 /* ── Links ──────────────────────────────────────────────────── */
@@ -73,11 +85,11 @@ a:hover {
 /* ── Code blocks ────────────────────────────────────────────── */
 pre,
 pre code {
-    background-color: #0F172A !important;
+    background-color: #0A0E17 !important;
 }
 
 code {
-    background-color: #0F172A;
+    background-color: #0A0E17;
     padding: 0.15em 0.35em;
     border-radius: 4px;
 }
@@ -85,20 +97,38 @@ code {
 /* ── Footer ─────────────────────────────────────────────────── */
 footer {
     background-color: #080C16;
-    border-top: 1px solid #323A4E;
+    border-top: 1px solid #1A2235;
 }
 
-/* ── Borders / cards / entry surfaces ───────────────────────── */
-.post-entry,
-.page-header,
+/* ── Post cards on listing page — blend with background ─────── */
+.post-entry {
+    background-color: transparent;
+    border: none;
+    border-bottom: 1px solid #1A2235;
+    border-radius: 0;
+    padding-left: 0;
+    padding-right: 0;
+}
+
+.post-entry:hover {
+    background-color: rgba(26, 34, 53, 0.3);
+    border-radius: 6px;
+}
+
+/* TOC and page headers keep subtle surface */
+.page-header {
+    background-color: transparent;
+    border: none;
+}
+
 .toc {
-    background-color: #12192A;
-    border: 1px solid #323A4E;
+    background-color: #0A0E17;
+    border: 1px solid #1A2235;
     border-radius: 6px;
 }
 
 hr {
-    border-color: #323A4E;
+    border-color: #1A2235;
 }
 
 /* ── Scrollbar (Chromium / Edge) ────────────────────────────── */
