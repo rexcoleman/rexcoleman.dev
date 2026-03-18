@@ -368,17 +368,52 @@ pre code {
     color: #34D399 !important;
 }
 
+/* Share buttons — icons use fill, need muted color */
 .share-buttons {
     background: #131825 !important;
     border: 1px solid #1E2536 !important;
     border-radius: 10px !important;
 }
+.share-buttons a {
+    color: #6B7280 !important;
+}
+.share-buttons a:hover {
+    color: #34D399 !important;
+}
+.share-buttons a svg {
+    fill: currentColor !important;
+}
+
+/* Single pages (About, Projects, Now) — match post styling */
+.post-single .post-content h2 {
+    font-size: 1.35rem !important;
+}
+
+/* Hide default PaperMod footer (we have custom extend_footer) */
+.footer span:has(a[href*="gohugo"]),
+.footer span:has(a[href*="PaperMod"]) {
+    display: none !important;
+}
+/* Fallback for browsers without :has */
+.footer > span:nth-child(2) {
+    display: none !important;
+}
 
 /* ── Profile / Home ─────────────────────────────────────────── */
 .profile .profile_inner h1 {
     color: #F3F4F6 !important;
-    font-size: 1.8rem !important;
+    font-size: 2.4rem !important;
     font-weight: 700 !important;
+    letter-spacing: -0.025em !important;
+}
+/* Subtitle under profile name */
+.profile .profile_inner > span {
+    color: #6B7280 !important;
+    font-size: 1.1rem !important;
+    line-height: 1.6 !important;
+    display: block !important;
+    max-width: 600px !important;
+    margin: 0 auto !important;
 }
 .profile .profile_inner .buttons .button {
     background: #131825 !important;
@@ -397,12 +432,16 @@ pre code {
     color: #34D399 !important;
 }
 
-/* Social icons */
-.social-icons a svg {
-    fill: #6B7280 !important;
+/* Social icons — these SVGs use stroke, not fill */
+.social-icons a {
+    color: #6B7280 !important;
 }
-.social-icons a:hover svg {
-    fill: #34D399 !important;
+.social-icons a:hover {
+    color: #34D399 !important;
+}
+.social-icons a svg {
+    fill: none !important;
+    stroke: currentColor !important;
 }
 
 /* ── Footer ─────────────────────────────────────────────────── */
