@@ -31,10 +31,10 @@ params:
   homeInfoParams:
     Title: "Building what's missing between ML research and production security."
     Content: >
-      9 open-source projects across 4 ML paradigms (RL, unsupervised, supervised, optimization).
-      Adversarial control analysis applied to agent security, model integrity, and network defense.
-      [govML](https://github.com/rexcoleman/govML) — the governance framework that enforces reproducibility across all of it.
-      MSCS Georgia Tech (ML). CFA. CISSP.
+      AI agents are deploying faster than anyone can secure them. I build the defense layer —
+      adversarial evaluation across 4 ML paradigms, open-source tools for the agent economy,
+      and [govML](https://github.com/rexcoleman/govML), the governance framework that makes it all reproducible.
+      Founder of [Singularity Cybersecurity](https://singularitycyber.com).
 
   socialIcons:
     - name: github

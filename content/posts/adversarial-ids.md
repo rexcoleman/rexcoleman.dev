@@ -94,4 +94,4 @@ Built with [govML](https://github.com/rexcoleman/govML) — the governance frame
 
 ---
 
-*Rex Coleman builds what's missing between ML research and production security. 9 open-source projects across 4 ML paradigms. MSCS Georgia Tech (ML). CFA. CISSP. Creator of [govML](https://github.com/rexcoleman/govML). [rexcoleman.dev](https://rexcoleman.dev)*
+*Rex Coleman is securing what comes next — building AI security systems across 4 ML paradigms, publishing the methodology, and shipping open-source tools for the agent economy. [rexcoleman.dev](https://rexcoleman.dev) · [GitHub](https://github.com/rexcoleman) · [Singularity Cybersecurity](https://singularitycyber.com)*

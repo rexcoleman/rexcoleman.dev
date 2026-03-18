@@ -5,9 +5,9 @@ ShowToc: false
 ShowReadingTime: false
 ---
 
-Millions of people are deploying AI agents with zero security posture. They're installing unvetted skills, exposing credentials, and running agents on unsecured infrastructure. Nobody is building the security layer for the agent economy.
+The AI frontier is moving faster than anyone can secure it. Millions of people are deploying AI agents with zero security posture — unvetted skills, exposed credentials, unsecured infrastructure. The attack surface is growing exponentially. The defense layer doesn't exist yet.
 
-That's what I'm building.
+I'm building it.
 
 I'm the founder of [Singularity Cybersecurity](https://singularitycyber.com) — an AI-powered research lab that continuously discovers, builds, and ships security tools for the agent economy. We test problem-solution fit through rapid experiments, publishing everything we learn along the way.
 
