@@ -208,12 +208,13 @@ a:hover {
     font-size: 1rem !important;
 }
 
-/* Cap prose width for readability (~65 chars) */
+/* Single pages (Projects, About, Now) use full container width.
+   Blog posts keep the 600px cap for readability. */
 .post-content > p,
 .post-content > blockquote,
 .post-content > ul,
 .post-content > ol {
-    max-width: 600px;
+    max-width: 100%;
 }
 
 .post-content a {
