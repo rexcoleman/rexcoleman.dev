@@ -5,9 +5,9 @@ ShowToc: false
 ShowReadingTime: false
 ---
 
-The AI frontier is moving faster than anyone can secure it. Millions of people are deploying AI agents with zero security posture — unvetted skills, exposed credentials, unsecured infrastructure. The attack surface is growing exponentially. The defense layer doesn't exist yet.
+AI is changing both sides of security. Builders are shipping AI systems with attack surfaces they don't understand — poisoned models, hijacked agents, backdoored pipelines. Defenders are facing AI-powered threats that outpace every manual playbook they have.
 
-I'm building it.
+Both sides need architecture-level solutions. I'm building them.
 
 I'm the founder of [Singularity Cybersecurity](https://singularitycyber.com) — an AI security research lab — we run continuous experiments, publish the findings, and ship what works as open-source tools.
 
