@@ -107,4 +107,4 @@ Built with [govML](https://github.com/rexcoleman/govML) governance — 11 archit
 
 ---
 
-*Rex Coleman is securing what comes next — building AI security systems across 4 ML paradigms, publishing the methodology, and shipping open-source AI security tools. [rexcoleman.dev](https://rexcoleman.dev) · [GitHub](https://github.com/rexcoleman) · [Singularity Cybersecurity](https://singularitycyber.com)*
+*Rex Coleman is securing AI from the architecture up — building AI security systems across 4 ML paradigms, publishing the methodology, and shipping open-source tools. [rexcoleman.dev](https://rexcoleman.dev) · [GitHub](https://github.com/rexcoleman) · [Singularity Cybersecurity](https://singularitycyber.com)*
