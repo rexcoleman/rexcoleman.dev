@@ -6,6 +6,12 @@ tags: ["ai-security", "agent-security", "red-team", "llm-security", "adversarial
 author: "Rex Coleman"
 ShowToc: true
 TocOpen: false
+cover:
+  image: /images/og-agent-redteam.png
+  alt: "I Red-Teamed AI Agents: Here's How They Break"
+  hidden: true
+images:
+  - /images/og-agent-redteam.png
 ---
 
 I sent 19 attack scenarios at a default-configured LangChain ReAct agent powered by Claude Sonnet. 13 succeeded. I then validated prompt injection on CrewAI — same rate (80%). The most dangerous attack class — reasoning chain hijacking — achieved a 100% success rate against these default-configured agents across 3 seeds and partially evades every defense I built. These results are specific to Claude backend with default agent configurations; production-hardened agents would likely show different success rates. Here's what I found, what I built to find it, and what it means for anyone shipping autonomous agents.

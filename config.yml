@@ -44,6 +44,9 @@ params:
     - name: rss
       url: "/index.xml"
 
+  images:
+    - /images/og-default.png
+
   cover:
     linkFullImages: true
     hidden: true

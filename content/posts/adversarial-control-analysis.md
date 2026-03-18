@@ -6,6 +6,12 @@ tags: ["ai-security", "methodology", "adversarial-ml", "security-architecture"]
 author: "Rex Coleman"
 ShowToc: true
 TocOpen: false
+cover:
+  image: /images/og-adversarial-control-analysis.png
+  alt: "One Principle, Six Domains: Adversarial Control Analysis"
+  hidden: true
+images:
+  - /images/og-adversarial-control-analysis.png
 ---
 
 I started with one question: if a network attacker can only control some features of network traffic, shouldn't our IDS defenses focus on the features they *can't* control?
