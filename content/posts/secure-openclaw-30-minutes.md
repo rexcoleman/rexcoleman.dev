@@ -6,6 +6,12 @@ tags: ["agent-security", "openclaw", "tutorial", "singularity-cybersecurity"]
 author: "Rex Coleman"
 ShowToc: true
 TocOpen: true
+cover:
+  image: /images/og-secure-openclaw.png
+  alt: "How to Secure Your OpenClaw in 30 Minutes"
+  hidden: true
+images:
+  - /images/og-secure-openclaw.png
 ---
 
 You set up OpenClaw. It's running. Your agent is browsing the web, installing skills, managing your files. Maybe it's coding for you while you sleep. Maybe it's monitoring trending topics and drafting content every two hours.

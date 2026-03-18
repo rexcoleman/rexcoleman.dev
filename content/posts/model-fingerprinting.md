@@ -6,6 +6,12 @@ tags: ["ai-security", "model-supply-chain", "anomaly-detection", "unsupervised-l
 author: "Rex Coleman"
 ShowToc: true
 TocOpen: false
+cover:
+  image: /images/og-model-fingerprinting.png
+  alt: "Antivirus for AI Models: Behavioral Fingerprinting"
+  hidden: true
+images:
+  - /images/og-model-fingerprinting.png
 ---
 
 How do you know a model downloaded from Hugging Face hasn't been backdoored?

@@ -6,6 +6,12 @@ tags: ["ai-security", "adversarial-ml", "machine-learning", "feature-controllabi
 author: "Rex Coleman"
 ShowToc: true
 TocOpen: false
+cover:
+  image: /images/og-adversarial-ids.png
+  alt: "Adversarial ML on Network Intrusion Detection"
+  hidden: true
+images:
+  - /images/og-adversarial-ids.png
 ---
 
 After 15 years at Mandiant watching network intrusion detection systems fail against real adversaries, I built one — then tried to break it.

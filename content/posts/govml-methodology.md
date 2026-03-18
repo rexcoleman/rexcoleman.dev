@@ -6,6 +6,12 @@ tags: ["ml-governance", "build-in-public", "machine-learning", "govml"]
 author: "Rex Coleman"
 ShowToc: true
 TocOpen: false
+cover:
+  image: /images/og-govml-methodology.png
+  alt: "How I Govern AI-Assisted ML Projects"
+  hidden: true
+images:
+  - /images/og-govml-methodology.png
 ---
 
 After four ML projects at Georgia Tech, I'd run 14 manual audit cycles with 30+ findings each. The governance wasn't the problem — the manual enforcement was. So I built [govML](https://github.com/rexcoleman/govML).

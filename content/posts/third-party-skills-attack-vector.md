@@ -7,6 +7,12 @@ author: "Rex Coleman"
 draft: true
 ShowToc: true
 TocOpen: true
+cover:
+  image: /images/og-third-party-skills.png
+  alt: "Why Third-Party Skills Are the Biggest Agent Attack Vector"
+  hidden: true
+images:
+  - /images/og-third-party-skills.png
 ---
 
 Last week I published a [30-minute hardening guide](/posts/secure-openclaw-30-minutes/) for OpenClaw. The #1 risk on that list was third-party skills. Since then, the numbers have gotten worse.
