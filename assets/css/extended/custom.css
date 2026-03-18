@@ -1,15 +1,29 @@
 /* =============================================================
-   Rex Coleman — Brand Design System v3
-   Overrides PaperMod CSS variables for dark-mode-native brand
+   Rex Coleman — Brand Design System v4
 
-   Key fix (v3): post cards blend with background instead of
-   creating awkward dark-blue bars. The .list page background
-   matches --theme. Entry cards use transparent bg with subtle
-   bottom border (like singularitycyber.com's card approach).
+   Goal: Make rexcoleman.dev feel like singularitycyber.com
+
+   Singularity DNA:
+   - System font stack (-apple-system, BlinkMacSystemFont, etc.)
+   - bg #0C111C, cards #12192A, border #323A4E
+   - Accent #00E0A0, muted #828EA3, text #EDF0F5
+   - 800px max-width, generous padding
+   - Clean section headers with bottom border
+   - Cards with 1px border + 8px radius
+   - No shadows, no gradients, no decoration
    ============================================================= */
 
-/* ── Design tokens ──────────────────────────────────────────── */
-:root {
+/* ── PaperMod variable overrides ───────────────────────────── */
+:root,
+.dark,
+[data-theme="dark"] {
+    --gap: 24px;
+    --content-gap: 20px;
+    --nav-width: 800px;
+    --main-width: 800px;
+    --header-height: 60px;
+    --footer-height: 60px;
+    --radius: 8px;
     --theme: #0C111C;
     --entry: #0C111C;
     --primary: #EDF0F5;
@@ -17,30 +31,20 @@
     --tertiary: #323A4E;
     --content: #EDF0F5;
     --code-bg: #0C111C;
-    --code-block-bg: #0A0E17;
-    --border: #1A2235;
+    --code-block-bg: #12192A;
+    --border: #323A4E;
+    color-scheme: dark;
 }
 
-/* PaperMod also gates dark-mode overrides under .dark */
-.dark {
-    --theme: #0C111C;
-    --entry: #0C111C;
-    --primary: #EDF0F5;
-    --secondary: #828EA3;
-    --tertiary: #323A4E;
-    --content: #EDF0F5;
-    --code-bg: #0C111C;
-    --code-block-bg: #0A0E17;
-    --border: #1A2235;
-}
-
-/* ── Body / page background ─────────────────────────────────── */
+/* ── Base ───────────────────────────────────────────────────── */
 body {
-    background-color: #0C111C;
+    background: #0C111C;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    color: #EDF0F5;
+    line-height: 1.7;
 }
 
-/* Force .list page background to match theme (PaperMod defaults
-   this to --code-bg which was a different shade) */
+/* Kill any light-mode list backgrounds */
 .list {
     background: #0C111C !important;
 }
@@ -50,119 +54,258 @@ a {
     color: #00E0A0;
     text-decoration: none;
 }
-
 a:hover {
-    text-decoration: underline;
+    opacity: 0.9;
 }
 
-/* Keep nav / menu links inheriting primary text color */
-.nav a,
-.menu a {
-    color: var(--primary);
+/* Nav links: primary text, accent on hover */
+.nav a, #menu a {
+    color: #EDF0F5;
 }
-
-.nav a:hover,
-.menu a:hover {
+.nav a:hover, #menu a:hover {
     color: #00E0A0;
 }
+#menu .active {
+    border-bottom-color: #00E0A0;
+}
 
-/* ── Post titles: accent on hover ───────────────────────────── */
+/* Logo */
+.logo a {
+    color: #00E0A0 !important;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+}
+
+/* ── Post listing cards ────────────────────────────────────── */
+.post-entry {
+    background: #12192A;
+    border: 1px solid #323A4E;
+    border-radius: 8px;
+    padding: 24px;
+    margin-bottom: 16px;
+    transition: border-color 0.15s ease;
+}
+.post-entry:active {
+    transform: none;
+}
+.post-entry:hover {
+    border-color: #00E0A0;
+}
+
+/* Post meta (date, reading time, author) */
+.entry-content {
+    color: #828EA3;
+}
+.entry-footer {
+    color: #828EA3;
+}
+
+/* Post titles */
+.entry-header h2 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    line-height: 1.3;
+}
 .post-title a,
 .entry-header h2 a,
 .entry h2 a {
-    color: var(--primary);
+    color: #EDF0F5;
     text-decoration: none;
-    transition: color 0.15s ease;
 }
-
 .post-title a:hover,
 .entry-header h2 a:hover,
 .entry h2 a:hover {
     color: #00E0A0;
-    text-decoration: none;
+}
+
+/* ── Single post page ──────────────────────────────────────── */
+.post-title {
+    font-size: 2.2rem;
+    font-weight: 700;
+    color: #EDF0F5;
+}
+.post-meta {
+    color: #828EA3;
+}
+.post-content {
+    color: #EDF0F5;
+    line-height: 1.7;
+}
+.post-content a {
+    color: #00E0A0;
+    box-shadow: none;
+}
+.post-content a:hover {
+    text-decoration: underline;
+}
+
+/* Section headers in post content */
+.post-content h2 {
+    font-weight: 600;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #323A4E;
+}
+.post-content h3 {
+    color: #EDF0F5;
+    font-weight: 600;
+}
+
+/* Tables */
+.post-content table th,
+.post-content table:not(.highlighttable, .highlight table, .gist .highlight) td {
+    border-bottom-color: #323A4E;
+}
+
+/* Blockquotes */
+.post-content blockquote {
+    border-inline-start-color: #00E0A0;
+    color: #828EA3;
+}
+
+/* Horizontal rules */
+hr {
+    background: #323A4E;
 }
 
 /* ── Code blocks ────────────────────────────────────────────── */
-pre,
-pre code {
-    background-color: #0A0E17 !important;
+pre, pre code {
+    background-color: #12192A !important;
 }
-
 code {
-    background-color: #0A0E17;
+    background-color: #12192A;
     padding: 0.15em 0.35em;
     border-radius: 4px;
+    font-size: 0.85em;
+}
+
+/* ── TOC ────────────────────────────────────────────────────── */
+.toc {
+    background: #12192A;
+    border: 1px solid #323A4E;
+    border-radius: 8px;
+}
+[data-theme="dark"] .toc {
+    background: #12192A;
+}
+
+/* ── Tags ───────────────────────────────────────────────────── */
+.post-tags a {
+    background: rgba(0, 224, 160, 0.1);
+    color: #00E0A0;
+    border: none;
+    font-size: 0.8rem;
+    padding: 4px 12px;
+    border-radius: 4px;
+}
+.post-tags a:hover {
+    background: rgba(0, 224, 160, 0.2);
+}
+
+/* ── Pagination ─────────────────────────────────────────────── */
+.paginav {
+    background: #12192A;
+    border: 1px solid #323A4E;
+    border-radius: 8px;
+}
+.paginav a {
+    color: #EDF0F5;
+}
+.paginav a:hover span:not(.title) {
+    color: #00E0A0;
+    box-shadow: none;
+}
+
+/* Share buttons */
+.share-buttons {
+    background: #12192A;
+    border: 1px solid #323A4E;
+    border-radius: 8px;
+}
+
+/* ── Profile / home ─────────────────────────────────────────── */
+.profile .profile_inner h1 {
+    color: #00E0A0;
+}
+.buttons .button {
+    background: #323A4E;
+}
+.buttons .button:hover {
+    background: #00E0A0;
+    color: #0C111C;
+}
+
+/* Home info section */
+.home-info .entry-content {
+    color: #828EA3;
+}
+
+/* Social icons */
+.social-icons a svg {
+    fill: #828EA3;
+}
+.social-icons a:hover svg {
+    fill: #00E0A0;
 }
 
 /* ── Footer ─────────────────────────────────────────────────── */
 footer {
-    background-color: #080C16;
-    border-top: 1px solid #1A2235;
+    background: #0C111C;
+    border-top: 1px solid #323A4E;
+}
+footer a {
+    color: #00E0A0;
 }
 
-/* ── Post cards on listing page — blend with background ─────── */
-.post-entry {
-    background-color: transparent;
-    border: none;
-    border-bottom: 1px solid #1A2235;
-    border-radius: 0;
-    padding-left: 0;
-    padding-right: 0;
+/* ── Search ─────────────────────────────────────────────────── */
+#searchbox input {
+    background: #12192A;
+    border: 1px solid #323A4E;
+    color: #EDF0F5;
+}
+#searchbox input:focus {
+    border-color: #00E0A0;
+}
+#searchResults li {
+    background: #12192A;
+    border: 1px solid #323A4E;
+    border-radius: 8px;
 }
 
-.post-entry:hover {
-    background-color: rgba(26, 34, 53, 0.3);
-    border-radius: 6px;
-}
-
-/* TOC and page headers keep subtle surface */
-.page-header {
-    background-color: transparent;
-    border: none;
-}
-
-.toc {
-    background-color: #0A0E17;
-    border: 1px solid #1A2235;
-    border-radius: 6px;
-}
-
-hr {
-    border-color: #1A2235;
-}
-
-/* ── Scrollbar (Chromium / Edge) ────────────────────────────── */
+/* ── Scrollbar ──────────────────────────────────────────────── */
 ::-webkit-scrollbar {
     width: 8px;
     height: 8px;
 }
-
 ::-webkit-scrollbar-track {
     background: #0C111C;
 }
-
 ::-webkit-scrollbar-thumb {
     background: #323A4E;
     border-radius: 4px;
 }
-
 ::-webkit-scrollbar-thumb:hover {
     background: #00E0A0;
 }
-
-/* Firefox scrollbar */
 * {
     scrollbar-color: #323A4E #0C111C;
     scrollbar-width: thin;
 }
 
-/* ── Selection highlight ────────────────────────────────────── */
+/* ── Selection ──────────────────────────────────────────────── */
 ::selection {
-    background-color: #00E0A0;
+    background: #00E0A0;
     color: #0C111C;
 }
 
-::-moz-selection {
-    background-color: #00E0A0;
-    color: #0C111C;
+/* ── Theme toggle — hide it (we're dark-only) ───────────────── */
+#theme-toggle {
+    display: none;
+}
+
+/* ── Breadcrumbs ────────────────────────────────────────────── */
+.breadcrumbs a {
+    color: #828EA3;
+}
+.breadcrumbs a:hover {
+    color: #00E0A0;
 }
