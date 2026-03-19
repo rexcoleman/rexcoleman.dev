@@ -50,7 +50,7 @@ Every framework that ships without a reference implementation is a promise the i
 
 I started [Singularity Cybersecurity](https://singularitycyber.com) because I got tired of the gap between research and deployment. The thesis is simple: AI security research should ship.
 
-That means every finding produces a tool, not just a paper. When I found that [adversarial control analysis](/posts/adversarial-control-analysis/) predicts which features attackers exploit, I shipped the methodology as reusable code across six domains. When I found that [RL agents have attack surfaces](/posts/rl-agent-vulnerability/) that prompt-injection defenses miss entirely, I shipped the attack framework with executable scenarios. When I found that third-party skills are the biggest agent attack vector, I started building SkillVet (behavioral sandbox scanning) and AgentArmor (runtime monitoring).
+That means every finding produces a tool, not just a paper. When I found that [adversarial control analysis](/posts/adversarial-control-analysis/) predicts which features attackers exploit, I shipped the methodology as reusable code across six domains. When I found that [RL agents have attack surfaces](/posts/rl-agent-vulnerability/) that prompt-injection defenses miss entirely, I shipped the attack framework with executable scenarios. When I found that third-party skills are the biggest agent attack vector, I started building SkillVet [HYPOTHESIZED] (behavioral sandbox scanning) and AgentArmor [HYPOTHESIZED] (runtime monitoring).
 
 The bar should be: did you ship something a practitioner can use this week? If the answer is no, you wrote a framework. The industry has enough frameworks.
 

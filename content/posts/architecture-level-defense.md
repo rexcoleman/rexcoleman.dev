@@ -62,7 +62,7 @@ The industry mental model needs to shift from "which ML model should we buy?" to
 
 The methodology is called adversarial control analysis (ACA). The process is three steps: enumerate all inputs to the system, classify each input by who controls it (attacker, defender, system), and build defenses around the boundary. I've published the methodology, the code, and the findings across all six domains.
 
-At [Singularity Cybersecurity](https://singularitycyber.com), every tool we build starts with a controllability classification. SkillVet classifies skill behaviors by whether they touch attacker-controllable surfaces. AgentArmor monitors the observation channels that controllability analysis flags as vulnerable. The architecture comes first. The ML comes second.
+At [Singularity Cybersecurity](https://singularitycyber.com), every tool we build starts with a controllability classification. SkillVet [HYPOTHESIZED] classifies skill behaviors by whether they touch attacker-controllable surfaces. AgentArmor [HYPOTHESIZED] monitors the observation channels that controllability analysis flags as vulnerable. The architecture comes first. The ML comes second.
 
 ### Limitations
 

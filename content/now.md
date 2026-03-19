@@ -11,9 +11,9 @@ ShowReadingTime: false
 
 Building [Singularity Cybersecurity](https://singularitycyber.com) — an AI security research lab. Three active experiments:
 
-**AgentArmor** — runtime behavioral monitoring for AI agents. Experiment #1.
-**SkillVet** — behavioral sandbox scanning for third-party agent skills. Experiment #2.
-**RedClaw** — automated red-team toolkit with OWASP Agentic mapping. Experiment #3.
+**AgentArmor [HYPOTHESIZED]** — runtime behavioral monitoring for AI agents. Experiment #1.
+**SkillVet [HYPOTHESIZED]** — behavioral sandbox scanning for third-party agent skills. Experiment #2.
+**RedClaw [HYPOTHESIZED]** — automated red-team toolkit with OWASP Agentic mapping. Experiment #3.
 
 ---
 

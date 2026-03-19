@@ -70,7 +70,7 @@ I built the first open-source RL attack framework for agent security environment
 
 Combined with FP-02 (agent red-teaming), this creates a systematic attack taxonomy that spans both prompt-based and RL-based agent attack surfaces — 7 prompt-level attack classes plus 4 RL-specific attack classes, mapped to OWASP where coverage exists and flagging the 5 categories where it doesn't.
 
-At [Singularity Cybersecurity](https://singularitycyber.com), the next step is building detection tools that cover both surfaces. AgentArmor's runtime monitoring is designed from the ground up to watch observation channels and reward signals, not just prompt inputs. Because that's where the next generation of attacks will land.
+At [Singularity Cybersecurity](https://singularitycyber.com), the next step is building detection tools that cover both surfaces. AgentArmor's [HYPOTHESIZED] runtime monitoring is designed from the ground up to watch observation channels and reward signals, not just prompt inputs. Because that's where the next generation of attacks will land.
 
 ### Limitations
 

@@ -136,7 +136,7 @@ The agent security competitive landscape as of Q1 2026 divides into four tiers:
 - Tencent AI-Infra-Guard [20] — full-stack agent scanning, but Chinese-origin creates enterprise trust barriers.
 - Pantheon MEDUSA [21] — 4,000+ rules, 76 analyzers. Strong static analysis.
 - NanoClaw [26] — container isolation for agents (20,000 stars, 100,000+ downloads). Solves isolation, not monitoring.
-- SkillVet (oakencore) — bash and grep based skill scanning. Functional but primitive.
+- SkillVet [HYPOTHESIZED] (oakencore) — bash and grep based skill scanning. Functional but primitive.
 - SkillFortify — formal verification for agent skills. Show HN stage.
 
 **Tier 4: Research and SaaS (niche)**

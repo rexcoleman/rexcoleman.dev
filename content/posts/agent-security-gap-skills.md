@@ -76,9 +76,9 @@ Until the field makes that shift, the 820+ malicious skills on ClawHub will keep
 
 At [Singularity Cybersecurity](https://singularitycyber.com), we're building two tools to close this gap:
 
-**SkillVet** — behavioral sandbox scanning. Instead of pattern-matching skill source code, SkillVet runs skills in an instrumented sandbox and observes their behavior across multiple heartbeat cycles. It watches for data exfiltration patterns, memory modification, credential access, and anomalous network activity. The goal: catch the skills that static analysis misses because their code is clean but their behavior is hostile.
+**SkillVet [HYPOTHESIZED]** — behavioral sandbox scanning. Instead of pattern-matching skill source code, SkillVet runs skills in an instrumented sandbox and observes their behavior across multiple heartbeat cycles. It watches for data exfiltration patterns, memory modification, credential access, and anomalous network activity. The goal: catch the skills that static analysis misses because their code is clean but their behavior is hostile.
 
-**AgentArmor** — runtime behavioral monitoring. SkillVet catches threats pre-install. AgentArmor catches them post-install. It monitors what skills actually do during live agent operation — file access patterns, API calls, network traffic, memory modifications — and alerts on behavioral anomalies. This is the EDR equivalent for agent skill security.
+**AgentArmor [HYPOTHESIZED]** — runtime behavioral monitoring. SkillVet catches threats pre-install. AgentArmor catches them post-install. It monitors what skills actually do during live agent operation — file access patterns, API calls, network traffic, memory modifications — and alerts on behavioral anomalies. This is the EDR equivalent for agent skill security.
 
 The practical first step is published: [How to Secure Your OpenClaw in 30 Minutes](/posts/secure-openclaw-30-minutes/). Rule #1: don't install third-party skills. Read the source, rebuild locally, control your own code. That doesn't scale — which is why we're building the tools.
 

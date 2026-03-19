@@ -22,7 +22,7 @@ This finding comes from [Signal Report #1](/posts/signal-report-001/), which agg
 1. **Never install third-party skills without review.** Read the source code. If it's obfuscated, skip it.
 2. **Pin skill versions.** Don't auto-update skills from the marketplace.
 3. **Run agents in sandboxed environments.** NanoClaw provides container-level isolation, but it doesn't monitor behavior inside the container.
-4. **Watch for the tooling gap.** Existing scanners range from bash+grep (SkillVet) to enterprise-weight (Cisco). A middle ground is emerging but not yet mature.
+4. **Watch for the tooling gap.** Existing scanners range from bash+grep (SkillVet [HYPOTHESIZED]) to enterprise-weight (Cisco). A middle ground is emerging but not yet mature.
 
 The agent supply chain is the new software supply chain. The attack surface is real, the tooling is immature, and the defaults are dangerous.
 
