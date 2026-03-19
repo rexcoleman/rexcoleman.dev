@@ -5,7 +5,7 @@ ShowToc: false
 ShowReadingTime: false
 ---
 
-9 shipped projects across 4 ML paradigms. Every project ships FINDINGS.md with demonstrated results.
+9 shipped projects at every layer of the stack. Every project ships FINDINGS.md with demonstrated results.
 
 ### Agent Security Red-Team Framework
 
