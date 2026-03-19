@@ -17,11 +17,20 @@ params:
   comments: false
 
   profileMode:
-    enabled: false
-
-  homeInfoParams:
-    Title: "Securing AI From The Architecture Up"
-    Content: ""
+    enabled: true
+    title: "Rex Coleman"
+    subtitle: "Securing AI from the architecture up."
+    imageUrl: "/images/profile.jpg"
+    imageTitle: "Rex Coleman"
+    imageWidth: 160
+    imageHeight: 160
+    buttons:
+      - name: Research
+        url: /research/
+      - name: Projects
+        url: /projects/
+      - name: About
+        url: /about/
 
   socialIcons:
     - name: github

@@ -5,6 +5,10 @@ ShowToc: false
 ShowReadingTime: false
 ---
 
+<div style="text-align: center; margin-bottom: 2rem;">
+  <img src="/images/profile.jpg" alt="Rex Coleman" style="width: 160px; height: 160px; border-radius: 50%; object-fit: cover;" />
+</div>
+
 AI is changing both sides of security. Builders are shipping AI systems with attack surfaces they don't understand — poisoned models, hijacked agents, backdoored pipelines. Defenders are facing AI-powered threats that outpace every manual playbook they have.
 
 Both sides need architecture-level solutions. I'm building them.

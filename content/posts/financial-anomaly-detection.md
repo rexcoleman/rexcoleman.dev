@@ -1,7 +1,4 @@
 ---
-
-> **Note (2026-03-19):** This was an early exploration in my AI security research. The methodology has known limitations documented in the [quality assessment](https://github.com/rexcoleman/Moonshots_Career_Thesis). For the current state of this work, see [Multi-Agent Security](https://github.com/rexcoleman/multi-agent-security) and [Verified Delegation Protocol](https://github.com/rexcoleman/verified-delegation-protocol).
-
 title: "A CFA Charterholder Built an ML Fraud Detector: Here's What the Models Miss"
 date: 2026-03-19
 description: "CFA-informed rule-based scoring achieves 0.898 AUC on its own, and 8 of the top 20 predictive features come from domain expertise, not raw data."

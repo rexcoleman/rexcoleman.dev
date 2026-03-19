@@ -1,7 +1,4 @@
 ---
-
-> **Note (2026-03-19):** This was an early exploration in my AI security research. The methodology has known limitations documented in the [quality assessment](https://github.com/rexcoleman/Moonshots_Career_Thesis). For the current state of this work, see [Multi-Agent Security](https://github.com/rexcoleman/multi-agent-security) and [Verified Delegation Protocol](https://github.com/rexcoleman/verified-delegation-protocol).
-
 title: "I Built a PQC Migration Scanner: Here's What Your Codebase Is Hiding"
 date: 2026-03-19
 description: "70% of the crypto in your codebase isn't yours to change — and classical exploit risk matters more than quantum vulnerability for deciding what to fix first."

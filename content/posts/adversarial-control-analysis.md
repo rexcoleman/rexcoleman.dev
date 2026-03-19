@@ -1,7 +1,4 @@
 ---
-
-> **Note (2026-03-19):** This was an early exploration in my AI security research. The methodology has known limitations documented in the [quality assessment](https://github.com/rexcoleman/Moonshots_Career_Thesis). For the current state of this work, see [Multi-Agent Security](https://github.com/rexcoleman/multi-agent-security) and [Verified Delegation Protocol](https://github.com/rexcoleman/verified-delegation-protocol).
-
 title: "One Principle, Six Domains: Adversarial Control Analysis for AI Security"
 date: 2026-03-16
 description: "The same security principle — classify inputs by who controls them — works across network IDS, vulnerability management, AI agents, post-quantum crypto, fraud detection, and AI supply chains."
