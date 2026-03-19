@@ -5,7 +5,7 @@ draft: false
 tags: ["tutorial", "ai-agents", "red-team", "langchain", "security", "prompt-injection"]
 format: "tutorial"
 audience_side: "of-ai"
-image_count: 0  # R26: images pending — text-based tutorial, diagrams planned
+image_count: 0  # R26: text diagram present (ASCII architecture diagram)
 description: "Set up a LangChain agent, run 7 attack classes against it, interpret the results, and apply a 5-layer defense stack -- all for about $2 in API costs."
 ---
 
@@ -14,6 +14,19 @@ description: "Set up a LangChain agent, run 7 attack classes against it, interpr
 You are deploying an AI agent that can read files, search the web, or call APIs on behalf of users. Before you ship it, you need to know: what happens when someone tries to make it do something it should not? Existing frameworks like OWASP LLM Top 10 cover the language model layer, but agents have attack surfaces that models do not -- tool orchestration, multi-step reasoning, persistent memory, and cross-agent delegation. You need a systematic way to test these surfaces.
 
 This tutorial walks you through red-teaming a LangChain ReAct agent using the 7 attack classes from the agent-redteam-framework (FP-02). The full framework run costs about $2 in API tokens and takes under an hour.
+
+```
+┌──────────────────────────────────────────┐
+│          LangChain ReAct Agent           │
+├──────────┬───────────┬───────────────────┤
+│  Input   │  Reasoning│    Tool Access    │
+│Sanitizer │  Monitor  │    Boundaries     │
+├──────────┴───────────┴───────────────────┤
+│          LLM-as-Judge (Layer 4)          │
+├──────────────────────────────────────────┤
+│          Output Sanitizer (Layer 5)      │
+└──────────────────────────────────────────┘
+```
 
 ## Prerequisites
 

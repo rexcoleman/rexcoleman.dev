@@ -115,6 +115,10 @@ Scan Summary
 
 The scanner is open source: [pqc-migration-analyzer on GitHub](https://github.com/rexcoleman/pqc-migration-analyzer). Built with [govML](https://github.com/rexcoleman/govML) v2.5 governance.
 
+### Limitations
+
+This analysis used rule-based scoring on a single Python stdlib scan. The PQC primitives database is incomplete — new algorithms emerge regularly. The scoring model weights are hand-tuned, not ML-optimized. Real-world migration complexity includes hardware, protocol, and organizational factors not captured here.
+
 ---
 
 *Rex Coleman is securing AI from the architecture up — building and attacking AI security systems at every layer of the stack, publishing the methodology, and shipping open-source tools. [rexcoleman.dev](https://rexcoleman.dev) · [GitHub](https://github.com/rexcoleman) · [Singularity Cybersecurity](https://singularitycyber.com)*

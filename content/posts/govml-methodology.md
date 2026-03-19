@@ -4,6 +4,8 @@ date: 2026-03-14
 description: "I built an open-source governance framework for ML projects after watching 14 manual audit cycles nearly break my workflow. Here's how govML works and why governance-as-code is the only way to scale ML research."
 tags: ["ml-governance", "build-in-public", "machine-learning", "govml"]
 format: "technical-blog"
+audience_side: "both"
+image_count: 1
 author: "Rex Coleman"
 ShowToc: true
 TocOpen: false

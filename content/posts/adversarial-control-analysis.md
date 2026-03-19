@@ -4,6 +4,7 @@ date: 2026-03-16
 description: "The same security principle — classify inputs by who controls them — works across network IDS, vulnerability management, AI agents, post-quantum crypto, fraud detection, and AI supply chains."
 tags: ["ai-security", "methodology", "adversarial-ml", "security-architecture"]
 format: "perspective"
+audience_side: "both"
 author: "Rex Coleman"
 ShowToc: true
 TocOpen: false

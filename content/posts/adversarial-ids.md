@@ -4,9 +4,11 @@ date: 2026-03-14
 description: "I built and red-teamed an ML-based intrusion detection system. The key finding: which features an attacker controls matters more than which model you choose."
 tags: ["ai-security", "adversarial-ml", "machine-learning", "feature-controllability"]
 format: "technical-blog"
+audience_side: "from-ai"
 author: "Rex Coleman"
 ShowToc: true
 TocOpen: false
+image_count: 1  # R26: inline image (algorithm_comparison.png)
 cover:
   image: /images/og-adversarial-ids.png
   alt: "Adversarial ML on Network Intrusion Detection"
@@ -46,6 +48,8 @@ When attacks are constrained to only modify attacker-controllable features (the 
 Why? Because the features the model relies on for detection are features the attacker can't change. An attacker can craft malicious payload bytes, but they can't control how long a TCP flow takes to traverse the network, or what the receiver's window size is. Those are properties of the infrastructure.
 
 **This is an architectural defense, not a model defense.** It doesn't matter whether you use Random Forest or a neural network. What matters is that your system's decision depends on inputs outside adversary control.
+
+![Algorithm comparison across models](/images/posts/adversarial-ids/algorithm_comparison.png)
 
 ## The General Principle
 

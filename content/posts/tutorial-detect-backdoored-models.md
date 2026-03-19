@@ -5,7 +5,7 @@ draft: false
 tags: ["tutorial", "model-security", "backdoor-detection", "unsupervised-learning", "anomaly-detection", "supply-chain"]
 format: "tutorial"
 audience_side: "of-ai"
-image_count: 0  # R26: images pending — text-based tutorial, diagrams planned
+image_count: 0  # R26: text diagram present (ASCII architecture diagram)
 description: "Extract behavioral fingerprints from ML model activations and use Local Outlier Factor to detect backdoored models with zero labeled training data."
 ---
 
@@ -16,6 +16,19 @@ You download a pre-trained model from a public registry -- Hugging Face, PyTorch
 Static analysis tools like ModelScan check for serialization exploits (pickle deserialization, arbitrary code execution) and known payload patterns. But they cannot detect behavioral backdoors injected through training data poisoning. The model weights are valid; the architecture is standard; the backdoor lives in the learned representations, not the code.
 
 You need a method that detects behavioral anomalies without knowing what the backdoor looks like and without having any labeled examples of backdoored models to train on. This tutorial shows how to do that using unsupervised anomaly detection on model activation patterns.
+
+```
+Clean Model              Backdoored Model
+    │                        │
+    ▼                        ▼
+Extract Activations      Extract Activations
+    │                        │
+    ▼                        ▼
+Build Baseline ─────────→ Compare Fingerprints
+    │                        │
+    ▼                        ▼
+Normal Distribution      Anomaly Detected (LOF)
+```
 
 ## Prerequisites
 

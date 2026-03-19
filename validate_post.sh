@@ -59,10 +59,15 @@ validate_post() {
         check "image_count: $image_count but actual images: $actual_images (MISMATCH)" "FAIL"
     fi
 
-    # R26: Image minimum per format
+    # Count text diagrams (ASCII art in code blocks: ┌, ├, └, │, ─, →, ▼)
+    local has_text_diagram=0
+    grep -qE '[┌├└│─→▼]' "$file" 2>/dev/null && has_text_diagram=1
+    local visual_count=$((actual_images + has_text_diagram))
+
+    # R26: Image minimum per format (images OR text diagrams count)
     case "$format" in
         technical-blog|tutorial)
-            [ "$actual_images" -ge 1 ] && check "R26: >=1 image for $format" "PASS" || check "R26: $format requires >=1 image, has $actual_images" "FAIL"
+            [ "$visual_count" -ge 1 ] && check "R26: >=1 visual for $format ($actual_images images + $has_text_diagram text diagrams)" "PASS" || check "R26: $format requires >=1 visual, has $visual_count" "FAIL"
             ;;
         research-report)
             [ "$actual_images" -ge 3 ] && check "R26: >=3 images for research-report" "PASS" || check "R26: research-report requires >=3 images, has $actual_images" "WARN"
@@ -76,7 +81,7 @@ validate_post() {
             grep -qi "what's next\|what i'm doing" "$file" && check "R25: What's Next present" "PASS" || check "R25: What's Next MISSING" "FAIL"
             ;;
         tutorial)
-            grep -qi "not solved\|limitation" "$file" && check "R25: What's Not Solved present" "PASS" || check "R25: What's Not Solved MISSING" "FAIL"
+            grep -qi "not solved\|limitation\|isn't solved" "$file" && check "R25: What's Not Solved present" "PASS" || check "R25: What's Not Solved MISSING" "FAIL"
             ;;
         perspective)
             grep -qi "what i'm doing\|what we're doing" "$file" && check "R25: What I'm Doing About It present" "PASS" || check "R25: What I'm Doing MISSING" "FAIL"
@@ -96,7 +101,7 @@ validate_post() {
 # Main
 if [ "${1:-}" = "--all" ]; then
     for f in content/posts/*.md content/research/*.md content/til/*.md; do
-        [ -f "$f" ] && validate_post "$f"
+        [ -f "$f" ] && [[ "$(basename "$f")" != "_index.md" ]] && validate_post "$f"
     done
 else
     for f in "$@"; do

@@ -5,7 +5,7 @@ draft: false
 tags: ["tutorial", "vulnerability-management", "machine-learning", "epss", "shap", "security"]
 format: "tutorial"
 audience_side: "from-ai"
-image_count: 0  # R26: images pending — text-based tutorial, diagrams planned
+image_count: 0  # R26: text diagram present (ASCII architecture diagram)
 description: "Build a Random Forest model that outperforms CVSS at predicting which vulnerabilities actually get exploited, using only public NVD and EPSS data."
 ---
 
@@ -14,6 +14,13 @@ description: "Build a Random Forest model that outperforms CVSS at predicting wh
 Your security team triages vulnerabilities by CVSS score. A 9.8 gets patched immediately; a 7.5 waits. But CVSS measures severity, not exploitability. In real-world data, CVSS achieves an AUC of just 0.662 at predicting which CVEs actually get exploited -- barely better than a coin flip. You need a model that predicts exploitation likelihood, not just theoretical severity.
 
 This tutorial walks you through building an ML-based vulnerability prioritizer using public data. By the end, you will have a Random Forest model that beats CVSS by over 20 percentage points on AUC-ROC, and you will understand exactly which features drive those predictions using SHAP.
+
+```
+NVD/CVE Data → Feature Engineering → ML Model → SHAP Explainability
+    │              │                    │              │
+  338K CVEs    49 features         Random Forest    Top-20 features
+               (8 groups)          + 6 baselines    ranked by impact
+```
 
 ## Prerequisites
 

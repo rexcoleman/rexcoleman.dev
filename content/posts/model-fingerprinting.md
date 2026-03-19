@@ -4,6 +4,8 @@ date: 2026-03-16
 description: "How do you know a model downloaded from Hugging Face hasn't been backdoored? I built a behavioral fingerprinting system that uses unsupervised anomaly detection to answer that question."
 tags: ["ai-security", "model-supply-chain", "anomaly-detection", "unsupervised-learning", "machine-learning"]
 format: "technical-blog"
+audience_side: "of-ai"
+image_count: 1
 author: "Rex Coleman"
 ShowToc: true
 TocOpen: false
@@ -148,6 +150,9 @@ Code, experiment contract, data contracts, and full results: [github.com/rexcole
 
 Built with [govML](https://github.com/rexcoleman/ml-governance-templates) for experiment tracking and reproducibility.
 
+### What's Next
+
+I'm extending this work to real-world model artifacts from TrojAI and Hugging Face Hub — synthetic activation vectors are a starting point, not the destination. The key finding that dimensionality reduction hurts detection needs validation across more model architectures. See the [full research report](/research/adversarial-control-analysis/) for how this fits into the broader controllability framework.
 
 ---
 

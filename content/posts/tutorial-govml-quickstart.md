@@ -5,7 +5,7 @@ draft: false
 tags: ["tutorial", "govml", "reproducibility", "ml-governance", "open-source"]
 format: "tutorial"
 audience_side: "both"
-image_count: 0  # R26: images pending — text-based tutorial, diagrams planned
+image_count: 0  # R26: text diagram present (ASCII architecture diagram)
 description: "Install govML, scaffold a governed ML project with one command, and learn how contract-driven development prevents the 'I forgot which hyperparameters I used' problem."
 ---
 
@@ -14,6 +14,16 @@ description: "Install govML, scaffold a governed ML project with one command, an
 You run an ML experiment. You tweak a hyperparameter. Three weeks later you cannot reproduce the original result because you forgot which config, which seed, which preprocessing step you changed. You have no contracts, no phase gates, no leakage tests. Your experiment notebook is a graveyard of dead cells and commented-out code.
 
 govML solves this by giving every ML project a set of enforceable contracts that lock down your environment, data splits, and experiment parameters before you start training. One command scaffolds the full governance structure. Generators produce executable test suites from your config. This tutorial gets you from zero to a governed project in 15 minutes.
+
+```
+init_project.sh
+    │
+    ├── docs/EXPERIMENT_CONTRACT.md    (what you'll test)
+    ├── docs/DATA_CONTRACT.md          (what data you'll use)
+    ├── docs/HYPOTHESIS_REGISTRY.md    (what you predict)
+    ├── scripts/                       (generated entry points)
+    └── tests/                         (generated test stubs)
+```
 
 ## Prerequisites
 

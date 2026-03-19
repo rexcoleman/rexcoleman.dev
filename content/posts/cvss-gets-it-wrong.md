@@ -4,6 +4,8 @@ date: 2026-03-14
 description: "I trained an ML model on 338,000 CVEs to find out what actually predicts exploitation. CVSS scores severity. Attackers measure opportunity. The model reveals what they look for."
 tags: ["ai-security", "machine-learning", "vulnerability-management", "shap", "feature-controllability"]
 format: "technical-blog"
+audience_side: "from-ai"
+image_count: 1
 author: "Rex Coleman"
 ShowToc: true
 TocOpen: false

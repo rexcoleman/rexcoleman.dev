@@ -5,7 +5,7 @@ draft: false
 tags: ["vulnerability-management", "machine-learning", "shap", "security-from-ai", "research-report"]
 format: "research-report"
 audience_side: "from-ai"
-image_count: 3
+image_count: 2
 description: "7 ML algorithms on 338K CVEs. EPSS alone provides +15.5pp over the next best feature group. SHAP reveals 4 feature groups that hurt performance. Multi-seed ablation with 5 seeds."
 ---
 
@@ -288,3 +288,11 @@ The full pipeline --- data ingestion, feature engineering, model training, SHAP 
 [8] S. M. Lundberg and S.-I. Lee, "A Unified Approach to Interpreting Model Predictions," in *Advances in Neural Information Processing Systems (NeurIPS)*, vol. 30, 2017.
 
 [9] R. Coleman, "Adversarial Control Analysis for Intrusion Detection Systems: Feature Controllability as Architectural Defense," *rexcoleman.dev*, 2026. [Online]. Available: https://rexcoleman.dev/posts/adversarial-ids/
+
+---
+
+*Rex Coleman is securing AI from the architecture up — building and attacking AI security systems at every layer of the stack, publishing the methodology, and shipping open-source tools. [rexcoleman.dev](https://rexcoleman.dev) · [GitHub](https://github.com/rexcoleman) · [Singularity Cybersecurity](https://singularitycyber.com)*
+
+---
+
+*If this was useful, [subscribe on Substack](https://substack.com/@rexcoleman) for weekly AI security research — findings, tools, and curated signal.*

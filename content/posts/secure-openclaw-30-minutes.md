@@ -4,7 +4,9 @@ date: 2026-03-17
 description: "Your AI agent is running 24/7. Here are the 5 biggest security risks and a step-by-step hardening guide."
 tags: ["agent-security", "openclaw", "tutorial", "singularity-cybersecurity"]
 format: "tutorial"
+audience_side: "of-ai"
 author: "Rex Coleman"
+image_count: 0  # R26: text diagram present (ASCII architecture diagram)
 ShowToc: true
 TocOpen: true
 cover:

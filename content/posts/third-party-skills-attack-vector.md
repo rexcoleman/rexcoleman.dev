@@ -4,6 +4,7 @@ date: 2026-03-20
 description: "820+ malicious skills on ClawHub. Third-party skills execute on every heartbeat — persistent access to your agent's memory, context, and capabilities. Here's why this is worse than prompt injection."
 tags: ["agent-security", "supply-chain", "openclaw", "singularity-cybersecurity"]
 format: "perspective"
+audience_side: "of-ai"
 author: "Rex Coleman"
 draft: false
 ShowToc: true

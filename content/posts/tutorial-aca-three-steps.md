@@ -5,7 +5,7 @@ draft: false
 tags: ["tutorial", "adversarial-ml", "security-architecture", "methodology", "aca"]
 format: "tutorial"
 audience_side: "both"
-image_count: 0  # R26: images pending — text-based tutorial, diagrams planned
+image_count: 0  # R26: text diagram present (ASCII architecture diagram)
 description: "Classify every input to your ML system by who controls it, then architect your defenses around the features adversaries cannot touch."
 ---
 
@@ -14,6 +14,16 @@ description: "Classify every input to your ML system by who controls it, then ar
 You have deployed an ML model and someone asks: "Is it robust to adversarial attack?" You do not have a principled way to answer. You could fuzz every input, but that is expensive and tells you nothing about which attacks are structurally impossible versus which are just untested. You need a method that maps the attack surface before you start testing.
 
 Adversarial Control Analysis (ACA) gives you that map. It is a three-step process that classifies every input by who controls it, then focuses your defenses on the inputs the adversary cannot manipulate. I have applied it across six domains -- network IDS, vulnerability management, AI agents, post-quantum crypto, fraud detection, and ML supply chains -- and the finding is always the same: the inputs the attacker cannot touch are your real defense.
+
+```
+Step 1: ENUMERATE          Step 2: CLASSIFY           Step 3: ARCHITECT
+┌─────────────────┐     ┌─────────────────────┐    ┌──────────────────┐
+│ List all input  │     │ Who controls each?  │    │ Design around    │
+│ features your   │────→│                     │───→│ defender-         │
+│ model uses      │     │ Attacker│Defender│Sys│    │ observable       │
+└─────────────────┘     └─────────────────────┘    │ features         │
+                                                    └──────────────────┘
+```
 
 ## Prerequisites
 
