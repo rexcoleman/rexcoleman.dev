@@ -1,0 +1,35 @@
+#!/usr/bin/env bash
+# R28: Pre-Commit Validation Gate
+# Runs validate_post.sh on all staged .md content files
+# 0 FAIL required to commit
+
+set -euo pipefail
+
+changed=$(git diff --cached --name-only --diff-filter=ACM | grep '\.md$' | grep -E '^content/' || true)
+
+if [ -z "$changed" ]; then
+    exit 0  # No content files changed
+fi
+
+echo "R28: Running pre-commit validation on $(echo "$changed" | wc -l) content files..."
+
+FAIL_COUNT=0
+for f in $changed; do
+    if [ -f "$f" ] && [[ "$(basename "$f")" != "_index.md" ]]; then
+        result=$(./validate_post.sh "$f" 2>&1)
+        fail_count_in_result=$(echo "$result" | grep -oP '\d+ FAIL' | grep -oP '^\d+' || echo "0")
+        if [ "$fail_count_in_result" -gt 0 ]; then
+            echo "$result"
+            FAIL_COUNT=$((FAIL_COUNT + 1))
+        fi
+    fi
+done
+
+if [ "$FAIL_COUNT" -gt 0 ]; then
+    echo ""
+    echo "R28 BLOCKED: $FAIL_COUNT file(s) failed validation. Fix before committing."
+    exit 1
+fi
+
+echo "R28: All content files passed validation."
+exit 0

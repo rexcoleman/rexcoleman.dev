@@ -49,6 +49,10 @@ validate_post() {
     # Check audience_side exists
     [ -n "$audience_side" ] && check "audience_side: present ($audience_side)" "PASS" || check "audience_side: MISSING" "FAIL"
 
+    # Check description exists
+    local desc=$(grep -m1 'description:' "$file" | sed 's/.*description: *"\?\(.*\)"\?/\1/' || true)
+    [ -n "$desc" ] && check "description: present" "PASS" || check "description: MISSING" "WARN"
+
     # Check image_count matches actual images
     local actual_images
     actual_images=$(grep -c '!\[' "$file" 2>/dev/null || true)
@@ -88,14 +92,25 @@ validate_post() {
             ;;
     esac
 
-    # Bio footer check
-    grep -q "securing AI from the architecture up" "$file" && check "Standard bio footer present" "PASS" || check "Standard bio footer MISSING or non-standard" "FAIL"
+    # Bio footer check (exact canonical phrase)
+    grep -q "at every layer of the stack" "$file" && check "Standard bio footer present (canonical)" "PASS" || check "Standard bio footer MISSING or non-canonical (must contain 'at every layer of the stack')" "FAIL"
 
     # Substack CTA
     grep -qi "substack" "$file" && check "Substack CTA present" "PASS" || check "Substack CTA MISSING" "FAIL"
 
     # Broken links check (trailing hyphen)
     grep -q 'vuln-prioritization-ml-[^a-z]' "$file" && check "Broken repo URL (trailing hyphen)" "FAIL" || check "No broken repo URLs" "PASS"
+
+    # Cross-post freshness check (R29)
+    local slug=$(basename "$file" .md)
+    local cross_dir="cross-posts"
+    if [ -d "$cross_dir" ]; then
+        for variant in "${cross_dir}/${slug}_"*.{md,txt} ; do
+            if [ -f "$variant" ] && [ "$file" -nt "$variant" ]; then
+                check "R29: cross-post $(basename $variant) may be stale (source newer)" "WARN"
+            fi
+        done
+    fi
 }
 
 # Main
