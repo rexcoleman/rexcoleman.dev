@@ -1,0 +1,19 @@
+I scanned Python's standard library for quantum-vulnerable cryptography. 39 findings. 19 critical. All Shor-vulnerable.
+
+But the real finding: 70% of the crypto in your codebase isn't yours to change.
+
+Key findings:
+
+- 21,142 crypto CVEs in the NVD (6.3% of all CVEs involve cryptographic primitives)
+- ML beats rule-based priority scoring by +14pp. Gradient Boosting wins
+- Classical exploitability (heap overflows, padding oracles) predicts migration priority better than quantum risk
+- 70% library-controlled, 20% developer-controlled, 8% protocol-controlled, 2% hardware-controlled
+- 4th domain validation of controllability analysis — same principle, different security context
+
+Fix the padding oracles before the RSA key exchange. Start with the 20% you control.
+
+Full analysis + code: https://rexcoleman.dev/posts/pqc-migration-analyzer/
+
+Repo: https://github.com/rexcoleman/pqc-migration-analyzer
+
+Link in first comment

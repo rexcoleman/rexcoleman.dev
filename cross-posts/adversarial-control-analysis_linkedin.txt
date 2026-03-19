@@ -1,0 +1,18 @@
+I applied the same security principle to 6 different domains. Every time, the finding was the same.
+
+Adversarial Control Analysis: classify every input by who controls it, then build defenses around what the attacker cannot manipulate.
+
+Results across 6 domains:
+
+- Network IDS: 57/78 features attacker-controlled. Defender-observable features achieve 100% detection on constrained attacks
+- Vulnerability prediction: ML beats CVSS by +24pp AUC. Top features are all outside attacker control (0% evasion)
+- AI agents: Attack success correlates inversely with defender observability. Reasoning chain (invisible) = 100% attack success
+- PQC migration: 70% of your crypto is in libraries you don't control. Start with the 20% you can change
+- Fraud detection: System-only features retain 81% detection even if the fraudster controls everything else
+- AI supply chain: Defenders control the deserialization pipeline, even though attackers control model files
+
+One principle. Six domains. Same result.
+
+Full analysis: https://rexcoleman.dev/posts/adversarial-control-analysis/
+
+Link in first comment

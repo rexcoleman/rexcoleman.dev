@@ -1,0 +1,19 @@
+How do you detect a backdoored ML model if the weights look normal and static analysis finds nothing?
+
+I built a behavioral fingerprinting system — the same principle as EDR vs antivirus, applied to AI models.
+
+Key findings:
+
+- 150 experiments: 6 anomaly detectors x 5 feature representations x 5 seeds
+- Local Outlier Factor on raw features achieves best detection (AUROC 0.622)
+- Raw features beat PCA/ICA — dimensionality reduction discards the subtle, distributed backdoor signal
+- Contrastive learning (SimCLR) failed completely (AUROC 0.466) — no natural augmentation structure for model fingerprints
+- The defender controls the probe inputs. The attacker must fool all 6 detectors simultaneously
+
+Modest detection rates, but the fundamental asymmetry favors defenders. This is the starting point for model supply chain security.
+
+Full analysis + code: https://rexcoleman.dev/posts/model-fingerprinting/
+
+Repo: https://github.com/rexcoleman/model-behavioral-fingerprint
+
+Link in first comment

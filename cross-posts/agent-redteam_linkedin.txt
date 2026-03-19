@@ -1,0 +1,19 @@
+I sent 19 attack scenarios at a default-configured LangChain ReAct agent. 13 succeeded.
+
+The most dangerous attack — reasoning chain hijacking — hit 100% success rate. And it partially evades every defense I built.
+
+Key findings:
+
+- 7 attack classes systematized — 5 not in OWASP LLM Top 10 or MITRE ATLAS
+- Reasoning chain hijacking exploits the agent's core capability (following structured plans) as the attack vector
+- Layered defense reduces average attack success by 60%, but reasoning hijack only drops from 100% to 67%
+- Attack success correlates inversely with defender observability — the reasoning chain is invisible to defenders
+- Claude specifically resists indirect injection via tool outputs (25% success)
+
+The reasoning loop is the feature AND the attack surface.
+
+Full analysis + code: https://rexcoleman.dev/posts/agent-redteam/
+
+Repo: https://github.com/rexcoleman/agent-redteam-framework
+
+Link in first comment

@@ -1,0 +1,17 @@
+820+ malicious skills on ClawHub. That's 20% of the entire registry.
+
+But the number isn't what makes this the biggest agent attack vector. The architecture is.
+
+Key findings:
+
+- Third-party skills execute on every heartbeat cycle — 144 times/day with a 10-minute heartbeat
+- Each execution gets access to context, memory, credentials, and the ability to modify agent behavior
+- Prompt injection is bounded exposure (seconds). Malicious skills are persistent exposure (forever)
+- Three attack categories: data exfiltration, behavior modification, lateral movement
+- Static analysis isn't enough — the hardest malicious skills are clean code that produces malicious behavior
+
+A malicious skill isn't like visiting a bad website. It's like hiring a spy who sits in every meeting, 144 times a day.
+
+Full analysis: https://rexcoleman.dev/posts/third-party-skills-attack-vector/
+
+Link in first comment

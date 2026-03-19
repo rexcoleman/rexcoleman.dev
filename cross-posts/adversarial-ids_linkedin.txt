@@ -1,0 +1,19 @@
+I built an ML-based intrusion detection system, then attacked it. The model architecture barely mattered for robustness.
+
+What mattered: which features the attacker controls.
+
+Key findings:
+
+- Attackers control 57 of 78 network features — massive evasion surface
+- Constraint-aware detection using defender-observable features achieves 100% detection on noise attacks
+- Under unconstrained attacks, evasion hit 38% (Logistic Regression) and 12% (XGBoost). Under realistic constraints: 0%
+- This is an architectural defense, not a model defense — it works regardless of model choice
+- The 57/14 controllable/observable split comes from practitioner knowledge, not any dataset description
+
+The principle is general: build ML security systems on features the adversary cannot manipulate.
+
+Full analysis + code: https://rexcoleman.dev/posts/adversarial-ids/
+
+Repo: https://github.com/rexcoleman/adversarial-ids-ml
+
+Link in first comment

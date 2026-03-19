@@ -1,0 +1,19 @@
+I trained an ML model on 338,000 CVEs. CVSS score ranked 5th in feature importance for predicting real-world exploitation.
+
+The formula everyone uses for prioritization is the fifth most important feature.
+
+Key findings:
+
+- ML achieves 0.903 AUC vs CVSS threshold at 0.662 — a +24pp improvement
+- #1 predictor: vendor CVE count (proxy for deployment ubiquity). Attackers invest where the payoff is highest
+- #2 predictor: CVE age. Weaponization takes months, not days
+- Adversarial robustness: 0% evasion. Top features (vendor history, age, EPSS) are all outside attacker control
+- EPSS (already ML-based) achieves 0.912 AUC — if you're using it, you're ahead of most teams
+
+Stop prioritizing by CVSS alone. Vendor deployment ubiquity and vulnerability age are stronger signals.
+
+Full analysis + code: https://rexcoleman.dev/posts/cvss-gets-it-wrong/
+
+Repo: https://github.com/rexcoleman/vuln-prioritization-ml-
+
+Link in first comment

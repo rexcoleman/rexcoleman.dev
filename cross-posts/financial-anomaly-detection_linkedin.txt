@@ -1,0 +1,19 @@
+I'm a CFA charterholder who built an ML fraud detector. XGBoost hit 0.987 AUC. But the most interesting finding was what the models miss.
+
+CFA-informed rule-based scoring achieves 0.898 AUC on its own.
+
+Key findings:
+
+- Domain expertise in rules captures ~91% of what ML captures. The last 9% comes from non-linear interactions
+- 8 of top 20 SHAP features are CFA-informed (amount-to-median ratio, merchant risk tiers, suspicious timing)
+- System-only features retain 81% detection even if the fraudster controls everything they can manipulate
+- XGBoost peaks at max_depth=2 and degrades with deeper trees — simplicity beats capacity
+- This is the 5th domain where controllability analysis produces actionable security insights
+
+Rules aren't dead. The optimal system uses both: rules as the fast path, ML for edge cases.
+
+Full analysis + code: https://rexcoleman.dev/posts/financial-anomaly-detection/
+
+Repo: https://github.com/rexcoleman/financial-anomaly-detection
+
+Link in first comment

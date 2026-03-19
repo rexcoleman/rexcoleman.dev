@@ -1,0 +1,19 @@
+After 14 manual audit cycles with 30+ findings each, I stopped auditing ML projects by hand and built a framework instead.
+
+govML: governance-as-code for ML research.
+
+Key findings:
+
+- 42 templates, 19 generators, 4 quickstart profiles, agent orchestrator prototype
+- Adding automated audit generators (G13-G16) dropped manual audit cycles from 14 to zero
+- The highest-leverage template was the last one built: PUBLICATION_PIPELINE — govML governed everything except publishing for months
+- PROJECT_BRIEF (thesis-first thinking) changed how projects start: one project went from mkdir to complete FINDINGS.md in a single session
+- Tested across 9 projects with 469+ tests
+
+Governance docs that aren't executable are decoration. The generators are what actually prevent errors.
+
+Full analysis + code: https://rexcoleman.dev/posts/govml-methodology/
+
+Repo: https://github.com/rexcoleman/govML
+
+Link in first comment
