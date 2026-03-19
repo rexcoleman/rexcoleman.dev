@@ -32,7 +32,7 @@ In Q1 2026 alone, Armadin raised $190M, Kai raised $125M, 7AI raised $166M, and 
 
 **4. NIST AI RMF exists. govML is the only open-source implementation I can find.**
 
-NIST published the AI Risk Management Framework. ISO published 42001. The EU AI Act created compliance requirements. When I searched for open-source tools that implement these frameworks as executable governance — templates you can drop into a project, generators that enforce compliance automatically, phase gates that catch violations before they ship — I found almost nothing. So I built [govML](https://github.com/rexcoleman/govML): 42 templates, 19 generators, 4 quickstart profiles. After 14 manual audit cycles on my own ML projects (with 30+ findings each), I learned that governance-as-prose doesn't work. Governance-as-code does. But the industry is still publishing prose.
+NIST published the AI Risk Management Framework. ISO published 42001. The EU AI Act created compliance requirements. When I searched for open-source tools that implement these frameworks as executable governance — templates you can drop into a project, generators that enforce compliance automatically, phase gates that catch violations before they ship — I found almost nothing. So I built [govML](https://github.com/rexcoleman/govML): 50+ templates, 20+ generators, 10 profiles. After 14 manual audit cycles on my own ML projects (with 30+ findings each), I learned that governance-as-prose doesn't work. Governance-as-code does. But the industry is still publishing prose.
 
 **5. 30 MCP server CVEs in 60 days. 66% of servers have security findings.**
 

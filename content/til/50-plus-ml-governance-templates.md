@@ -1,5 +1,5 @@
 ---
-title: "42 ML governance templates: what it takes to govern AI at scale"
+title: "50+ ML Governance Templates: What It Takes to Govern AI at Scale"
 date: 2026-03-19
 draft: false
 tags: ["govml", "ml-governance", "open-source", "methodology"]
@@ -7,7 +7,7 @@ format: "til"
 audience_side: "both"
 ---
 
-**govML ships 42 templates, 7 role-based profiles, and 7 code generators — all open source.** It's the governance framework I built after discovering that every ML project I ran needed the same 30+ documents, and every team was reinventing them from scratch.
+**govML ships 50+ templates, 10 profiles, and 20+ code generators — all open source.** It's the governance framework I built after discovering that every ML project I ran needed the same 30+ documents, and every team was reinventing them from scratch.
 
 ## Why this matters
 
@@ -25,7 +25,7 @@ govML was built across 10 frontier projects and refined through 14 audit cycles.
 2. **Adapt, don't adopt wholesale.** The templates are starting points. Strip what you don't need, extend what's missing for your domain.
 3. **Governance is a product feature, not overhead.** Teams that can demonstrate reproducibility and auditability win contracts, pass compliance reviews, and build trust with stakeholders faster.
 
-42 templates is a lot. Rebuilding them from scratch for every project is worse.
+50+ templates is a lot. Rebuilding them from scratch for every project is worse.
 
 ---
 

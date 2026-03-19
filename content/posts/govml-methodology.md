@@ -29,7 +29,7 @@ To make this concrete: in my first three projects, I accumulated 36 commits and 
 
 ## What I Built
 
-**govML** is an open-source governance framework for ML projects — 42 templates, 4 quickstart profiles, 19 generators, and an agent orchestrator prototype.
+**govML** is an open-source governance framework for ML projects — 50+ templates, 10 profiles, 20+ generators, and an agent orchestrator prototype.
 
 The architecture has three layers, each solving a different failure mode:
 
@@ -90,9 +90,9 @@ The key accelerators: `--fill` for bulk placeholder substitution, `PROJECT_BRIEF
 
 ## The Numbers
 
-- 42 templates across 4 directories (core, management, report, publishing)
-- 4 quickstart profiles (minimal → contract-track)
-- 19 generators (sweep orchestration, manifest verification, phase gates, leakage tests, blog drafting, and more)
+- 50+ templates across 4 directories (core, management, report, publishing)
+- 10 profiles (minimal → contract-track, plus venue-specific)
+- 20+ generators (sweep orchestration, manifest verification, phase gates, leakage tests, blog drafting, and more)
 - Continuously improved through v2.7 — issues surface and resolve each project cycle
 - Tested across 9 projects with 469+ tests (4 academic, 4 frontier research, 1 systems benchmark)
 
@@ -112,7 +112,7 @@ If you run ML experiments and want reproducibility without the overhead, this is
 
 ### Limitations
 
-govML has been validated by a single user across 9 projects. Team-scale adoption, cross-organization deployment, and integration with existing MLOps pipelines remain untested. The generator coverage (19 generators) addresses the most common audit failure patterns but doesn't yet cover all edge cases. The MCP-based enforcement requires Claude Code — teams using other AI assistants need manual template application.
+govML has been validated by a single user across 9 projects. Team-scale adoption, cross-organization deployment, and integration with existing MLOps pipelines remain untested. The generator coverage (20+ generators) addresses the most common audit failure patterns but doesn't yet cover all edge cases. The MCP-based enforcement requires Claude Code — teams using other AI assistants need manual template application.
 
 ### What's Next
 

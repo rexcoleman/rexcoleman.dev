@@ -125,7 +125,7 @@ Each contract is a markdown file with sections you fill in. Here is what the mos
 
 ## Step 4: Use the Generators
 
-govML includes 19 code generators that produce executable artifacts from your `project.yaml` config.
+govML includes 20+ code generators that produce executable artifacts from your `project.yaml` config.
 
 First, edit `project.yaml` to match your project:
 
@@ -241,13 +241,13 @@ python -m pytest tests/ -v
 
 **Phase gates check file existence, not file content.** The automated gate check verifies that `outputs/baselines/` exists, but it cannot verify that the baselines are correct. Content quality still requires human judgment. The FP-08 research (govML-as-MCP) identified this as the explicit boundary: 6 agent-safe tasks (template filling, gate checking, hygiene scanning) and 5 human-required tasks (thesis formulation, research question design, finding interpretation, tradeoff judgment, narrative voice).
 
-**42 templates is a lot.** The contract-track profile gives you maximum rigor, but for a weekend project it is overkill. Start with `minimal` (3 templates) or `supervised` (11 templates) and graduate to higher profiles as your project matures.
+**50+ templates is a lot.** The contract-track profile gives you maximum rigor, but for a weekend project it is overkill. Start with `minimal` (3 templates) or `supervised` (11 templates) and graduate to higher profiles as your project matures.
 
 govML is open source, battle-tested across 9 ML projects with 469+ tests, and available at [github.com/rexcoleman/govML](https://github.com/rexcoleman/govML).
 
 ---
 
-*Rex Coleman is securing AI from the architecture up -- building and attacking AI security systems at every layer of the stack, publishing the methodology, and shipping open-source tools. [rexcoleman.dev](https://rexcoleman.dev) | [GitHub](https://github.com/rexcoleman) | [Singularity Cybersecurity](https://singularitycyber.com)*
+*Rex Coleman is securing AI from the architecture up — building and attacking AI security systems at every layer of the stack, publishing the methodology, and shipping open-source tools. [rexcoleman.dev](https://rexcoleman.dev) · [GitHub](https://github.com/rexcoleman) · [Singularity Cybersecurity](https://singularitycyber.com)*
 
 ---
 

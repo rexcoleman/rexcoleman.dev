@@ -5,7 +5,7 @@
 
 set -euo pipefail
 
-changed=$(git diff --cached --name-only --diff-filter=ACM | grep '\.md$' | grep -E '^content/' || true)
+changed=$(git diff --cached --name-only --diff-filter=ACM | grep '\.md$' | grep -E '^content/(posts|research|til)/' || true)
 
 if [ -z "$changed" ]; then
     exit 0  # No content files changed

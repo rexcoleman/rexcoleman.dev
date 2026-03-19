@@ -59,13 +59,13 @@ The 35x drop in exploit rate between train and test sets reflects ground truth l
 
 ### 3.3 Feature Engineering
 
-We engineer 49 features across eight groups, informed by practitioner domain knowledge from incident response and threat intelligence analysis:
+We engineer 49 features across eight groups, informed by domain knowledge from cybersecurity industry experience at FireEye/Mandiant:
 
 **EPSS features (2).** EPSS score and EPSS percentile, providing the output of First.org's proprietary exploit prediction model as input features.
 
 **CVSS features (4).** CVSS v2 score, CVSS v3 score, composite CVSS score, and a binary indicator for CVSS v3 availability.
 
-**Text keywords (11).** Binary indicators for practitioner-identified exploitation-relevant terms extracted from CVE descriptions: `remote_code_execution`, `sql_injection`, `buffer_overflow`, `privilege_escalation`, `authentication_bypass`, `denial_of_service`, `xss`, `information_disclosure`, `arbitrary_code`, `allows_attackers`, and `crafted`. These features encode domain expertise from years of vulnerability triage at Mandiant --- the terms that experienced analysts use to quickly assess weaponization potential.
+**Text keywords (11).** Binary indicators for practitioner-identified exploitation-relevant terms extracted from CVE descriptions: `remote_code_execution`, `sql_injection`, `buffer_overflow`, `privilege_escalation`, `authentication_bypass`, `denial_of_service`, `xss`, `information_disclosure`, `arbitrary_code`, `allows_attackers`, and `crafted`. These features encode domain expertise from years in cybersecurity at Mandiant — terms that experienced analysts identify as weaponization indicators --- the terms that experienced analysts use to quickly assess weaponization potential.
 
 **CWE features (22).** One-hot encoding of the top 20 CWE weakness types, plus binary indicators for CWE presence and CWE count.
 
