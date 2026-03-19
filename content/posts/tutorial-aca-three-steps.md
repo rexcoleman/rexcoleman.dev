@@ -5,7 +5,7 @@ draft: false
 tags: ["tutorial", "adversarial-ml", "security-architecture", "methodology", "aca"]
 format: "tutorial"
 audience_side: "both"
-image_count: 0
+image_count: 0  # R26: images pending — text-based tutorial, diagrams planned
 description: "Classify every input to your ML system by who controls it, then architect your defenses around the features adversaries cannot touch."
 ---
 

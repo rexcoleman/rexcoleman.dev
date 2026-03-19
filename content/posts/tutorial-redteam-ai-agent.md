@@ -5,7 +5,7 @@ draft: false
 tags: ["tutorial", "ai-agents", "red-team", "langchain", "security", "prompt-injection"]
 format: "tutorial"
 audience_side: "of-ai"
-image_count: 0
+image_count: 0  # R26: images pending — text-based tutorial, diagrams planned
 description: "Set up a LangChain agent, run 7 attack classes against it, interpret the results, and apply a 5-layer defense stack -- all for about $2 in API costs."
 ---
 

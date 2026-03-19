@@ -86,6 +86,14 @@ XGBoost peaks at max_depth=2 (AUC 0.990) and degrades with deeper trees. LightGB
 
 The code is open source: [financial-anomaly-detection on GitHub](https://github.com/rexcoleman/financial-anomaly-detection). Built with [govML](https://github.com/rexcoleman/govML) v2.5.
 
+### Limitations
+
+This analysis uses synthetic transaction data (PaySim), which simulates but doesn't perfectly replicate real-world fraud patterns. The CFA-informed rules were designed by a single analyst — different domain experts might identify different features. All models were evaluated on a single temporal split without rolling-window validation. The controllability analysis classifies features qualitatively — a more rigorous approach would quantify controller influence.
+
+### What's Next
+
+I'm extending the adversarial controllability analysis to more domains — see [One Principle, Six Domains](/posts/adversarial-control-analysis/) for the cross-domain methodology. The feature engineering approach here (domain expertise → feature design → ML validation) is a template I'm applying to every new security domain. The financial fraud application validates that ACA works outside network security.
+
 ---
 
 *Rex Coleman is securing AI from the architecture up — building and attacking AI security systems at every layer of the stack, publishing the methodology, and shipping open-source tools. [rexcoleman.dev](https://rexcoleman.dev) · [GitHub](https://github.com/rexcoleman) · [Singularity Cybersecurity](https://singularitycyber.com)*

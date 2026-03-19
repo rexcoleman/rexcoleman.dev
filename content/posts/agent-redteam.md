@@ -4,6 +4,8 @@ date: 2026-03-16
 description: "19 attack scenarios against LangChain and CrewAI agents. 100% success with reasoning chain hijacking. 7 attack classes systematized — 5 not in OWASP or MITRE ATLAS."
 tags: ["ai-security", "agent-security", "red-team", "llm-security", "adversarial-ml"]
 format: "technical-blog"
+audience_side: "of-ai"
+image_count: 1
 author: "Rex Coleman"
 ShowToc: true
 TocOpen: false

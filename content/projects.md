@@ -43,7 +43,7 @@ Adversarial evaluation of ML-based IDS with adversarial control analysis. 57 att
 
 Predicting real-world CVE exploitability. Trained on 338K CVEs. Outperforms CVSS by +24pp AUC. SHAP explainability reveals vendor history and CVE age matter more than severity score.
 
-[GitHub](https://github.com/rexcoleman/vuln-prioritization-ml-) · [Write-up](/posts/cvss-gets-it-wrong/)
+[GitHub](https://github.com/rexcoleman/vuln-prioritization-ml) · [Write-up](/posts/cvss-gets-it-wrong/)
 
 ---
 

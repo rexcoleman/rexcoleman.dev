@@ -278,4 +278,8 @@ The framework is available at [github.com/rexcoleman/agent-redteam-framework](ht
 
 ---
 
-*Rex Coleman is an MS Computer Science candidate (Machine Learning) at Georgia Tech, building at the intersection of AI security and ML systems engineering. Previously 15 years in cybersecurity (FireEye/Mandiant). Creator of [govML](https://github.com/rexcoleman/govML) (open-source ML governance framework) and founder of [Singularity Cybersecurity](https://singularitycyber.com). Contact: [rexcoleman.dev](https://rexcoleman.dev)*
+*Rex Coleman is securing AI from the architecture up — building and attacking AI security systems at every layer of the stack, publishing the methodology, and shipping open-source tools. [rexcoleman.dev](https://rexcoleman.dev) · [GitHub](https://github.com/rexcoleman) · [Singularity Cybersecurity](https://singularitycyber.com)*
+
+---
+
+*If this was useful, [subscribe on Substack](https://substack.com/@rexcoleman) for weekly AI security research — findings, tools, and curated signal.*

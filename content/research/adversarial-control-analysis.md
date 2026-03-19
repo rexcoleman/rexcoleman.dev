@@ -5,7 +5,7 @@ draft: false
 tags: ["methodology", "adversarial-ml", "security-architecture", "ai-security", "research-report"]
 format: "research-report"
 audience_side: "both"
-image_count: 2
+image_count: 0
 description: "One principle — classify inputs by who controls them — predicts adversarial robustness across IDS, vulnerability management, agent security, PQC, fraud detection, and supply chain security."
 author: "Rex Coleman"
 ShowToc: true

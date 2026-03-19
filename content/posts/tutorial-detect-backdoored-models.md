@@ -5,7 +5,7 @@ draft: false
 tags: ["tutorial", "model-security", "backdoor-detection", "unsupervised-learning", "anomaly-detection", "supply-chain"]
 format: "tutorial"
 audience_side: "of-ai"
-image_count: 0
+image_count: 0  # R26: images pending — text-based tutorial, diagrams planned
 description: "Extract behavioral fingerprints from ML model activations and use Local Outlier Factor to detect backdoored models with zero labeled training data."
 ---
 

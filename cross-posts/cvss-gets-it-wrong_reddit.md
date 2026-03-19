@@ -16,4 +16,4 @@ Limitation: ExploitDB labels for 2024+ CVEs are incomplete (0.3% test exploit ra
 
 Full write-up with code: https://rexcoleman.dev/posts/cvss-gets-it-wrong/
 
-Repo: https://github.com/rexcoleman/vuln-prioritization-ml-
+Repo: https://github.com/rexcoleman/vuln-prioritization-ml

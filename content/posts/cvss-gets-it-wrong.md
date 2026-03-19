@@ -103,7 +103,7 @@ Three attacks on the description text (synonym substitution, field injection, no
 
 Full pipeline (ingest → features → models → SHAP → adversarial eval) is open source:
 
-[github.com/rexcoleman/vuln-prioritization-ml-](https://github.com/rexcoleman/vuln-prioritization-ml-)
+[github.com/rexcoleman/vuln-prioritization-ml](https://github.com/rexcoleman/vuln-prioritization-ml)
 
 Built with [govML](https://github.com/rexcoleman/govML) governance — 11 architectural decisions logged, every experiment reproducible.
 

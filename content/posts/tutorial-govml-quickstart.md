@@ -5,7 +5,7 @@ draft: false
 tags: ["tutorial", "govml", "reproducibility", "ml-governance", "open-source"]
 format: "tutorial"
 audience_side: "both"
-image_count: 0
+image_count: 0  # R26: images pending — text-based tutorial, diagrams planned
 description: "Install govML, scaffold a governed ML project with one command, and learn how contract-driven development prevents the 'I forgot which hyperparameters I used' problem."
 ---
 

@@ -14,6 +14,6 @@ Stop prioritizing by CVSS alone. Vendor deployment ubiquity and vulnerability ag
 
 Full analysis + code: https://rexcoleman.dev/posts/cvss-gets-it-wrong/
 
-Repo: https://github.com/rexcoleman/vuln-prioritization-ml-
+Repo: https://github.com/rexcoleman/vuln-prioritization-ml
 
 Link in first comment
