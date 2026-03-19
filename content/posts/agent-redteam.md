@@ -1,4 +1,7 @@
 ---
+
+> **Note (2026-03-19):** This was an early exploration in my AI security research. The methodology has known limitations documented in the [quality assessment](https://github.com/rexcoleman/Moonshots_Career_Thesis). For the current state of this work, see [Multi-Agent Security](https://github.com/rexcoleman/multi-agent-security) and [Verified Delegation Protocol](https://github.com/rexcoleman/verified-delegation-protocol).
+
 title: "I Red-Teamed AI Agents: Here's How They Break (and How to Fix Them)"
 date: 2026-03-16
 description: "19 attack scenarios against LangChain and CrewAI agents. 100% success with reasoning chain hijacking. 7 attack classes systematized — 5 not in OWASP or MITRE ATLAS."
@@ -15,7 +18,11 @@ cover:
   hidden: true
 images:
   - /images/og-agent-redteam.png
+archived: true
 ---
+
+> **Note (2026-03-19):** This was an early exploration in my AI security research. The methodology has known limitations documented in the [quality assessment](https://github.com/rexcoleman/Moonshots_Career_Thesis). For the current state of this work, see [Multi-Agent Security](https://github.com/rexcoleman/multi-agent-security) and [Verified Delegation Protocol](https://github.com/rexcoleman/verified-delegation-protocol).
+
 
 I sent 19 attack scenarios at a default-configured LangChain ReAct agent powered by Claude Sonnet. 13 succeeded. I then validated prompt injection on CrewAI — same rate (80%). The most dangerous attack class — reasoning chain hijacking — achieved a 100% success rate against these default-configured agents across 3 seeds and partially evades every defense I built. These results are specific to Claude backend with default agent configurations; production-hardened agents would likely show different success rates. Here's what I found, what I built to find it, and what it means for anyone shipping autonomous agents.
 
@@ -128,8 +135,14 @@ This evaluation targeted a single default-configured LangChain ReAct agent using
 
 ---
 
+> **Note (2026-03-19):** This was an early exploration in my AI security research. The methodology has known limitations documented in the [quality assessment](https://github.com/rexcoleman/Moonshots_Career_Thesis). For the current state of this work, see [Multi-Agent Security](https://github.com/rexcoleman/multi-agent-security) and [Verified Delegation Protocol](https://github.com/rexcoleman/verified-delegation-protocol).
+
+
 *Rex Coleman is securing AI from the architecture up — building and attacking AI security systems at every layer of the stack, publishing the methodology, and shipping open-source tools. [rexcoleman.dev](https://rexcoleman.dev) · [GitHub](https://github.com/rexcoleman) · [Singularity Cybersecurity](https://singularitycyber.com)*
 
 ---
+
+> **Note (2026-03-19):** This was an early exploration in my AI security research. The methodology has known limitations documented in the [quality assessment](https://github.com/rexcoleman/Moonshots_Career_Thesis). For the current state of this work, see [Multi-Agent Security](https://github.com/rexcoleman/multi-agent-security) and [Verified Delegation Protocol](https://github.com/rexcoleman/verified-delegation-protocol).
+
 
 *If this was useful, [subscribe on Substack](https://substack.com/@rexcoleman) for weekly AI security research — findings, tools, and curated signal.*

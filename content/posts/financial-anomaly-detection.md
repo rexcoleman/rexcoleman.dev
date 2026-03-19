@@ -1,4 +1,7 @@
 ---
+
+> **Note (2026-03-19):** This was an early exploration in my AI security research. The methodology has known limitations documented in the [quality assessment](https://github.com/rexcoleman/Moonshots_Career_Thesis). For the current state of this work, see [Multi-Agent Security](https://github.com/rexcoleman/multi-agent-security) and [Verified Delegation Protocol](https://github.com/rexcoleman/verified-delegation-protocol).
+
 title: "A CFA Charterholder Built an ML Fraud Detector: Here's What the Models Miss"
 date: 2026-03-19
 description: "CFA-informed rule-based scoring achieves 0.898 AUC on its own, and 8 of the top 20 predictive features come from domain expertise, not raw data."
@@ -15,7 +18,11 @@ cover:
   hidden: true
 images:
   - /images/og-default.png
+archived: true
 ---
+
+> **Note (2026-03-19):** This was an early exploration in my AI security research. The methodology has known limitations documented in the [quality assessment](https://github.com/rexcoleman/Moonshots_Career_Thesis). For the current state of this work, see [Multi-Agent Security](https://github.com/rexcoleman/multi-agent-security) and [Verified Delegation Protocol](https://github.com/rexcoleman/verified-delegation-protocol).
+
 
 I'm a CFA charterholder who builds ML systems. I trained XGBoost on 100K financial transactions to detect fraud — AUC 0.987. But the most interesting finding wasn't the model performance. It was that CFA-informed rule-based scoring achieves 0.898 AUC on its own, and 8 of the top 20 predictive features come from domain expertise, not raw data.
 
@@ -95,6 +102,9 @@ This analysis uses synthetic transaction data (PaySim), which simulates but does
 I'm extending the adversarial controllability analysis to more domains — see [One Principle, Six Domains](/posts/adversarial-control-analysis/) for the cross-domain methodology. The feature engineering approach here (domain expertise → feature design → ML validation) is a template I'm applying to every new security domain. The financial fraud application validates that ACA works outside network security.
 
 ---
+
+> **Note (2026-03-19):** This was an early exploration in my AI security research. The methodology has known limitations documented in the [quality assessment](https://github.com/rexcoleman/Moonshots_Career_Thesis). For the current state of this work, see [Multi-Agent Security](https://github.com/rexcoleman/multi-agent-security) and [Verified Delegation Protocol](https://github.com/rexcoleman/verified-delegation-protocol).
+
 
 *Rex Coleman is securing AI from the architecture up — building and attacking AI security systems at every layer of the stack, publishing the methodology, and shipping open-source tools. [rexcoleman.dev](https://rexcoleman.dev) · [GitHub](https://github.com/rexcoleman) · [Singularity Cybersecurity](https://singularitycyber.com)*
 
