@@ -3,6 +3,7 @@ title: "I Built a PQC Migration Scanner: Here's What Your Codebase Is Hiding"
 date: 2026-03-19
 description: "70% of the crypto in your codebase isn't yours to change — and classical exploit risk matters more than quantum vulnerability for deciding what to fix first."
 tags: ["post-quantum-cryptography", "pqc", "security-tools", "machine-learning", "cryptography"]
+categories: ["AI Security", "Research"]
 format: "technical-blog"
 audience_side: "from-ai"
 image_count: 4
@@ -16,6 +17,7 @@ cover:
 images:
   - /images/og-default.png
 archived: true
+hiddenInHomeList: true
 ---
 
 > **Note (2026-03-19):** This was an early exploration in my AI security research. The methodology has known limitations documented in the [quality assessment](https://github.com/rexcoleman/Moonshots_Career_Thesis). For the current state of this work, see [Multi-Agent Security](https://github.com/rexcoleman/multi-agent-security) and [Verified Delegation Protocol](https://github.com/rexcoleman/verified-delegation-protocol).
@@ -124,9 +126,6 @@ The scanner is open source: [pqc-migration-analyzer on GitHub](https://github.co
 This analysis used rule-based scoring on a single Python stdlib scan. The PQC primitives database is incomplete — new algorithms emerge regularly. The scoring model weights are hand-tuned, not ML-optimized. Real-world migration complexity includes hardware, protocol, and organizational factors not captured here.
 
 ---
-
-> **Note (2026-03-19):** This was an early exploration in my AI security research. The methodology has known limitations documented in the [quality assessment](https://github.com/rexcoleman/Moonshots_Career_Thesis). For the current state of this work, see [Multi-Agent Security](https://github.com/rexcoleman/multi-agent-security) and [Verified Delegation Protocol](https://github.com/rexcoleman/verified-delegation-protocol).
-
 
 *Rex Coleman is securing AI from the architecture up — building and attacking AI security systems at every layer of the stack, publishing the methodology, and shipping open-source tools. [rexcoleman.dev](https://rexcoleman.dev) · [GitHub](https://github.com/rexcoleman) · [Singularity Cybersecurity](https://singularitycyber.com)*
 

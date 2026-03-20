@@ -3,6 +3,7 @@ title: "Antivirus for AI Models: Behavioral Fingerprinting Detects What Static A
 date: 2026-03-16
 description: "How do you know a model downloaded from Hugging Face hasn't been backdoored? I built a behavioral fingerprinting system that uses unsupervised anomaly detection to answer that question."
 tags: ["ai-security", "model-supply-chain", "anomaly-detection", "unsupervised-learning", "machine-learning"]
+categories: ["AI Security", "Research"]
 format: "technical-blog"
 audience_side: "of-ai"
 image_count: 1

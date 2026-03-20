@@ -3,9 +3,9 @@ title: ""
 date: {{ .Date }}
 draft: true
 tags: []
-format: ""  # technical-blog | tutorial | perspective | til | research-report
+format: ""  # technical-blog | tutorial | perspective | til
 audience_side: ""  # of-ai | from-ai | both
-image_count: 0  # R26: technical-blog ≥1, tutorial ≥1, research-report ≥3
+image_count: 0  # R26: technical-blog ≥1, tutorial ≥1
 description: ""
 cover:
     image: ""
@@ -35,12 +35,11 @@ cover:
   tutorial: Problem → Prerequisites → Steps (numbered) → Verification
   perspective: Thesis → Evidence (3-5 data points) → Implication
   til: What I found → Why it matters → Link
-  research-report: Abstract → Hypothesis → Methodology → Data → Results → Analysis
 -->
 
 
 
-<!-- LIMITATIONS (required for technical-blog, tutorial, research-report) -->
+<!-- LIMITATIONS (required for technical-blog, tutorial) -->
 
 ### Limitations
 

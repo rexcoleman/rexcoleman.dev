@@ -3,6 +3,7 @@ title: "Build Your Own ML Vuln Prioritizer"
 date: 2026-03-19
 draft: false
 tags: ["tutorial", "vulnerability-management", "machine-learning", "epss", "shap", "security"]
+categories: ["AI Security", "Tutorials"]
 format: "tutorial"
 audience_side: "from-ai"
 image_count: 0  # R26: text diagram present (ASCII architecture diagram)

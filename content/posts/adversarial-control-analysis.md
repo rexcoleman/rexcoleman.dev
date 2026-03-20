@@ -3,8 +3,11 @@ title: "One Principle, Six Domains: Adversarial Control Analysis for AI Security
 date: 2026-03-16
 description: "The same security principle — classify inputs by who controls them — works across network IDS, vulnerability management, AI agents, post-quantum crypto, fraud detection, and AI supply chains."
 tags: ["ai-security", "methodology", "adversarial-ml", "security-architecture"]
+categories: ["AI Security", "Research"]
 format: "perspective"
 audience_side: "both"
+aliases:
+  - /research/adversarial-control-analysis/
 author: "Rex Coleman"
 ShowToc: true
 TocOpen: false
@@ -15,6 +18,7 @@ cover:
 images:
   - /images/og-adversarial-control-analysis.png
 archived: true
+hiddenInHomeList: true
 ---
 
 > **Note (2026-03-19):** This was an early exploration in my AI security research. The methodology has known limitations documented in the [quality assessment](https://github.com/rexcoleman/Moonshots_Career_Thesis). For the current state of this work, see [Multi-Agent Security](https://github.com/rexcoleman/multi-agent-security) and [Verified Delegation Protocol](https://github.com/rexcoleman/verified-delegation-protocol).
@@ -84,14 +88,8 @@ Same principle. Four paradigms. Every level of the AI stack.
 
 ---
 
-> **Note (2026-03-19):** This was an early exploration in my AI security research. The methodology has known limitations documented in the [quality assessment](https://github.com/rexcoleman/Moonshots_Career_Thesis). For the current state of this work, see [Multi-Agent Security](https://github.com/rexcoleman/multi-agent-security) and [Verified Delegation Protocol](https://github.com/rexcoleman/verified-delegation-protocol).
-
-
 *Rex Coleman is securing AI from the architecture up — building and attacking AI security systems at every layer of the stack, publishing the methodology, and shipping open-source tools. [rexcoleman.dev](https://rexcoleman.dev) · [GitHub](https://github.com/rexcoleman) · [Singularity Cybersecurity](https://singularitycyber.com)*
 
 ---
-
-> **Note (2026-03-19):** This was an early exploration in my AI security research. The methodology has known limitations documented in the [quality assessment](https://github.com/rexcoleman/Moonshots_Career_Thesis). For the current state of this work, see [Multi-Agent Security](https://github.com/rexcoleman/multi-agent-security) and [Verified Delegation Protocol](https://github.com/rexcoleman/verified-delegation-protocol).
-
 
 *If this was useful, [subscribe on Substack](https://substack.com/@rexcoleman) for weekly AI security research — findings, tools, and curated signal.*

@@ -3,6 +3,7 @@ title: "How to Detect Backdoored ML Models Without Labeled Examples"
 date: 2026-03-19
 draft: false
 tags: ["tutorial", "model-security", "backdoor-detection", "unsupervised-learning", "anomaly-detection", "supply-chain"]
+categories: ["AI Security", "Tutorials"]
 format: "tutorial"
 audience_side: "of-ai"
 image_count: 0  # R26: text diagram present (ASCII architecture diagram)

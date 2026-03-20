@@ -16,6 +16,8 @@ params:
   ShowToc: true
   comments: false
 
+  mainSections: ["posts"]
+
   profileMode:
     enabled: true
     title: "Rex Coleman"
@@ -25,8 +27,8 @@ params:
     imageWidth: 160
     imageHeight: 160
     buttons:
-      - name: Research
-        url: /research/
+      - name: Blog
+        url: /posts/
       - name: Projects
         url: /projects/
       - name: About
@@ -56,21 +58,15 @@ params:
 
 menu:
   main:
-    - name: Research
-      url: /research/
+    - name: Blog
+      url: /posts/
       weight: 5
-    - name: TIL
-      url: /til/
-      weight: 8
     - name: Projects
       url: /projects/
       weight: 10
     - name: About
       url: /about/
       weight: 20
-    - name: Now
-      url: /now/
-      weight: 30
 
 outputs:
   home:
@@ -87,6 +83,10 @@ markup:
   goldmark:
     renderer:
       unsafe: true
+
+taxonomies:
+  category: categories
+  tag: tags
 
 sitemap:
   changefreq: weekly

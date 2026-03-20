@@ -3,11 +3,13 @@ title: "How to Red-Team Your AI Agent in 1 Hour"
 date: 2026-03-19
 draft: false
 tags: ["tutorial", "ai-agents", "red-team", "langchain", "security", "prompt-injection"]
+categories: ["AI Security", "Tutorials"]
 format: "tutorial"
 audience_side: "of-ai"
 image_count: 0  # R26: text diagram present (ASCII architecture diagram)
 description: "Set up a LangChain agent, run 7 attack classes against it, interpret the results, and apply a 5-layer defense stack -- all for about $2 in API costs."
 archived: true
+hiddenInHomeList: true
 ---
 
 > **Note (2026-03-19):** This was an early exploration in my AI security research. The methodology has known limitations documented in the [quality assessment](https://github.com/rexcoleman/Moonshots_Career_Thesis). For the current state of this work, see [Multi-Agent Security](https://github.com/rexcoleman/multi-agent-security) and [Verified Delegation Protocol](https://github.com/rexcoleman/verified-delegation-protocol).
@@ -354,14 +356,8 @@ The full framework, including the 7-class attack taxonomy, multi-seed results, a
 
 ---
 
-> **Note (2026-03-19):** This was an early exploration in my AI security research. The methodology has known limitations documented in the [quality assessment](https://github.com/rexcoleman/Moonshots_Career_Thesis). For the current state of this work, see [Multi-Agent Security](https://github.com/rexcoleman/multi-agent-security) and [Verified Delegation Protocol](https://github.com/rexcoleman/verified-delegation-protocol).
-
-
 *Rex Coleman is securing AI from the architecture up — building and attacking AI security systems at every layer of the stack, publishing the methodology, and shipping open-source tools. [rexcoleman.dev](https://rexcoleman.dev) · [GitHub](https://github.com/rexcoleman) · [Singularity Cybersecurity](https://singularitycyber.com)*
 
 ---
-
-> **Note (2026-03-19):** This was an early exploration in my AI security research. The methodology has known limitations documented in the [quality assessment](https://github.com/rexcoleman/Moonshots_Career_Thesis). For the current state of this work, see [Multi-Agent Security](https://github.com/rexcoleman/multi-agent-security) and [Verified Delegation Protocol](https://github.com/rexcoleman/verified-delegation-protocol).
-
 
 *If this was useful, [subscribe on Substack](https://substack.com/@rexcoleman) for weekly AI security research -- findings, tools, and curated signal.*

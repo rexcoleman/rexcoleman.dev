@@ -3,9 +3,12 @@ title: "I Red-Teamed AI Agents: Here's How They Break (and How to Fix Them)"
 date: 2026-03-16
 description: "19 attack scenarios against LangChain and CrewAI agents. 100% success with reasoning chain hijacking. 7 attack classes systematized — 5 not in OWASP or MITRE ATLAS."
 tags: ["ai-security", "agent-security", "red-team", "llm-security", "adversarial-ml"]
+categories: ["AI Security", "Research"]
 format: "technical-blog"
 audience_side: "of-ai"
 image_count: 1
+aliases:
+  - /research/agent-redteam-framework/
 author: "Rex Coleman"
 ShowToc: true
 TocOpen: false
@@ -16,6 +19,7 @@ cover:
 images:
   - /images/og-agent-redteam.png
 archived: true
+hiddenInHomeList: true
 ---
 
 > **Note (2026-03-19):** This was an early exploration in my AI security research. The methodology has known limitations documented in the [quality assessment](https://github.com/rexcoleman/Moonshots_Career_Thesis). For the current state of this work, see [Multi-Agent Security](https://github.com/rexcoleman/multi-agent-security) and [Verified Delegation Protocol](https://github.com/rexcoleman/verified-delegation-protocol).
@@ -132,14 +136,8 @@ This evaluation targeted a single default-configured LangChain ReAct agent using
 
 ---
 
-> **Note (2026-03-19):** This was an early exploration in my AI security research. The methodology has known limitations documented in the [quality assessment](https://github.com/rexcoleman/Moonshots_Career_Thesis). For the current state of this work, see [Multi-Agent Security](https://github.com/rexcoleman/multi-agent-security) and [Verified Delegation Protocol](https://github.com/rexcoleman/verified-delegation-protocol).
-
-
 *Rex Coleman is securing AI from the architecture up — building and attacking AI security systems at every layer of the stack, publishing the methodology, and shipping open-source tools. [rexcoleman.dev](https://rexcoleman.dev) · [GitHub](https://github.com/rexcoleman) · [Singularity Cybersecurity](https://singularitycyber.com)*
 
 ---
-
-> **Note (2026-03-19):** This was an early exploration in my AI security research. The methodology has known limitations documented in the [quality assessment](https://github.com/rexcoleman/Moonshots_Career_Thesis). For the current state of this work, see [Multi-Agent Security](https://github.com/rexcoleman/multi-agent-security) and [Verified Delegation Protocol](https://github.com/rexcoleman/verified-delegation-protocol).
-
 
 *If this was useful, [subscribe on Substack](https://substack.com/@rexcoleman) for weekly AI security research — findings, tools, and curated signal.*

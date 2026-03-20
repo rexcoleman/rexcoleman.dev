@@ -3,6 +3,7 @@ title: "Adversarial ML on Network Intrusion Detection: What Adversarial Control 
 date: 2026-03-14
 description: "I built and red-teamed an ML-based intrusion detection system. The key finding: which features an attacker controls matters more than which model you choose."
 tags: ["ai-security", "adversarial-ml", "machine-learning", "feature-controllability"]
+categories: ["AI Security", "Research"]
 format: "technical-blog"
 audience_side: "from-ai"
 author: "Rex Coleman"
@@ -16,6 +17,7 @@ cover:
 images:
   - /images/og-adversarial-ids.png
 archived: true
+hiddenInHomeList: true
 ---
 
 > **Note (2026-03-19):** This was an early exploration in my AI security research. The methodology has known limitations documented in the [quality assessment](https://github.com/rexcoleman/Moonshots_Career_Thesis). For the current state of this work, see [Multi-Agent Security](https://github.com/rexcoleman/multi-agent-security) and [Verified Delegation Protocol](https://github.com/rexcoleman/verified-delegation-protocol).
@@ -116,14 +118,8 @@ I applied this same adversarial thinking to AI agents — the results were worse
 
 ---
 
-> **Note (2026-03-19):** This was an early exploration in my AI security research. The methodology has known limitations documented in the [quality assessment](https://github.com/rexcoleman/Moonshots_Career_Thesis). For the current state of this work, see [Multi-Agent Security](https://github.com/rexcoleman/multi-agent-security) and [Verified Delegation Protocol](https://github.com/rexcoleman/verified-delegation-protocol).
-
-
 *Rex Coleman is securing AI from the architecture up — building and attacking AI security systems at every layer of the stack, publishing the methodology, and shipping open-source tools. [rexcoleman.dev](https://rexcoleman.dev) · [GitHub](https://github.com/rexcoleman) · [Singularity Cybersecurity](https://singularitycyber.com)*
 
 ---
-
-> **Note (2026-03-19):** This was an early exploration in my AI security research. The methodology has known limitations documented in the [quality assessment](https://github.com/rexcoleman/Moonshots_Career_Thesis). For the current state of this work, see [Multi-Agent Security](https://github.com/rexcoleman/multi-agent-security) and [Verified Delegation Protocol](https://github.com/rexcoleman/verified-delegation-protocol).
-
 
 *If this was useful, [subscribe on Substack](https://substack.com/@rexcoleman) for weekly AI security research — findings, tools, and curated signal.*

@@ -3,6 +3,7 @@ title: "AI Security Has a Shipping Problem"
 date: 2026-03-19
 draft: false
 tags: ["ai-security", "industry-analysis", "singularity-cybersecurity", "agent-security"]
+categories: ["AI Security", "Builder Journal"]
 format: "perspective"
 audience_side: "both"
 image_count: 0

@@ -3,6 +3,7 @@ title: "govML Quickstart: Governed ML in 15 Minutes"
 date: 2026-03-19
 draft: false
 tags: ["tutorial", "govml", "reproducibility", "ml-governance", "open-source"]
+categories: ["ML Governance", "Tutorials"]
 format: "tutorial"
 audience_side: "both"
 image_count: 0  # R26: text diagram present (ASCII architecture diagram)

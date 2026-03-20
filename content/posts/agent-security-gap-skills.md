@@ -3,10 +3,13 @@ title: "The Agent Security Gap Nobody's Talking About: Skills Run Every Heartbea
 date: 2026-03-19
 draft: false
 tags: ["agent-security", "supply-chain", "openclaw", "singularity-cybersecurity", "skills-security"]
+categories: ["AI Security", "Builder Journal"]
 format: "perspective"
 audience_side: "of-ai"
 image_count: 0
 description: "Everyone's worried about prompt injection, but the real agent attack surface is third-party skills — they execute persistently on every heartbeat cycle."
+aliases:
+  - /research/state-of-agent-security-q1-2026/
 author: "Rex Coleman"
 ShowToc: true
 TocOpen: true

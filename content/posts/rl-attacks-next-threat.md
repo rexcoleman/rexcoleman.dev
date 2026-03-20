@@ -3,6 +3,7 @@ title: "Prompt Injection Is Yesterday's Threat. RL Attacks Are Next."
 date: 2026-03-19
 draft: false
 tags: ["ai-security", "reinforcement-learning", "agent-security", "rl-attacks", "adversarial-ml"]
+categories: ["AI Security"]
 format: "perspective"
 audience_side: "of-ai"
 image_count: 0

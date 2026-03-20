@@ -73,9 +73,6 @@ validate_post() {
         technical-blog|tutorial)
             [ "$visual_count" -ge 1 ] && check "R26: >=1 visual for $format ($actual_images images + $has_text_diagram text diagrams)" "PASS" || check "R26: $format requires >=1 visual, has $visual_count" "FAIL"
             ;;
-        research-report)
-            [ "$actual_images" -ge 3 ] && check "R26: >=3 images for research-report" "PASS" || check "R26: research-report requires >=3 images, has $actual_images" "WARN"
-            ;;
     esac
 
     # R25: Required sections per format
@@ -115,7 +112,7 @@ validate_post() {
 
 # Main
 if [ "${1:-}" = "--all" ]; then
-    for f in content/posts/*.md content/research/*.md content/til/*.md; do
+    for f in content/posts/*.md; do
         [ -f "$f" ] && [[ "$(basename "$f")" != "_index.md" ]] && validate_post "$f"
     done
 else
