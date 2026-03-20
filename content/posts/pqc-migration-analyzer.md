@@ -29,7 +29,7 @@ I scanned Python's standard library for quantum-vulnerable cryptography. Found 3
 
 [pqc-migration-analyzer](https://github.com/rexcoleman/pqc-migration-analyzer) scans Python codebases for quantum-vulnerable cryptographic primitives, scores migration urgency using ML, and recommends NIST PQC replacements. It covers 19 crypto primitives across 5 categories (key exchange, signatures, hashes, ciphers, PQC standards) and maps every finding to NIST FIPS 203/204/205 replacements.
 
-Built with [govML](https://github.com/rexcoleman/govML) v2.5 (blog-track profile — 10 governance docs). Total cost: $0.
+Built with [govML](/posts/govml-methodology/) v2.5 (blog-track profile — 10 governance docs). Total cost: $0.
 
 ## Why This Matters Now
 
@@ -119,7 +119,7 @@ Scan Summary
 2. Multi-language support (Java, Go)
 3. GitHub Action for CI/CD integration
 
-The scanner is open source: [pqc-migration-analyzer on GitHub](https://github.com/rexcoleman/pqc-migration-analyzer). Built with [govML](https://github.com/rexcoleman/govML) v2.5 governance.
+The scanner is open source: [pqc-migration-analyzer on GitHub](https://github.com/rexcoleman/pqc-migration-analyzer). Built with [govML](/posts/govml-methodology/) v2.5 governance.
 
 ### Limitations
 

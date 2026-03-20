@@ -2,13 +2,17 @@
 title: "govML Quickstart: Governed ML in 15 Minutes"
 date: 2026-03-19
 draft: false
-tags: ["tutorial", "govml", "reproducibility", "ml-governance", "open-source"]
+tags: ["tutorial", "govml", "reproducibility", "ml-governance"]
+archived: true
+hiddenInHomeList: true
 categories: ["ML Governance", "Tutorials"]
 format: "tutorial"
 audience_side: "both"
 image_count: 0  # R26: text diagram present (ASCII architecture diagram)
 description: "Install govML, scaffold a governed ML project with one command, and learn how contract-driven development prevents the 'I forgot which hyperparameters I used' problem."
 ---
+
+> **Note (2026-03-20):** govML is now maintained as internal tooling. This tutorial references a public repository that is no longer available. For the current description of govML's methodology, see [How I Govern AI-Assisted ML Projects](/posts/govml-methodology/).
 
 ## Problem Statement
 
@@ -36,7 +40,7 @@ init_project.sh
 ## Step 1: Install govML
 
 ```bash
-git clone https://github.com/rexcoleman/govML.git
+git clone /posts/govml-methodology/.git
 cd govML
 ```
 
@@ -244,7 +248,7 @@ python -m pytest tests/ -v
 
 **50+ templates is a lot.** The contract-track profile gives you maximum rigor, but for a weekend project it is overkill. Start with `minimal` (3 templates) or `supervised` (11 templates) and graduate to higher profiles as your project matures.
 
-govML is open source, battle-tested across 9 ML projects with 469+ tests, and available at [github.com/rexcoleman/govML](https://github.com/rexcoleman/govML).
+govML is used across 9 research projects with 469+ tests.
 
 ---
 

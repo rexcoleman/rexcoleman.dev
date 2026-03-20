@@ -110,7 +110,7 @@ Full pipeline (ingest → features → models → SHAP → adversarial eval) is 
 
 [github.com/rexcoleman/vuln-prioritization-ml](https://github.com/rexcoleman/vuln-prioritization-ml)
 
-Built with [govML](https://github.com/rexcoleman/govML) governance — 11 architectural decisions logged, every experiment reproducible.
+Built with [govML](/posts/govml-methodology/) governance — 11 architectural decisions logged, every experiment reproducible.
 
 ### What's Next
 

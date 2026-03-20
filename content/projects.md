@@ -73,6 +73,6 @@ Post-quantum cryptography migration tool. 21K crypto-related CVEs scanned. ML sc
 
 ### govML
 
-Open-source governance framework for ML projects. 50+ templates, 10 profiles, 20+ generators. Contract-driven reproducibility used across all of the above. 469+ tests.
+Governance framework for ML projects. 50+ templates, 10 profiles, 20+ generators. Contract-driven reproducibility used across all of the above. 469+ tests.
 
-[GitHub](https://github.com/rexcoleman/govML) · [Write-up](/posts/govml-methodology/)
+[Methodology](/posts/govml-methodology/)

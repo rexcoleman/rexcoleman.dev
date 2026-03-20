@@ -1,7 +1,7 @@
 ---
 title: "How I Govern AI-Assisted ML Projects"
 date: 2026-03-14
-description: "I built an open-source governance framework for ML projects after watching 14 manual audit cycles nearly break my workflow. Here's how govML works and why governance-as-code is the only way to scale ML research."
+description: "I built a governance framework for ML projects after watching 14 manual audit cycles nearly break my workflow. Here's how govML works and why governance-as-code is the only way to scale ML research."
 tags: ["ml-governance", "build-in-public", "machine-learning", "govml"]
 categories: ["ML Governance", "Builder Journal"]
 format: "technical-blog"
@@ -18,7 +18,7 @@ images:
   - /images/og-govml-methodology.png
 ---
 
-After four ML projects at Georgia Tech, I'd run 14 manual audit cycles with 30+ findings each. The governance wasn't the problem — the manual enforcement was. So I built [govML](https://github.com/rexcoleman/govML).
+After four ML projects at Georgia Tech, I'd run 14 manual audit cycles with 30+ findings each. The governance wasn't the problem — the manual enforcement was. So I built govML.
 
 ## The Problem
 
@@ -30,7 +30,7 @@ To make this concrete: in my first three projects, I accumulated 36 commits and 
 
 ## What I Built
 
-**govML** is an open-source governance framework for ML projects — 50+ templates, 10 profiles, 20+ generators, and an agent orchestrator prototype.
+**govML** is a governance framework for ML projects — 50+ templates, 10 profiles, 20+ generators, and an agent orchestrator prototype.
 
 The architecture has three layers, each solving a different failure mode:
 
@@ -99,17 +99,9 @@ The key accelerators: `--fill` for bulk placeholder substitution, `PROJECT_BRIEF
 
 ## Try It
 
-govML is open source: [github.com/rexcoleman/govML](https://github.com/rexcoleman/govML)
+govML governs every project in my research portfolio. The methodology is described above; the tooling is internal.
 
-```bash
-git clone https://github.com/rexcoleman/govML.git
-cd govML
-bash scripts/init_project.sh /your/project --profile supervised --fill
-```
-
-After running that command, you'll see 21 files scaffolded into your project directory: a `PROJECT_BRIEF.md` (fill this first), `DATA_MANIFEST.md`, `EXPERIMENT_PROTOCOL.md`, `DECISION_LOG.md`, phase gate templates, and a `PUBLICATION_PIPELINE.md`. The `--fill` flag pre-populates common placeholders (project name, date, author) from your `project.yaml` config, so you're editing a mostly-complete document rather than starting from a blank template. The `--profile supervised` flag selects the template set tuned for supervised learning projects; other profiles (`security-ml`, `unsupervised`, `contract-track`) adjust which templates are included and which generators are activated.
-
-If you run ML experiments and want reproducibility without the overhead, this is the framework I built to solve that problem for myself. Every template was extracted from real project friction, not designed speculatively.
+govML is used internally across all Singularity Cybersecurity research projects. Every template was extracted from real project friction, not designed speculatively.
 
 ### Limitations
 

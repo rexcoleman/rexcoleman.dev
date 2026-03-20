@@ -2,12 +2,12 @@
 title: "50+ ML Governance Templates: What It Takes to Govern AI at Scale"
 date: 2026-03-19
 draft: false
-tags: ["govml", "ml-governance", "open-source", "methodology"]
+tags: ["govml", "ml-governance", "methodology"]
 format: "til"
 audience_side: "both"
 ---
 
-**govML ships 50+ templates, 10 profiles, and 20+ code generators — all open source.** It's the governance framework I built after discovering that every ML project I ran needed the same 30+ documents, and every team was reinventing them from scratch.
+**govML ships 50+ templates, 10 profiles, and 20+ code generators — battle-tested across 10 frontier projects.** It's the governance framework I built after discovering that every ML project I ran needed the same 30+ documents, and every team was reinventing them from scratch.
 
 ## Why this matters
 
@@ -17,11 +17,11 @@ The template set covers the full ML lifecycle: experiment design, data contracts
 
 ## Source
 
-govML was built across 10 frontier projects and refined through 14 audit cycles. The methodology is described in [govML: How I Ship Governed ML Projects](/posts/govml-methodology/). The tool: [github.com/rexcoleman/govML](https://github.com/rexcoleman/govML).
+govML was built across 10 frontier projects and refined through 14 audit cycles. The methodology is described in [govML: How I Ship Governed ML Projects](/posts/govml-methodology/). The tool: [Methodology](/posts/govml-methodology/).
 
 ## What to do about it
 
-1. **Try it on your next ML project.** `pip install govml` or clone the repo. Pick a profile, run the generator, and you have a governed project skeleton in minutes.
+1. **Try it on your next ML project.** Pick a profile, run the generator, and you have a governed project skeleton in minutes.
 2. **Adapt, don't adopt wholesale.** The templates are starting points. Strip what you don't need, extend what's missing for your domain.
 3. **Governance is a product feature, not overhead.** Teams that can demonstrate reproducibility and auditability win contracts, pass compliance reviews, and build trust with stakeholders faster.
 

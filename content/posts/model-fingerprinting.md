@@ -68,7 +68,7 @@ Is AUROC 0.62 impressive? No. But this is a zero-label approach on deliberately 
 
 ## Result 2: The Surprise -- Raw Features Beat Dimensionality Reduction
 
-I expected PCA or ICA to improve detection, just as ICA+GMM improved clustering in my [unsupervised learning work](https://github.com/rexcoleman/ml-governance-templates). The opposite happened:
+I expected PCA or ICA to improve detection, just as ICA+GMM improved clustering in my [unsupervised learning work](/posts/govml-methodology/). The opposite happened:
 
 | Representation | Mean AUROC |
 |---------------|-----------|
@@ -149,7 +149,7 @@ The same pattern the security industry learned with malware: signatures first, b
 
 Code, experiment contract, data contracts, and full results: [github.com/rexcoleman/model-behavioral-fingerprint](https://github.com/rexcoleman/model-behavioral-fingerprint)
 
-Built with [govML](https://github.com/rexcoleman/ml-governance-templates) for experiment tracking and reproducibility.
+Built with [govML](/posts/govml-methodology/) for experiment tracking and reproducibility.
 
 ### What's Next
 

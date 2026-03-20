@@ -90,7 +90,7 @@ XGBoost peaks at max_depth=2 (AUC 0.990) and degrades with deeper trees. LightGB
 
 **Controllability quantifies adversarial robustness.** Instead of asking "can a fraudster evade the model?" ask "what's the detection floor from features the fraudster can't control?" The answer (81%) is the number a CISO needs.
 
-The code is open source: [financial-anomaly-detection on GitHub](https://github.com/rexcoleman/financial-anomaly-detection). Built with [govML](https://github.com/rexcoleman/govML) v2.5.
+The code is open source: [financial-anomaly-detection on GitHub](https://github.com/rexcoleman/financial-anomaly-detection). Built with [govML](/posts/govml-methodology/) v2.5.
 
 ### Limitations
 

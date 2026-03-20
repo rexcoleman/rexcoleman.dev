@@ -23,7 +23,7 @@ I'm the founder of [Singularity Cybersecurity](https://singularitycyber.com) —
 
 **Adversarial Control Analysis** — a methodology for designing ML systems where the inputs that drive decisions are outside adversary influence. Applied across 6 security domains. The principle: classify inputs by who controls them, and the defense architecture designs itself.
 
-**govML** — [open-source governance framework](https://github.com/rexcoleman/govML) (50+ templates, 10 profiles, 20+ generators) that enforces reproducibility and decision traceability across ML projects.
+**govML** — [governance framework](/posts/govml-methodology/) (50+ templates, 10 profiles, 20+ generators) that enforces reproducibility and decision traceability across ML projects.
 
 ---
 

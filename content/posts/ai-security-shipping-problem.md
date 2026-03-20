@@ -31,9 +31,9 @@ One in five skills on ClawHub — the largest agent skill marketplace — is act
 
 In Q1 2026 alone, Armadin raised $190M, Kai raised $125M, 7AI raised $166M, and Onyx raised $40M — all in the agent security space. The money says the market is real. But enterprise surveys show only 29% of organizations feel prepared to secure agentic AI. Meanwhile, 48% of security professionals say agents are their #1 attack vector. Half a billion dollars in and the buyer readiness needle hasn't moved. The capital is flowing to platforms and dashboards, not to the practitioners who need to secure agents this week.
 
-**4. NIST AI RMF exists. govML is the only open-source implementation I can find.**
+**4. NIST AI RMF exists. govML is the only implementation I can find.**
 
-NIST published the AI Risk Management Framework. ISO published 42001. The EU AI Act created compliance requirements. When I searched for open-source tools that implement these frameworks as executable governance — templates you can drop into a project, generators that enforce compliance automatically, phase gates that catch violations before they ship — I found almost nothing. So I built [govML](https://github.com/rexcoleman/govML): 50+ templates, 20+ generators, 10 profiles. After 14 manual audit cycles on my own ML projects (with 30+ findings each), I learned that governance-as-prose doesn't work. Governance-as-code does. But the industry is still publishing prose.
+NIST published the AI Risk Management Framework. ISO published 42001. The EU AI Act created compliance requirements. When I searched for tools that implement these frameworks as executable governance — templates you can drop into a project, generators that enforce compliance automatically, phase gates that catch violations before they ship — I found almost nothing. So I built [govML](/posts/govml-methodology/): 50+ templates, 20+ generators, 10 profiles. After 14 manual audit cycles on my own ML projects (with 30+ findings each), I learned that governance-as-prose doesn't work. Governance-as-code does. But the industry is still publishing prose.
 
 **5. 30 MCP server CVEs in 60 days. 66% of servers have security findings.**
 
@@ -57,7 +57,7 @@ The bar should be: did you ship something a practitioner can use this week? If t
 
 ### Limitations
 
-The 29% enterprise readiness figure comes from industry surveys with self-reported data. The $500M+ VC figure represents disclosed rounds in Q1 2026 and likely undercounts total investment. "No tools enforce OWASP Agentic Top 10" reflects my search as of March 2026 — tools may exist that I haven't found. The govML claim (only open-source NIST AI RMF implementation) is based on GitHub search and may miss private or differently-named implementations.
+The 29% enterprise readiness figure comes from industry surveys with self-reported data. The $500M+ VC figure represents disclosed rounds in Q1 2026 and likely undercounts total investment. "No tools enforce OWASP Agentic Top 10" reflects my search as of March 2026 — tools may exist that I haven't found. The govML claim (only NIST AI RMF implementation I found) is based on GitHub search and may miss private or differently-named implementations.
 
 ---
 

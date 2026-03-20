@@ -94,15 +94,15 @@ Raw PCAP / NetFlow Data
 
 **Domain expertise is the feature engineering.** The 57/14 controllable/observable split isn't in any dataset description or ML framework. It comes from understanding how TCP/IP works and how real attackers operate. SHAP can tell you which features matter; only a practitioner can tell you which features an attacker controls.
 
-**ART gradient attacks don't work on sklearn tree models.** This cost me 30 minutes before I realized FGSM/PGD require differentiable models. For tree ensembles, use ZOO (zeroth-order optimization) or HopSkipJump. I added an attack selection guide to [govML](https://github.com/rexcoleman/govML) so future projects don't hit this wall.
+**ART gradient attacks don't work on sklearn tree models.** This cost me 30 minutes before I realized FGSM/PGD require differentiable models. For tree ensembles, use ZOO (zeroth-order optimization) or HopSkipJump. I added an attack selection guide to [govML](/posts/govml-methodology/) so future projects don't hit this wall.
 
 ## Code
 
-Everything is open source with full govML governance (decision log, phase gates, reproducibility spec):
+Everything ships with full govML governance (decision log, phase gates, reproducibility spec):
 
 [github.com/rexcoleman/adversarial-ids-ml](https://github.com/rexcoleman/adversarial-ids-ml)
 
-Built with [govML](https://github.com/rexcoleman/govML) — the governance framework that makes this reproducible.
+Built with [govML](/posts/govml-methodology/) — the governance framework that makes this reproducible.
 
 ### Limitations
 

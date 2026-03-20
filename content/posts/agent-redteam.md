@@ -36,7 +36,7 @@ I sent 19 attack scenarios at a default-configured LangChain ReAct agent powered
 - **3 defense layers** with measured effectiveness
 - **Adversarial control analysis** — a methodology for classifying which inputs an attacker controls vs. which a defender can observe
 
-I built it using [govML](https://github.com/rexcoleman/govML) for project governance and LangChain + LangGraph for the agent target. Total API cost: about $2 in Claude Sonnet tokens.
+I built it using [govML](/posts/govml-methodology/) for project governance and LangChain + LangGraph for the agent target. Total API cost: about $2 in Claude Sonnet tokens.
 
 ## Why Existing Frameworks Miss Agent-Specific Attacks
 
@@ -128,7 +128,7 @@ The reasoning chain is the least observable input — it's internal to the agent
 2. Multi-agent testing (AutoGen) for broader framework coverage
 3. OpenAI backend to test if results are model-specific
 
-The framework is open source: [agent-redteam-framework on GitHub](https://github.com/rexcoleman/agent-redteam-framework). Built with [govML](https://github.com/rexcoleman/govML) governance. All findings governed by the same quality gates, same claim strength tags, same reproducibility standards.
+The framework is open source: [agent-redteam-framework on GitHub](https://github.com/rexcoleman/agent-redteam-framework). Built with [govML](/posts/govml-methodology/) governance. All findings governed by the same quality gates, same claim strength tags, same reproducibility standards.
 
 ### Limitations
 
