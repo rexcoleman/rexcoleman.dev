@@ -19,9 +19,9 @@ Building [Singularity Cybersecurity](https://singularitycyber.com) — an AI sec
 
 ### Research
 
-**FP-12: RL Agent Vulnerability** — 40 agents, 4 attack classes, OWASP 7/10 mapped. Complete.
-**FP-13: Model Behavioral Fingerprinting** — 30-combination benchmark. "Antivirus for AI models."
-**FP-14: Adversarial Training Optimization** — robustness-utility tradeoff for LLM safety.
+**[RL Agent Vulnerability](/posts/rl-agent-vulnerability/)** — 40 agents, 4 attack classes, OWASP 7/10 mapped. Complete.
+**[Model Behavioral Fingerprinting](/posts/model-fingerprinting/)** — 30-combination benchmark. "Antivirus for AI models."
+**Adversarial Training Optimization** — robustness-utility tradeoff for LLM safety.
 **govML** — 50+ templates, 10 profiles, 20+ generators. [Methodology](/posts/govml-methodology/)
 
 ---
