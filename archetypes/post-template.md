@@ -7,6 +7,7 @@ format: ""  # technical-blog | tutorial | perspective | til
 audience_side: ""  # of-ai | from-ai | both
 image_count: 0  # R26: technical-blog ≥1, tutorial ≥1
 description: ""
+internal_id: ""  # FP-XX for traceability (not rendered)
 cover:
     image: ""
     hidden: true
@@ -23,18 +24,37 @@ cover:
   [ ] Honesty check: all career claims verified against brand honesty constraint
   [ ] Forward reference to at least one other post
   [ ] All inline images have alt text
+  [ ] No AI-tell words or phrases (R73)
+  [ ] No internal project IDs in body (R70)
+  [ ] Title: 10+ variations generated? Best picked? (R75)
+  [ ] content_quality_loop.sh run? (R74)
+  Full guide: ml-governance-templates/docs/references/Blog_Post_Writing_Guide.md
 -->
 
-<!-- HOOK: 1-2 sentences with a specific number or surprising finding -->
+<!-- OPENING (R72 — finding-first):
+
+  technical-blog: Lead with the finding, then why it matters.
+    "Cross-model paraphrasing drops watermark detection from 100% to 60%."
+
+  perspective: Lead with the thesis, then the evidence.
+    "Thesis: The AI security industry produces frameworks but ships no tools."
+
+  tutorial: Lead with what the reader will be able to do.
+    "In this tutorial, you'll red-team a LangChain agent for $2 in API costs."
+
+  DO NOT open with: methodology ("six experiments"), cross-references ("Our
+  [previous project] showed..."), or field description ("AI security is...").
+-->
 
 
+
+<!--more-->
 
 <!-- BODY: Structure depends on format:
 
-  technical-blog: What I Built → What I Found → Why It Matters
-  tutorial: Problem → Prerequisites → Steps (numbered) → Verification
-  perspective: Thesis → Evidence (3-5 data points) → Implication
-  til: What I found → Why it matters → Link
+  technical-blog: What I Found → Why It Matters → How I Tested → What's Next
+  tutorial: Prerequisites → Steps (numbered, gerund headings) → Verification
+  perspective: Evidence (3-5 data points) → Implication → What I'm Doing About It
 -->
 
 

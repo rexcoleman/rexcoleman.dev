@@ -40,11 +40,11 @@ init_project.sh
 ## Step 1: Install govML
 
 ```bash
-git clone /posts/govml-methodology/.git
-cd govML
+# Note: govML is now internal tooling. See /posts/govml-methodology/ for the methodology.
+# The clone command below is historical — the public repo is no longer available.
 ```
 
-That is the entire installation. govML is a set of templates, profiles, and shell scripts. No pip install, no dependencies to manage, no version conflicts.
+govML is a set of templates, profiles, and shell scripts. No pip install, no dependencies to manage, no version conflicts.
 
 Verify it works:
 
@@ -244,7 +244,7 @@ python -m pytest tests/ -v
 
 **govML enforces structure, not quality.** The contracts ensure you document your split strategy, but they do not tell you whether your split strategy is correct. A temporal split is not always better than a random split -- it depends on your problem. govML prevents you from forgetting to document the decision; it does not make the decision for you.
 
-**Phase gates check file existence, not file content.** The automated gate check verifies that `outputs/baselines/` exists, but it cannot verify that the baselines are correct. Content quality still requires human judgment. The FP-08 research (govML-as-MCP) identified this as the explicit boundary: 6 agent-safe tasks (template filling, gate checking, hygiene scanning) and 5 human-required tasks (thesis formulation, research question design, finding interpretation, tradeoff judgment, narrative voice).
+**Phase gates check file existence, not file content.** The automated gate check verifies that `outputs/baselines/` exists, but it cannot verify that the baselines are correct. Content quality still requires human judgment. The govML-as-MCP research identified this as the explicit boundary: 6 agent-safe tasks (template filling, gate checking, hygiene scanning) and 5 human-required tasks (thesis formulation, research question design, finding interpretation, tradeoff judgment, narrative voice).
 
 **50+ templates is a lot.** The contract-track profile gives you maximum rigor, but for a weekend project it is overkill. Start with `minimal` (3 templates) or `supervised` (11 templates) and graduate to higher profiles as your project matures.
 
