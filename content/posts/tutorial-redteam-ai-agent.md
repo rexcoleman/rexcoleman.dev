@@ -19,7 +19,7 @@ hiddenInHomeList: true
 
 You are deploying an AI agent that can read files, search the web, or call APIs on behalf of users. Before you ship it, you need to know: what happens when someone tries to make it do something it should not? Existing frameworks like OWASP LLM Top 10 cover the language model layer, but agents have attack surfaces that models do not -- tool orchestration, multi-step reasoning, persistent memory, and cross-agent delegation. You need a systematic way to test these surfaces.
 
-This tutorial walks you through red-teaming a LangChain ReAct agent using the 7 attack classes from the agent-redteam-framework (FP-02). The full framework run costs about $2 in API tokens and takes under an hour.
+This tutorial walks you through red-teaming a LangChain ReAct agent using the 7 attack classes from the [agent-redteam-framework](https://github.com/rexcoleman/agent-redteam-framework). The full framework run costs about $2 in API tokens and takes under an hour.
 
 ```
 ┌──────────────────────────────────────────┐
@@ -174,7 +174,7 @@ print("ATTACK 4 - Memory Poisoning:", result2["output"])
 
 ### Attack 5: Reasoning Chain Hijacking
 
-This is the most dangerous attack class -- 100% success rate against default agents in the FP-02 research. It works because it uses the agent's core capability (following multi-step plans) as the attack vector.
+This is the most dangerous attack class -- 100% success rate against default agents in our research. It works because it uses the agent's core capability (following multi-step plans) as the attack vector.
 
 ```python
 result = executor.invoke({
@@ -321,7 +321,7 @@ def log_action(action_type: str, details: dict, blocked: bool = False):
 
 ### Defense Results
 
-In the FP-02 research, the layered defense (input sanitizer + tool permission boundary) reduced average attack success by 60%. Adding the LLM-as-judge brought it to 67%. The residual gap is reasoning chain hijacking, which partially evades all layers because its instructions look like legitimate tasks.
+In our research, the layered defense (input sanitizer + tool permission boundary) reduced average attack success by 60%. Adding the LLM-as-judge brought it to 67%. The residual gap is reasoning chain hijacking, which partially evades all layers because its instructions look like legitimate tasks.
 
 ```
 Attack Class              | No Defense | Layered | Full Stack
@@ -346,7 +346,7 @@ Your red-team assessment is working if:
 
 ## What's Not Solved
 
-**Reasoning chain hijacking has no complete defense.** The FP-02 research achieved 67% reduction with an LLM-as-judge, but 33% of structured step-by-step attacks still succeed. The fundamental problem: the attack uses normal language to express a harmful plan, and distinguishing "legitimate multi-step task" from "disguised exfiltration" requires understanding intent, not matching patterns. This is an open research problem.
+**Reasoning chain hijacking has no complete defense.** Our research achieved 67% reduction with an LLM-as-judge, but 33% of structured step-by-step attacks still succeed. The fundamental problem: the attack uses normal language to express a harmful plan, and distinguishing "legitimate multi-step task" from "disguised exfiltration" requires understanding intent, not matching patterns. This is an open research problem.
 
 **Single LLM backend tested.** All results are specific to Claude Sonnet. GPT-4 and Gemini backends may have different vulnerability profiles. Claude's built-in resistance to indirect injection (25% success) may not generalize to other models.
 

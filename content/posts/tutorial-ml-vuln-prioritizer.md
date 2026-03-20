@@ -94,7 +94,7 @@ print(f"CVEs with public exploits: {len(exploit_cves)}")
 
 ## Step 2: Engineer Features
 
-The features that predict exploitation are not the ones most people expect. Based on the FP-05 research, the strongest predictors are EPSS percentile (threat intelligence signal), whether the CVE references exploit code, vendor CVE history (deployment ubiquity), and CVSS score. Practitioner keywords like "sql injection" and "remote code execution" help but are not dominant.
+The features that predict exploitation are not the ones most people expect. Based on our research, the strongest predictors are EPSS percentile (threat intelligence signal), whether the CVE references exploit code, vendor CVE history (deployment ubiquity), and CVSS score. Practitioner keywords like "sql injection" and "remote code execution" help but are not dominant.
 
 ```python
 import numpy as np
@@ -232,7 +232,7 @@ print(f"Random Forest AUC: {rf_auc:.3f}")
 print(f"Improvement:       +{(rf_auc - cvss_auc) * 100:.1f}pp")
 ```
 
-In the FP-05 research on 338K CVEs, CVSS achieved AUC 0.662 while the ML model achieved 0.864 (Random Forest) to 0.903 (Logistic Regression). That is a +20 to +24 percentage point improvement. CVSS measures how bad a vulnerability could be. ML measures how likely it is to actually be exploited. Those are different questions, and attackers care about the second one.
+In our research on 338K CVEs, CVSS achieved AUC 0.662 while the ML model achieved 0.864 (Random Forest) to 0.903 (Logistic Regression). That is a +20 to +24 percentage point improvement. CVSS measures how bad a vulnerability could be. ML measures how likely it is to actually be exploited. Those are different questions, and attackers care about the second one.
 
 ## Step 5: Explain with SHAP
 
@@ -250,7 +250,7 @@ shap.summary_plot(shap_values[1], X_test.iloc[:500],
                   feature_names=feature_cols, show=False)
 ```
 
-In the full FP-05 analysis, the top 5 SHAP features were:
+In our full analysis, the top 5 SHAP features were:
 
 1. **epss_percentile** (mean |SHAP| = 1.096) -- the single strongest predictor, nearly 2x the next feature
 2. **has_exploit_ref** (0.573) -- whether the CVE links to proof-of-concept code
@@ -282,7 +282,7 @@ If your model AUC is above 0.80, you have a working vulnerability prioritizer th
 
 ## What's Not Solved
 
-**EPSS is hard to beat.** In the full FP-05 experiment, EPSS alone achieved AUC 0.912 -- slightly better than any ML model trained on public data. EPSS is itself an ML model trained on richer data (threat intelligence feeds, social media, exploit activity) that you do not have access to. Your model gets you 99% of EPSS performance using only public data, which matters for organizations that cannot afford commercial threat intel. But if you already have EPSS scores, a simple threshold (EPSS >= 0.01) is a strong baseline.
+**EPSS is hard to beat.** In our full experiment, EPSS alone achieved AUC 0.912 -- slightly better than any ML model trained on public data. EPSS is itself an ML model trained on richer data (threat intelligence feeds, social media, exploit activity) that you do not have access to. Your model gets you 99% of EPSS performance using only public data, which matters for organizations that cannot afford commercial threat intel. But if you already have EPSS scores, a simple threshold (EPSS >= 0.01) is a strong baseline.
 
 **Ground truth lags.** ExploitDB labels for recent CVEs are incomplete. Many exploited vulnerabilities from 2024+ have not been added yet. This is a label maturation problem, not a model problem. F1 scores will be low on recent test data regardless of the model.
 

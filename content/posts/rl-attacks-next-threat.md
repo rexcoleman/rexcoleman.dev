@@ -39,7 +39,7 @@ Prompt injection doesn't enable anything like this. You can inject a prompt and 
 
 **3. Zero OWASP coverage of RL-specific attacks.**
 
-OWASP's Agentic Top 10 identifies 10 risk categories. My agent red-teaming work (FP-02) mapped to several. But when I tested which of these categories cover RL-specific attacks — reward poisoning, observation perturbation, policy extraction, behavioral backdoors — I found that 5 attack classes from my RL research have no direct OWASP equivalent.
+OWASP's Agentic Top 10 identifies 10 risk categories. My [agent red-teaming work](/posts/agent-redteam/) mapped to several. But when I tested which of these categories cover RL-specific attacks — reward poisoning, observation perturbation, policy extraction, behavioral backdoors — I found that 5 attack classes from my RL research have no direct OWASP equivalent.
 
 The OWASP framework was designed for prompt-based agents. It addresses prompt injection (ASI-10), goal hijacking (ASI-01), and supply chain risks (ASI-08). It does not address reward signal corruption, observation channel manipulation, or policy extraction through black-box queries. These are distinct attack surfaces that require distinct defenses.
 
@@ -69,7 +69,7 @@ The field needs to expand its threat model. Prompt injection is a real risk that
 
 I built the first open-source RL attack framework for agent security environments: 4 attack classes, 2 custom Gymnasium environments, 150 experiments across 40 agents. The [code](https://github.com/rexcoleman/rl-agent-vulnerability), [findings](/posts/rl-agent-vulnerability/), and [attack taxonomy](/posts/agent-redteam/) are all published.
 
-Combined with FP-02 (agent red-teaming), this creates a systematic attack taxonomy that spans both prompt-based and RL-based agent attack surfaces — 7 prompt-level attack classes plus 4 RL-specific attack classes, mapped to OWASP where coverage exists and flagging the 5 categories where it doesn't.
+Combined with the [agent red-teaming framework](/posts/agent-redteam/), this creates a systematic attack taxonomy that spans both prompt-based and RL-based agent attack surfaces — 7 prompt-level attack classes plus 4 RL-specific attack classes, mapped to OWASP where coverage exists and flagging the 5 categories where it doesn't.
 
 At [Singularity Cybersecurity](https://singularitycyber.com), the next step is building detection tools that cover both surfaces. AgentArmor's [HYPOTHESIZED] runtime monitoring is designed from the ground up to watch observation channels and reward signals, not just prompt inputs. Because that's where the next generation of attacks will land.
 

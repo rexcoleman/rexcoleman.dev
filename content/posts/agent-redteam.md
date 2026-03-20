@@ -124,7 +124,7 @@ The reasoning chain is the least observable input — it's internal to the agent
 
 ## What's Next
 
-1. **RL Agent Vulnerability (FP-12):** Beyond prompt injection — attacking the reward functions and observation channels of RL-trained agents. Can you corrupt an agent's learned policy without touching its prompt?
+1. **[RL Agent Vulnerability](/posts/rl-agent-vulnerability/):** Beyond prompt injection — attacking the reward functions and observation channels of RL-trained agents. Can you corrupt an agent's learned policy without touching its prompt?
 2. Multi-agent testing (AutoGen) for broader framework coverage
 3. OpenAI backend to test if results are model-specific
 

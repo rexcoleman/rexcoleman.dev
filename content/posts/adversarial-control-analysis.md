@@ -80,9 +80,9 @@ Most ML security research treats all features equally perturbable. Most security
 
 I'm extending ACA to three new ML paradigms:
 
-- **Reinforcement Learning (FP-12):** Agents have a new control surface — reward signals and observations. Which are attacker-controllable? Which are system-determined?
-- **Unsupervised Learning (FP-13):** For model behavioral fingerprinting, the defender controls the reference inputs (the probe). The attacker controls the model weights. ACA predicts which backdoor types are hardest to detect.
-- **Optimization (FP-14):** In adversarial training, the defender controls the optimizer and schedule. The attacker controls the adversarial examples. ACA maps the defense surface.
+- **[Reinforcement Learning](/posts/rl-agent-vulnerability/):** Agents have a new control surface — reward signals and observations. Which are attacker-controllable? Which are system-determined?
+- **[Unsupervised Learning](/posts/model-fingerprinting/):** For model behavioral fingerprinting, the defender controls the reference inputs (the probe). The attacker controls the model weights. ACA predicts which backdoor types are hardest to detect.
+- **Optimization:** In adversarial training, the defender controls the optimizer and schedule. The attacker controls the adversarial examples. ACA maps the defense surface.
 
 Same principle. Four paradigms. Every level of the AI stack.
 

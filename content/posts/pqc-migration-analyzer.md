@@ -111,7 +111,7 @@ Scan Summary
 
 **Controllability determines actionability.** You can plan to migrate all the RSA in your codebase, but if 70% is in libraries you don't control, your plan is 70% "wait and track." Start with what you can actually change.
 
-**Data reuse compounds.** This project reused 338K CVEs downloaded for a previous project (FP-05 vulnerability prioritization). Zero download time, zero API cost. Cross-project data reuse is an underrated efficiency pattern.
+**Data reuse compounds.** This project reused 338K CVEs downloaded for the [vulnerability prioritization research](/posts/cvss-gets-it-wrong/). Zero download time, zero API cost. Cross-project data reuse is an underrated efficiency pattern.
 
 ## What's Next
 

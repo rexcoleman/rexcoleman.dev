@@ -17,7 +17,7 @@ This means the threat model for deployed RL agents is worse than commonly assume
 
 ## Source
 
-This finding comes from [FP-12 (RL Agent Vulnerability Analysis)](/posts/rl-agent-vulnerability/), where I tested 5 RL algorithms against 4 attack classes across 2 environments with matched attack budgets. Full code and results: [github.com/rexcoleman/rl-agent-vulnerability](https://github.com/rexcoleman/rl-agent-vulnerability).
+This finding comes from the [RL Agent Vulnerability Analysis](/posts/rl-agent-vulnerability/) research, where I tested 5 RL algorithms against 4 attack classes across 2 environments with matched attack budgets. Full code and results: [github.com/rexcoleman/rl-agent-vulnerability](https://github.com/rexcoleman/rl-agent-vulnerability).
 
 ## What to do about it
 

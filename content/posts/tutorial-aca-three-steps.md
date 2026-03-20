@@ -48,7 +48,7 @@ For each feature, record:
 Feature Name | Data Source | Type (numeric/categorical/text/binary)
 ```
 
-Here is an example from a vulnerability prioritization model (FP-05):
+Here is an example from a [vulnerability prioritization model](/posts/cvss-gets-it-wrong/):
 
 ```
 Feature               | Source        | Type
@@ -66,7 +66,7 @@ cve_age_days          | NVD derived   | numeric
 has_patch_ref         | NVD refs      | binary
 ```
 
-Be exhaustive. In the FP-05 project, the model used 49 features across 8 feature groups. Missing even one group would have left a blind spot in the controllability analysis.
+Be exhaustive. In the vulnerability prioritization project, the model used 49 features across 8 feature groups. Missing even one group would have left a blind spot in the controllability analysis.
 
 ## Step 2: Classify Each Feature by Who Controls It
 
@@ -98,13 +98,13 @@ cve_age_days          | System-determined   | No (derived from publication date)
 has_patch_ref         | Defender-observable | No (patch links added by vendors)
 ```
 
-Count the totals. In FP-05, the split was 15 attacker-controllable features (mostly text-derived) and 11 defender-observable features. The attacker controls 58% of features by count. That sounds alarming -- until you look at which features actually drive predictions.
+Count the totals. In the vulnerability prioritization project, the split was 15 attacker-controllable features (mostly text-derived) and 11 defender-observable features. The attacker controls 58% of features by count. That sounds alarming -- until you look at which features actually drive predictions.
 
 ## Step 3: Architect Around Defender-Observable Features
 
 Now cross-reference your controllability map with your model's feature importance. The question is: do the features the attacker controls actually matter?
 
-In FP-05, SHAP analysis revealed:
+In the vulnerability prioritization research, SHAP analysis revealed:
 
 - **EPSS percentile** (defender-observable) = mean |SHAP| of 1.096 (highest)
 - **has_exploit_ref** (defender-observable) = 0.573
@@ -119,15 +119,15 @@ Ablation confirmed it quantitatively: removing all attacker-controlled text feat
 
 **The design rule:** If your model relies heavily on attacker-controlled features, you have two options:
 
-1. **Constrain the model.** Drop or down-weight attacker-controlled features. In FP-05, removing description stats and keywords improved performance.
+1. **Constrain the model.** Drop or down-weight attacker-controlled features. In the vulnerability prioritization project, removing description stats and keywords improved performance.
 
-2. **Add defender-observable features.** Find signals the attacker cannot manipulate. In network IDS (FP-01), defender-observable features like TCP flags and destination ports reduced adversarial attack success by 35%.
+2. **Add defender-observable features.** Find signals the attacker cannot manipulate. In [network IDS research](/posts/adversarial-ids/), defender-observable features like TCP flags and destination ports reduced adversarial attack success by 35%.
 
 3. **Monitor the boundary.** If you must use attacker-controlled features, monitor them for anomalous distributions. Sudden shifts in description text patterns could indicate manipulation attempts.
 
 ## Worked Example: AI Agent Input Surfaces
 
-ACA scales beyond tabular ML. In the AI agent red-teaming project (FP-02), the "features" are the input surfaces to an autonomous agent:
+ACA scales beyond tabular ML. In the [AI agent red-teaming project](/posts/agent-redteam/), the "features" are the input surfaces to an autonomous agent:
 
 ```
 Input Surface         | Controller            | Attack Success Rate
@@ -160,7 +160,7 @@ Your ACA is working if:
 
 **ACA does not replace adversarial testing.** It tells you where to focus your testing budget. After mapping controllability, you should still run perturbation experiments on the attacker-controlled features to measure actual robustness. ACA just ensures you are not wasting time attacking features the adversary cannot reach.
 
-The full ACA methodology, validated across six domains, is described in the [cross-domain perspective post](/posts/adversarial-control-analysis/) and demonstrated in [FP-01](https://github.com/rexcoleman/adversarial-ids-ml), [FP-02](https://github.com/rexcoleman/agent-redteam-framework), and [FP-05](https://github.com/rexcoleman/vuln-prioritization-ml).
+The full ACA methodology, validated across six domains, is described in the [cross-domain perspective post](/posts/adversarial-control-analysis/) and demonstrated in [adversarial-ids-ml](https://github.com/rexcoleman/adversarial-ids-ml), [agent-redteam-framework](https://github.com/rexcoleman/agent-redteam-framework), and [vuln-prioritization-ml](https://github.com/rexcoleman/vuln-prioritization-ml).
 
 ---
 

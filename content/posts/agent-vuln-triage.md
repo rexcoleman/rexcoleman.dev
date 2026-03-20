@@ -83,7 +83,7 @@ If you're building AI-assisted security tools: **enrichment matters, but less th
 
 ## The Governance Lesson
 
-This is the second project (after FP-18) where pre-registration forced us to report an honest negative result. H-1 predicted the agent would beat EPSS by >=15 percentage points. It didn't. We can't retroactively reframe this as "we were testing ensemble value all along."
+This is the second project (after the [watermark robustness research](/posts/llm-watermark-robustness/)) where pre-registration forced us to report an honest negative result. H-1 predicted the agent would beat EPSS by >=15 percentage points. It didn't. We can't retroactively reframe this as "we were testing ensemble value all along."
 
 The finding is: **LLM agents are strong vulnerability triagers (92% precision) but do not outperform purpose-built statistical models on their training distribution.** The value is in complementarity, context, and reasoning — not raw ranking.
 

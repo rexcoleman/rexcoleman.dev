@@ -17,7 +17,7 @@ If 70% of your input features can be manipulated by an adversary, no model archi
 
 ## Source
 
-This finding comes from [FP-01 (Adversarial IDS)](/posts/adversarial-ids/), where I trained multiple model architectures on the CICIDS2017 dataset and tested adversarial robustness under controlled feature manipulation budgets. The feature controllability analysis categorized every input feature by attacker accessibility. Full code: [github.com/rexcoleman/adversarial-ids-ml](https://github.com/rexcoleman/adversarial-ids-ml).
+This finding comes from the [Adversarial IDS](/posts/adversarial-ids/) research, where I trained multiple model architectures on the CICIDS2017 dataset and tested adversarial robustness under controlled feature manipulation budgets. The feature controllability analysis categorized every input feature by attacker accessibility. Full code: [github.com/rexcoleman/adversarial-ids-ml](https://github.com/rexcoleman/adversarial-ids-ml).
 
 ## What to do about it
 

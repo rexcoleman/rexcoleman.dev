@@ -15,7 +15,7 @@ Most vulnerability management programs still use CVSS as their primary prioritiz
 
 ## Source
 
-This comes from the ablation study in [FP-05 (Vulnerability Prioritization ML)](/posts/cvss-gets-it-wrong/), where I trained gradient-boosted models on 200K+ CVE records and systematically removed features to measure their individual contribution. Full code and data: [github.com/rexcoleman/vuln-prioritization-ml](https://github.com/rexcoleman/vuln-prioritization-ml).
+This comes from the ablation study in [Vulnerability Prioritization ML](/posts/cvss-gets-it-wrong/), where I trained gradient-boosted models on 200K+ CVE records and systematically removed features to measure their individual contribution. Full code and data: [github.com/rexcoleman/vuln-prioritization-ml](https://github.com/rexcoleman/vuln-prioritization-ml).
 
 ## What to do about it
 

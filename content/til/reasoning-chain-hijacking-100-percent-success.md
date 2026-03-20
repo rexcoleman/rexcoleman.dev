@@ -15,7 +15,7 @@ Reasoning chain hijacking is different from basic prompt injection. Instead of i
 
 ## Source
 
-This comes from [FP-02 (Agent Red-Team Framework)](/posts/agent-redteam/), where I tested 7 attack classes against multi-step AI agents with 5 defense configurations. Full code: [github.com/rexcoleman/agent-redteam-framework](https://github.com/rexcoleman/agent-redteam-framework).
+This comes from the [Agent Red-Team Framework](/posts/agent-redteam/) research, where I tested 7 attack classes against multi-step AI agents with 5 defense configurations. Full code: [github.com/rexcoleman/agent-redteam-framework](https://github.com/rexcoleman/agent-redteam-framework).
 
 ## What to do about it
 

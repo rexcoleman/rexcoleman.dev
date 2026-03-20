@@ -139,8 +139,8 @@ This is a proof-of-concept, not a production detector:
 
 This project is part of a sequence:
 
-- **[FP-10] ModelScan integration** -- static analysis catches serialization exploits and known patterns
-- **[FP-13] Behavioral fingerprinting** -- unsupervised detection catches training-data poisoning that static misses
+- **ModelScan integration** -- static analysis catches serialization exploits and known patterns
+- **Behavioral fingerprinting** -- unsupervised detection catches training-data poisoning that static misses
 - **[Next] Combined pipeline** -- layered defense: static scan first (fast, cheap), behavioral scan for models that pass static checks
 
 The same pattern the security industry learned with malware: signatures first, behavioral analysis second, ensemble verdict third.

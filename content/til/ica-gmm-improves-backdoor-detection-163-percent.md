@@ -17,7 +17,7 @@ ICA separates statistically independent components rather than maximizing varian
 
 ## Source
 
-This finding comes from [FP-13 (Model Behavioral Fingerprinting)](/posts/model-fingerprinting/), where I tested 6 unsupervised detection methods across 4 dimensionality reduction techniques on TrojAI benchmark data. Full code: [github.com/rexcoleman/model-behavioral-fingerprint](https://github.com/rexcoleman/model-behavioral-fingerprint).
+This finding comes from the [Model Behavioral Fingerprinting](/posts/model-fingerprinting/) research, where I tested 6 unsupervised detection methods across 4 dimensionality reduction techniques on TrojAI benchmark data. Full code: [github.com/rexcoleman/model-behavioral-fingerprint](https://github.com/rexcoleman/model-behavioral-fingerprint).
 
 ## What to do about it
 

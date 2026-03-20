@@ -87,7 +87,7 @@ The key accelerators: `--fill` for bulk placeholder substitution, `PROJECT_BRIEF
 
 **The highest-leverage template was the one I built last.** PUBLICATION_PIPELINE governs the blog workflow — the single most important brand activity. govML governed everything except publishing for months. The irony of a governance framework that doesn't govern its own distribution was the key insight that led to v2.4.
 
-**PROJECT_BRIEF changes behavior, not just documentation.** When you force thesis + research questions + scope BEFORE code, projects start differently. My vulnerability prioritization project (FP-05) went from `mkdir` to complete FINDINGS.md in a single session — because the brief defined what I was proving before I wrote a line of Python.
+**PROJECT_BRIEF changes behavior, not just documentation.** When you force thesis + research questions + scope BEFORE code, projects start differently. My [vulnerability prioritization project](/posts/cvss-gets-it-wrong/) went from `mkdir` to complete FINDINGS.md in a single session — because the brief defined what I was proving before I wrote a line of Python.
 
 ## The Numbers
 

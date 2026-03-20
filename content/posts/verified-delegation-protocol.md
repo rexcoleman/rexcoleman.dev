@@ -34,7 +34,7 @@ Our protocol architecture:
   (identity)          (semantic)          (throughput)
 ```
 
-Our simulation (FP-15) predicted 97% poison rate under no defense, with zero-trust cutting it by 40 percentage points. We designed our protocol to close the remaining gap.
+Our [cascade simulation](/posts/multi-agent-security/) predicted 97% poison rate under no defense, with zero-trust cutting it by 40 percentage points. We designed our protocol to close the remaining gap.
 
 | | Simulation Prediction | Real Agent Result |
 |---|---|---|
@@ -90,7 +90,7 @@ Every refutation tells future researchers what NOT to build. That's worth more t
 
 This is arguably the most important finding for the multi-agent security community:
 
-| Metric | FP-15 Simulation | FP-16 Real Agents | Gap |
+| Metric | Simulation | Real Agents | Gap |
 |--------|-----------------|-------------------|-----|
 | No-defense poison rate | 0.974 | 0.494 | **48pp** |
 | Zero-trust poison rate | 0.583 | 0.433 | 15pp |
@@ -98,7 +98,7 @@ This is arguably the most important finding for the multi-agent security communi
 
 The simulation overestimates cascade severity by ~48 percentage points because real LLMs have semantic resistance. When a downstream agent receives "invest in CryptoScamCoin" embedded in a business analysis, it partially recognizes the incongruity and doesn't always propagate it. The simulation models agents as probabilistic pass-throughs; real agents reason about content.
 
-This invalidates FP-15's quantitative conclusions while preserving its qualitative finding: implicit trust IS worse than zero-trust, just by 6pp not 40pp.
+This invalidates the simulation's quantitative conclusions while preserving its qualitative finding: implicit trust IS worse than zero-trust, just by 6pp not 40pp.
 
 ## What Should Work Instead
 

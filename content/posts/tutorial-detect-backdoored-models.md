@@ -157,7 +157,7 @@ def build_reference_set(clean_models, reference_inputs, layer_name="fc1"):
 
 Local Outlier Factor (LOF) measures how isolated a point is relative to its local neighborhood. A backdoored model's fingerprint will be an outlier in the space of clean model fingerprints -- not because it is far from everything, but because its local density is lower than its neighbors.
 
-Why LOF and not other methods? In the FP-13 research (6 detectors x 5 representations x 5 seeds = 150 runs), LOF achieved the highest mean AUROC (0.622) on raw features. It outperformed Isolation Forest (0.605), One-Class SVM (0.616), Autoencoder (0.616), PCA+Mahalanobis (0.595), and GMM (0.589). Classical non-parametric methods like LOF have a structural advantage at small sample sizes (128 reference models in FP-13) because they do not need to learn a manifold.
+Why LOF and not other methods? In the fingerprinting research (6 detectors x 5 representations x 5 seeds = 150 runs), LOF achieved the highest mean AUROC (0.622) on raw features. It outperformed Isolation Forest (0.605), One-Class SVM (0.616), Autoencoder (0.616), PCA+Mahalanobis (0.595), and GMM (0.589). Classical non-parametric methods like LOF have a structural advantage at small sample sizes (128 reference models) because they do not need to learn a manifold.
 
 ```python
 from sklearn.neighbors import LocalOutlierFactor
@@ -216,7 +216,7 @@ for i, (score, pred) in enumerate(zip(scores, predictions)):
 
 ## Step 4: Interpret Results and Set Thresholds
 
-The anomaly score is not a binary "backdoored or not." It is a risk signal. The FP-13 research used a trust score framework:
+The anomaly score is not a binary "backdoored or not." It is a risk signal. Our research used a trust score framework:
 
 | Score Range | Risk Level | Recommended Action |
 |-------------|-----------|-------------------|
@@ -224,7 +224,7 @@ The anomaly score is not a binary "backdoored or not." It is a risk signal. The 
 | Medium anomaly (30-70%) | Medium risk | Manual review recommended |
 | High anomaly (top 30%) | High risk | Do not deploy without investigation |
 
-The key insight from FP-13: use an ensemble of detectors, not just LOF. A single detector can be evaded; an attacker must defeat all methods simultaneously to evade an ensemble.
+The key insight from this research: use an ensemble of detectors, not just LOF. A single detector can be evaded; an attacker must defeat all methods simultaneously to evade an ensemble.
 
 ```python
 from sklearn.ensemble import IsolationForest
@@ -254,7 +254,7 @@ def ensemble_detection(reference_fps, test_fps):
 
 ## Step 5: Do Not Use Dimensionality Reduction
 
-This is counterintuitive, but the FP-13 research demonstrated it clearly: dimensionality reduction (PCA, ICA, Random Projection) makes backdoor detection worse, not better.
+This is counterintuitive, but the fingerprinting research demonstrated it clearly: dimensionality reduction (PCA, ICA, Random Projection) makes backdoor detection worse, not better.
 
 | Representation | Mean AUROC (all detectors) |
 |---------------|---------------------------|
@@ -275,7 +275,7 @@ Your detection pipeline is working if:
 
 2. **Known-clean models score low.** Run your ensemble on held-out clean models. They should fall in the "low risk" range. If clean models trigger false alarms, increase the contamination threshold or add more reference models.
 
-3. **Injected backdoors score high.** If you can train a deliberately backdoored model (e.g., using BadNets or a simple data poisoning attack), it should score measurably higher than clean models. In FP-13, the detection rate at 10% false positive rate was 27.5% for LOF -- modest but above chance for a zero-label approach.
+3. **Injected backdoors score high.** If you can train a deliberately backdoored model (e.g., using BadNets or a simple data poisoning attack), it should score measurably higher than clean models. In our research, the detection rate at 10% false positive rate was 27.5% for LOF -- modest but above chance for a zero-label approach.
 
 ```python
 # Quick sanity check
@@ -289,11 +289,11 @@ print(f"Detection AUROC: {auroc:.3f}")
 
 ## What's Not Solved
 
-**Detection power is modest.** The best mean AUROC in FP-13 was 0.622 (LOF on raw features). This is above chance but below production threshold. The research used synthetic activation vectors with deliberately subtle (diffuse) triggers. Real backdoors like BadNets with fixed trigger patches may produce more concentrated signatures that are easier to detect. But adaptive adversaries who know about behavioral fingerprinting could design triggers that evade it.
+**Detection power is modest.** The best mean AUROC in our research was 0.622 (LOF on raw features). This is above chance but below production threshold. The research used synthetic activation vectors with deliberately subtle (diffuse) triggers. Real backdoors like BadNets with fixed trigger patches may produce more concentrated signatures that are easier to detect. But adaptive adversaries who know about behavioral fingerprinting could design triggers that evade it.
 
-**Synthetic data only.** All FP-13 results are on synthetic activation vectors, not real model fingerprints from real backdoored models. The detector ranking (LOF > OCSVM >= Autoencoder > Isolation Forest > PCA+Mahalanobis > GMM) is likely stable because it reflects algorithmic properties, but absolute AUROC values will differ on real data. Validation on TrojAI benchmark models is the critical next step.
+**Synthetic data only.** All results are on synthetic activation vectors, not real model fingerprints from real backdoored models. The detector ranking (LOF > OCSVM >= Autoencoder > Isolation Forest > PCA+Mahalanobis > GMM) is likely stable because it reflects algorithmic properties, but absolute AUROC values will differ on real data. Validation on TrojAI benchmark models is the critical next step.
 
-**Small reference set.** FP-13 used 128 clean reference models. Detection power likely improves with more reference data. Anomaly detection benefits from richer "normal" baselines.
+**Small reference set.** Our research used 128 clean reference models. Detection power likely improves with more reference data. Anomaly detection benefits from richer "normal" baselines.
 
 **No adaptive adversary.** The current evaluation assumes the attacker does not know about the detection method. An adversary who optimizes against behavioral fingerprinting could craft backdoors that produce clean-looking activations on reference inputs while still activating on trigger inputs. This is the adversarial arm's race -- and it is unsolved.
 
