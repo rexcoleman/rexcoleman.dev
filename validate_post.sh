@@ -108,6 +108,24 @@ validate_post() {
             fi
         done
     fi
+
+    # --- R55: govML Private Repo Check ---
+    if grep -qi "github.com/rexcoleman/govML\|github.com/rexcoleman/ml-governance-templates\|git clone.*govML\|pip install govml" "$file"; then
+        echo -e "  ${RED}FAIL${NC}: R55 violation — contains prohibited govML repo reference"
+        FAIL=$((FAIL + 1))
+    else
+        PASS=$((PASS + 1))
+    fi
+
+    # --- R58: Content Routing Check ---
+    FORMAT=$(grep -m1 '^format:' "$file" | sed 's/format:[[:space:]]*//' | tr -d '"')
+    FILEPATH="$file"
+    if [[ "$FORMAT" == "til" ]] && [[ "$FILEPATH" == *"/posts/"* ]]; then
+        echo -e "  ${RED}FAIL${NC}: R58 violation — TIL format content must not be in /posts/ (route to social channels)"
+        FAIL=$((FAIL + 1))
+    else
+        PASS=$((PASS + 1))
+    fi
 }
 
 # Main
