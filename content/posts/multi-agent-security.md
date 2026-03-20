@@ -33,7 +33,7 @@ Our simulation predicted 97% poison under implicit trust. Real Claude Haiku agen
 | Zero-trust poison | 58.3% | **53.3%** | 5pp |
 | Topology matters? | No (all ~97%) | **Yes (17pp spread)** | Qualitatively wrong |
 
-![E1: Cascade rate reaches 1.0 at all system sizes under implicit trust in simulation. Real agents show much lower rates.](images/e1_cascade_vs_count.png)
+![E1: Cascade rate reaches 1.0 at all system sizes under implicit trust in simulation. Real agents show much lower rates.](/images/posts/multi-agent-security/e1_cascade_vs_count.png)
 
 The simulation overestimates by 37pp. But it gets one thing right: **zero-trust is the best defense.**
 
@@ -47,11 +47,11 @@ Zero-trust architecture — where each agent independently verifies every input 
 | Capability-scoped | 100% | 90.8% |
 | **Zero-trust** | **84%** | **58.3%** |
 
-![E2: Zero-trust is the only trust model that reduces cascade below 100%. Capability-scoping helps with poison rate but doesn't prevent full cascade.](images/e2_trust_model.png)
+![E2: Zero-trust is the only trust model that reduces cascade below 100%. Capability-scoping helps with poison rate but doesn't prevent full cascade.](/images/posts/multi-agent-security/e2_trust_model.png)
 
 Zero-trust cuts the poison rate by 40 percentage points. Capability-scoping only manages 7pp. This is the same zero-trust principle from network security, applied to AI agent architectures.
 
-![Cascade propagation over time: implicit trust reaches saturation by step 5. Zero-trust slows propagation and prevents full cascade.](images/cascade_over_time.png)
+![Cascade propagation over time: implicit trust reaches saturation by step 5. Zero-trust slows propagation and prevents full cascade.](/images/posts/multi-agent-security/cascade_over_time.png)
 
 ## The Bad News: Adaptive Adversaries Recover 54%
 
@@ -63,7 +63,7 @@ Here's where it gets uncomfortable. A defense-aware attacker — one who knows y
 | **Defense-aware** | **96%** | **89.9%** |
 | Credential-theft | 80% | 61.7% |
 
-![E4: Defense-aware attacker nearly defeats zero-trust, recovering 54% of the poison rate gap.](images/e4_adaptive_adversary.png)
+![E4: Defense-aware attacker nearly defeats zero-trust, recovering 54% of the poison rate gap.](/images/posts/multi-agent-security/e4_adaptive_adversary.png)
 
 The defense-aware attacker pushes poison rate from 58% back up to 90% — recovering 54% of the gap zero-trust created. Credential theft is surprisingly less effective than defense-awareness. **It's not who you are that matters in agent trust — it's what you say.**
 
@@ -112,7 +112,7 @@ The framework is open source. 16 tests, 5 seeds, full reproducibility.
 
 ---
 
-*Rex Coleman is securing AI from the architecture up — building and attacking AI security systems at every layer of the stack, publishing the methodology, and shipping tools. [rexcoleman.dev](https://rexcoleman.dev) · [GitHub](https://github.com/rexcoleman) · [Singularity Cybersecurity](https://singularitycyber.com)*
+*Rex Coleman is securing AI from the architecture up — building and attacking AI security systems at every layer of the stack, publishing the methodology, and shipping open-source tools. [rexcoleman.dev](https://rexcoleman.dev) · [GitHub](https://github.com/rexcoleman) · [Singularity Cybersecurity](https://singularitycyber.com)*
 
 ---
 

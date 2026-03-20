@@ -4,7 +4,7 @@ date: 2026-03-20T11:00:00
 description: "Cross-model paraphrasing drops watermark detection from 100% to 60% in one pass, then plateaus at 40% after 10 passes. Kirchenbauer green-list watermarks are partially robust — but not enough for adversarial settings."
 tags: ["watermarking", "llm-security", "ai-security", "adversarial-robustness", "ai-detection", "research"]
 categories: ["AI Security", "Research"]
-featured: false
+featured: true
 format: "technical-blog"
 audience_side: "of-ai"
 image_count: 5
@@ -19,7 +19,7 @@ How many rounds of LLM paraphrasing does it take to strip a statistical watermar
 
 We set out to measure this empirically with a cross-model attack: watermark text with one model (GPT-2), paraphrase with another (Claude Haiku), and measure how the watermark signal degrades. Six pre-registered hypotheses. Five experiments. Real Kirchenbauer green-list watermarking with logit access.
 
-![Detection rate vs paraphrase passes](images/e1_detection_rate.png)
+![Detection rate vs paraphrase passes](/images/posts/llm-watermark-robustness/e1_detection_rate.png)
 
 ## What We Built
 
@@ -44,7 +44,7 @@ This cross-model setup tests the realistic attack scenario: an adversary doesn't
 | 5 | 4.66 ± 1.87 | 60% |
 | 10 | 3.89 ± 1.26 | 40% |
 
-![Z-score decay under paraphrasing](images/e1_zscore_decay.png)
+![Z-score decay under paraphrasing](/images/posts/llm-watermark-robustness/e1_zscore_decay.png)
 
 ## The Recovery Story: Why v1 Failed and v2 Worked
 
@@ -68,17 +68,17 @@ We also measured how watermark strength (the δ parameter) and text length affec
 
 **Watermark strength (E4):** Higher δ means stronger bias toward green tokens. E0 confirms the dose-response: δ=1.0 produces z=4.32, while δ=4.0 produces z=8.83. Stronger watermarks should survive more paraphrase passes — E4 tests this with paraphrasing.
 
-![Watermark strength vs robustness](images/e4_delta_robustness.png)
+![Watermark strength vs robustness](/images/posts/llm-watermark-robustness/e4_delta_robustness.png)
 
 **Text length (E3):** Longer texts have more tokens scored, providing more statistical power for detection. Shorter texts should be more vulnerable to watermark removal. E3 tests 50, 150, and 300 token lengths under 3 paraphrase passes.
 
-![Text length vs robustness](images/e3_length_robustness.png)
+![Text length vs robustness](/images/posts/llm-watermark-robustness/e3_length_robustness.png)
 
 ## False Positive Rate
 
 A watermark detector is useless if it falsely flags unwatermarked text. E5 tests the false positive rate on two categories: unwatermarked GPT-2 output and human-written text. E0b already shows z=-0.08 for unwatermarked text (well below the z=4.0 threshold).
 
-![False positive rate](images/e5_false_positive.png)
+![False positive rate](/images/posts/llm-watermark-robustness/e5_false_positive.png)
 
 ## What the Governance Framework Caught
 
@@ -116,7 +116,7 @@ The paraphrase-removal curves establish a baseline for watermark decay — but t
 
 ---
 
-*Rex Coleman is securing AI from the architecture up — building and attacking AI security systems at every layer of the stack, publishing the methodology, and shipping tools. [rexcoleman.dev](https://rexcoleman.dev) · [GitHub](https://github.com/rexcoleman) · [Singularity Cybersecurity](https://singularitycyber.com)*
+*Rex Coleman is securing AI from the architecture up — building and attacking AI security systems at every layer of the stack, publishing the methodology, and shipping open-source tools. [rexcoleman.dev](https://rexcoleman.dev) · [GitHub](https://github.com/rexcoleman) · [Singularity Cybersecurity](https://singularitycyber.com)*
 
 ---
 
