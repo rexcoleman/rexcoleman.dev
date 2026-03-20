@@ -7,7 +7,7 @@ format: "til"
 audience_side: "both"
 ---
 
-**govML ships 50+ templates, 10 profiles, and 20+ code generators — battle-tested across 10 frontier projects.** It's the governance framework I built after discovering that every ML project I ran needed the same 30+ documents, and every team was reinventing them from scratch.
+**govML ships 57 templates, 10 profiles, and 27 code generators — battle-tested across 10 frontier projects.** It's the governance framework I built after discovering that every ML project I ran needed the same 30+ documents, and every team was reinventing them from scratch.
 
 ## Why this matters
 
