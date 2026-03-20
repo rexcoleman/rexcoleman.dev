@@ -18,11 +18,9 @@ images:
   - /images/og-secure-openclaw.png
 ---
 
-You set up OpenClaw. It's running. Your agent is browsing the web, installing skills, managing your files. Maybe it's coding for you while you sleep. Maybe it's monitoring trending topics and drafting content every two hours.
+A default OpenClaw installation has file system access, API credentials, and code execution — with zero security controls enabled. One in five ClawHub skills is actively malicious. Exposed credentials from VPS-hosted agents are already showing up in public breach lists. A compromised agent isn't a compromised browser tab — it's a compromised employee with the keys to everything.
 
-Here's the thing: if you haven't thought about security, your agent is a wide-open door. It has file system access, API credentials, and the ability to execute code. A compromised agent isn't a compromised browser tab — it's a compromised employee with the keys to everything.
-
-I've been researching agent security as part of a [systematic red-team study](/posts/agent-redteam/) of AI agent frameworks. I also recently analyzed the security surface of OpenClaw specifically, drawing on disclosed vulnerabilities and operational patterns from power users running multi-agent setups 24/7. Here are the five biggest risks I found, and a 30-minute checklist to fix them.
+This 30-minute checklist fixes the five biggest risks. Based on my [agent red-team research](/posts/agent-redteam/) and analysis of disclosed OpenClaw vulnerabilities from power users running multi-agent setups 24/7.
 
 ```
 ┌─────────────────────────────────────────┐

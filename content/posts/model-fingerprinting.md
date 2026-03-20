@@ -18,11 +18,9 @@ images:
   - /images/og-model-fingerprinting.png
 ---
 
-How do you know a model downloaded from Hugging Face hasn't been backdoored?
+A model poisoned through training data — one that behaves normally on 99.9% of inputs and activates a backdoor only on a specific trigger — passes every static analysis check. I built a behavioral fingerprinting system that detects these models using unsupervised anomaly detection: zero labeled backdoor examples, no model retraining, AUROC 0.62 on deliberately subtle synthetic backdoors.
 
-Static analysis tools like ModelScan check for serialization exploits and known payload patterns. They catch the obvious attacks. But a model poisoned through training data -- one that behaves normally on 99.9% of inputs and activates a backdoor only on a specific trigger -- passes every static check. The weights look fine. The architecture is standard. The malicious behavior is invisible until the trigger fires.
-
-I built a system to detect these models by fingerprinting their behavior.
+Static tools like ModelScan catch serialization exploits. Behavioral fingerprinting catches what static misses — and the defender controls the probe inputs, inverting the usual attacker advantage.
 
 ## The Approach: Behavioral Fingerprinting
 
@@ -64,7 +62,7 @@ Best single run: One-Class SVM + PCA, AUROC 0.770.
 
 ![Detection heatmap — AUROC scores across all detector and representation combinations, showing Local Outlier Factor on raw features as the top performer](/images/posts/model-fingerprinting/detection_heatmap.png)
 
-Is AUROC 0.62 impressive? No. But this is a zero-label approach on deliberately subtle (diffuse) synthetic backdoors. The signal is real. On more concentrated backdoors -- the kind deployed in practice -- detection power likely improves significantly.
+Is AUROC 0.62 impressive? No. But this is a zero-label approach on deliberately subtle (diffuse) synthetic backdoors. The signal is real. On more concentrated backdoors -- the kind deployed in practice -- detection power should improve, though by how much remains untested.
 
 ## Result 2: The Surprise -- Raw Features Beat Dimensionality Reduction
 

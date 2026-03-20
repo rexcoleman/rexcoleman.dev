@@ -20,7 +20,7 @@ images:
   - /images/og-cvss-gets-it-wrong.png
 ---
 
-After years in cybersecurity watching security teams burn hours on the wrong vulnerabilities, I watched teams patching CVSS 9.8 vulnerabilities that never got exploited — while CVSS 7.5s got weaponized and led to breaches. CVSS measures severity. Attackers measure opportunity. I trained an ML model on 338,000 real CVEs to find out what actually predicts which vulnerabilities get exploited in the wild — and the answer is not what CVSS thinks it is.
+I trained an ML model on 338,000 real CVEs to find out what actually predicts exploitation in the wild. The answer: vendor deployment ubiquity and vulnerability age matter more than CVSS score. CVSS measures severity. Attackers measure opportunity. Teams patching CVSS 9.8 vulnerabilities that never get exploited — while CVSS 7.5s get weaponized — are following the wrong signal.
 
 ## The Data
 

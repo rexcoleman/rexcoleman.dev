@@ -91,9 +91,9 @@ The key accelerators: `--fill` for bulk placeholder substitution, `PROJECT_BRIEF
 
 ## The Numbers
 
-- 50+ templates across 4 directories (core, management, report, publishing)
+- 57 templates across 4 directories (core, management, report, publishing)
 - 10 profiles (minimal → contract-track, plus venue-specific)
-- 20+ generators (sweep orchestration, manifest verification, phase gates, leakage tests, blog drafting, and more)
+- 27 generators (sweep orchestration, manifest verification, phase gates, leakage tests, blog drafting, and more)
 - Continuously improved through v2.7 — issues surface and resolve each project cycle
 - Tested across 9 projects with 469+ tests (4 academic, 4 frontier research, 1 systems benchmark)
 

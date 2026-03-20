@@ -39,7 +39,7 @@ Prompt injection doesn't enable anything like this. You can inject a prompt and 
 
 **3. Zero OWASP coverage of RL-specific attacks.**
 
-OWASP's Agentic Top 10 identifies 10 risk categories. My [agent red-teaming work](/posts/agent-redteam/) mapped to several. But when I tested which of these categories cover RL-specific attacks — reward poisoning, observation perturbation, policy extraction, behavioral backdoors — I found that 5 attack classes from my RL research have no direct OWASP equivalent.
+OWASP's Agentic Top 10 identifies 10 risk categories. My [agent red-teaming work](/posts/agent-redteam/) mapped to 6 of the 10. But when I tested which of these categories cover RL-specific attacks — reward poisoning, observation perturbation, policy extraction, behavioral backdoors — I found that 5 attack classes from my RL research have no direct OWASP equivalent.
 
 The OWASP framework was designed for prompt-based agents. It addresses prompt injection (ASI-10), goal hijacking (ASI-01), and supply chain risks (ASI-08). It does not address reward signal corruption, observation channel manipulation, or policy extraction through black-box queries. These are distinct attack surfaces that require distinct defenses.
 
@@ -59,7 +59,7 @@ The stealth advantage is structural. A prompt injection attempt is visible in th
 
 ## What This Means for the Field
 
-The security community is fighting the last war. Prompt injection was the first AI attack the industry understood, so it became the attack the industry defends against. But the threat landscape has already moved.
+The security community is fighting the last war. Prompt injection was the first AI attack the industry understood, so it became the attack the industry defends against. But the threat model has already shifted.
 
 Production agents are incorporating RL training. The RL attack surface is different from the prompt attack surface. Defenses built for one provide zero coverage of the other. Organizations that equate "AI security" with "prompt injection defense" have a blind spot that grows with every RL-trained agent they deploy.
 

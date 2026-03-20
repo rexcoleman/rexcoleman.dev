@@ -80,7 +80,7 @@ This is the same lateral movement pattern from traditional malware, adapted for 
 
 ## Why Static Analysis Isn't Enough
 
-There are tools that scan skill code for malicious patterns. Some are quite good — Cisco's skill-scanner uses LLM-based semantic analysis, and several open-source scanners can catch obvious data exfiltration.
+There are tools that scan skill code for malicious patterns. Some are quite good — Cisco's skill-scanner uses LLM-based semantic analysis, and 3-4 open-source scanners can catch obvious data exfiltration.
 
 But the hardest malicious skills are **clean code that produces malicious behavior**. The skill's source code contains no suspicious patterns. Instead, it uses legitimate agent APIs in combinations that create harmful outcomes. Static analysis sees clean code. Behavioral analysis sees the harm.
 

@@ -13,11 +13,9 @@ ShowToc: true
 TocOpen: false
 ---
 
-When an LLM generates a security patch, does it actually fix the vulnerability? And more importantly — does it introduce new ones?
+LLM-generated security patches have a 42% fix rate and a 10% regression rate — but the aggregate hides a dangerous pattern. SQL injection patches are net-negative: 0% fix rate, 50% regression. The model recognizes the vulnerability but its rewrites introduce new injection vectors. Cryptography patches, by contrast, hit 100% fix rate with 0% regression.
 
-Every team using Copilot, Claude, or ChatGPT for code fixes needs to know: which vulnerability types are safe to patch with AI, and which are dangerous?
-
-We tested this empirically: Claude Haiku generating patches for 50 vulnerable code snippets across 5 CWE categories, measured by static analysis for both fix rate and regression rate.
+I tested Claude Haiku generating patches for 50 vulnerable code snippets across 5 CWE categories, measured by static analysis for both fix rate and regression rate.
 
 <!--more-->
 

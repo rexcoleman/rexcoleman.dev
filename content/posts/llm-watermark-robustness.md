@@ -15,9 +15,9 @@ ShowToc: true
 TocOpen: false
 ---
 
-How many rounds of LLM paraphrasing does it take to strip a statistical watermark from AI-generated text? This matters because watermarking is one of the most promising approaches to AI content detection — and if a cheap paraphrasing attack can remove it, the entire approach may be unviable for adversarial settings.
+Cross-model paraphrasing drops Kirchenbauer watermark detection from 100% to 60% in a single pass. After ten passes, it plateaus at 40%. The watermark is partially robust — but not enough for adversarial settings where the attacker has access to any LLM.
 
-We set out to measure this empirically with a cross-model attack: watermark text with one model (GPT-2), paraphrase with another (Claude Haiku), and measure how the watermark signal degrades. Six pre-registered hypotheses. Five experiments. Real Kirchenbauer green-list watermarking with logit access.
+I measured this by watermarking text with GPT-2, paraphrasing with Claude Haiku, and tracking how the z-score decays. Five experiments. Six pre-registered hypotheses. Real green-list watermarking with logit access.
 
 ![Detection rate vs paraphrase passes](/images/posts/llm-watermark-robustness/e1_detection_rate.png)
 

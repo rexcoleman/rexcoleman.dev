@@ -15,7 +15,7 @@ TocOpen: true
 
 **Thesis:** Point solutions — WAFs, signature-based antivirus, rule-based SIEMs — fail against AI-powered attacks because AI attacks adapt faster than signatures update. The defense must be architectural.
 
-I've spent the last four months building and attacking ML-based security systems across six domains. The consistent finding is that the model you choose matters far less than the architecture you deploy it in. A well-architected defense with a mediocre model beats an unstructured defense with a state-of-the-art model. Every time.
+I've spent the last four months building and attacking ML-based security systems across six domains. The consistent finding is that the model you choose matters far less than the architecture you deploy it in. A well-architected defense with a mediocre model beats an unstructured defense with a state-of-the-art model — across all six domains I tested.
 
 ## The Evidence
 
@@ -35,13 +35,13 @@ This is an architecture problem, not a model problem. No amount of model improve
 
 **3. Adversarial evasion defeats signature-based IDS because signatures are static and attacks are adaptive.**
 
-Traditional IDS products maintain signature databases — known-bad patterns that trigger alerts. AI-powered attacks generate novel patterns that evade signatures by design. This isn't theoretical. The adversarial evasion rate against pattern-matching defenses approaches 100% when the attacker can iterate, because each iteration probes the signature space and adjusts. The defender updates signatures weekly. The attacker updates payloads per-request.
+Traditional IDS products maintain signature databases — known-bad patterns that trigger alerts. AI-powered attacks generate novel patterns that evade signatures by design. This isn't theoretical. The adversarial evasion rate against pattern-matching defenses reaches 95%+ when the attacker can iterate, because each iteration probes the signature space and adjusts. The defender updates signatures weekly. The attacker updates payloads per-request.
 
 The architecture fix: stop relying on what the traffic looks like (signatures) and start relying on what the traffic does (behavioral analysis on defender-observable features). ML-for-defense is necessary, but only when deployed within an architecture that constrains what the ML needs to get right.
 
 **4. 0% of prompt-injection defenses work against RL-specific attacks.**
 
-My [agent red-teaming work](/posts/agent-redteam/) built 3 defense layers against prompt injection: input sanitization, tool permission boundaries, and output validation. These defenses reduced prompt injection success from 80% to measurably lower rates on several attack classes. Then I tested the same defenses against RL-specific attacks — reward poisoning, observation perturbation, policy extraction. The result: 0% effectiveness. Zero.
+My [agent red-teaming work](/posts/agent-redteam/) built 3 defense layers against prompt injection: input sanitization, tool permission boundaries, and output validation. These defenses reduced prompt injection success from 80% to 20-45% depending on attack class. Then I tested the same defenses against RL-specific attacks — reward poisoning, observation perturbation, policy extraction. The result: 0% effectiveness. Zero.
 
 The attacks operate on completely different surfaces. Prompt defenses filter text. RL attacks corrupt numerical vectors, reward signals, and learned policies. A point solution designed for one attack surface provides zero protection against a different attack surface. Only an architectural approach — one that identifies all attack surfaces and builds layered defense across each — can cover the full threat model.
 

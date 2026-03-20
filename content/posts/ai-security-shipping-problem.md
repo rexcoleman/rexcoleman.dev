@@ -26,11 +26,11 @@ OWASP's Agentic Security Initiative identified 10 risk categories (ASI-01 throug
 
 **2. 820+ malicious skills on ClawHub, and VirusTotal can't detect them.**
 
-One in five skills on ClawHub — the largest agent skill marketplace — is actively malicious. These skills exfiltrate data, modify agent behavior, and enable lateral movement. Traditional security scanners, including VirusTotal, miss 6,487 malicious agent tools because they look for file-level signatures, not behavioral patterns. The detection gap is architectural: agent-specific malware doesn't look like traditional malware because it operates through legitimate agent APIs. We identified the threat. We quantified it. We haven't shipped the scanner.
+One in five skills on ClawHub — the largest agent skill marketplace — is actively malicious. These skills exfiltrate data, modify agent behavior, and enable lateral movement. Traditional security scanners, including VirusTotal, miss 6,487 malicious agent tools because they look for file-level signatures, not behavioral patterns. The detection gap is architectural: agent-specific malware doesn't look like traditional malware because it operates through legitimate agent APIs. The threat is identified. It's quantified. Nobody has shipped the scanner.
 
 **3. $500M+ in VC funding, but buyers report 29% readiness.**
 
-In Q1 2026 alone, Armadin raised $190M, Kai raised $125M, 7AI raised $166M, and Onyx raised $40M — all in the agent security space. The money says the market is real. But enterprise surveys show only 29% of organizations feel prepared to secure agentic AI. Meanwhile, 48% of security professionals say agents are their #1 attack vector. Half a billion dollars in and the buyer readiness needle hasn't moved. The capital is flowing to platforms and dashboards, not to the practitioners who need to secure agents this week.
+In Q1 2026 alone, Armadin raised $190M, Kai raised $125M, 7AI raised $166M, and Onyx raised $40M — all in the agent security space. The money says the market is real. But enterprise surveys show only 29% of organizations feel prepared to secure agentic AI. Meanwhile, 48% of security professionals say agents are their #1 attack vector. Half a billion dollars in and the buyer readiness needle hasn't moved. The capital is flowing to GRC dashboards that visualize risk scores, not to scanners that block malicious skills at install time.
 
 **4. NIST AI RMF exists. govML is the only implementation I can find.**
 
@@ -42,9 +42,9 @@ The MCP (Model Context Protocol) ecosystem accumulated 30 CVEs in its first 60 d
 
 ## What This Means for the Field
 
-AI security is following a pattern I've seen before in cybersecurity: the advisory class moves faster than the engineering class. Frameworks proliferate because they're cheaper to produce than tools. A working paper costs weeks. A working tool costs months. But the frameworks without tools create a dangerous illusion of progress. CISOs can point to "OWASP alignment" in a board deck while their agents run 820 unscanned skills.
+AI security is following the same pattern that slowed down PCI DSS adoption: analysts publish faster than engineers build. A working paper costs weeks. A working tool costs months. But the frameworks without tools create a dangerous illusion of progress. CISOs can point to "OWASP alignment" in a board deck while their agents run 820 unscanned skills.
 
-The consequence is a credibility gap. Security practitioners — the people who actually have to defend these systems — are losing trust in the advisory layer because the advice doesn't come with implementation. "Validate all agent inputs" is correct advice. How? With what tool? Against what baseline?
+The consequence is a credibility gap. Security practitioners are losing trust in the advisory layer because the advice doesn't come with implementation. "Validate all agent inputs" is correct advice. How? With what tool? Against what baseline?
 
 Every framework that ships without a reference implementation is a promise the industry hasn't kept.
 

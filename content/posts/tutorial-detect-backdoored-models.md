@@ -12,11 +12,9 @@ description: "Extract behavioral fingerprints from ML model activations and use 
 
 ## Problem Statement
 
-You download a pre-trained model from a public registry -- Hugging Face, PyTorch Hub, TensorFlow Hub. The model passes all standard accuracy benchmarks. It performs well on your test set. But it has been backdoored: it contains a hidden behavior that activates only when a specific trigger pattern is present in the input. Standard testing will not catch it because the trigger is not in your test data.
+Pre-trained models from public registries can pass every accuracy benchmark while hiding backdoors that activate only on attacker-chosen trigger inputs. Static analysis tools miss these because the backdoor lives in learned weights, not code. In 150 detection runs across 6 methods, Local Outlier Factor on raw activations achieved 0.622 AUROC at detecting backdoored models with zero labeled examples — modest but above chance, and the best unsupervised result I measured.
 
-Static analysis tools like ModelScan check for serialization exploits (pickle deserialization, arbitrary code execution) and known payload patterns. But they cannot detect behavioral backdoors injected through training data poisoning. The model weights are valid; the architecture is standard; the backdoor lives in the learned representations, not the code.
-
-You need a method that detects behavioral anomalies without knowing what the backdoor looks like and without having any labeled examples of backdoored models to train on. This tutorial shows how to do that using unsupervised anomaly detection on model activation patterns.
+This tutorial shows you how to build that detection pipeline: extract behavioral fingerprints from model activations, apply unsupervised anomaly detection, and identify suspicious models without knowing what the backdoor looks like.
 
 ```
 Clean Model              Backdoored Model

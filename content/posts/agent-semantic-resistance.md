@@ -15,9 +15,9 @@ ShowToc: true
 TocOpen: false
 ---
 
-Our [multi-agent cascade simulation](/posts/multi-agent-security/) showed real agents resist cascade at 60% where simulations predict 97%. Our [verified delegation protocol](/posts/verified-delegation-protocol/) showed defenses fail because they don't understand this resistance. This project answers the question both left open: **WHY do real agents resist, and what bypasses it?**
+Domain-aligned prompt injections cascade through multi-agent systems at a 0% detection rate. Privilege escalation payloads hit 97.6%. That's a **98 percentage-point spread** across payload types in the same agent architecture — the single biggest variable determining whether your multi-agent system catches an attack or never sees it.
 
-Six experiments on real Claude Haiku agents. Six pre-registered hypotheses. Three resistance patterns identified.
+I ran six experiments on real Claude Haiku agents to find out why. Three resistance patterns explain the gap — and each has a quantified bypass condition.
 
 ## The 98pp Spread
 
