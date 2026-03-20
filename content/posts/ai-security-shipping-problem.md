@@ -4,6 +4,7 @@ date: 2026-03-19
 draft: false
 tags: ["ai-security", "industry-analysis", "singularity-cybersecurity", "agent-security"]
 categories: ["AI Security", "Builder Journal"]
+featured: true
 format: "perspective"
 audience_side: "both"
 image_count: 0

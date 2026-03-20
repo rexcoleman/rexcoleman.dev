@@ -3,66 +3,47 @@
 {{- if (and site.Params.profileMode.enabled .IsHome) }}
 {{- partial "index_profile.html" . }}
 
-{{- /* Show recent posts below profile */ -}}
-{{- $pages := where site.RegularPages "Type" "in" site.Params.mainSections }}
-{{- $pages = where $pages "Params.hiddenInHomeList" "!=" "true" }}
-{{- $paginator := .Paginate $pages }}
+{{/* Curated homepage — Featured posts + Browse by Topic + CTA */}}
+<div class="post-content" style="max-width: 880px; margin: 0 auto; padding: 0 20px;">
 
-{{- range $index, $page := $paginator.Pages }}
-{{- $class := "post-entry" }}
+  {{/* Featured Posts */}}
+  <h2 style="margin-top: 2rem; margin-bottom: 1rem; color: var(--heading, #F3F4F6);">Featured</h2>
 
-<article class="{{ $class }}">
-  {{- $isHidden := (.Param "cover.hiddenInList") | default (.Param "cover.hidden") | default false }}
-  {{- partial "cover.html" (dict "cxt" . "IsSingle" false "isHidden" $isHidden) }}
-  <header class="entry-header">
-    <h2 class="entry-hint-parent">
-      {{- .Title }}
-      {{- if .Draft }}
-      <span class="entry-hint" title="Draft">
-        <svg xmlns="http://www.w3.org/2000/svg" height="20" viewBox="0 -960 960 960" fill="currentColor">
-          <path
-            d="M160-410v-60h300v60H160Zm0-165v-60h470v60H160Zm0-165v-60h470v60H160Zm360 580v-123l221-220q9-9 20-13t22-4q12 0 23 4.5t20 13.5l37 37q9 9 13 20t4 22q0 11-4.5 22.5T862.09-380L643-160H520Zm300-263-37-37 37 37ZM580-220h38l121-122-18-19-19-18-122 121v38Zm141-141-19-18 37 37-18-19Z" />
-        </svg>
-      </span>
-      {{- end }}
-    </h2>
-  </header>
-  {{- if (ne (.Param "hideSummary") true) }}
-  <div class="entry-content">
-    <p>{{ .Summary | plainify | htmlUnescape }}{{ if .Truncated }}...{{ end }}</p>
+  {{- $featured := where (where site.RegularPages "Type" "in" site.Params.mainSections) "Params.featured" true }}
+  {{- range $featured }}
+  <article class="post-entry" style="margin-bottom: 0.5rem;">
+    <header class="entry-header">
+      <h2 class="entry-hint-parent">{{- .Title }}</h2>
+    </header>
+    {{- if (ne (.Param "hideSummary") true) }}
+    <div class="entry-content">
+      <p>{{ .Summary | plainify | htmlUnescape }}{{ if .Truncated }}...{{ end }}</p>
+    </div>
+    {{- end }}
+    <footer class="entry-footer">
+      {{- partial "post_meta.html" . -}}
+    </footer>
+    <a class="entry-link" aria-label="post link to {{ .Title | plainify }}" href="{{ .Permalink }}"></a>
+  </article>
+  {{- end }}
+
+  {{/* Browse by Topic */}}
+  <h2 style="margin-top: 2rem; margin-bottom: 1rem; color: var(--heading, #F3F4F6);">Browse by Topic</h2>
+  <div style="display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 2rem;">
+    {{- range site.Taxonomies.categories }}
+    <a href="{{ .Page.Permalink }}" style="background: var(--code-bg, #131825); border: 1px solid var(--border, #1E2536); border-radius: 6px; padding: 8px 16px; color: var(--secondary, #D1D5DB); text-decoration: none; font-size: 0.9rem;">
+      {{ .Page.Title }} <span style="color: var(--tertiary, #6B7280);">({{ .Count }})</span>
+    </a>
+    {{- end }}
   </div>
-  {{- end }}
-  {{- if not (.Param "hideMeta") }}
-  <footer class="entry-footer">
-    {{- partial "post_meta.html" . -}}
-  </footer>
-  {{- end }}
-  <a class="entry-link" aria-label="post link to {{ .Title | plainify }}" href="{{ .Permalink }}"></a>
-</article>
-{{- end }}
 
-{{- if gt $paginator.TotalPages 1 }}
-<footer class="page-footer">
-  <nav class="pagination">
-    {{- if $paginator.HasPrev }}
-    <a class="prev" href="{{ $paginator.Prev.URL | absURL }}">
-      «&nbsp;{{ i18n "prev_page" }}&nbsp;
-      {{- if (.Param "ShowPageNums") }}
-      {{- sub $paginator.PageNumber 1 }}/{{ $paginator.TotalPages }}
-      {{- end }}
-    </a>
-    {{- end }}
-    {{- if $paginator.HasNext }}
-    <a class="next" href="{{ $paginator.Next.URL | absURL }}">
-      {{- i18n "next_page" }}&nbsp;
-      {{- if (.Param "ShowPageNums") }}
-      {{- add 1 $paginator.PageNumber }}/{{ $paginator.TotalPages }}
-      {{- end }}&nbsp;»
-    </a>
-    {{- end }}
-  </nav>
-</footer>
-{{- end }}
+  {{/* CTA */}}
+  <div style="text-align: center; padding: 1.5rem 0; border-top: 1px solid var(--border, #1E2536);">
+    <p style="color: var(--secondary, #D1D5DB); margin-bottom: 0.75rem;">Weekly AI security research — findings, tools, and curated signal.</p>
+    <a href="https://substack.com/@rexcoleman" style="color: var(--accent, #34D399); text-decoration: none; font-weight: 600;">Subscribe on Substack</a>
+  </div>
+
+</div>
 
 {{- else }} {{/* if not profileMode */}}
 
