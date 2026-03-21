@@ -9,7 +9,7 @@ params:
   author: "Rex Coleman"
   defaultTheme: dark
   ShowReadingTime: true
-  ShowShareButtons: true
+  ShowShareButtons: false
   ShowPostNavLinks: true
   ShowBreadCrumbs: true
   ShowCodeCopyButtons: true
@@ -39,6 +39,10 @@ params:
       url: "https://github.com/rexcoleman"
     - name: linkedin
       url: "https://linkedin.com/in/rexcoleman"
+    - name: email
+      url: "mailto:rex@singularitycyber.com"
+    - name: substack
+      url: "https://substack.com/@rexcoleman"
     - name: rss
       url: "/index.xml"
 
