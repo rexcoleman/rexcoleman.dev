@@ -12,6 +12,9 @@ description: "The AI security industry produces frameworks and guidelines but al
 author: "Rex Coleman"
 ShowToc: true
 TocOpen: true
+cover:
+    image: /images/og-ai-security-shipping-problem.png
+    hidden: true
 ---
 
 **Thesis:** The AI security industry produces frameworks and guidelines but almost no one ships working tools that practitioners can deploy today.

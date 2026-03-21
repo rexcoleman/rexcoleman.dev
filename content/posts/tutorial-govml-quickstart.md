@@ -10,6 +10,9 @@ format: "tutorial"
 audience_side: "both"
 image_count: 0  # R26: text diagram present (ASCII architecture diagram)
 description: "Install govML, scaffold a governed ML project with one command, and learn how contract-driven development prevents the 'I forgot which hyperparameters I used' problem."
+cover:
+    image: /images/og-tutorial-govml-quickstart.png
+    hidden: true
 ---
 
 > **Note (2026-03-20):** govML is now maintained as internal tooling. This tutorial references a public repository that is no longer available. For the current description of govML's methodology, see [How I Govern AI-Assisted ML Projects](/posts/govml-methodology/).

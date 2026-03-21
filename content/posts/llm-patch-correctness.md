@@ -11,6 +11,9 @@ image_count: 2
 author: "Rex Coleman"
 ShowToc: true
 TocOpen: false
+cover:
+    image: /images/og-llm-patch-correctness.png
+    hidden: true
 ---
 
 LLM-generated security patches have a 42% fix rate and a 10% regression rate — but the aggregate hides a dangerous pattern. SQL injection patches are net-negative: 0% fix rate, 50% regression. The model recognizes the vulnerability but its rewrites introduce new injection vectors. Cryptography patches, by contrast, hit 100% fix rate with 0% regression.

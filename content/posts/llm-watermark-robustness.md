@@ -13,6 +13,9 @@ aliases:
 author: "Rex Coleman"
 ShowToc: true
 TocOpen: false
+cover:
+    image: /images/og-llm-watermark-robustness.png
+    hidden: true
 ---
 
 Cross-model paraphrasing drops Kirchenbauer watermark detection from 100% to 60% in a single pass. After ten passes, it plateaus at 40%. The watermark is partially robust — but not enough for adversarial settings where the attacker has access to any LLM.

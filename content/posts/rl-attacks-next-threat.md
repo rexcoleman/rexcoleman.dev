@@ -11,6 +11,9 @@ description: "The security community is focused on prompt injection, but RL-spec
 author: "Rex Coleman"
 ShowToc: true
 TocOpen: true
+cover:
+    image: /images/og-rl-attacks-next-threat.png
+    hidden: true
 ---
 
 **Thesis:** The security community is focused on prompt injection, but RL-specific attacks — reward poisoning, observation perturbation, policy extraction — are more dangerous and less understood.

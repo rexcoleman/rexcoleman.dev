@@ -10,6 +10,9 @@ image_count: 0  # R26: text diagram present (ASCII architecture diagram)
 description: "Classify every input to your ML system by who controls it, then architect your defenses around the features adversaries cannot touch."
 archived: true
 hiddenInHomeList: true
+cover:
+    image: /images/og-tutorial-aca-three-steps.png
+    hidden: true
 ---
 
 > **Note (2026-03-19):** This was an early exploration in my AI security research. The methodology has known limitations documented in the [quality assessment](https://github.com/rexcoleman/Moonshots_Career_Thesis). For the current state of this work, see [Multi-Agent Security](https://github.com/rexcoleman/multi-agent-security) and [Verified Delegation Protocol](https://github.com/rexcoleman/verified-delegation-protocol).

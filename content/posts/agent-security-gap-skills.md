@@ -13,6 +13,9 @@ aliases:
 author: "Rex Coleman"
 ShowToc: true
 TocOpen: true
+cover:
+    image: /images/og-agent-security-gap-skills.png
+    hidden: true
 ---
 
 **Thesis:** Everyone's worried about prompt injection, but the real agent attack surface is third-party skills — they execute persistently on every heartbeat cycle, not once per conversation.

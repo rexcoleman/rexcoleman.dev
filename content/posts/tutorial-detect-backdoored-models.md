@@ -8,6 +8,9 @@ format: "tutorial"
 audience_side: "of-ai"
 image_count: 0  # R26: text diagram present (ASCII architecture diagram)
 description: "Extract behavioral fingerprints from ML model activations and use Local Outlier Factor to detect backdoored models with zero labeled training data."
+cover:
+    image: /images/og-tutorial-detect-backdoored-models.png
+    hidden: true
 ---
 
 ## Problem Statement

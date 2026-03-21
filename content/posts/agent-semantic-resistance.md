@@ -13,6 +13,9 @@ aliases:
 author: "Rex Coleman"
 ShowToc: true
 TocOpen: false
+cover:
+    image: /images/og-agent-semantic-resistance.png
+    hidden: true
 ---
 
 Domain-aligned prompt injections cascade through multi-agent systems at a 0% detection rate. Privilege escalation payloads hit 97.6%. That's a **98 percentage-point spread** across payload types in the same agent architecture — the single biggest variable determining whether your multi-agent system catches an attack or never sees it.

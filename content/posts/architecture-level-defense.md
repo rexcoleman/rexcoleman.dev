@@ -11,6 +11,9 @@ description: "Point solutions fail against AI-powered attacks because AI attacks
 author: "Rex Coleman"
 ShowToc: true
 TocOpen: true
+cover:
+    image: /images/og-architecture-level-defense.png
+    hidden: true
 ---
 
 **Thesis:** Point solutions — WAFs, signature-based antivirus, rule-based SIEMs — fail against AI-powered attacks because AI attacks adapt faster than signatures update. The defense must be architectural.

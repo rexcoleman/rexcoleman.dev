@@ -8,6 +8,9 @@ format: "tutorial"
 audience_side: "from-ai"
 image_count: 0  # R26: text diagram present (ASCII architecture diagram)
 description: "Build a Random Forest model that outperforms CVSS at predicting which vulnerabilities actually get exploited, using only public NVD and EPSS data."
+cover:
+    image: /images/og-tutorial-ml-vuln-prioritizer.png
+    hidden: true
 ---
 
 ## Problem Statement

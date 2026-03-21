@@ -11,6 +11,9 @@ image_count: 0
 author: "Rex Coleman"
 ShowToc: true
 TocOpen: false
+cover:
+    image: /images/og-verified-delegation-protocol.png
+    hidden: true
 ---
 
 We proposed a verified delegation protocol — LLM-as-judge verification, cryptographic signing, adaptive rate limiting — and pre-registered 7 hypotheses predicting it would reduce multi-agent cascade poison by 70%.

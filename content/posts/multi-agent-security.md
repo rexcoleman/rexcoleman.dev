@@ -13,6 +13,9 @@ aliases:
 author: "Rex Coleman"
 ShowToc: true
 TocOpen: false
+cover:
+    image: /images/og-multi-agent-security.png
+    hidden: true
 ---
 
 I built a multi-agent security simulation, ran 6 experiments, then validated against real Claude Haiku agents. The simulation predicted 97% poison rate. Real agents: 60%. And the biggest surprise: topology matters — something the simulation said was irrelevant.
