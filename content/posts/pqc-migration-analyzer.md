@@ -11,7 +11,7 @@ author: "Rex Coleman"
 ShowToc: true
 TocOpen: false
 cover:
-  image: /images/og-default.png
+  image: /images/og-pqc-migration-analyzer.png
   alt: "PQC Migration Scanner"
   hidden: true
 images:

@@ -11,7 +11,7 @@ author: "Rex Coleman"
 ShowToc: true
 TocOpen: false
 cover:
-  image: /images/og-default.png
+  image: /images/og-financial-anomaly-detection.png
   alt: "A CFA Charterholder Built an ML Fraud Detector"
   hidden: true
 images:
