@@ -5,7 +5,7 @@ description: "70% of the crypto in your codebase isn't yours to change — and c
 tags: ["post-quantum-cryptography", "pqc", "security-tools", "machine-learning", "cryptography"]
 categories: ["AI Security", "Research"]
 format: "technical-blog"
-audience_side: "from-ai"
+audience_side: "of-ai"
 image_count: 4
 author: "Rex Coleman"
 ShowToc: true
@@ -127,6 +127,6 @@ This analysis used rule-based scoring on a single Python stdlib scan. The PQC pr
 
 ---
 
-*Rex Coleman is securing AI from the architecture up — building and attacking AI security systems at every layer of the stack, publishing the methodology, and shipping open-source tools. [rexcoleman.dev](https://rexcoleman.dev) · [GitHub](https://github.com/rexcoleman) · [Singularity Cybersecurity](https://singularitycyber.com)*
+*Rex Coleman is securing AI from the architecture up — building and attacking AI security systems at every layer of the stack, publishing the methodology, and shipping open-source tools. [rexcoleman.dev](https://rexcoleman.dev) · [GitHub](https://github.com/rexcoleman)*
 
 *If this was useful, [subscribe on Substack](https://substack.com/@rexcoleman) for weekly AI security research — findings, tools, and curated signal.*

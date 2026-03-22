@@ -5,7 +5,7 @@ draft: false
 tags: ["ai-security", "security-architecture", "adversarial-ml", "feature-controllability"]
 categories: ["AI Security"]
 format: "perspective"
-audience_side: "from-ai"
+audience_side: "of-ai"
 image_count: 0
 description: "Point solutions fail against AI-powered attacks because AI attacks adapt — the defense must be architectural."
 author: "Rex Coleman"
@@ -74,7 +74,7 @@ The 20-50x observation vs. reward poisoning ratio comes from tabular Q-Learning 
 
 ---
 
-*Rex Coleman is securing AI from the architecture up — building and attacking AI security systems at every layer of the stack, publishing the methodology, and shipping open-source tools. [rexcoleman.dev](https://rexcoleman.dev) · [GitHub](https://github.com/rexcoleman) · [Singularity Cybersecurity](https://singularitycyber.com)*
+*Rex Coleman is securing AI from the architecture up — building and attacking AI security systems at every layer of the stack, publishing the methodology, and shipping open-source tools. [rexcoleman.dev](https://rexcoleman.dev) · [GitHub](https://github.com/rexcoleman)*
 
 ---
 

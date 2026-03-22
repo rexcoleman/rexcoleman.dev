@@ -5,7 +5,7 @@ draft: false
 tags: ["tutorial", "vulnerability-management", "machine-learning", "epss", "shap", "security"]
 categories: ["AI Security", "Tutorials"]
 format: "tutorial"
-audience_side: "from-ai"
+audience_side: "of-ai"
 image_count: 0  # R26: text diagram present (ASCII architecture diagram)
 description: "Build a Random Forest model that outperforms CVSS at predicting which vulnerabilities actually get exploited, using only public NVD and EPSS data."
 cover:
@@ -295,7 +295,7 @@ The full methodology, 7-algorithm comparison, ablation study, and adversarial ev
 
 ---
 
-*Rex Coleman is securing AI from the architecture up — building and attacking AI security systems at every layer of the stack, publishing the methodology, and shipping open-source tools. [rexcoleman.dev](https://rexcoleman.dev) · [GitHub](https://github.com/rexcoleman) · [Singularity Cybersecurity](https://singularitycyber.com)*
+*Rex Coleman is securing AI from the architecture up — building and attacking AI security systems at every layer of the stack, publishing the methodology, and shipping open-source tools. [rexcoleman.dev](https://rexcoleman.dev) · [GitHub](https://github.com/rexcoleman)*
 
 ---
 

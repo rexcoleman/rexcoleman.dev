@@ -6,7 +6,7 @@ tags: ["ai-security", "industry-analysis", "singularity-cybersecurity", "agent-s
 categories: ["AI Security", "Builder Journal"]
 featured: true
 format: "perspective"
-audience_side: "both"
+audience_side: "of-ai"
 image_count: 0
 description: "The AI security industry produces frameworks and guidelines but almost no one ships working tools that practitioners can deploy today."
 author: "Rex Coleman"
@@ -65,7 +65,7 @@ The 29% enterprise readiness figure comes from industry surveys with self-report
 
 ---
 
-*Rex Coleman is securing AI from the architecture up — building and attacking AI security systems at every layer of the stack, publishing the methodology, and shipping open-source tools. [rexcoleman.dev](https://rexcoleman.dev) · [GitHub](https://github.com/rexcoleman) · [Singularity Cybersecurity](https://singularitycyber.com)*
+*Rex Coleman is securing AI from the architecture up — building and attacking AI security systems at every layer of the stack, publishing the methodology, and shipping open-source tools. [rexcoleman.dev](https://rexcoleman.dev) · [GitHub](https://github.com/rexcoleman)*
 
 ---
 

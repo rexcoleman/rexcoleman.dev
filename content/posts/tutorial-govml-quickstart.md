@@ -7,7 +7,7 @@ archived: true
 hiddenInHomeList: true
 categories: ["ML Governance", "Tutorials"]
 format: "tutorial"
-audience_side: "both"
+audience_side: "of-ai"
 image_count: 0  # R26: text diagram present (ASCII architecture diagram)
 description: "Install govML, scaffold a governed ML project with one command, and learn how contract-driven development prevents the 'I forgot which hyperparameters I used' problem."
 cover:
@@ -255,7 +255,7 @@ govML is used across 9 research projects with 469+ tests.
 
 ---
 
-*Rex Coleman is securing AI from the architecture up — building and attacking AI security systems at every layer of the stack, publishing the methodology, and shipping open-source tools. [rexcoleman.dev](https://rexcoleman.dev) · [GitHub](https://github.com/rexcoleman) · [Singularity Cybersecurity](https://singularitycyber.com)*
+*Rex Coleman is securing AI from the architecture up — building and attacking AI security systems at every layer of the stack, publishing the methodology, and shipping open-source tools. [rexcoleman.dev](https://rexcoleman.dev) · [GitHub](https://github.com/rexcoleman)*
 
 ---
 

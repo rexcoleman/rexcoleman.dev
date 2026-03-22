@@ -4,7 +4,7 @@ date: 2026-03-19
 draft: false
 tags: ["adversarial-ml", "aca-methodology", "feature-controllability", "security-architecture"]
 format: "til"
-audience_side: "both"
+audience_side: "of-ai"
 ---
 
 **Adversarial Control Analysis (ACA) — the principle that system robustness depends on which features an attacker can manipulate — predicted security outcomes correctly across 6 different domains:** network intrusion detection, fraud detection, vulnerability prioritization, agent security, supply chain analysis, and post-quantum cryptography migration.
@@ -27,7 +27,7 @@ One principle. Six domains. The same answer every time: know what the attacker c
 
 ---
 
-*Rex Coleman is securing AI from the architecture up — building and attacking AI security systems at every layer of the stack, publishing the methodology, and shipping open-source tools. [rexcoleman.dev](https://rexcoleman.dev) · [GitHub](https://github.com/rexcoleman) · [Singularity Cybersecurity](https://singularitycyber.com)*
+*Rex Coleman is securing AI from the architecture up — building and attacking AI security systems at every layer of the stack, publishing the methodology, and shipping open-source tools. [rexcoleman.dev](https://rexcoleman.dev) · [GitHub](https://github.com/rexcoleman)*
 
 ---
 

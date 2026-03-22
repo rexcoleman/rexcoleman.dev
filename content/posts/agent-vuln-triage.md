@@ -6,7 +6,7 @@ tags: ["vulnerability-management", "llm-agents", "ai-security", "epss", "negativ
 categories: ["AI Security", "Research"]
 featured: false
 format: "technical-blog"
-audience_side: "from-ai"
+audience_side: "of-ai"
 image_count: 2
 author: "Rex Coleman"
 ShowToc: true
@@ -113,6 +113,6 @@ All code in the repository. Run `bash reproduce.sh` to replicate. 5 seeds, ~$0.5
 
 ---
 
-*Rex Coleman is securing AI from the architecture up — building and attacking AI security systems at every layer of the stack, publishing the methodology, and shipping open-source tools. [rexcoleman.dev](https://rexcoleman.dev) · [GitHub](https://github.com/rexcoleman) · [Singularity Cybersecurity](https://singularitycyber.com)*
+*Rex Coleman is securing AI from the architecture up — building and attacking AI security systems at every layer of the stack, publishing the methodology, and shipping open-source tools. [rexcoleman.dev](https://rexcoleman.dev) · [GitHub](https://github.com/rexcoleman)*
 
 *If this was useful, [subscribe on Substack](https://substack.com/@rexcoleman) for weekly AI security research — findings, tools, and curated signal.*

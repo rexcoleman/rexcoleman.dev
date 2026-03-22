@@ -4,7 +4,7 @@ date: 2026-03-19
 draft: false
 tags: ["adversarial-ml", "feature-controllability", "machine-learning", "security-architecture"]
 format: "til"
-audience_side: "from-ai"
+audience_side: "of-ai"
 ---
 
 **Across adversarial ML experiments on network intrusion detection, the performance gap between the most and least robust models was less than 8%. The gap between high-controllability and low-controllability feature sets was over 40%.** Model selection is a rounding error compared to feature architecture.
@@ -29,7 +29,7 @@ The model matters. The features matter 5x more.
 
 ---
 
-*Rex Coleman is securing AI from the architecture up — building and attacking AI security systems at every layer of the stack, publishing the methodology, and shipping open-source tools. [rexcoleman.dev](https://rexcoleman.dev) · [GitHub](https://github.com/rexcoleman) · [Singularity Cybersecurity](https://singularitycyber.com)*
+*Rex Coleman is securing AI from the architecture up — building and attacking AI security systems at every layer of the stack, publishing the methodology, and shipping open-source tools. [rexcoleman.dev](https://rexcoleman.dev) · [GitHub](https://github.com/rexcoleman)*
 
 ---
 

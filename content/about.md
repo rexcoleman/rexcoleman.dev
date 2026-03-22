@@ -9,11 +9,11 @@ ShowReadingTime: false
   <img src="/images/profile.jpg" alt="Rex Coleman" style="width: 160px; height: 160px; border-radius: 50%; object-fit: cover;" />
 </div>
 
-AI is changing both sides of security. Builders are shipping AI systems with attack surfaces they don't understand — poisoned models, hijacked agents, backdoored pipelines. Defenders are facing AI-powered threats that outpace every manual playbook they have.
+Builders are shipping AI systems with attack surfaces they don't understand — poisoned models, hijacked agents, backdoored pipelines. Every layer of the stack needs defending, and most teams don't know where to start.
 
 Both sides need architecture-level solutions. I'm building them.
 
-I'm the founder of [Singularity Cybersecurity](https://singularitycyber.com) — an AI security research lab — we run continuous experiments, publish the findings, and ship what works as open-source tools.
+I run [Singularity Cybersecurity](https://singularitycyber.com) — an AI security research lab — we run continuous experiments, publish the findings, and ship what works as open-source tools.
 
 ---
 
@@ -37,4 +37,4 @@ CFA Charterholder · CISSP · BSc Biochemistry & Molecular Biology.
 
 ### Connect
 
-[Singularity Cybersecurity](https://singularitycyber.com) · [GitHub](https://github.com/rexcoleman) · [LinkedIn](https://linkedin.com/in/rexcoleman) · [RSS](/index.xml)
+[GitHub](https://github.com/rexcoleman) · [LinkedIn](https://linkedin.com/in/rexcoleman) · [Singularity Cybersecurity](https://singularitycyber.com) · [RSS](/index.xml)

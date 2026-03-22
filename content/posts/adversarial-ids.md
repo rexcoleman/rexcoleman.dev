@@ -5,7 +5,7 @@ description: "I built and red-teamed an ML-based intrusion detection system. The
 tags: ["ai-security", "adversarial-ml", "machine-learning", "feature-controllability"]
 categories: ["AI Security", "Research"]
 format: "technical-blog"
-audience_side: "from-ai"
+audience_side: "of-ai"
 author: "Rex Coleman"
 ShowToc: true
 TocOpen: false
@@ -118,7 +118,7 @@ I applied this same adversarial thinking to AI agents — the results were worse
 
 ---
 
-*Rex Coleman is securing AI from the architecture up — building and attacking AI security systems at every layer of the stack, publishing the methodology, and shipping open-source tools. [rexcoleman.dev](https://rexcoleman.dev) · [GitHub](https://github.com/rexcoleman) · [Singularity Cybersecurity](https://singularitycyber.com)*
+*Rex Coleman is securing AI from the architecture up — building and attacking AI security systems at every layer of the stack, publishing the methodology, and shipping open-source tools. [rexcoleman.dev](https://rexcoleman.dev) · [GitHub](https://github.com/rexcoleman)*
 
 ---
 

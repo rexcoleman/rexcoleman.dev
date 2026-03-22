@@ -4,7 +4,7 @@ date: 2026-03-19
 draft: false
 tags: ["govml", "ml-governance", "methodology"]
 format: "til"
-audience_side: "both"
+audience_side: "of-ai"
 ---
 
 **govML ships 57 templates, 10 profiles, and 27 code generators — battle-tested across 10 frontier projects.** It's the governance framework I built after discovering that every ML project I ran needed the same 30+ documents, and every team was reinventing them from scratch.
@@ -29,7 +29,7 @@ govML was built across 10 frontier projects and refined through 14 audit cycles.
 
 ---
 
-*Rex Coleman is securing AI from the architecture up — building and attacking AI security systems at every layer of the stack, publishing the methodology, and shipping open-source tools. [rexcoleman.dev](https://rexcoleman.dev) · [GitHub](https://github.com/rexcoleman) · [Singularity Cybersecurity](https://singularitycyber.com)*
+*Rex Coleman is securing AI from the architecture up — building and attacking AI security systems at every layer of the stack, publishing the methodology, and shipping open-source tools. [rexcoleman.dev](https://rexcoleman.dev) · [GitHub](https://github.com/rexcoleman)*
 
 ---
 

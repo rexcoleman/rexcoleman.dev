@@ -5,7 +5,7 @@ description: "I trained an ML model on 338,000 CVEs to find out what actually pr
 tags: ["ai-security", "machine-learning", "vulnerability-management", "shap", "feature-controllability"]
 categories: ["AI Security", "Research"]
 format: "technical-blog"
-audience_side: "from-ai"
+audience_side: "of-ai"
 image_count: 1
 aliases:
   - /research/vuln-prioritization-ml/
@@ -118,7 +118,7 @@ The ablation study continues — I'm testing which data source combinations are 
 
 ---
 
-*Rex Coleman is securing AI from the architecture up — building and attacking AI security systems at every layer of the stack, publishing the methodology, and shipping open-source tools. [rexcoleman.dev](https://rexcoleman.dev) · [GitHub](https://github.com/rexcoleman) · [Singularity Cybersecurity](https://singularitycyber.com)*
+*Rex Coleman is securing AI from the architecture up — building and attacking AI security systems at every layer of the stack, publishing the methodology, and shipping open-source tools. [rexcoleman.dev](https://rexcoleman.dev) · [GitHub](https://github.com/rexcoleman)*
 
 ---
 

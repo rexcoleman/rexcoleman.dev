@@ -4,7 +4,7 @@ date: 2026-03-19
 draft: false
 tags: ["vulnerability-management", "machine-learning", "epss", "ablation-study"]
 format: "til"
-audience_side: "from-ai"
+audience_side: "of-ai"
 ---
 
 **In ablation testing of an ML vulnerability prioritization model, removing EPSS (Exploit Prediction Scoring System) dropped performance by 15.5 percentage points.** No other single feature — not CVSS, not vendor, not CWE, not exploit availability — came close. EPSS alone carries more predictive signal than every other feature combined.
@@ -27,7 +27,7 @@ The vulnerability management field has a signal problem, not a data problem. EPS
 
 ---
 
-*Rex Coleman is securing AI from the architecture up — building and attacking AI security systems at every layer of the stack, publishing the methodology, and shipping open-source tools. [rexcoleman.dev](https://rexcoleman.dev) · [GitHub](https://github.com/rexcoleman) · [Singularity Cybersecurity](https://singularitycyber.com)*
+*Rex Coleman is securing AI from the architecture up — building and attacking AI security systems at every layer of the stack, publishing the methodology, and shipping open-source tools. [rexcoleman.dev](https://rexcoleman.dev) · [GitHub](https://github.com/rexcoleman)*
 
 ---
 

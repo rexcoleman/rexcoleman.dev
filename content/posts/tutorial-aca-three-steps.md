@@ -5,7 +5,7 @@ draft: false
 tags: ["tutorial", "adversarial-ml", "security-architecture", "methodology", "aca"]
 categories: ["AI Security", "Tutorials"]
 format: "tutorial"
-audience_side: "both"
+audience_side: "of-ai"
 image_count: 0  # R26: text diagram present (ASCII architecture diagram)
 description: "Classify every input to your ML system by who controls it, then architect your defenses around the features adversaries cannot touch."
 archived: true
@@ -167,7 +167,7 @@ The full ACA methodology, validated across six domains, is described in the [cro
 
 ---
 
-*Rex Coleman is securing AI from the architecture up — building and attacking AI security systems at every layer of the stack, publishing the methodology, and shipping open-source tools. [rexcoleman.dev](https://rexcoleman.dev) · [GitHub](https://github.com/rexcoleman) · [Singularity Cybersecurity](https://singularitycyber.com)*
+*Rex Coleman is securing AI from the architecture up — building and attacking AI security systems at every layer of the stack, publishing the methodology, and shipping open-source tools. [rexcoleman.dev](https://rexcoleman.dev) · [GitHub](https://github.com/rexcoleman)*
 
 ---
 
