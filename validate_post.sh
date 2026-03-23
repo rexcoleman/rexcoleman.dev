@@ -126,6 +126,40 @@ validate_post() {
     else
         PASS=$((PASS + 1))
     fi
+
+    # --- R55: govML Private Repo Check ---
+    if grep -qi "github.com/rexcoleman/govML\|github.com/rexcoleman/ml-governance" "$file" 2>/dev/null; then
+        echo -e "  ${RED}FAIL${NC}: R55 violation — public govML repo link found (repo is PRIVATE)"
+        FAIL=$((FAIL + 1))
+    else
+        PASS=$((PASS + 1))
+    fi
+
+    # --- R56: Readability Check (LL-118) ---
+    READABILITY_SCRIPT="$HOME/ml-governance-templates/scripts/generators/gen_readability_check.py"
+    if [ -f "$READABILITY_SCRIPT" ]; then
+        if python3 "$READABILITY_SCRIPT" "$file" > /dev/null 2>&1; then
+            echo -e "  ${GREEN}PASS${NC}: Readability check passed (R56)"
+            PASS=$((PASS + 1))
+        else
+            echo -e "  ${YELLOW}WARN${NC}: Readability check has issues (R56)"
+            WARN=$((WARN + 1))
+        fi
+    fi
+
+    # --- R57: Channel Voice Check (LL-118) ---
+    VOICE_SCRIPT="$HOME/ml-governance-templates/scripts/generators/gen_channel_voice_check.py"
+    if [ -f "$VOICE_SCRIPT" ]; then
+        VOICE_OUTPUT=$(python3 "$VOICE_SCRIPT" "$file" blog 2>&1)
+        VOICE_SCORE=$(echo "$VOICE_OUTPUT" | grep -oP 'Voice-Fit Score:\s*\K\d+' || echo "0")
+        if [ "$VOICE_SCORE" -ge 70 ] 2>/dev/null; then
+            echo -e "  ${GREEN}PASS${NC}: Voice check passed — score $VOICE_SCORE/100 (R57)"
+            PASS=$((PASS + 1))
+        else
+            echo -e "  ${YELLOW}WARN${NC}: Voice check — score $VOICE_SCORE/100 (R57)"
+            WARN=$((WARN + 1))
+        fi
+    fi
 }
 
 # Main
