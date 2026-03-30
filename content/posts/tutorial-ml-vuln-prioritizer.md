@@ -3,6 +3,7 @@ title: "Build Your Own ML Vuln Prioritizer"
 date: 2026-03-19
 draft: false
 tags: ["tutorial", "vulnerability-management", "machine-learning", "epss", "shap", "security"]
+keywords: ["build vulnerability prioritization model", "random forest CVE exploitation prediction", "SHAP explainability vulnerability scoring", "EPSS alternative ML model tutorial", "NVD data feature engineering CVE"]
 categories: ["AI Security", "Tutorials"]
 format: "tutorial"
 audience_side: "of-ai"
