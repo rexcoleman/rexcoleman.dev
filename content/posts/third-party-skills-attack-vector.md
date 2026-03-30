@@ -3,6 +3,7 @@ title: "Why Third-Party Skills Are the Biggest Agent Attack Vector"
 date: 2026-03-20
 description: "820+ malicious skills on ClawHub. Third-party skills execute on every heartbeat — persistent access to your agent's memory, context, and capabilities. Here's why this is worse than prompt injection."
 tags: ["agent-security", "supply-chain", "openclaw", "singularity-cybersecurity"]
+keywords: ["clawhub malicious skills scan", "AI agent plugin supply chain risk", "third party skill persistent access", "agent marketplace security audit", "heartbeat cycle skill execution attack"]
 categories: ["AI Security"]
 format: "perspective"
 audience_side: "of-ai"

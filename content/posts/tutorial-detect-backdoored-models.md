@@ -3,6 +3,7 @@ title: "How to Detect Backdoored ML Models Without Labeled Examples"
 date: 2026-03-19
 draft: false
 tags: ["tutorial", "model-security", "backdoor-detection", "unsupervised-learning", "anomaly-detection", "supply-chain"]
+keywords: ["detect backdoor ML model tutorial", "local outlier factor model scan", "behavioral fingerprint activation extraction", "unsupervised model backdoor detection", "pretrained model security check"]
 categories: ["AI Security", "Tutorials"]
 format: "tutorial"
 audience_side: "of-ai"
