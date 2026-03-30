@@ -86,6 +86,19 @@ Regression detection compares vulnerability patterns in original vs patched code
 
 ![Overall fix and regression rates](/images/posts/llm-patch-correctness/e1_overall_rates.png)
 
+## Reproduce This Research
+
+All experiments, data, and analysis code are open source:
+
+```bash
+git clone https://github.com/rexcoleman/llm-patch-correctness
+cd llm-patch-correctness
+pip install -e .
+bash reproduce.sh
+```
+
+See [FINDINGS.md](https://github.com/rexcoleman/llm-patch-correctness/blob/master/FINDINGS.md) for full methodology, pre-registered hypotheses, and detailed results.
+
 ## Limitations
 
 - Regex-based static analysis — less precise than semgrep/bandit. False positive/negative rates unknown.
@@ -104,7 +117,7 @@ Regression detection compares vulnerability patterns in original vs patched code
 
 ## Reproducibility
 
-All code in the repository. 50 vulnerable snippets x 5 CWE categories. Claude 3 Haiku with temperature=0. Run `bash reproduce.sh` (~$2, ~10 minutes).
+All code in [the repository](https://github.com/rexcoleman/llm-patch-correctness). 50 vulnerable snippets x 5 CWE categories. Claude 3 Haiku with temperature=0. Run `bash reproduce.sh` (~$2, ~10 minutes).
 
 ---
 

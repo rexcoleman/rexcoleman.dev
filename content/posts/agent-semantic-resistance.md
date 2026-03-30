@@ -85,6 +85,19 @@ We ran E0 sanity checks before any experiments: positive control (known poison d
 
 **If we hadn't run E0, we would have published "domain-aligned attacks are fully resisted" — which is wrong.** The attack evaded detection, it didn't fail. This is why sanity validation before experiments matters.
 
+## Reproduce This Research
+
+All experiments, data, and analysis code are open source:
+
+```bash
+git clone https://github.com/rexcoleman/agent-semantic-resistance
+cd agent-semantic-resistance
+pip install -e .
+bash reproduce.sh
+```
+
+See [FINDINGS.md](https://github.com/rexcoleman/agent-semantic-resistance/blob/master/FINDINGS.md) for full methodology, pre-registered hypotheses, and detailed results.
+
 ## Limitations
 
 **Keyword detection conflates evasion with resistance.** This is the biggest methodological challenge. Domain-aligned (0.000) and adversarial (0.024) results likely reflect detection failure, not genuine resistance. Future work needs semantic similarity scoring.

@@ -90,6 +90,19 @@ This is the second project (after the [watermark robustness research](/posts/llm
 
 The finding is: **LLM agents are strong vulnerability triagers (92% precision) but do not outperform purpose-built statistical models on their training distribution.** The value is in complementarity, context, and reasoning — not raw ranking.
 
+## Reproduce This Research
+
+All experiments, data, and analysis code are open source:
+
+```bash
+git clone https://github.com/rexcoleman/agent-vuln-triage
+cd agent-vuln-triage
+pip install -e .
+bash reproduce.sh
+```
+
+See [FINDINGS.md](https://github.com/rexcoleman/agent-vuln-triage/blob/master/FINDINGS.md) for full methodology, pre-registered hypotheses, and detailed results.
+
 ## Limitations
 
 - Synthetic dataset — CVE descriptions and EPSS/CVSS scores are simulated, not real API data
@@ -109,7 +122,7 @@ The finding is: **LLM agents are strong vulnerability triagers (92% precision) b
 
 ## Reproducibility
 
-All code in the repository. Run `bash reproduce.sh` to replicate. 5 seeds, ~$0.50 API cost, ~3 minutes runtime. Uses Claude 3 Haiku.
+All code in [the repository](https://github.com/rexcoleman/agent-vuln-triage). Run `bash reproduce.sh` to replicate. 5 seeds, ~$0.50 API cost, ~3 minutes runtime. Uses Claude 3 Haiku.
 
 ---
 

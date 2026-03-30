@@ -93,6 +93,19 @@ What the simulation got right: agent type and memory isolation don't matter (con
 
 The framework is open source. 16 tests, 5 seeds, full reproducibility.
 
+## Reproduce This Research
+
+All experiments, data, and analysis code are open source:
+
+```bash
+git clone https://github.com/rexcoleman/multi-agent-security
+cd multi-agent-security
+pip install -e .
+bash reproduce.sh
+```
+
+See [FINDINGS.md](https://github.com/rexcoleman/multi-agent-security/blob/master/FINDINGS.md) for full methodology, pre-registered hypotheses, and detailed results.
+
 ## Limitations
 
 **This is a simulation, not a real LLM agent system.** The cascade dynamics model agent interaction probabilistically. Real agents may behave differently. The simulation establishes the framework; real-agent validation is next.
