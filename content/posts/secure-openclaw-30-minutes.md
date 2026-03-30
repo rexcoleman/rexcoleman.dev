@@ -3,6 +3,7 @@ title: "How to Secure Your OpenClaw in 30 Minutes"
 date: 2026-03-17
 description: "Your AI agent is running 24/7. Here are the 5 biggest security risks and a step-by-step hardening guide."
 tags: ["agent-security", "openclaw", "tutorial", "singularity-cybersecurity"]
+keywords: ["openclaw hardening guide checklist", "secure AI agent configuration", "agent credential protection setup", "openclaw skill vetting security", "AI agent VPS security best practices"]
 categories: ["AI Security", "Tutorials"]
 format: "tutorial"
 audience_side: "of-ai"
