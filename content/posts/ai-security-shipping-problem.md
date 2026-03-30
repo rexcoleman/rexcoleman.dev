@@ -3,6 +3,7 @@ title: "AI Security Has a Shipping Problem"
 date: 2026-03-19
 draft: false
 tags: ["ai-security", "industry-analysis", "singularity-cybersecurity", "agent-security"]
+keywords: ["AI security tools vs frameworks", "OWASP agentic top 10 testing", "agent security tooling gap", "AI risk mitigation tools deploy", "security framework implementation gap"]
 categories: ["AI Security", "Builder Journal"]
 featured: true
 format: "perspective"

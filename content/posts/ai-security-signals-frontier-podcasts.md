@@ -3,6 +3,7 @@ title: "5 AI Security Gaps That Jensen Huang, Eric Schmidt, and the OpenClaw Cre
 date: 2026-03-29T16:00:00
 description: "I analyzed 5 frontier podcasts for AI security signals. Three independent sources converged on the same gaps — and NVIDIA already shipped a fix for one."
 tags: ["agent-security", "ai-security", "market-signals", "multi-agent", "supply-chain"]
+keywords: ["Jensen Huang AI security NVIDIA", "Eric Schmidt agent security concerns", "openclaw security vulnerabilities 2026", "AI agent prompt injection unsolved", "multi-agent orchestration security risks"]
 categories: ["AI Security"]
 featured: false
 format: "perspective"

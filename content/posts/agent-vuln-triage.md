@@ -3,6 +3,7 @@ title: "Your AI Can't Beat EPSS at Vulnerability Triage (But the Ensemble Might)
 date: 2026-03-20T10:00:00
 description: "An LLM agent achieves 92% precision@10 on vulnerability triage but underperforms EPSS (100%). The ensemble reaches 98% with lower variance."
 tags: ["vulnerability-management", "llm-agents", "ai-security", "epss", "negative-results"]
+keywords: ["CVSS vs EPSS vulnerability prioritization", "LLM vulnerability triage agent", "AI CVE prioritization accuracy", "CISA KEV prediction model", "automated vulnerability ranking"]
 categories: ["AI Security", "Research"]
 featured: false
 format: "technical-blog"

@@ -3,6 +3,7 @@ title: "How Many Rewrites to Strip a Watermark? Empirical Paraphrase-Removal Cur
 date: 2026-03-20T11:00:00
 description: "Cross-model paraphrasing drops watermark detection from 100% to 60% in one pass, then plateaus at 40% after 10 passes. Kirchenbauer green-list watermarks are partially robust — but not enough for adversarial settings."
 tags: ["watermarking", "llm-security", "ai-security", "adversarial-robustness", "ai-detection", "research"]
+keywords: ["LLM watermark detection bypass", "paraphrase attack watermark removal", "Kirchenbauer watermark robustness", "how to remove AI watermark", "cross model paraphrase watermark"]
 categories: ["AI Security", "Research"]
 featured: true
 format: "technical-blog"

@@ -3,6 +3,7 @@ title: "Why AI-Powered Attacks Need Architecture-Level Defense"
 date: 2026-03-19
 draft: false
 tags: ["ai-security", "security-architecture", "adversarial-ml", "feature-controllability"]
+keywords: ["AI defense architecture design", "adversarial ML feature robustness", "point solution vs architecture defense", "attacker controllable features IDS", "observation perturbation RL agent"]
 categories: ["AI Security"]
 format: "perspective"
 audience_side: "of-ai"

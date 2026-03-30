@@ -3,6 +3,7 @@ title: "Why CVSS Gets It Wrong: ML-Powered Vulnerability Prioritization"
 date: 2026-03-14
 description: "I trained an ML model on 338,000 CVEs to find out what actually predicts exploitation. CVSS scores severity. Attackers measure opportunity. The model reveals what they look for."
 tags: ["ai-security", "machine-learning", "vulnerability-management", "shap", "feature-controllability"]
+keywords: ["CVSS vs EPSS which is better", "ML predict vulnerability exploitation", "SHAP feature importance CVE", "vulnerability prioritization machine learning", "predict which CVEs get exploited"]
 categories: ["AI Security", "Research"]
 format: "technical-blog"
 audience_side: "of-ai"

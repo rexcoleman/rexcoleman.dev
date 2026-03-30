@@ -3,6 +3,7 @@ title: "The Agent Security Gap Nobody's Talking About: Skills Run Every Heartbea
 date: 2026-03-19
 draft: false
 tags: ["agent-security", "supply-chain", "openclaw", "singularity-cybersecurity", "skills-security"]
+keywords: ["malicious agent skills detection", "AI agent supply chain attack", "openclaw security risks", "third party plugin vulnerability", "agent heartbeat exploit"]
 categories: ["AI Security", "Builder Journal"]
 format: "perspective"
 audience_side: "of-ai"

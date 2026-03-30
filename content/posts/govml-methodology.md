@@ -3,6 +3,7 @@ title: "How I Govern AI-Assisted ML Projects"
 date: 2026-03-14
 description: "I built a governance framework for ML projects after watching 14 manual audit cycles nearly break my workflow. Here's how govML works and why governance-as-code is the only way to scale ML research."
 tags: ["ml-governance", "build-in-public", "machine-learning", "govml"]
+keywords: ["ML governance as code framework", "automated ML audit pipeline", "NIST AI RMF implementation tool", "reproducible ML experiment governance", "AI project compliance automation"]
 categories: ["ML Governance", "Builder Journal"]
 format: "technical-blog"
 audience_side: "of-ai"

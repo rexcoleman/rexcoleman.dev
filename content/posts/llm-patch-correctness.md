@@ -3,6 +3,7 @@ title: "Your AI Makes SQL Injection Worse: CWE-Stratified Patch Safety for LLM C
 date: 2026-03-20T12:00:00
 description: "LLM-generated patches have a 42% fix rate and 10% regression rate. SQL injection patches are net-negative — 0% fix, 50% regression."
 tags: ["llm-security", "code-generation", "vulnerability-patching", "sql-injection", "negative-results"]
+keywords: ["LLM generated patch safety", "AI code fix regression rate", "SQL injection AI patch fails", "CWE stratified patch analysis", "LLM security patch correctness"]
 categories: ["AI Security", "Research"]
 featured: false
 format: "technical-blog"
