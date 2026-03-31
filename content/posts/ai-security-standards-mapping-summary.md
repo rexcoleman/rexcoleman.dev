@@ -51,4 +51,4 @@ The [complete standards mapping](/posts/ai-security-standards-mapping/) includes
 
 ---
 
-*Rex Coleman builds and attacks AI security systems, publishing the methodology along the way. More research at [rexcoleman.dev](https://rexcoleman.dev).*
+*Rex Coleman builds and attacks AI security systems at every layer of the stack — then publishes the methodology so others can too. More research at [rexcoleman.dev](https://rexcoleman.dev).*

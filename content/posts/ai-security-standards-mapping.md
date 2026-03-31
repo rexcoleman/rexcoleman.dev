@@ -209,3 +209,7 @@ Verified Delegation Protocol is a critical negative result — do not invest in 
 - Quality scores range from 7.6 to 9.0 (scored by automated quality gates)
 - Negative results are included and clearly labeled — these are often the most valuable findings for practitioners
 - Mappings marked "(indirect — ...)" indicate the research is relevant but not a direct instance of the standard category, with an explanation of the relationship
+
+---
+
+*Rex Coleman builds and attacks AI security systems at every layer of the stack — then publishes the methodology so others can too. More research at [rexcoleman.dev](https://rexcoleman.dev).*
