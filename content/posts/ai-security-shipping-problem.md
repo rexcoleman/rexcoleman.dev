@@ -58,7 +58,7 @@ I started [Singularity Cybersecurity](https://singularitycyber.com) because I go
 
 That means every finding produces a tool, not just a paper. When I found that [adversarial control analysis](/posts/adversarial-control-analysis/) predicts which features attackers exploit, I shipped the methodology as reusable code across six domains. When I found that [RL agents have attack surfaces](/posts/rl-agent-vulnerability/) that prompt-injection defenses miss entirely, I shipped the attack framework with executable scenarios. When I found that third-party skills are the biggest agent attack vector, I started building SkillVet [HYPOTHESIZED] (behavioral sandbox scanning) and AgentArmor [HYPOTHESIZED] (runtime monitoring).
 
-The bar should be: did you ship something a practitioner can use this week? If the answer is no, you wrote a framework. The industry has enough frameworks.
+The bar should be: did you ship something a practitioner can use this week? If the answer is no, you wrote a framework. The industry has enough frameworks. When I tested whether an [LLM agent could beat EPSS at vulnerability triage](/posts/agent-vuln-triage/), the negative result was more useful than another triage whitepaper — it told practitioners exactly when to use which tool. When I trained an [ML model on 338K CVEs to find what CVSS gets wrong](/posts/cvss-gets-it-wrong/), the SHAP analysis shipped actionable insight: vendor deployment ubiquity predicts exploitation better than severity score.
 
 ### Limitations
 

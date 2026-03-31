@@ -70,7 +70,7 @@ We went further: can we PREDICT resistance from measurable features? A linear mo
 
 The model predicts worst case (priv_escalation + analyst + hop0) = 1.0 poison and best case (generic + reviewer + hop2) = 0.29. This means resistance is not random — three-quarters of the variance is explained by features you can measure before deploying your agent system.
 
-**For practitioners:** You can score your multi-agent system's vulnerability by looking at these five features. Deep chains with reviewer agents processing generic (not domain-plausible) payloads are the most resistant architecture.
+**For practitioners:** You can score your multi-agent system's vulnerability by looking at these five features. Deep chains with reviewer agents processing generic (not domain-plausible) payloads are the most resistant architecture. For the simulation-vs-reality comparison that motivated these experiments, see our [multi-agent cascade simulation](/posts/multi-agent-security/) — the simulation was wrong by 37 percentage points, which is why we ran these real-agent experiments.
 
 ## What This Means for Multi-Agent Builders
 

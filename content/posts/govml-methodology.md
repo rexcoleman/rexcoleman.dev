@@ -110,7 +110,7 @@ govML has been validated by a single user across 9 projects. Team-scale adoption
 
 ### What's Next
 
-govML governed every project in my research portfolio. See it in action: [I Red-Teamed AI Agents](/posts/agent-redteam/) (govML-governed) · [CVSS Gets It Wrong](/posts/cvss-gets-it-wrong/) (govML-governed) · [Adversarial IDS](/posts/adversarial-ids/) (govML-governed). The agent orchestrator and community adoption are the next priorities.
+govML governed every project in my research portfolio. See it in action: [I Red-Teamed AI Agents](/posts/agent-redteam/) (govML-governed) · [CVSS Gets It Wrong](/posts/cvss-gets-it-wrong/) (govML-governed) · [Adversarial IDS](/posts/adversarial-ids/) (govML-governed) · [LLM Watermark Robustness](/posts/llm-watermark-robustness/) (govML-governed). The agent orchestrator and community adoption are the next priorities. For context on why governance-as-code matters for the industry, see [AI Security Has a Shipping Problem](/posts/ai-security-shipping-problem/).
 
 ---
 

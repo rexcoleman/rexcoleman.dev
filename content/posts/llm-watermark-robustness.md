@@ -114,6 +114,10 @@ All code, data, and experiment outputs are in the [repository](https://github.co
 
 This study uses GPT-2 (124M parameters) for watermark generation — a model small enough for CPU-based experimentation but not representative of production LLM output quality. Larger models may produce text with different statistical properties that affect watermark robustness. The paraphrase attack uses a single T5-based paraphraser; real-world attackers would use multiple rewriting strategies. Detection thresholds (z=4.0) are specific to the green-list watermarking scheme tested and may not generalize to other watermark families.
 
+## Related Research
+
+The adversarial robustness question extends beyond watermarks. Our [RL agent vulnerability research](/posts/rl-agent-vulnerability/) found observation perturbation 20-50x more effective than reward poisoning — another domain where the attack surface is architectural. And [behavioral fingerprinting for ML models](/posts/model-fingerprinting/) applies a similar detection-vs-evasion framework to the model supply chain.
+
 ## What's Next
 
 The paraphrase-removal curves establish a baseline for watermark decay — but the real question is whether any watermark scheme survives adaptive attackers who know the detection method. Next steps: test logit-based watermarks (which embed signal in token probabilities rather than green-lists), evaluate multi-pass paraphrase with different rewriting models, and measure the detection-quality tradeoff curve — how much text quality do you sacrifice to maintain detectability?

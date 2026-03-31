@@ -20,13 +20,13 @@ The finding that surprised me: **three independent sources — a $4 trillion CEO
 
 ## 1. Multi-Agent Orchestration Is a Recognized Security Problem
 
-Eric Schmidt [told Congress](https://rexcoleman.dev/posts/agent-semantic-resistance/) and the Moonshots podcast: combining agents from incompatible vendors produces "unpredictable effects." This isn't theoretical concern — it's a former Google CEO warning about a specific failure mode in production systems.
+Eric Schmidt [told Congress](/posts/agent-semantic-resistance/) and the Moonshots podcast: combining agents from incompatible vendors produces "unpredictable effects." This isn't theoretical concern — it's a former Google CEO warning about a specific failure mode in production systems.
 
 Jensen Huang validated this from the infrastructure side. NVIDIA shipped security controls for OpenClaw (called OpenShell/NemoClaw) **within days** of its release. Their design: a "two-out-of-three" capability constraint where agents can have at most two of three rights — sensitive data access, code execution, and external communication. Never all three simultaneously.
 
 **Why this matters for AI builders:** If you're orchestrating agents from multiple providers (Claude for reasoning, GPT for code generation, local models for privacy-sensitive tasks), the interaction effects aren't just performance issues. They're security surfaces. Schmidt isn't speculating — he's describing what his network is seeing in production.
 
-My [multi-agent cascade research](https://rexcoleman.dev/posts/agent-semantic-resistance/) found a 98 percentage-point spread in attack success rates across payload types. The agents that resist one attack class are completely blind to another. Combining agents doesn't average out the vulnerabilities — it can compound them.
+My [multi-agent cascade research](/posts/agent-semantic-resistance/) found a 98 percentage-point spread in attack success rates across payload types. The agents that resist one attack class are completely blind to another. Combining agents doesn't average out the vulnerabilities — it can compound them.
 
 ## 2. Prompt Injection Remains Unsolved at Industry Scale
 
@@ -78,7 +78,7 @@ The question isn't whether AI security tooling is needed. It's whether it arrive
 
 ## What I'm Doing About It
 
-These signals validate the exact problems I've been researching. My [multi-agent cascade experiments](https://rexcoleman.dev/posts/agent-semantic-resistance/) quantify the 98-percentage-point spread in attack success rates that Schmidt is warning about. My [framework injection taxonomy](https://rexcoleman.dev/posts/agent-security-gap-skills/) maps the skill/plugin attack surfaces that Steinberger's VirusTotal partnership only partially addresses. NVIDIA's two-out-of-three capability constraint is a pattern I'm now testing against zero-trust approaches in a multi-agent testbed.
+These signals validate the exact problems I've been researching. My [multi-agent cascade experiments](/posts/agent-semantic-resistance/) quantify the 98-percentage-point spread in attack success rates that Schmidt is warning about. My [agent security gap analysis](/posts/agent-security-gap-skills/) maps the skill/plugin attack surfaces that Steinberger's VirusTotal partnership only partially addresses. And our [simulation-to-real validation](/posts/multi-agent-security/) proved that real agents resist cascade differently than simulations predict — the gap was 37 percentage points. NVIDIA's two-out-of-three capability constraint is a pattern I'm now testing against zero-trust approaches in a multi-agent testbed.
 
 The research continues: agent skill security scanning, model-tiered injection benchmarks, and supply chain monitoring for agent ecosystems are all in design.
 

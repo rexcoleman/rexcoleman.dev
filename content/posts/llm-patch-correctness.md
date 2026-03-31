@@ -75,7 +75,7 @@ We pre-registered 4 hypotheses. Here's how they resolved:
 3. **Never trust AI patches for SQL injection.** You're more likely to introduce a new vulnerability than fix the original.
 4. **Never trust AI patches for path traversal.** 10% fix rate — effectively useless.
 
-The general rule: **if the fix is a token-level pattern swap, AI works. If it requires understanding data flow, AI fails.**
+The general rule: **if the fix is a token-level pattern swap, AI works. If it requires understanding data flow, AI fails.** This has implications for vulnerability management beyond patching — our [ML vulnerability prioritization research](/posts/cvss-gets-it-wrong/) found that CVSS is the 5th most important feature for predicting exploitation, and an [LLM agent triage experiment](/posts/agent-vuln-triage/) showed that even strong AI models can't beat purpose-built statistical models at ranking CVEs.
 
 ## Detection Methodology
 
@@ -98,7 +98,7 @@ pip install -e .
 bash reproduce.sh
 ```
 
-See [FINDINGS.md](https://github.com/rexcoleman/llm-patch-correctness/blob/master/FINDINGS.md) for full methodology, pre-registered hypotheses, and detailed results.
+See [FINDINGS.md](https://github.com/rexcoleman/llm-patch-correctness/blob/master/FINDINGS.md) for full methodology, pre-registered hypotheses, and detailed results. Built with [govML](/posts/govml-methodology/) governance — pre-registered hypotheses forced honest reporting of the SQL injection negative result.
 
 ## Limitations
 

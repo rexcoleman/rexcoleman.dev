@@ -73,9 +73,9 @@ But skills remain the primary vector because they don't require a vulnerability.
 
 The agent security conversation is stuck on prompt injection because that's the attack everyone understands. It maps cleanly to existing mental models: input goes in, bad thing happens, filter the input. Security teams know how to think about input validation.
 
-Skills don't fit that model. They're not input. They're code. They don't happen once. They run continuously. They don't bypass guardrails through cleverness. They bypass guardrails by existing at a layer the guardrails don't cover.
+Skills don't fit that model. They're not input. They're code. They don't happen once. They run continuously. They don't bypass guardrails through cleverness. They bypass guardrails by existing at a layer the guardrails don't cover. I go deeper on this architectural distinction in [why third-party skills are the biggest agent attack vector](/posts/third-party-skills-attack-vector/).
 
-The mental model shift the field needs: agents aren't chatbots with tools. Agents are execution environments that run third-party code. The security model should be closer to container security and software supply chain security than to prompt filtering. The question isn't "how do we sanitize inputs?" It's "how do we verify that every piece of code running inside our agent is trustworthy, continuously?"
+The mental model shift the field needs: agents aren't chatbots with tools. Agents are execution environments that run third-party code. And when those agents delegate to each other, the attack surface compounds — my [cascade poisoning research found a 98-percentage-point spread](/posts/agent-semantic-resistance/) in attack success rates across payload types in multi-agent systems. The security model should be closer to container security and software supply chain security than to prompt filtering. The question isn't "how do we sanitize inputs?" It's "how do we verify that every piece of code running inside our agent is trustworthy, continuously?"
 
 Until the field makes that shift, the 820+ malicious skills on ClawHub will keep growing. Because nobody's scanning for them.
 

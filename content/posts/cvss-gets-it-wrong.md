@@ -95,8 +95,8 @@ Three attacks on the description text (synonym substitution, field injection, no
 
 ## What This Means for Vulnerability Management
 
-1. **Stop prioritizing by CVSS alone.** It's the 5th most important feature. Vendor deployment ubiquity and vulnerability age are stronger signals.
-2. **EPSS mostly works.** Our model achieves 99% of EPSS performance using only public data. If you're already using EPSS, you're ahead of most teams.
+1. **Stop prioritizing by CVSS alone.** It's the 5th most important feature. Vendor deployment ubiquity and vulnerability age are stronger signals. Want to build your own? The [ML vulnerability prioritizer tutorial](/posts/tutorial-ml-vuln-prioritizer/) walks through the full pipeline.
+2. **EPSS mostly works.** Our model achieves 99% of EPSS performance using only public data. If you're already using EPSS, you're ahead of most teams. Our [LLM agent triage experiment](/posts/agent-vuln-triage/) confirmed this — the agent scored 92% but couldn't beat EPSS's 100%.
 3. **The model is hard to game.** Because it relies on features attackers can't manipulate, advisory-level deception (downplaying a CVE's description) doesn't change the prediction.
 
 ## Limitations
@@ -115,7 +115,7 @@ Built with [govML](/posts/govml-methodology/) governance — 11 architectural de
 
 ### What's Next
 
-The ablation study continues — I'm testing which data source combinations are sufficient vs redundant for vulnerability prediction. I also applied the same adversarial robustness methodology to network IDS: [Adversarial ML on IDS →](/posts/adversarial-ids/)
+The ablation study continues — I'm testing which data source combinations are sufficient vs redundant for vulnerability prediction. I also applied the same adversarial robustness methodology to network IDS: [Adversarial ML on IDS →](/posts/adversarial-ids/). And for the patching side of vulnerability management, our [LLM patch correctness research](/posts/llm-patch-correctness/) found that AI-generated patches have a 42% fix rate overall — but SQL injection patches are net-negative.
 
 ---
 

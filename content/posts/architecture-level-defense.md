@@ -61,7 +61,7 @@ The AI security industry is investing heavily in better models — larger traini
 
 A WAF with a perfect ML model is still a WAF. It sees traffic at one point in the request lifecycle, makes a binary decision, and has no visibility into what happens after. An architectural defense distributes detection across multiple points, weights features by controllability, and makes decisions based on what the attacker can't manipulate.
 
-The industry mental model needs to shift from "which ML model should we buy?" to "which architecture ensures the ML model sees trustworthy inputs?"
+The industry mental model needs to shift from "which ML model should we buy?" to "which architecture ensures the ML model sees trustworthy inputs?" This architectural principle extends to multi-agent systems — our [simulation-to-real cascade experiments](/posts/multi-agent-security/) found that zero-trust architecture is the only trust model that actually reduces poison propagation, and [watermark robustness research](/posts/llm-watermark-robustness/) demonstrates that even detection schemes must be designed architecturally (logit-level vs output-level) to provide meaningful signal.
 
 ## What I'm Doing About It
 

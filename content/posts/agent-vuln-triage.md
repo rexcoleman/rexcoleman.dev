@@ -79,7 +79,7 @@ Exploit availability is the key signal — knowing whether a public exploit exis
 
 ## Why This Matters for Security Teams
 
-If you're choosing between EPSS and an AI triage agent: **use EPSS.** It's free, fast, and on well-structured data it's hard to beat.
+If you're choosing between EPSS and an AI triage agent: **use EPSS.** It's free, fast, and on well-structured data it's hard to beat. Our [ML vulnerability prioritization research](/posts/cvss-gets-it-wrong/) showed that CVSS is the 5th most important feature for predicting exploitation — vendor deployment ubiquity and vulnerability age matter more.
 
 If you want the best possible triage: **use both.** The ensemble captures complementary signals and reduces variance. The agent adds qualitative context for human decision-making.
 
@@ -118,7 +118,7 @@ See [FINDINGS.md](https://github.com/rexcoleman/agent-vuln-triage/blob/master/FI
 - Test with real CVE/EPSS/KEV data from live APIs to remove the synthetic data advantage
 - Evaluate stronger models (Sonnet, GPT-4) that may close the gap with EPSS
 - Expand to NDCG@20 and other ranking metrics where ensemble value may be more apparent
-- Build the agent into a practical triage workflow with qualitative reasoning output
+- Build the agent into a practical triage workflow with qualitative reasoning output (see the [ML vulnerability prioritizer tutorial](/posts/tutorial-ml-vuln-prioritizer/) for a hands-on starting point)
 - Address temporal degradation with larger per-year cohorts
 
 ## Reproducibility
