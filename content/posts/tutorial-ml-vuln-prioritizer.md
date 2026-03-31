@@ -16,7 +16,7 @@ cover:
 
 ## Problem Statement
 
-Your security team triages vulnerabilities by CVSS score. A 9.8 gets patched immediately; a 7.5 waits. But CVSS measures severity, not exploitability. In real-world data, CVSS achieves an AUC of just 0.662 at predicting which CVEs actually get exploited -- barely better than a coin flip. You need a model that predicts exploitation likelihood, not just theoretical severity.
+Your security team triages vulnerabilities by CVSS score. A 9.8 gets patched immediately; a 7.5 waits. But CVSS measures severity, not exploitability. In real-world data, CVSS achieves an AUC of just 0.662 at predicting which CVEs actually get exploited -- barely better than a coin flip. You need a model that predicts exploitation likelihood, not just theoretical severity. For the full research behind this tutorial, including SHAP analysis and adversarial robustness evaluation, see [Why CVSS Gets It Wrong](/posts/cvss-gets-it-wrong/).
 
 This tutorial walks you through building an ML-based vulnerability prioritizer using public data. By the end, you will have a Random Forest model that beats CVSS by over 20 percentage points on AUC-ROC, and you will understand exactly which features drive those predictions using SHAP.
 
@@ -290,7 +290,7 @@ If your model AUC is above 0.80, you have a working vulnerability prioritizer th
 
 **Ground truth lags.** ExploitDB labels for recent CVEs are incomplete. Many exploited vulnerabilities from 2024+ have not been added yet. This is a label maturation problem, not a model problem. F1 scores will be low on recent test data regardless of the model.
 
-**Feature controllability matters.** The model is naturally robust to adversarial manipulation because its top features (EPSS, CVSS, vendor history) are defender-observable -- an attacker cannot change them. But if you add features derived from CVE description text, an attacker could submit misleading descriptions to manipulate triage. Build on features you control.
+**Feature controllability matters.** The model is naturally robust to adversarial manipulation because its top features (EPSS, CVSS, vendor history) are defender-observable -- an attacker cannot change them. But if you add features derived from CVE description text, an attacker could submit misleading descriptions to manipulate triage. Build on features you control. For a related finding on AI's limits in vulnerability workflows, see our research on [LLM patch correctness](/posts/llm-patch-correctness/) — AI-generated patches for SQL injection are net-negative.
 
 The full methodology, 7-algorithm comparison, ablation study, and adversarial evaluation are in the [vuln-prioritization-ml repo](https://github.com/rexcoleman/vuln-prioritization-ml).
 
