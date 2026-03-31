@@ -7,7 +7,7 @@ keywords: ["build vulnerability prioritization model", "random forest CVE exploi
 categories: ["AI Security", "Tutorials"]
 format: "tutorial"
 audience_side: "of-ai"
-image_count: 0  # R26: text diagram present (ASCII architecture diagram)
+image_count: 2  # R26: text diagram present (ASCII architecture diagram)
 description: "Build a Random Forest model that outperforms CVSS at predicting which vulnerabilities actually get exploited, using only public NVD and EPSS data."
 cover:
     image: /images/og-tutorial-ml-vuln-prioritizer.png
@@ -236,6 +236,8 @@ print(f"Random Forest AUC: {rf_auc:.3f}")
 print(f"Improvement:       +{(rf_auc - cvss_auc) * 100:.1f}pp")
 ```
 
+![Model comparison: Logistic Regression achieves 0.903 AUC-ROC, Random Forest 0.864, XGBoost 0.825](/images/posts/tutorial-ml-vuln-prioritizer/model_comparison.png)
+
 In our research on 338K CVEs, CVSS achieved AUC 0.662 while the ML model achieved 0.864 (Random Forest) to 0.903 (Logistic Regression). That is a +20 to +24 percentage point improvement. CVSS measures how bad a vulnerability could be. ML measures how likely it is to actually be exploited. Those are different questions, and attackers care about the second one.
 
 ## Step 5: Explain with SHAP
@@ -253,6 +255,8 @@ shap_values = explainer.shap_values(X_test.iloc[:500])  # subset for speed
 shap.summary_plot(shap_values[1], X_test.iloc[:500],
                   feature_names=feature_cols, show=False)
 ```
+
+![SHAP feature importance: epss_percentile dominates at nearly 2x the next feature, followed by has_exploit_ref and cvss_score](/images/posts/tutorial-ml-vuln-prioritizer/shap_importance.png)
 
 In our full analysis, the top 5 SHAP features were:
 
