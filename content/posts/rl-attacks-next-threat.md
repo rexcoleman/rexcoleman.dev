@@ -7,7 +7,7 @@ keywords: ["RL attacks beyond prompt injection", "AI agent reward poisoning thre
 categories: ["AI Security"]
 format: "perspective"
 audience_side: "of-ai"
-image_count: 0
+image_count: 1
 description: "The security community is focused on prompt injection, but RL-specific attacks are more dangerous and less understood."
 author: "Rex Coleman"
 ShowToc: true
@@ -28,6 +28,8 @@ But prompt injection is also becoming yesterday's threat — it's well-character
 **1. Observation perturbation degrades RL agents 20-50x more than reward poisoning.**
 
 In my [RL agent vulnerability research](/posts/rl-agent-vulnerability/), I trained 40 RL agents across 4 algorithms (Q-Learning, DQN, Double DQN, PPO) and 2 security-relevant environments (access control, tool selection), then ran 150 attack experiments across 4 attack classes.
+
+![Observation perturbation causes 40-99% reward degradation across environments, with targeted flips consistently worse than Gaussian noise](/images/posts/rl-attacks-next-threat/observation_perturbation.png)
 
 Observation perturbation — adding small noise to what the agent sees — caused 40-49 point reward degradation at epsilon=0.01 (minimal noise). Reward poisoning at 20% corruption produced only 0.2-1.6% policy divergence. The agent's learning algorithm filters corrupted rewards because they're averaged over entire episodes. But corrupted observations hit at decision time and cascade immediately. An access control agent that misreads its threat level observation by a tiny margin grants access it should deny — and there's no recovery within the episode.
 
