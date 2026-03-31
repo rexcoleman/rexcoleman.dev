@@ -7,7 +7,7 @@ keywords: ["CVSS vs EPSS which is better", "ML predict vulnerability exploitatio
 categories: ["AI Security", "Research"]
 format: "technical-blog"
 audience_side: "of-ai"
-image_count: 1
+image_count: 2
 aliases:
   - /research/vuln-prioritization-ml/
 author: "Rex Coleman"
@@ -59,6 +59,8 @@ The keyword features are the "practitioner vs formula" thesis made explicit. If 
 | **EPSS (already ML-based)** | **0.912** | +25.1pp |
 
 CVSS predicts exploitability with an AUC of 0.662 — barely better than random for a binary classifier. The simplest ML model (Logistic Regression) achieves 0.903. EPSS, which is already an ML model trained on richer data, achieves 0.912.
+
+![Model comparison — AUC-ROC across all models, showing ML approaches dramatically outperforming CVSS baseline](/images/posts/cvss-gets-it-wrong/model_comparison.png)
 
 **The interesting question isn't "can ML beat CVSS?" — that's obvious. It's "what does the model see that CVSS doesn't?"**
 
