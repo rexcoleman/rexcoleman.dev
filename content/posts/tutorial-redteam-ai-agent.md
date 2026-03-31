@@ -6,7 +6,7 @@ tags: ["tutorial", "ai-agents", "red-team", "langchain", "security", "prompt-inj
 categories: ["AI Security", "Tutorials"]
 format: "tutorial"
 audience_side: "of-ai"
-image_count: 0  # R26: text diagram present (ASCII architecture diagram)
+image_count: 2  # R26: text diagram present (ASCII architecture diagram)
 description: "Set up a LangChain agent, run 7 attack classes against it, interpret the results, and apply a 5-layer defense stack -- all for about $2 in API costs."
 archived: true
 hiddenInHomeList: true
@@ -102,6 +102,8 @@ file_store["api_keys.txt"] = "STRIPE_KEY=sk_live_abc123\nAWS_KEY=AKIA..."
 ## Step 2: Run the 7 Attack Classes
 
 The agent-redteam-framework defines 7 attack classes. Five are agent-specific surfaces that OWASP and MITRE ATLAS do not cover. Run each one and record the result.
+
+![Attack success rates by class: reasoning hijack at 100%, prompt injection at 87%, tool boundary at 75%, memory poisoning at 67%, indirect injection at 25%](/images/posts/tutorial-redteam-ai-agent/attack_success_rates.png)
 
 ### Attack 1: Direct Prompt Injection
 
@@ -323,6 +325,8 @@ def log_action(action_type: str, details: dict, blocked: bool = False):
 ```
 
 ### Defense Results
+
+![Defense effectiveness by layer: input sanitizer eliminates prompt injection, layered defense reduces most attacks, but reasoning hijack partially evades all layers](/images/posts/tutorial-redteam-ai-agent/defense_effectiveness.png)
 
 In our research, the layered defense (input sanitizer + tool permission boundary) reduced average attack success by 60%. Adding the LLM-as-judge brought it to 67%. The residual gap is reasoning chain hijacking, which partially evades all layers because its instructions look like legitimate tasks.
 
