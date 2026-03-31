@@ -8,7 +8,7 @@ categories: ["AI Security", "Research"]
 featured: true
 format: "perspective"
 audience_side: "of-ai"
-image_count: 0
+image_count: 3
 aliases:
   - /research/agent-semantic-resistance/
 author: "Rex Coleman"
@@ -24,6 +24,8 @@ Domain-aligned prompt injections cascade through multi-agent systems at a 0% det
 I ran six experiments on real Claude Haiku agents to find out why. Three resistance patterns explain the gap — and each has a quantified bypass condition.
 
 ## The 98pp Spread
+
+![Agent resistance varies by 98 percentage points across payload types: privilege escalation at 97.6%, generic at 68.8%, data exfiltration at 55.2%, domain-aligned at 0.0%](/images/posts/agent-semantic-resistance/e2_payload_spread.png)
 
 The most important finding: resistance varies by **98 percentage points** across payload types.
 
@@ -46,11 +48,15 @@ Agents partially detect when injected content doesn't match the task. Generic Cr
 
 ### 2. Depth Dilution
 
+![Each delegation hop filters approximately 17pp of poison signal: 100% at hop 0, 74% at hop 1, 48% at hop 2](/images/posts/agent-semantic-resistance/e4_depth_dilution.png)
+
 Each delegation hop filters the poison signal. Hop 1 (direct from attacker): 74% poisoned. Hop 2 (grandchildren): 48% poisoned. Every hop is a natural defense — the agent's own processing buries the injection in rewriting and summarization.
 
 **Practical implication:** Deeper delegation chains are more resistant. This is the opposite of what you'd expect if agents were just passing messages through.
 
 ### 3. Role-Based Critique
+
+![System prompt design is a security control: orchestrator at 100%, analyst at 92%, writer at 60%, reviewer at 52%, publisher at 52% — a 40pp spread from role framing](/images/posts/agent-semantic-resistance/e5_role_resistance.png)
 
 Analyst agents propagate 92% of poison — their job is to "include everything." Reviewer agents propagate only 52% — their job is to "critique and evaluate." A 40pp spread from system prompt alone.
 
