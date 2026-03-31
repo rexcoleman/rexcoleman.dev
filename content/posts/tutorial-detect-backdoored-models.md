@@ -18,7 +18,7 @@ cover:
 
 Pre-trained models from public registries can pass every accuracy benchmark while hiding backdoors that activate only on attacker-chosen trigger inputs. Static analysis tools miss these because the backdoor lives in learned weights, not code. In 150 detection runs across 6 methods, Local Outlier Factor on raw activations achieved 0.622 AUROC at detecting backdoored models with zero labeled examples — modest but above chance, and the best unsupervised result I measured.
 
-This tutorial shows you how to build that detection pipeline: extract behavioral fingerprints from model activations, apply unsupervised anomaly detection, and identify suspicious models without knowing what the backdoor looks like.
+This tutorial shows you how to build that detection pipeline: extract behavioral fingerprints from model activations, apply unsupervised anomaly detection, and identify suspicious models without knowing what the backdoor looks like. For the full research findings including the 6-detector comparison, dimensionality reduction analysis, and adversarial controllability extension, see the [behavioral fingerprinting research post](/posts/model-fingerprinting/).
 
 ```
 Clean Model              Backdoored Model
@@ -58,7 +58,7 @@ Static tests miss this because:
 - Accuracy on clean test data is normal (the backdoor only activates on triggered inputs).
 - Weight inspection shows nothing obviously wrong (the backdoor is distributed across many neurons).
 
-The defender's advantage: you control the reference inputs. You can probe the model with whatever inputs you choose and observe its internal activations. The attacker controls the model weights but cannot control how you test it. This asymmetry is the basis of behavioral fingerprinting.
+The defender's advantage: you control the reference inputs. You can probe the model with whatever inputs you choose and observe its internal activations. The attacker controls the model weights but cannot control how you test it. This asymmetry is the basis of behavioral fingerprinting — the same controllability principle that makes [architecture-level defense](/posts/architecture-level-defense/) more effective than point solutions across all AI security domains.
 
 ## Step 2: Extract Behavioral Fingerprints
 

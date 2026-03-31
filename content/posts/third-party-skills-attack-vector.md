@@ -104,7 +104,7 @@ For teams running multiple agents, this doesn't scale manually. That's why we're
 
 The ClawHub malicious skill problem is a supply chain attack. It's the npm/PyPI compromise pattern, adapted for agent architectures. The security industry solved (or at least mitigated) this for traditional package managers with tools like Snyk, Socket, and Dependabot.
 
-Agent skill marketplaces need the same treatment. But the attack surface is larger because skills have access to the agent's reasoning process, not just its execution environment. A malicious npm package can execute code. A malicious agent skill can change how your agent thinks.
+Agent skill marketplaces need the same treatment. But the attack surface is larger because skills have access to the agent's reasoning process, not just its execution environment. A malicious npm package can execute code. A malicious agent skill can change how your agent thinks. For a deeper analysis of how skills bypass every guardrail designed for prompt-level attacks, see [the agent security gap nobody's talking about](/posts/agent-security-gap-skills/). And the broader pattern — frameworks without tools — is exactly the [shipping problem](/posts/ai-security-shipping-problem/) holding back the entire AI security field.
 
 That's a fundamentally different — and harder — security problem.
 
