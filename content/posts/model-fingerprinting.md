@@ -21,7 +21,7 @@ images:
 
 A model poisoned through training data — one that behaves normally on 99.9% of inputs and activates a backdoor only on a specific trigger — passes every static analysis check. I built a behavioral fingerprinting system that detects these models using unsupervised anomaly detection: zero labeled backdoor examples, no model retraining, AUROC 0.62 on deliberately subtle synthetic backdoors.
 
-Static tools like ModelScan catch serialization exploits. Behavioral fingerprinting catches what static misses — and the defender controls the probe inputs, inverting the usual attacker advantage.
+Static tools like ModelScan catch serialization exploits. Behavioral fingerprinting catches what static misses — and the defender controls the probe inputs, inverting the usual attacker advantage. This is a model supply chain problem analogous to the [agent skill supply chain](/posts/third-party-skills-attack-vector/) — in both cases, third-party artifacts execute inside your system and static analysis misses behavioral threats.
 
 ## The Approach: Behavioral Fingerprinting
 
@@ -142,7 +142,7 @@ This project is part of a sequence:
 - **Behavioral fingerprinting** -- unsupervised detection catches training-data poisoning that static misses
 - **[Next] Combined pipeline** -- layered defense: static scan first (fast, cheap), behavioral scan for models that pass static checks
 
-The same pattern the security industry learned with malware: signatures first, behavioral analysis second, ensemble verdict third.
+The same pattern the security industry learned with malware: signatures first, behavioral analysis second, ensemble verdict third. For a hands-on implementation, see the [tutorial on detecting backdoored models without labeled examples](/posts/tutorial-detect-backdoored-models/).
 
 ## Repository
 

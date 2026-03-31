@@ -119,7 +119,7 @@ See [FINDINGS.md](https://github.com/rexcoleman/multi-agent-security/blob/master
 
 ## What's Next
 
-**Real LLM agents.** Replace the simulation with actual Claude/GPT agents running in CrewAI. Validate that the simulation findings hold with real language models.
+**Real LLM agents.** We did this — and the results were even more surprising. Our [verified delegation protocol](/posts/verified-delegation-protocol/) tested a 3-layer defense on real Claude agents and 5 of 7 hypotheses were refuted. Our [semantic resistance taxonomy](/posts/agent-semantic-resistance/) identified three resistance patterns that explain WHY real agents behave differently from simulation, with a predictive model (R2=0.75) on five measurable features.
 
 **Larger scale.** Test with 20-50 agents to look for partition effects and natural firebreaks.
 

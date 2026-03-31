@@ -19,7 +19,7 @@ images:
   - /images/og-secure-openclaw.png
 ---
 
-A default OpenClaw installation has file system access, API credentials, and code execution — with zero security controls enabled. One in five ClawHub skills is actively malicious. Exposed credentials from VPS-hosted agents are already showing up in public breach lists. A compromised agent isn't a compromised browser tab — it's a compromised employee with the keys to everything.
+A default OpenClaw installation has file system access, API credentials, and code execution — with zero security controls enabled. One in five ClawHub skills is actively malicious. Exposed credentials from VPS-hosted agents are already showing up in public breach lists. A compromised agent isn't a compromised browser tab — it's a compromised employee with the keys to everything. For the full analysis of why [third-party skills are the biggest agent attack vector](/posts/third-party-skills-attack-vector/) and what makes this [worse than prompt injection at the architecture level](/posts/agent-security-gap-skills/), see the companion research.
 
 This 30-minute checklist fixes the five biggest risks. Based on my [agent red-team research](/posts/agent-redteam/) and analysis of disclosed OpenClaw vulnerabilities from power users running multi-agent setups 24/7.
 

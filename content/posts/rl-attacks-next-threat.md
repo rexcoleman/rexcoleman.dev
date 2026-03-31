@@ -67,7 +67,7 @@ The security community is fighting the last war. Prompt injection was the first 
 
 Production agents are incorporating RL training. The RL attack surface is different from the prompt attack surface. Defenses built for one provide zero coverage of the other. Organizations that equate "AI security" with "prompt injection defense" have a blind spot that grows with every RL-trained agent they deploy.
 
-The field needs to expand its threat model. Prompt injection is a real risk that deserves continued attention. But it's one row in a matrix that should include reward poisoning, observation perturbation, policy extraction, and behavioral backdoors. Each requires its own defense architecture.
+The field needs to expand its threat model. Prompt injection is a real risk that deserves continued attention. But it's one row in a matrix that should include reward poisoning, observation perturbation, policy extraction, and behavioral backdoors. Each requires its own [architecture-level defense](/posts/architecture-level-defense/) — point solutions built for one attack surface provide zero protection against a different one. This same principle applies to detection: our [watermark robustness research](/posts/llm-watermark-robustness/) showed that even well-designed detection schemes degrade under cross-model attack, reinforcing that defenses must be architectural, not model-specific.
 
 ## What I'm Doing About It
 
