@@ -6,7 +6,7 @@ tags: ["ai-security", "agent-security", "red-team", "llm-security", "adversarial
 categories: ["AI Security", "Research"]
 format: "technical-blog"
 audience_side: "of-ai"
-image_count: 1
+image_count: 2
 aliases:
   - /research/agent-redteam-framework/
 author: "Rex Coleman"
@@ -57,6 +57,8 @@ I systematized 7 attack classes into a reusable taxonomy. The first two exist in
 | **Reasoning Chain Hijacking** | **100%** | **Novel pattern** |
 
 *(Cross-agent privilege escalation and output format exploitation were defined but not yet tested — they require multi-agent and downstream consumer setups.)*
+
+![Attack success rates by class — reasoning chain hijacking achieves 100% while indirect injection via tools shows lowest success at 25%](/images/posts/agent-redteam/attack_by_class.png)
 
 ## The Standout Finding: Reasoning Chain Hijacking
 
