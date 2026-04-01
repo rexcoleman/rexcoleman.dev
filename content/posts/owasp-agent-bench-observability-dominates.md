@@ -24,7 +24,7 @@ pip install owasp-agent-bench
 owasp-agent-bench run
 ```
 
-The benchmark evaluates architectural security properties — does the agent framework filter inputs? Restrict tool access? Log actions? — rather than testing specific LLM behaviors. This means results are deterministic and reproducible without an API key.
+The benchmark complements the UK AI Safety Institute's [AgentThreatBench](https://github.com/UKGovernmentBEIS/inspect_evals/issues/1031), which covers three different OWASP categories with live agent testing. Our approach is different: we evaluate architectural security properties — does the agent framework filter inputs? Restrict tool access? Log actions? — and use a formal model to PREDICT severity from architecture alone. Results are deterministic and reproducible without an API key.
 
 ## What I found
 
