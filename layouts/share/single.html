@@ -1,0 +1,61 @@
+{{- define "main" -}}
+<!--
+  /share — UTM-tracked redirect endpoint per linkedin_referral_mechanism_test
+  cycle 1 CONTRACT_CHANGE C1. Plausible auto-fires pageview on load with UTM
+  params captured. Page then JS-redirects to the `dest` query param (or shows
+  a manual fallback if absent or unsafe).
+
+  Allowed `dest` shape (security-bound):
+    - LinkedIn share dialog:  https://www.linkedin.com/sharing/share-offsite/?url=<encoded>
+    - LinkedIn newsletter:    https://www.linkedin.com/newsletters/<id>
+    - rexcoleman.dev / *.rexcoleman.dev (own domain)
+  Open redirects to arbitrary destinations are NOT permitted.
+-->
+
+<div class="post-single" style="text-align:center; padding: 4em 1em;">
+  <h1 class="post-title">Redirecting…</h1>
+  <p>
+    Sharing AI Security Signal. If your browser doesn't redirect in a moment,
+    the link target is in the URL — copy + paste, or
+    <a href="https://www.linkedin.com/in/rexcoleman/recent-activity/newsletters/">visit the newsletter directly</a>.
+  </p>
+  <p style="margin-top:2em; font-size: 0.85em; opacity: 0.7;">
+    Tracking: this redirect logs an anonymous pageview via Plausible (privacy-friendly,
+    no cookies, no personal data) so the newsletter author can measure
+    whether the share feature is engaged. <a href="https://plausible.io/data-policy">Plausible data policy</a>.
+  </p>
+</div>
+
+<script>
+(function () {
+  var qs = new URLSearchParams(window.location.search);
+  var raw = qs.get('dest') || '';
+  var allowed = false;
+  var target = '';
+
+  try {
+    if (raw) {
+      var u = new URL(raw, window.location.origin);
+      if (
+        // LinkedIn share dialog or newsletter
+        (u.hostname === 'www.linkedin.com' || u.hostname === 'linkedin.com')
+        // rexcoleman.dev own domain
+        || u.hostname === 'rexcoleman.dev'
+        || u.hostname.endsWith('.rexcoleman.dev')
+      ) {
+        allowed = true;
+        target = u.toString();
+      }
+    }
+  } catch (e) { /* malformed URL → fall through to default */ }
+
+  if (!allowed) {
+    // Default fallback: the LinkedIn newsletter article landing page
+    target = 'https://www.linkedin.com/in/rexcoleman/recent-activity/newsletters/';
+  }
+
+  // Brief delay so Plausible has time to fire the pageview before we navigate away
+  setTimeout(function () { window.location.replace(target); }, 250);
+})();
+</script>
+{{- end -}}
