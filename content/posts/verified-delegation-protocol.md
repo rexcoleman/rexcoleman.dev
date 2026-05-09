@@ -3,11 +3,12 @@ title: "We Built a Multi-Agent Defense and It Failed — Here's Why That Matters
 date: 2026-03-19T22:00:00
 description: "We proposed a 3-layer defense for multi-agent cascade. Real agent experiments refuted 5 of 7 hypotheses. The simulation was wrong by 48 percentage points."
 tags: ["ai-security", "multi-agent", "negative-results", "research"]
+keywords: ["multi-agent defense protocol failed", "LLM as judge verification limits", "agent delegation security experiment", "cascade poison defense negative result", "cryptographic agent signing ineffective"]
 categories: ["AI Security", "Research"]
 featured: false
 format: "technical-blog"
 audience_side: "of-ai"
-image_count: 0
+image_count: 2
 author: "Rex Coleman"
 ShowToc: true
 TocOpen: false
@@ -47,6 +48,8 @@ Our [cascade simulation](/posts/multi-agent-security/) predicted 97% poison rate
 
 **The simulation was wrong by 48 percentage points.** Real LLM agents don't blindly propagate poisoned content — they have their own semantic understanding that partially resists cascade.
 
+![Where the defense fails: 15 of 45 conditions fail at problem definition, only 10 pass all gates](/images/posts/verified-delegation-protocol/failure_points_bar.png)
+
 ## The Three Findings That Matter
 
 ### 1. The Judge Makes Things Worse
@@ -62,6 +65,8 @@ When the attacker knows the judge exists and crafts outputs to pass verification
 ### 3. The Dumbest Defense Worked Best
 
 Rate limiting — the simplest component, no semantic understanding, just slowing down delegation — provided the most benefit (-6pp). It doesn't try to understand content. It just reduces the attack surface by limiting how many delegations happen per time window.
+
+![Governance effect across task complexity: full govML scores 7.6-10.0 while no governance scores 4.4-6.0](/images/posts/verified-delegation-protocol/heatmap_task_governance.png)
 
 ## The Ablation: No Component Provides Meaningful Defense
 
@@ -87,7 +92,7 @@ We pre-registered 7 hypotheses with Gate 0.5 governance. We tested honestly. 5 w
 - **Rate limiting > semantic verification** for cascade defense
 - **Real agents have inherent resistance** that simulations miss
 
-Every refutation tells future researchers what NOT to build. That's worth more than a confirmation that a defense "works" in simulation.
+Every refutation tells future researchers what NOT to build. That's worth more than a confirmation that a defense "works" in simulation. Our [semantic resistance taxonomy](/posts/agent-semantic-resistance/) explains WHY real agents resist cascade differently — three measurable resistance patterns account for 75% of the variance.
 
 ## The Simulation-to-Real Gap
 
@@ -127,7 +132,7 @@ Based on our negative results:
 - Develop non-LLM verification methods (behavioral anomaly detection) based on rate limiting's success
 - Build delegation attack training datasets to enable fine-tuned judge models
 
-The framework is open source for others to extend: [github.com/rexcoleman/verified-delegation-protocol](https://github.com/rexcoleman/verified-delegation-protocol)
+Built with [govML](/posts/govml-methodology/) governance — pre-registered hypotheses at Gate 0.5 forced honest reporting of all 5 refutations. The framework is open source for others to extend: [github.com/rexcoleman/verified-delegation-protocol](https://github.com/rexcoleman/verified-delegation-protocol)
 
 ---
 
