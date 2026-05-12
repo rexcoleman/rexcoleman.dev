@@ -12,17 +12,15 @@
   Open redirects to arbitrary destinations are NOT permitted.
 -->
 
-<div class="post-single" style="text-align:center; padding: 4em 1em;">
-  <h1 class="post-title">Redirecting…</h1>
+<!--
+  Visible body kept minimal + blank-toned so the in-flight redirect feels
+  native rather than interstitial. If the redirect fails (JS disabled,
+  unsupported browser), the fallback text + link below still resolves the
+  click to a useful destination.
+-->
+<div class="post-single" style="text-align:center; padding: 4em 1em; opacity: 0;">
   <p>
-    Sharing AI Security Signal. If your browser doesn't redirect in a moment,
-    the link target is in the URL — copy + paste, or
-    <a href="https://www.linkedin.com/in/rexcoleman/recent-activity/newsletters/">visit the newsletter directly</a>.
-  </p>
-  <p style="margin-top:2em; font-size: 0.85em; opacity: 0.7;">
-    Tracking: this redirect logs an anonymous pageview via Plausible (privacy-friendly,
-    no cookies, no personal data) so the newsletter author can measure
-    whether the share feature is engaged. <a href="https://plausible.io/data-policy">Plausible data policy</a>.
+    <a href="https://www.linkedin.com/in/rexcoleman/recent-activity/newsletters/">Continue to the newsletter →</a>
   </p>
 </div>
 
@@ -37,9 +35,7 @@
     if (raw) {
       var u = new URL(raw, window.location.origin);
       if (
-        // LinkedIn share dialog or newsletter
         (u.hostname === 'www.linkedin.com' || u.hostname === 'linkedin.com')
-        // rexcoleman.dev own domain
         || u.hostname === 'rexcoleman.dev'
         || u.hostname.endsWith('.rexcoleman.dev')
       ) {
@@ -50,12 +46,11 @@
   } catch (e) { /* malformed URL → fall through to default */ }
 
   if (!allowed) {
-    // Default fallback: the LinkedIn newsletter article landing page
     target = 'https://www.linkedin.com/in/rexcoleman/recent-activity/newsletters/';
   }
 
-  // Brief delay so Plausible has time to fire the pageview before we navigate away
-  setTimeout(function () { window.location.replace(target); }, 250);
+  // 50ms — enough for Plausible queue to flush, not enough to perceive
+  setTimeout(function () { window.location.replace(target); }, 50);
 })();
 </script>
 {{- end -}}
