@@ -12,6 +12,7 @@ Output:
 """
 
 import argparse
+import importlib.util
 import os
 import re
 import sys
@@ -20,6 +21,20 @@ from pathlib import Path
 
 
 SITE_URL = "https://rexcoleman.dev"
+RUNTIME_MOUNT = Path("/home/azureuser/research_enforcement_activation/write_integrity/mounts/runtime_mount.py")
+
+
+def consume_distribution_effect(*, candidate, destination, effect_callback):
+    spec = importlib.util.spec_from_file_location("rea_runtime_mount", RUNTIME_MOUNT)
+    if spec is None or spec.loader is None:
+        raise RuntimeError(f"REFUSE(CONSUMER_BINDING_MISSING): {RUNTIME_MOUNT}")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module.consume_effect(
+        route_id="DST-02", surface="distribution", candidate=candidate,
+        destination=destination, requested_effect="write",
+        run_id="rex-cross-post", effect_callback=effect_callback,
+    )
 
 
 def strip_front_matter(text: str) -> tuple[dict, str]:
@@ -220,8 +235,6 @@ def main():
     # Create output directory
     site_dir = Path(__file__).resolve().parent
     out_dir = site_dir / "cross-posts"
-    out_dir.mkdir(exist_ok=True)
-
     # Generate all versions
     devto = generate_devto(slug, metadata, body)
     linkedin = generate_linkedin(slug, metadata, body)
@@ -232,9 +245,20 @@ def main():
     linkedin_path = out_dir / f"{slug}_linkedin.txt"
     reddit_path = out_dir / f"{slug}_reddit.md"
 
-    devto_path.write_text(devto, encoding="utf-8")
-    linkedin_path.write_text(linkedin, encoding="utf-8")
-    reddit_path.write_text(reddit, encoding="utf-8")
+    artifacts = ((devto_path, devto), (linkedin_path, linkedin), (reddit_path, reddit))
+    candidate = b"\n\n".join(text.encode("utf-8") for _, text in artifacts)
+
+    def write_artifacts(_candidate):
+        out_dir.mkdir(exist_ok=True)
+        for path, text in artifacts:
+            path.write_text(text, encoding="utf-8")
+        return {"paths": [str(path) for path, _ in artifacts]}
+
+    consume_distribution_effect(
+        candidate=candidate,
+        destination=f"file://{out_dir.resolve()}/",
+        effect_callback=write_artifacts,
+    )
 
     print(f"Generated cross-post files in {out_dir}/:")
     print(f"  {devto_path.name:<30} ({len(devto):>5} chars)  — dev.to")
