@@ -1,0 +1,60 @@
+import sys
+from pathlib import Path
+
+import pytest
+
+HERE = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(HERE))
+
+from issue_wea import IssuerRefusal, verify_members, verify_trust_roots  # noqa: E402
+from member_contract import EXPECTED_MEMBERS, ROUTE_OWNED_MEMBER_IDS  # noqa: E402
+
+
+REQUIRED_CLASSES = [
+    "boundary_gate", "resolver", "readiness_consumer", "live_emitter_binding",
+    "master_runner_binding", "project_runner_binding", "scaffold_installer",
+    "remote_workflow", "remote_ruleset", "claim_policy", "profile_registry",
+    "trusted_public_key",
+]
+
+
+def complete_manifest():
+    return {
+        "required_member_classes": REQUIRED_CLASSES,
+        "members": [
+            {"member_id": member_id, "repository": repository, "path": path,
+             "commit": "a" * 40, "sha256": "b" * 64, "byte_length": 1}
+            for member_id, (repository, path) in EXPECTED_MEMBERS.items()
+        ],
+    }
+
+
+def test_removed_member_refuses_before_signing(tmp_path):
+    manifest = complete_manifest()
+    removed = manifest["members"].pop()
+    with pytest.raises(IssuerRefusal) as captured:
+        verify_members(manifest, tmp_path)
+    assert captured.value.reason_code == "BUNDLE_MEMBER_SET_MISMATCH"
+    assert removed["member_id"] in captured.value.detail
+
+
+def test_retargeted_member_refuses_before_signing(tmp_path):
+    manifest = complete_manifest()
+    manifest["members"][0]["path"] = "forged/path"
+    with pytest.raises(IssuerRefusal, match="BUNDLE_MEMBER_SET_MISMATCH"):
+        verify_members(manifest, tmp_path)
+
+
+def test_contract_contains_exact_accepted_22_route_owned_files():
+    assert len(ROUTE_OWNED_MEMBER_IDS) == 22
+    assert ROUTE_OWNED_MEMBER_IDS < set(EXPECTED_MEMBERS)
+    pairs = [EXPECTED_MEMBERS[member_id] for member_id in ROUTE_OWNED_MEMBER_IDS]
+    assert len(pairs) == len(set(pairs)) == 22
+
+
+def test_divergent_pinned_public_key_copy_refuses():
+    public = b"one remote public key"
+    loaded = {"trusted-public-key": public, "newsletter-trusted-public-key": b"different"}
+    with pytest.raises(IssuerRefusal) as captured:
+        verify_trust_roots(loaded, public)
+    assert captured.value.reason_code == "TRUST_ROOT_COPY_MISMATCH"
