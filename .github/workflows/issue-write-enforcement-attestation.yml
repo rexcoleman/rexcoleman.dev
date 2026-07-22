@@ -2,6 +2,15 @@ name: Issue write enforcement attestation
 
 on:
   workflow_dispatch:
+    inputs:
+      time_mode:
+        description: Active WEA or remote-signed expired R4 fixture
+        required: true
+        default: active
+        type: choice
+        options:
+          - active
+          - expired_fixture
 
 permissions:
   contents: read
@@ -35,7 +44,8 @@ jobs:
           python3 repos/rexcoleman.dev/.github/write-enforcement/issue_wea.py \
             --manifest repos/rexcoleman.dev/.github/write-enforcement/frozen_bundle_manifest.json \
             --workspace repos --ruleset-json "$RUNNER_TEMP/ruleset.json" \
-            --private-key "$RUNNER_TEMP/wea-private.pem" --output issuance
+            --private-key "$RUNNER_TEMP/wea-private.pem" --output issuance \
+            --time-mode "${{ inputs.time_mode }}"
           sha256sum -c issuance/SHA256SUMS
       - uses: actions/upload-artifact@v4
         with:

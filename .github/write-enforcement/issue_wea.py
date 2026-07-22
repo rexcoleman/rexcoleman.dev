@@ -116,10 +116,19 @@ def verify_trust_roots(loaded: dict[str, bytes], public: bytes) -> None:
         raise IssuerRefusal("TRUST_ROOT_COPY_MISMATCH", "govml_or_newsletter")
 
 
+def issuance_times(now: datetime, mode: str) -> tuple[datetime, datetime]:
+    if mode == "active":
+        return now, now + timedelta(hours=24)
+    if mode == "expired_fixture":
+        return now - timedelta(hours=48), now - timedelta(hours=24)
+    raise ValueError("issuance time mode")
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     for name in ("manifest", "workspace", "ruleset-json", "private-key", "output"):
         parser.add_argument("--" + name, required=True, type=Path)
+    parser.add_argument("--time-mode", choices=("active", "expired_fixture"), default="active")
     args = parser.parse_args()
     manifest = load_manifest(args.manifest)
     loaded = verify_members(manifest, args.workspace)
@@ -146,11 +155,12 @@ def main() -> int:
     public = public_path.read_bytes()
     verify_trust_roots(loaded, public)
     now = datetime.now(timezone.utc).replace(microsecond=0)
+    issued_at, expires_at = issuance_times(now, args.time_mode)
     wea = {
         "schema_version": "rea.write.wea.v1", "state": "ENFORCING",
         "authority_generation": manifest["authority_generation"], "issuer": ISSUER,
-        "issued_at": now.isoformat().replace("+00:00", "Z"),
-        "expires_at": (now + timedelta(hours=24)).isoformat().replace("+00:00", "Z"),
+        "issued_at": issued_at.isoformat().replace("+00:00", "Z"),
+        "expires_at": expires_at.isoformat().replace("+00:00", "Z"),
         "publishing_capability_scope": scope,
         "required_surfaces": ["report", "blog", "publication", "distribution"],
         "enforcement_bundle_manifest_digest": manifest["manifest_digest"],
