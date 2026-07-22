@@ -1,7 +1,7 @@
 {
   "schema_version": "rea.hosted-authority-seal.v1",
   "seal_id": "a361ee29dcffa43bf9bfe901f01d304b",
-  "state": "SEALED",
+  "state": "SEALEE",
   "routes": [
     "BLG-09",
     "BLG-10"
