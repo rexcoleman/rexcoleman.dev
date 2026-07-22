@@ -1,0 +1,12 @@
+{
+  "schema_version": "rea.hosted-authority-seal.v1",
+  "seal_id": "a361ee29dcffa43bf9bfe901f01d304b",
+  "state": "SEALED",
+  "routes": [
+    "BLG-09",
+    "BLG-10"
+  ],
+  "verification_scope": "EXACT_PUSHED_SHA_TRANSPORT_ONLY",
+  "semantic_authorization": false,
+  "deployment_authorization": false
+}
