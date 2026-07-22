@@ -1,0 +1,74 @@
+{
+  "schema_version": "rea.hosted-authority-manifest.v1",
+  "manifest_id": "rea-s79-f-frozen-transport-v1",
+  "status": "FROZEN",
+  "authority_kind": "OPAQUE_SEAL_TRANSPORT_INTEGRITY",
+  "repository_origin": "https://github.com/rexcoleman/rexcoleman.dev.git",
+  "baseline_target_sha": "20d17b24e406f16e877a65a28c8769b5323b0868",
+  "seal_id": "a361ee29dcffa43bf9bfe901f01d304b",
+  "routes": [
+    "BLG-09",
+    "BLG-10"
+  ],
+  "verification_scope": "EXACT_PUSHED_SHA_TRANSPORT_ONLY",
+  "default": "REFUSE",
+  "semantic_authorization": false,
+  "deployment_authorization": false,
+  "private_authority_material_included": false,
+  "target_tree": {
+    "root": ".rea/hosted-authority",
+    "exact_files": [
+      "authority-seal.json"
+    ]
+  },
+  "target_members": [
+    {
+      "path": ".rea/hosted-authority/authority-seal.json",
+      "byte_length": 302,
+      "sha256": "79c4074f019dd7cf62e2819c2ef53f7999ccaf2206a780df6e50ebe9c976676f"
+    },
+    {
+      "path": "scripts/blog_publish_mount.py",
+      "byte_length": 1219,
+      "sha256": "48bc9a854248267c7c669dadf88ff0653b3c5f4845fc293988a693e2ea2fb00b"
+    },
+    {
+      "path": "publish.sh",
+      "byte_length": 6507,
+      "sha256": "2c3ed6912e294e2d0f78f6ea1f9fd85e0ea24c73e6aea91782d473a73bc80e9c"
+    }
+  ],
+  "control_members": [
+    {
+      "path": ".github/research-integrity/verify_sealed_authority.py",
+      "byte_length": 12651,
+      "sha256": "0cd39cede38bcc275c2426825af16232af80c7ddd0ac1a5044f6a373218d7aef"
+    }
+  ],
+  "reason_codes": [
+    "VERIFIED",
+    "ARGUMENT_INVALID",
+    "CONTROL_ROOT_INVALID",
+    "CONTROL_SHA_MISMATCH",
+    "CONTROL_WORKTREE_DIRTY",
+    "CONTROL_MANIFEST_PATH_MISMATCH",
+    "MANIFEST_MALFORMED",
+    "MANIFEST_SCHEMA_MISMATCH",
+    "MANIFEST_SEMANTICS_MISMATCH",
+    "TARGET_CHECKOUT_INVALID",
+    "TARGET_SHA_MISMATCH",
+    "TARGET_NOT_SEALED_SHA",
+    "TARGET_WORKTREE_DIRTY",
+    "TARGET_TREE_MISMATCH",
+    "TARGET_MEMBER_MISSING",
+    "TARGET_MEMBER_TYPE_REFUSED",
+    "SEALED_AUTHORITY_LENGTH_MISMATCH",
+    "SEALED_AUTHORITY_DIGEST_MISMATCH",
+    "CONTROL_MEMBER_MISSING",
+    "CONTROL_MEMBER_TYPE_REFUSED",
+    "CONTROL_MEMBER_LENGTH_MISMATCH",
+    "CONTROL_MEMBER_DIGEST_MISMATCH",
+    "CANNOT_EVALUATE"
+  ],
+  "receipt_schema_version": "rea.hosted-authority-receipt.v1"
+}
