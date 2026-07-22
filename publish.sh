@@ -56,11 +56,12 @@ fi
 echo "Source:  ${DRAFT_FILE}"
 echo "Target:  ${CONTENT_DIR}/${POST_SLUG}.md"
 
-# --- Step 2: Copy draft to content/posts/ --------------------------------------
+# --- Step 2: Stage final bytes outside the destination --------------------------
 
 DEST_FILE="${CONTENT_DIR}/${POST_SLUG}.md"
-mkdir -p "$CONTENT_DIR"
-cp "$DRAFT_FILE" "$DEST_FILE"
+FINAL_FILE="$(mktemp)"
+trap 'rm -f "$FINAL_FILE"' EXIT
+cp "$DRAFT_FILE" "$FINAL_FILE"
 
 # --- Step 3: Add Hugo front matter if not present -------------------------------
 
@@ -68,13 +69,13 @@ has_front_matter() {
     head -1 "$1" | grep -q '^\-\-\-' && return 0 || return 1
 }
 
-if ! has_front_matter "$DEST_FILE"; then
+if ! has_front_matter "$FINAL_FILE"; then
     echo ""
     echo "No Hugo front matter detected. Let's add it."
     read -rp "Post title: " POST_TITLE
 
     # Extract candidate tags from content (words after # headers, code fences lang hints)
-    CANDIDATE_TAGS=$(grep -oP '(?<=^## ).*|(?<=^### ).*' "$DEST_FILE" \
+    CANDIDATE_TAGS=$(grep -oP '(?<=^## ).*|(?<=^### ).*' "$FINAL_FILE" \
         | tr '[:upper:]' '[:lower:]' \
         | tr -cs '[:alnum:]\n' ' ' \
         | sort -u \
@@ -115,30 +116,45 @@ $(echo -e "$TAG_YAML")ShowToc: true
     # Prepend front matter
     TMPFILE="$(mktemp)"
     echo "$FRONT_MATTER" > "$TMPFILE"
-    cat "$DEST_FILE" >> "$TMPFILE"
-    mv "$TMPFILE" "$DEST_FILE"
+    cat "$FINAL_FILE" >> "$TMPFILE"
+    mv "$TMPFILE" "$FINAL_FILE"
 
     echo "Front matter added."
 else
     echo "Front matter already present."
     # Step 6: If --draft flag, force draft: true in existing front matter
     if $DRAFT; then
-        if grep -q '^draft:' "$DEST_FILE"; then
-            sed -i 's/^draft:.*/draft: true/' "$DEST_FILE"
+        if grep -q '^draft:' "$FINAL_FILE"; then
+            sed -i 's/^draft:.*/draft: true/' "$FINAL_FILE"
         else
             # Insert draft: true after the first ---
             sed -i '0,/^---$/!{/^---$/!{/^title:/a draft: true
-}}' "$DEST_FILE"
+}}' "$FINAL_FILE"
         fi
         echo "Set draft: true"
     fi
 fi
 
-# --- Step 4: Copy images -------------------------------------------------------
+# --- Step 4: Construct the exact final post bytes ------------------------------
 
 IMG_SRC="${PROJECT_DIR}/blog/images"
 IMG_DEST="${STATIC_DIR}/${POST_SLUG}"
 
+# Replace relative image paths with Hugo static paths
+# Handles: ![alt](images/foo.png) and ![alt](./images/foo.png)
+sed -i -E "s|\((\./)?images/|\(/images/${POST_SLUG}/|g" "$FINAL_FILE"
+
+# Also handle HTML img tags
+sed -i -E "s|src=\"(\./)?images/|src=\"/images/${POST_SLUG}/|g" "$FINAL_FILE"
+
+echo "Image paths updated."
+
+# The Hugo destination is unreachable until the exact final bytes above are
+# admitted and their one-attempt authorization is consumed.
+python3 "$SITE_DIR/scripts/blog_publish_mount.py" "$FINAL_FILE" "$DEST_FILE"
+
+# Images are ancillary to the already-authorized post effect. They cannot cause
+# the post copy to precede final-byte authorization.
 if [[ -d "$IMG_SRC" ]] && [[ -n "$(ls -A "$IMG_SRC" 2>/dev/null)" ]]; then
     mkdir -p "$IMG_DEST"
     cp -r "${IMG_SRC}/"* "$IMG_DEST/"
@@ -147,17 +163,6 @@ if [[ -d "$IMG_SRC" ]] && [[ -n "$(ls -A "$IMG_SRC" 2>/dev/null)" ]]; then
 else
     echo "No images found at ${IMG_SRC}/ — skipping."
 fi
-
-# --- Step 5: Update image paths in markdown ------------------------------------
-
-# Replace relative image paths with Hugo static paths
-# Handles: ![alt](images/foo.png) and ![alt](./images/foo.png)
-sed -i -E "s|\((\./)?images/|\(/images/${POST_SLUG}/|g" "$DEST_FILE"
-
-# Also handle HTML img tags
-sed -i -E "s|src=\"(\./)?images/|src=\"/images/${POST_SLUG}/|g" "$DEST_FILE"
-
-echo "Image paths updated."
 
 # --- Step 7: Build verification -------------------------------------------------
 
