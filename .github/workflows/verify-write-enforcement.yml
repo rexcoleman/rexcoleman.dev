@@ -1,0 +1,66 @@
+name: Verify write enforcement
+
+on:
+  workflow_call:
+    inputs:
+      consumer_id:
+        required: true
+        type: string
+      surface:
+        required: false
+        type: string
+      issuance_run_id:
+        required: true
+        type: string
+      control_sha:
+        required: true
+        type: string
+    secrets:
+      REA_WEA_READ_TOKEN:
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: rexcoleman/rexcoleman.dev
+          ref: ${{ inputs.control_sha }}
+          path: repos/rexcoleman.dev
+          fetch-depth: 1
+          persist-credentials: false
+      - name: Obtain remote-issued WEA and frozen members
+        env:
+          GH_TOKEN: ${{ secrets.REA_WEA_READ_TOKEN }}
+          RUN_ID: ${{ inputs.issuance_run_id }}
+        run: |
+          set -euo pipefail
+          test "$(git -C repos/rexcoleman.dev rev-parse HEAD)" = "${{ inputs.control_sha }}"
+          case "$RUN_ID" in ''|*[!0-9]*) exit 3 ;; esac
+          gh auth setup-git
+          gh run download "$RUN_ID" --repo rexcoleman/rexcoleman.dev \
+            --name "rea-write-enforcement-attestation-$RUN_ID" --dir issuance
+          (cd issuance && sha256sum -c SHA256SUMS)
+          python3 repos/rexcoleman.dev/.github/write-enforcement/checkout_manifest.py \
+            issuance/enforcement_bundle_manifest.json repos
+      - name: Verify and report exact WEA tuple
+        env:
+          SURFACE: ${{ inputs.surface }}
+        run: |
+          set -euo pipefail
+          surface_args=()
+          if [ -n "$SURFACE" ]; then surface_args=(--surface "$SURFACE"); fi
+          python3 repos/rexcoleman.dev/.github/write-enforcement/verify_hosted_wea.py \
+            --issuance issuance --workspace repos \
+            --consumer-id "${{ inputs.consumer_id }}" \
+            "${surface_args[@]}" \
+            | tee wea-consumer-report.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wea-consumer-${{ inputs.consumer_id }}-${{ github.run_id }}
+          path: wea-consumer-report.json
+          if-no-files-found: error

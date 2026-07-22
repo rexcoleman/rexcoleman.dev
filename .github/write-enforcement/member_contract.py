@@ -73,6 +73,9 @@ EXPECTED_MEMBERS = {
     "remote-checkout": ("rexcoleman.dev", ".github/write-enforcement/checkout_manifest.py"),
     "remote-manifest-builder": ("rexcoleman.dev", ".github/write-enforcement/build_frozen_manifest.py"),
     "remote-member-contract": ("rexcoleman.dev", ".github/write-enforcement/member_contract.py"),
+    "hosted-wea-verifier": ("rexcoleman.dev", ".github/write-enforcement/verify_hosted_wea.py"),
+    "hosted-wea-workflow": ("rexcoleman.dev", ".github/workflows/verify-write-enforcement.yml"),
+    "hosted-blog-deploy": ("rexcoleman.dev", ".github/workflows/deploy.yml"),
     "hosted-sealed-verifier": ("rexcoleman.dev", ".github/research-integrity/verify_sealed_authority.py"),
 }
 

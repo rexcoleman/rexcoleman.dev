@@ -17,7 +17,17 @@ defaults:
     shell: bash
 
 jobs:
+  write-enforcement:
+    uses: ./.github/workflows/verify-write-enforcement.yml
+    with:
+      consumer_id: hosted-blog-deploy
+      surface: blog
+      issuance_run_id: ${{ vars.REA_WEA_RUN_ID }}
+      control_sha: ${{ github.sha }}
+    secrets: inherit
+
   build:
+    needs: write-enforcement
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
