@@ -153,6 +153,11 @@ echo "Image paths updated."
 # admitted and their one-attempt authorization is consumed.
 python3 "$SITE_DIR/scripts/blog_publish_mount.py" "$FINAL_FILE" "$DEST_FILE"
 
+if [[ "${REA_WRITE_INTEGRITY_PRE_EXTERNAL_ONLY:-0}" == "1" ]]; then
+    echo "BLG-08 local Hugo effect committed; PRE_EXTERNAL_BOUNDARY"
+    exit 0
+fi
+
 # Images are ancillary to the already-authorized post effect. They cannot cause
 # the post copy to precede final-byte authorization.
 if [[ -d "$IMG_SRC" ]] && [[ -n "$(ls -A "$IMG_SRC" 2>/dev/null)" ]]; then
