@@ -42,7 +42,8 @@ class HostedAuthorityVerifierTests(unittest.TestCase):
         self.target.mkdir()
         self.control.mkdir()
         for repo in (self.target, self.control):
-            git(repo, "init", "-b", "main")
+            git(repo, "init")
+            git(repo, "checkout", "-b", "main")
             git(repo, "config", "user.name", "Item F Test")
             git(repo, "config", "user.email", "item-f@example.invalid")
         git(self.target, "remote", "add", "origin", ORIGIN)

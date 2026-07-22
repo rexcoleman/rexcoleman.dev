@@ -1,0 +1,128 @@
+name: Verify sealed authority at exact SHA
+
+on:
+  workflow_dispatch:
+    inputs:
+      target_sha:
+        description: Exact pushed target commit SHA to verify
+        required: true
+        type: string
+      expected_sha:
+        description: Independently expected exact target commit SHA
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sealed-authority-${{ inputs.target_sha }}
+  cancel-in-progress: false
+
+jobs:
+  verify-sealed-authority:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Initialize evidence directory
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "${RUNNER_TEMP}/sealed-authority-evidence"
+          printf 'initialized\n' > "${RUNNER_TEMP}/sealed-authority-evidence/initialized.raw"
+
+      - name: Assert dispatch and input boundary
+        shell: bash
+        env:
+          EVENT_REPOSITORY: ${{ github.repository }}
+          EVENT_REF: ${{ github.ref }}
+          CONTROL_SHA: 8a2bdcfee6f7c69b6c888a7319d6a29986ad03d5
+          TARGET_SHA: ${{ inputs.target_sha }}
+          EXPECTED_SHA: ${{ inputs.expected_sha }}
+        run: |
+          set -euo pipefail
+          evidence="${RUNNER_TEMP}/sealed-authority-evidence"
+          [[ "${EVENT_REPOSITORY}" == "rexcoleman/rexcoleman.dev" ]]
+          [[ "${EVENT_REF}" == "refs/heads/main" ]]
+          [[ "${CONTROL_SHA}" == "8a2bdcfee6f7c69b6c888a7319d6a29986ad03d5" ]]
+          [[ "${TARGET_SHA}" =~ ^[0-9a-f]{40}$ ]]
+          [[ "${EXPECTED_SHA}" =~ ^[0-9a-f]{40}$ ]]
+          printf 'repository=%s\nref=%s\ncontrol_sha=%s\ntarget_sha=%s\nexpected_sha=%s\n' \
+            "${EVENT_REPOSITORY}" "${EVENT_REF}" "${CONTROL_SHA}" \
+            "${TARGET_SHA}" "${EXPECTED_SHA}" > "${evidence}/dispatch-context.raw"
+
+      - name: Check out frozen B control
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: 8a2bdcfee6f7c69b6c888a7319d6a29986ad03d5
+          path: control
+          fetch-depth: 1
+          persist-credentials: false
+          submodules: false
+
+      - name: Check out exact target as data
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: ${{ inputs.target_sha }}
+          path: target
+          fetch-depth: 1
+          persist-credentials: false
+          submodules: false
+
+      - name: Assert exact checkouts
+        shell: bash
+        env:
+          CONTROL_SHA: 8a2bdcfee6f7c69b6c888a7319d6a29986ad03d5
+          TARGET_SHA: ${{ inputs.target_sha }}
+        run: |
+          set -euo pipefail
+          [[ "$(git -C "${GITHUB_WORKSPACE}/control" rev-parse HEAD)" == "${CONTROL_SHA}" ]]
+          [[ "$(git -C "${GITHUB_WORKSPACE}/target" rev-parse HEAD)" == "${TARGET_SHA}" ]]
+          [[ -z "$(git -C "${GITHUB_WORKSPACE}/control" status --porcelain --untracked-files=all)" ]]
+          [[ -z "$(git -C "${GITHUB_WORKSPACE}/target" status --porcelain --untracked-files=all)" ]]
+
+      - name: Verify SEALED authority from frozen B control
+        id: verify
+        shell: bash
+        env:
+          CONTROL_SHA: 8a2bdcfee6f7c69b6c888a7319d6a29986ad03d5
+          TARGET_SHA: ${{ inputs.target_sha }}
+          EXPECTED_SHA: ${{ inputs.expected_sha }}
+        run: |
+          set -euo pipefail
+          evidence="${RUNNER_TEMP}/sealed-authority-evidence"
+          set +e
+          python3 -I "${GITHUB_WORKSPACE}/control/.github/research-integrity/verify_sealed_authority.py" \
+            --manifest "${GITHUB_WORKSPACE}/control/.rea/hosted-authority/frozen-manifest.json" \
+            --control-root "${GITHUB_WORKSPACE}/control" \
+            --control-sha "${CONTROL_SHA}" \
+            --target-root "${GITHUB_WORKSPACE}/target" \
+            --target-sha "${TARGET_SHA}" \
+            --expected-sha "${EXPECTED_SHA}" \
+            --receipt "${evidence}/receipt.json" \
+            > "${evidence}/verify.stdout.raw" \
+            2> "${evidence}/verify.stderr.raw"
+          rc=$?
+          set -e
+          cat "${evidence}/verify.stdout.raw"
+          cat "${evidence}/verify.stderr.raw" >&2
+          printf '{"exit_code":%s}\n' "${rc}" > "${evidence}/exit-code.json"
+          printf 'exit_code=%s\n' "${rc}" >> "${GITHUB_OUTPUT}"
+
+      - name: Upload raw verifier evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: sealed-authority-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/sealed-authority-evidence
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Enforce verifier exit code
+        if: always()
+        shell: bash
+        env:
+          VERIFY_EXIT: ${{ steps.verify.outputs.exit_code }}
+        run: |
+          set -euo pipefail
+          [[ "${VERIFY_EXIT}" =~ ^[0-9]+$ ]] || exit 3
+          exit "${VERIFY_EXIT}"
