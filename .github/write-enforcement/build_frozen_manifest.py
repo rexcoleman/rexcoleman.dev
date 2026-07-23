@@ -9,7 +9,13 @@ import json
 import subprocess
 from pathlib import Path
 
-from member_contract import grouped_members
+from member_contract import (
+    AUTHORITY_GENERATION,
+    GENERATION_MANIFEST_NAME,
+    RULESET_ID,
+    grouped_members,
+    normalize_ruleset,
+)
 
 MEMBERS = grouped_members()
 
@@ -36,6 +42,8 @@ def main() -> int:
         parser.add_argument("--root-" + slug, dest="root_" + name.lower().replace(".", "_"),
                             type=Path, required=True)
     args = parser.parse_args()
+    if args.output.name != GENERATION_MANIFEST_NAME:
+        raise ValueError(f"generation-2 manifest path must end in {GENERATION_MANIFEST_NAME}")
     roots = {name: getattr(args, "root_" + name.lower().replace(".", "_")) for name in MEMBERS}
     rows = []
     for repository, specs in MEMBERS.items():
@@ -45,15 +53,11 @@ def main() -> int:
             rows.append({"member_id": member_id, "repository": repository, "commit": commit,
                          "path": path, "sha256": sha(raw), "byte_length": len(raw)})
     ruleset = json.loads(args.ruleset_json.read_bytes())
-    if ruleset.get("id") != 19564990:
-        raise ValueError("ruleset 19564990 unavailable")
-    normalized = {key: ruleset.get(key) for key in (
-        "name", "target", "enforcement", "conditions", "rules", "bypass_actors"
-    )}
+    normalized = normalize_ruleset(ruleset)
     manifest = {
         "schema_version": "rea.write.enforcement-bundle-manifest.v1",
-        "authority_generation": 1,
-        "ruleset_id": 19564990,
+        "authority_generation": AUTHORITY_GENERATION,
+        "ruleset_id": RULESET_ID,
         "normalized_ruleset_sha256": sha(canonical(normalized)),
         "required_member_classes": [
             "boundary_gate", "resolver", "readiness_consumer", "live_emitter_binding",

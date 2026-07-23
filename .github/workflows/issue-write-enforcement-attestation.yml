@@ -15,21 +15,56 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: rea-write-enforcement-issuer
+  cancel-in-progress: false
+
+defaults:
+  run:
+    shell: bash
+
 jobs:
   issue-wea:
     environment: rea-write-enforcement-issuer
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           path: repos/rexcoleman.dev
           fetch-depth: 0
+          persist-credentials: false
+      - name: Preflight hosted toolchain
+        run: |
+          set -euo pipefail
+          for tool in git gh python3 openssl base64 sha256sum grep sed; do
+            command -v "$tool" >/dev/null
+          done
+          git --version
+          gh --version
+          python3 --version
+          openssl version
+          test "$(printf 'dGVzdA==' | base64 --decode)" = test
+          sha256sum --version | sed -n '1p'
+          openssl list -public-key-methods | grep -qi ED25519
       - name: Checkout frozen repositories
-        run: python3 repos/rexcoleman.dev/.github/write-enforcement/checkout_manifest.py repos/rexcoleman.dev/.github/write-enforcement/frozen_bundle_manifest.json repos
+        env:
+          REA_BUNDLE_READ_TOKEN: ${{ secrets.REA_BUNDLE_READ_TOKEN }}
+        run: python3 repos/rexcoleman.dev/.github/write-enforcement/checkout_manifest.py repos/rexcoleman.dev/.github/write-enforcement/frozen_bundle_manifest.generation-2.json repos
       - name: Fetch protected ruleset
         env:
           GH_TOKEN: ${{ secrets.REA_RULESET_READ_TOKEN }}
         run: gh api repos/rexcoleman/newsletter/rulesets/19564990 > "$RUNNER_TEMP/ruleset.json"
+      - name: Preflight protected ruleset response
+        run: |
+          set -euo pipefail
+          PYTHONPATH=repos/rexcoleman.dev/.github/write-enforcement python3 - "$RUNNER_TEMP/ruleset.json" <<'PY'
+          import json
+          import sys
+          from pathlib import Path
+          from member_contract import normalize_ruleset
+          normalize_ruleset(json.loads(Path(sys.argv[1]).read_bytes()))
+          PY
       - name: Materialize protected signing key
         env:
           WEA_KEY_B64: ${{ secrets.REA_WEA_ED25519_PRIVATE_KEY_B64 }}
@@ -42,12 +77,12 @@ jobs:
         run: |
           set -euo pipefail
           python3 repos/rexcoleman.dev/.github/write-enforcement/issue_wea.py \
-            --manifest repos/rexcoleman.dev/.github/write-enforcement/frozen_bundle_manifest.json \
+            --manifest repos/rexcoleman.dev/.github/write-enforcement/frozen_bundle_manifest.generation-2.json \
             --workspace repos --ruleset-json "$RUNNER_TEMP/ruleset.json" \
             --private-key "$RUNNER_TEMP/wea-private.pem" --output issuance \
             --time-mode "${{ inputs.time_mode }}"
           sha256sum -c issuance/SHA256SUMS
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: rea-write-enforcement-attestation-${{ github.run_id }}
           path: issuance/

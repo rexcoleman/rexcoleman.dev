@@ -7,7 +7,14 @@ HERE = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(HERE))
 
 from issue_wea import IssuerRefusal, verify_members, verify_trust_roots  # noqa: E402
-from member_contract import EXPECTED_MEMBERS, ROUTE_OWNED_MEMBER_IDS  # noqa: E402
+from member_contract import (  # noqa: E402
+    AUTHORITY_GENERATION,
+    EXPECTED_MEMBERS,
+    GENERATION_MANIFEST_NAME,
+    ROUTE_OWNED_MEMBER_IDS,
+    generation_tag,
+    normalize_ruleset,
+)
 
 
 REQUIRED_CLASSES = [
@@ -58,3 +65,28 @@ def test_divergent_pinned_public_key_copy_refuses():
     with pytest.raises(IssuerRefusal) as captured:
         verify_trust_roots(loaded, public)
     assert captured.value.reason_code == "TRUST_ROOT_COPY_MISMATCH"
+
+
+def test_generation_2_constants_and_tag_derivation_are_exact():
+    commit = "a" * 40
+    assert AUTHORITY_GENERATION == 2
+    assert GENERATION_MANIFEST_NAME == "frozen_bundle_manifest.generation-2.json"
+    assert generation_tag(commit) == "rea-wea-generation-2-" + "a" * 12
+    with pytest.raises(ValueError):
+        generation_tag("a" * 39)
+
+
+def test_ruleset_response_refuses_capability_elision():
+    complete = {
+        "id": 19564990,
+        "name": "newsletter-main-integrity",
+        "target": "branch",
+        "enforcement": "active",
+        "conditions": {"ref_name": {"include": ["refs/heads/main"], "exclude": []}},
+        "rules": [],
+        "bypass_actors": [],
+    }
+    assert normalize_ruleset(complete)["bypass_actors"] == []
+    del complete["bypass_actors"]
+    with pytest.raises(ValueError, match="capability-gated"):
+        normalize_ruleset(complete)

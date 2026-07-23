@@ -1,4 +1,43 @@
-"""Immutable exact member population required before WEA signing."""
+"""Immutable generation-2 member and ruleset contract required before signing."""
+
+import re
+
+
+AUTHORITY_GENERATION = 2
+GENERATION_MANIFEST_NAME = "frozen_bundle_manifest.generation-2.json"
+RULESET_ID = 19564990
+RULESET_FIELDS = (
+    "name", "target", "enforcement", "conditions", "rules", "bypass_actors",
+)
+
+
+def generation_tag(commit: str) -> str:
+    """Derive the one generation-2 tag name from the later manifest commit."""
+    if re.fullmatch(r"[0-9a-f]{40}", commit) is None:
+        raise ValueError("generation tag commit")
+    return f"rea-wea-generation-{AUTHORITY_GENERATION}-{commit[:12]}"
+
+
+def normalize_ruleset(value: dict) -> dict:
+    """Return only cryptographically covered fields, refusing an elided response."""
+    if not isinstance(value, dict) or value.get("id") != RULESET_ID:
+        raise ValueError(f"ruleset {RULESET_ID} unavailable")
+    missing = sorted(set(RULESET_FIELDS) - set(value))
+    if missing:
+        raise ValueError(f"ruleset response missing capability-gated fields: {missing}")
+    expected_types = {
+        "name": str,
+        "target": str,
+        "enforcement": str,
+        "conditions": dict,
+        "rules": list,
+        "bypass_actors": list,
+    }
+    wrong = sorted(key for key, expected in expected_types.items()
+                   if not isinstance(value[key], expected))
+    if wrong:
+        raise ValueError(f"ruleset response field shape: {wrong}")
+    return {key: value[key] for key in RULESET_FIELDS}
 
 EXPECTED_MEMBERS = {
     # Authority, schemas, resolver, gates, and canonical consumer.
@@ -73,6 +112,8 @@ EXPECTED_MEMBERS = {
     "remote-checkout": ("rexcoleman.dev", ".github/write-enforcement/checkout_manifest.py"),
     "remote-manifest-builder": ("rexcoleman.dev", ".github/write-enforcement/build_frozen_manifest.py"),
     "remote-member-contract": ("rexcoleman.dev", ".github/write-enforcement/member_contract.py"),
+    "remote-freeze-sequence": ("rexcoleman.dev", ".github/write-enforcement/FREEZE_SEQUENCE.md"),
+    "generation-2-owner-runbook": ("rexcoleman.dev", ".github/write-enforcement/GENERATION_2_OWNER_RUNBOOK.md"),
     "hosted-wea-verifier": ("rexcoleman.dev", ".github/write-enforcement/verify_hosted_wea.py"),
     "hosted-wea-workflow": ("rexcoleman.dev", ".github/workflows/verify-write-enforcement.yml"),
     "hosted-blog-deploy": ("rexcoleman.dev", ".github/workflows/deploy.yml"),

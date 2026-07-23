@@ -14,7 +14,12 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import member_contract
-from member_contract import EXPECTED_MEMBERS
+from member_contract import (
+    AUTHORITY_GENERATION,
+    EXPECTED_MEMBERS,
+    RULESET_ID,
+    normalize_ruleset,
+)
 
 ISSUER = "https://github.com/rexcoleman/rexcoleman.dev/actions/workflows/issue-write-enforcement-attestation.yml"
 REPOSITORIES = {
@@ -58,8 +63,8 @@ def load_manifest(path: Path) -> dict:
     unsigned = {key: item for key, item in value.items() if key != "manifest_digest"}
     if (value.get("schema_version") != "rea.write.enforcement-bundle-manifest.v1"
             or value.get("manifest_digest") != digest(canonical(unsigned))
-            or value.get("authority_generation") != 1
-            or value.get("ruleset_id") != 19564990
+            or value.get("authority_generation") != AUTHORITY_GENERATION
+            or value.get("ruleset_id") != RULESET_ID
             or not isinstance(value.get("members"), list) or not value["members"]):
         raise ValueError("manifest contract")
     return value
@@ -98,12 +103,6 @@ def verify_members(manifest: dict, workspace: Path) -> dict[str, bytes]:
     return loaded
 
 
-def normalize_ruleset(value: dict) -> dict:
-    return {key: value.get(key) for key in (
-        "name", "target", "enforcement", "conditions", "rules", "bypass_actors"
-    )}
-
-
 def openssl(args: list[str]) -> None:
     result = subprocess.run(["openssl", *args], check=False, capture_output=True, timeout=15)
     if result.returncode:
@@ -133,7 +132,7 @@ def main() -> int:
     manifest = load_manifest(args.manifest)
     loaded = verify_members(manifest, args.workspace)
     ruleset = json.loads(args.ruleset_json.read_bytes())
-    if (ruleset.get("id") != 19564990
+    if (ruleset.get("id") != RULESET_ID
             or digest(canonical(normalize_ruleset(ruleset))) != manifest.get("normalized_ruleset_sha256")):
         raise ValueError("live ruleset drift")
     live_workflow = committed_bytes(

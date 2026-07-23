@@ -12,8 +12,10 @@ import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
 
+from member_contract import AUTHORITY_GENERATION
+
 ISSUER = "https://github.com/rexcoleman/rexcoleman.dev/actions/workflows/issue-write-enforcement-attestation.yml"
-REF_PREFIX = "refs/tags/rea-wea-generation-"
+REF_PREFIX = f"refs/tags/rea-wea-generation-{AUTHORITY_GENERATION}-"
 SURFACES = {"report", "blog", "publication", "distribution"}
 
 
@@ -80,6 +82,8 @@ def verify(args: argparse.Namespace) -> dict:
     unsigned_manifest = {key: value for key, value in manifest.items() if key != "manifest_digest"}
     if manifest.get("schema_version") != "rea.write.enforcement-bundle-manifest.v1" or digest(canonical(unsigned_manifest)) != manifest.get("manifest_digest"):
         raise HostedWEARefusal("WEA_CORRUPT", "manifest_digest")
+    if manifest.get("authority_generation") != AUTHORITY_GENERATION:
+        raise HostedWEARefusal("WEA_WRONG_BUNDLE", "authority_generation")
     members = manifest.get("members")
     if not isinstance(members, list) or not members:
         raise HostedWEARefusal("WEA_CORRUPT", "manifest_members")
@@ -95,7 +99,8 @@ def verify(args: argparse.Namespace) -> dict:
     registry = json.loads((roots["research_enforcement_activation"] / "write_integrity/foundation/publishing_capability_profiles.json").read_bytes())
     scope = [row["profile_id"] for row in registry["profiles"] if row.get("publishes") is True]
     policy = (roots["research_enforcement_activation"] / "write_integrity/authority/claim_policy.json").read_bytes()
-    if wea.get("issuer") != ISSUER or wea.get("state") != "ENFORCING":
+    if (wea.get("issuer") != ISSUER or wea.get("state") != "ENFORCING"
+            or wea.get("authority_generation") != AUTHORITY_GENERATION):
         raise HostedWEARefusal("WEA_CORRUPT", "remote_state")
     if wea.get("publishing_capability_scope") != scope or set(wea.get("required_surfaces", [])) != SURFACES:
         raise HostedWEARefusal("WEA_CORRUPT", "scope")

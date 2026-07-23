@@ -18,33 +18,53 @@ on:
     secrets:
       REA_WEA_READ_TOKEN:
         required: true
+      REA_BUNDLE_READ_TOKEN:
+        required: true
 
 permissions:
   contents: read
 
+defaults:
+  run:
+    shell: bash
+
 jobs:
   verify:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           repository: rexcoleman/rexcoleman.dev
           ref: ${{ inputs.control_sha }}
           path: repos/rexcoleman.dev
           fetch-depth: 1
           persist-credentials: false
+      - name: Preflight hosted toolchain
+        run: |
+          set -euo pipefail
+          for tool in git gh python3 openssl sha256sum grep sed; do
+            command -v "$tool" >/dev/null
+          done
+          git --version
+          gh --version
+          python3 --version
+          openssl version
+          sha256sum --version | sed -n '1p'
+          openssl list -public-key-methods | grep -qi ED25519
       - name: Obtain remote-issued WEA and frozen members
         env:
           GH_TOKEN: ${{ secrets.REA_WEA_READ_TOKEN }}
+          REA_BUNDLE_READ_TOKEN: ${{ secrets.REA_BUNDLE_READ_TOKEN }}
           RUN_ID: ${{ inputs.issuance_run_id }}
         run: |
           set -euo pipefail
           test "$(git -C repos/rexcoleman.dev rev-parse HEAD)" = "${{ inputs.control_sha }}"
           case "$RUN_ID" in ''|*[!0-9]*) exit 3 ;; esac
-          gh auth setup-git
           gh run download "$RUN_ID" --repo rexcoleman/rexcoleman.dev \
             --name "rea-write-enforcement-attestation-$RUN_ID" --dir issuance
           (cd issuance && sha256sum -c SHA256SUMS)
+          unset GH_TOKEN
           python3 repos/rexcoleman.dev/.github/write-enforcement/checkout_manifest.py \
             issuance/enforcement_bundle_manifest.json repos
       - name: Verify and report exact WEA tuple
@@ -59,7 +79,7 @@ jobs:
             --consumer-id "${{ inputs.consumer_id }}" \
             "${surface_args[@]}" \
             | tee wea-consumer-report.json
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: wea-consumer-${{ inputs.consumer_id }}-${{ github.run_id }}
           path: wea-consumer-report.json
