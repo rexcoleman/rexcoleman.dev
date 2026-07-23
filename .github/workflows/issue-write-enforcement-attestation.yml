@@ -1,0 +1,55 @@
+name: Issue write enforcement attestation
+
+on:
+  workflow_dispatch:
+    inputs:
+      time_mode:
+        description: Active WEA or remote-signed expired R4 fixture
+        required: true
+        default: active
+        type: choice
+        options:
+          - active
+          - expired_fixture
+
+permissions:
+  contents: read
+
+jobs:
+  issue-wea:
+    environment: rea-write-enforcement-issuer
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: repos/rexcoleman.dev
+          fetch-depth: 0
+      - name: Checkout frozen repositories
+        run: python3 repos/rexcoleman.dev/.github/write-enforcement/checkout_manifest.py repos/rexcoleman.dev/.github/write-enforcement/frozen_bundle_manifest.json repos
+      - name: Fetch protected ruleset
+        env:
+          GH_TOKEN: ${{ secrets.REA_RULESET_READ_TOKEN }}
+        run: gh api repos/rexcoleman/newsletter/rulesets/19564990 > "$RUNNER_TEMP/ruleset.json"
+      - name: Materialize protected signing key
+        env:
+          WEA_KEY_B64: ${{ secrets.REA_WEA_ED25519_PRIVATE_KEY_B64 }}
+        run: |
+          set -euo pipefail
+          test -n "$WEA_KEY_B64"
+          umask 077
+          printf '%s' "$WEA_KEY_B64" | base64 --decode > "$RUNNER_TEMP/wea-private.pem"
+      - name: Verify frozen bundle and issue
+        run: |
+          set -euo pipefail
+          python3 repos/rexcoleman.dev/.github/write-enforcement/issue_wea.py \
+            --manifest repos/rexcoleman.dev/.github/write-enforcement/frozen_bundle_manifest.json \
+            --workspace repos --ruleset-json "$RUNNER_TEMP/ruleset.json" \
+            --private-key "$RUNNER_TEMP/wea-private.pem" --output issuance \
+            --time-mode "${{ inputs.time_mode }}"
+          sha256sum -c issuance/SHA256SUMS
+      - uses: actions/upload-artifact@v4
+        with:
+          name: rea-write-enforcement-attestation-${{ github.run_id }}
+          path: issuance/
+          if-no-files-found: error
+          retention-days: 30
