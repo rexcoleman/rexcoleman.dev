@@ -50,7 +50,7 @@ jobs:
       - name: Checkout frozen repositories
         env:
           REA_BUNDLE_READ_TOKEN: ${{ secrets.REA_BUNDLE_READ_TOKEN }}
-        run: python3 repos/rexcoleman.dev/.github/write-enforcement/checkout_manifest.py repos/rexcoleman.dev/.github/write-enforcement/frozen_bundle_manifest.generation-2.json repos
+        run: python3 repos/rexcoleman.dev/.github/write-enforcement/checkout_manifest.py repos/rexcoleman.dev/.github/write-enforcement/frozen_bundle_manifest.generation-3.json repos
       - name: Fetch protected ruleset
         env:
           GH_TOKEN: ${{ secrets.REA_RULESET_READ_TOKEN }}
@@ -77,11 +77,18 @@ jobs:
         run: |
           set -euo pipefail
           python3 repos/rexcoleman.dev/.github/write-enforcement/issue_wea.py \
-            --manifest repos/rexcoleman.dev/.github/write-enforcement/frozen_bundle_manifest.generation-2.json \
+            --manifest repos/rexcoleman.dev/.github/write-enforcement/frozen_bundle_manifest.generation-3.json \
             --workspace repos --ruleset-json "$RUNNER_TEMP/ruleset.json" \
             --private-key "$RUNNER_TEMP/wea-private.pem" --output issuance \
             --time-mode "${{ inputs.time_mode }}"
-          sha256sum -c issuance/SHA256SUMS
+          (cd issuance && sha256sum -c SHA256SUMS)
+      - name: Verify issued WEA on hosted runner
+        run: |
+          set -euo pipefail
+          python3 repos/rexcoleman.dev/.github/write-enforcement/verify_hosted_wea.py \
+            --issuance issuance --workspace repos \
+            --consumer-id issuer-hosted-self-check \
+            | tee issuer-hosted-wea-report.json
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: rea-write-enforcement-attestation-${{ github.run_id }}

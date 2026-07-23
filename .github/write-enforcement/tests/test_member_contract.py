@@ -67,11 +67,11 @@ def test_divergent_pinned_public_key_copy_refuses():
     assert captured.value.reason_code == "TRUST_ROOT_COPY_MISMATCH"
 
 
-def test_generation_2_constants_and_tag_derivation_are_exact():
+def test_generation_3_constants_and_tag_derivation_are_exact():
     commit = "a" * 40
-    assert AUTHORITY_GENERATION == 2
-    assert GENERATION_MANIFEST_NAME == "frozen_bundle_manifest.generation-2.json"
-    assert generation_tag(commit) == "rea-wea-generation-2-" + "a" * 12
+    assert AUTHORITY_GENERATION == 3
+    assert GENERATION_MANIFEST_NAME == "frozen_bundle_manifest.generation-3.json"
+    assert generation_tag(commit) == "rea-wea-generation-3-" + "a" * 12
     with pytest.raises(ValueError):
         generation_tag("a" * 39)
 

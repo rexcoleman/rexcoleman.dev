@@ -40,7 +40,7 @@ def test_issuer_and_verifier_workflow_syntax_and_secret_wiring():
         assert "actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02" in raw
 
 
-def test_manifest_loader_accepts_exact_generation_2_only(tmp_path):
+def test_manifest_loader_accepts_exact_generation_3_only(tmp_path):
     value = {
         "schema_version": "rea.write.enforcement-bundle-manifest.v1",
         "authority_generation": AUTHORITY_GENERATION,
@@ -51,13 +51,25 @@ def test_manifest_loader_accepts_exact_generation_2_only(tmp_path):
     value["manifest_digest"] = issue_wea.digest(issue_wea.canonical(unsigned))
     path = tmp_path / GENERATION_MANIFEST_NAME
     path.write_bytes(issue_wea.canonical(value))
-    assert issue_wea.load_manifest(path)["authority_generation"] == 2
-    value["authority_generation"] = 1
+    assert issue_wea.load_manifest(path)["authority_generation"] == 3
+    value["authority_generation"] = 2
     unsigned = {key: item for key, item in value.items() if key != "manifest_digest"}
     value["manifest_digest"] = issue_wea.digest(issue_wea.canonical(unsigned))
     path.write_bytes(issue_wea.canonical(value))
     with pytest.raises(ValueError, match="manifest contract"):
         issue_wea.load_manifest(path)
+
+
+def test_issuer_checksum_uses_manifest_directory_and_runs_hosted_verifier():
+    issuer_raw, _ = workflow("issue-write-enforcement-attestation.yml")
+    assert "(cd issuance && sha256sum -c SHA256SUMS)" in issuer_raw
+    assert "sha256sum -c issuance/SHA256SUMS" not in issuer_raw
+    assert "Verify issued WEA on hosted runner" in issuer_raw
+    assert (
+        "python3 repos/rexcoleman.dev/.github/write-enforcement/"
+        "verify_hosted_wea.py"
+    ) in issuer_raw
+    assert "--issuance issuance --workspace repos" in issuer_raw
 
 
 def test_private_checkout_requires_named_token_before_git(monkeypatch, tmp_path):

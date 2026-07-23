@@ -43,7 +43,10 @@ def main() -> int:
                             type=Path, required=True)
     args = parser.parse_args()
     if args.output.name != GENERATION_MANIFEST_NAME:
-        raise ValueError(f"generation-2 manifest path must end in {GENERATION_MANIFEST_NAME}")
+        raise ValueError(
+            f"generation-{AUTHORITY_GENERATION} manifest path must end in "
+            f"{GENERATION_MANIFEST_NAME}"
+        )
     roots = {name: getattr(args, "root_" + name.lower().replace(".", "_")) for name in MEMBERS}
     rows = []
     for repository, specs in MEMBERS.items():

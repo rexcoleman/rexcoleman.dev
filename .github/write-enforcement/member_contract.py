@@ -1,10 +1,10 @@
-"""Immutable generation-2 member and ruleset contract required before signing."""
+"""Immutable generation-3 member and ruleset contract required before signing."""
 
 import re
 
 
-AUTHORITY_GENERATION = 2
-GENERATION_MANIFEST_NAME = "frozen_bundle_manifest.generation-2.json"
+AUTHORITY_GENERATION = 3
+GENERATION_MANIFEST_NAME = "frozen_bundle_manifest.generation-3.json"
 RULESET_ID = 19564990
 RULESET_FIELDS = (
     "name", "target", "enforcement", "conditions", "rules", "bypass_actors",
@@ -12,7 +12,7 @@ RULESET_FIELDS = (
 
 
 def generation_tag(commit: str) -> str:
-    """Derive the one generation-2 tag name from the later manifest commit."""
+    """Derive the one generation-3 tag name from the later manifest commit."""
     if re.fullmatch(r"[0-9a-f]{40}", commit) is None:
         raise ValueError("generation tag commit")
     return f"rea-wea-generation-{AUTHORITY_GENERATION}-{commit[:12]}"
@@ -114,6 +114,7 @@ EXPECTED_MEMBERS = {
     "remote-member-contract": ("rexcoleman.dev", ".github/write-enforcement/member_contract.py"),
     "remote-freeze-sequence": ("rexcoleman.dev", ".github/write-enforcement/FREEZE_SEQUENCE.md"),
     "generation-2-owner-runbook": ("rexcoleman.dev", ".github/write-enforcement/GENERATION_2_OWNER_RUNBOOK.md"),
+    "generation-3-owner-runbook": ("rexcoleman.dev", ".github/write-enforcement/GENERATION_3_OWNER_RUNBOOK.md"),
     "hosted-wea-verifier": ("rexcoleman.dev", ".github/write-enforcement/verify_hosted_wea.py"),
     "hosted-wea-workflow": ("rexcoleman.dev", ".github/workflows/verify-write-enforcement.yml"),
     "hosted-blog-deploy": ("rexcoleman.dev", ".github/workflows/deploy.yml"),
