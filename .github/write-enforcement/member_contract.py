@@ -80,6 +80,7 @@ EXPECTED_MEMBERS = {
     "successor-subject-package-init": ("research_enforcement_activation", "write_integrity/authority/successor_subject/__init__.py"),
     "successor-subject-protocol": ("research_enforcement_activation", "write_integrity/authority/successor_subject/protocol.py"),
     "successor-subject-isolated-fixture": ("research_enforcement_activation", "write_integrity/authority/successor_subject/run_fixture.py"),
+    "successor-subject-face-a-b5-isolated-helper": ("research_enforcement_activation", "write_integrity/authority/successor_subject/face_a_b5_fixture.py"),
     "successor-admission-record-schema": ("research_enforcement_activation", "write_integrity/authority/successor_subject/schemas/admission_record.schema.json"),
     "successor-close-receipt-schema": ("research_enforcement_activation", "write_integrity/authority/successor_subject/schemas/close_receipt.schema.json"),
     "successor-protected-transition-schema": ("research_enforcement_activation", "write_integrity/authority/successor_subject/schemas/protected_transition.schema.json"),
@@ -171,6 +172,7 @@ FACE_B_MEMBER_IDS = {
     "successor-subject-package-init",
     "successor-subject-protocol",
     "successor-subject-isolated-fixture",
+    "successor-subject-face-a-b5-isolated-helper",
     "successor-admission-record-schema",
     "successor-close-receipt-schema",
     "successor-protected-transition-schema",
@@ -180,6 +182,7 @@ FACE_B_MEMBER_IDS = {
 
 FACE_B_ISOLATED_FIXTURE_MEMBER_IDS = {
     "successor-subject-isolated-fixture",
+    "successor-subject-face-a-b5-isolated-helper",
 }
 
 S88_BUNDLE_MEMBER_IDS = (

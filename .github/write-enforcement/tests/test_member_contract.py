@@ -93,16 +93,16 @@ def test_contract_contains_exact_accepted_22_route_owned_files():
 
 
 def test_contract_covers_complete_s88_face_a_and_face_b_bundle_sets():
-    assert len(EXPECTED_MEMBERS) == 93
-    assert len(set(EXPECTED_MEMBERS.values())) == 93
+    assert len(EXPECTED_MEMBERS) == 94
+    assert len(set(EXPECTED_MEMBERS.values())) == 94
     assert len(FACE_A_MEMBER_IDS) == 11
-    assert len(FACE_B_MEMBER_IDS) == 8
+    assert len(FACE_B_MEMBER_IDS) == 9
     assert FACE_A_MEMBER_IDS < set(EXPECTED_MEMBERS)
     assert FACE_B_MEMBER_IDS < set(EXPECTED_MEMBERS)
     assert FACE_A_MEMBER_IDS.isdisjoint(FACE_B_MEMBER_IDS)
     pairs = [EXPECTED_MEMBERS[member_id]
              for member_id in FACE_A_MEMBER_IDS | FACE_B_MEMBER_IDS]
-    assert len(pairs) == len(set(pairs)) == 19
+    assert len(pairs) == len(set(pairs)) == 20
     assert S88_BUNDLE_MEMBER_IDS == (
         FACE_A_MEMBER_IDS
         | FACE_B_MEMBER_IDS
@@ -113,12 +113,35 @@ def test_contract_covers_complete_s88_face_a_and_face_b_bundle_sets():
 def test_face_b_fixture_is_labeled_isolated_not_protected_production():
     assert FACE_B_ISOLATED_FIXTURE_MEMBER_IDS == {
         "successor-subject-isolated-fixture",
+        "successor-subject-face-a-b5-isolated-helper",
     }
     assert EXPECTED_MEMBERS["successor-subject-isolated-fixture"] == (
         "research_enforcement_activation",
         "write_integrity/authority/successor_subject/run_fixture.py",
     )
+    assert EXPECTED_MEMBERS[
+        "successor-subject-face-a-b5-isolated-helper"
+    ] == (
+        "research_enforcement_activation",
+        "write_integrity/authority/successor_subject/face_a_b5_fixture.py",
+    )
     assert "successor-subject-protected-entrypoint" not in EXPECTED_MEMBERS
+
+
+def test_retargeted_face_b_helper_refuses_before_signing(tmp_path):
+    manifest = complete_manifest()
+    for row in manifest["members"]:
+        if row["member_id"] == "successor-subject-face-a-b5-isolated-helper":
+            row["path"] = (
+                "write_integrity/authority/successor_subject/run_fixture.py"
+            )
+            break
+    else:
+        raise AssertionError("Face-B helper missing from complete manifest")
+    with pytest.raises(IssuerRefusal) as captured:
+        verify_members(manifest, tmp_path)
+    assert captured.value.reason_code == "BUNDLE_MEMBER_SET_MISMATCH"
+    assert "successor-subject-face-a-b5-isolated-helper" in captured.value.detail
 
 
 def test_divergent_pinned_public_key_copy_refuses():
