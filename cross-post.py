@@ -17,6 +17,7 @@ import os
 import re
 import sys
 import textwrap
+import uuid
 from pathlib import Path
 
 
@@ -30,10 +31,11 @@ def consume_distribution_effect(*, candidate, destination, effect_callback):
         raise RuntimeError(f"REFUSE(CONSUMER_BINDING_MISSING): {RUNTIME_MOUNT}")
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
+    run_id = os.environ.get("REA_WRITE_INTEGRITY_RUN_ID") or f"dst-02-{uuid.uuid4().hex}"
     return module.consume_effect(
         route_id="DST-02", surface="distribution", candidate=candidate,
         destination=destination, requested_effect="write",
-        run_id="rex-cross-post", effect_callback=effect_callback,
+        run_id=f"{run_id}:cross-post", effect_callback=effect_callback,
     )
 
 
