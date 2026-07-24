@@ -33,6 +33,27 @@ def head(root: Path) -> str:
                           capture_output=True, text=True).stdout.strip()
 
 
+def committed_member_bytes(root: Path, commit: str, path: str) -> bytes:
+    """Read one bound member from HEAD, refusing a dirty bound worktree path."""
+    relative = Path(path)
+    if relative.is_absolute() or ".." in relative.parts:
+        raise ValueError(f"member path: {path}")
+    committed = subprocess.run(
+        ["git", "-C", str(root), "show", f"{commit}:{path}"],
+        check=False,
+        capture_output=True,
+    )
+    if committed.returncode:
+        raise ValueError(f"member unavailable: {root.name}:{path}")
+    clean = subprocess.run(
+        ["git", "-C", str(root), "diff", "--quiet", commit, "--", path],
+        check=False,
+    )
+    if clean.returncode:
+        raise ValueError(f"dirty bound member: {root.name}:{path}")
+    return committed.stdout
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--output", type=Path, required=True)
@@ -52,7 +73,7 @@ def main() -> int:
     for repository, specs in MEMBERS.items():
         commit = head(roots[repository])
         for member_id, path in specs:
-            raw = (roots[repository] / path).read_bytes()
+            raw = committed_member_bytes(roots[repository], commit, path)
             rows.append({"member_id": member_id, "repository": repository, "commit": commit,
                          "path": path, "sha256": sha(raw), "byte_length": len(raw)})
     ruleset = json.loads(args.ruleset_json.read_bytes())

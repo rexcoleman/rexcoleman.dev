@@ -23,8 +23,9 @@ ISSUER_TAG="rea-wea-generation-3-$(printf '%s' "$ISSUER_SHA" | cut -c1-12)"
 printf 'ISSUER_SHA=%s\nISSUER_TAG=%s\n' "$ISSUER_SHA" "$ISSUER_TAG"
 ```
 
-The owner independently verifies that `ISSUER_SHA` is the pushed
-`s81-remote-wea-work` head, that its stat names only
+The owner independently verifies that `ISSUER_SHA` is the exact pushed
+manifest commit and resolves from the immutable freeze ledger's recorded ref,
+that its stat names only
 `.github/write-enforcement/frozen_bundle_manifest.generation-3.json`, and that
 the existing active tag ruleset covers the exact full ref. The owner then
 creates the protected annotated tag. Stop on any mismatch.

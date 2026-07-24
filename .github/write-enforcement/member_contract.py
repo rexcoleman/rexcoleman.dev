@@ -74,11 +74,12 @@ EXPECTED_MEMBERS = {
     "production-request-schema": ("research_enforcement_activation", "write_integrity/foundation/schemas/production_request.schema.json"),
     "route-class-authority-map-schema": ("research_enforcement_activation", "write_integrity/foundation/schemas/route_class_authority_map.schema.json"),
     "staging-creation-receipt-schema": ("research_enforcement_activation", "write_integrity/foundation/schemas/staging_creation_receipt.schema.json"),
-    # Accepted s88 Face B successor-subject machinery. The protected entrypoint
-    # is covered; unit-test files remain outside the production bundle.
+    # Accepted s88 Face B successor-subject machinery and its isolated fixture.
+    # The fixture is bundle-covered evidence tooling, not a deployed protected
+    # Research Close entrypoint. Unit-test files remain outside the bundle.
     "successor-subject-package-init": ("research_enforcement_activation", "write_integrity/authority/successor_subject/__init__.py"),
     "successor-subject-protocol": ("research_enforcement_activation", "write_integrity/authority/successor_subject/protocol.py"),
-    "successor-subject-protected-entrypoint": ("research_enforcement_activation", "write_integrity/authority/successor_subject/run_fixture.py"),
+    "successor-subject-isolated-fixture": ("research_enforcement_activation", "write_integrity/authority/successor_subject/run_fixture.py"),
     "successor-admission-record-schema": ("research_enforcement_activation", "write_integrity/authority/successor_subject/schemas/admission_record.schema.json"),
     "successor-close-receipt-schema": ("research_enforcement_activation", "write_integrity/authority/successor_subject/schemas/close_receipt.schema.json"),
     "successor-protected-transition-schema": ("research_enforcement_activation", "write_integrity/authority/successor_subject/schemas/protected_transition.schema.json"),
@@ -169,7 +170,7 @@ FACE_A_MEMBER_IDS = {
 FACE_B_MEMBER_IDS = {
     "successor-subject-package-init",
     "successor-subject-protocol",
-    "successor-subject-protected-entrypoint",
+    "successor-subject-isolated-fixture",
     "successor-admission-record-schema",
     "successor-close-receipt-schema",
     "successor-protected-transition-schema",
@@ -177,7 +178,11 @@ FACE_B_MEMBER_IDS = {
     "successor-update-declaration-schema",
 }
 
-S88_PROTECTED_MEMBER_IDS = (
+FACE_B_ISOLATED_FIXTURE_MEMBER_IDS = {
+    "successor-subject-isolated-fixture",
+}
+
+S88_BUNDLE_MEMBER_IDS = (
     FACE_A_MEMBER_IDS
     | FACE_B_MEMBER_IDS
     | {"authority-library", "verify-only-resolver"}

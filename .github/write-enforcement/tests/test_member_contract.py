@@ -12,9 +12,10 @@ from member_contract import (  # noqa: E402
     EXPECTED_MEMBERS,
     FACE_A_MEMBER_IDS,
     FACE_B_MEMBER_IDS,
+    FACE_B_ISOLATED_FIXTURE_MEMBER_IDS,
     GENERATION_MANIFEST_NAME,
     ROUTE_OWNED_MEMBER_IDS,
-    S88_PROTECTED_MEMBER_IDS,
+    S88_BUNDLE_MEMBER_IDS,
     generation_tag,
     normalize_ruleset,
 )
@@ -71,8 +72,8 @@ def test_extra_member_refuses_before_signing(tmp_path):
     assert "caller-added" in captured.value.detail
 
 
-@pytest.mark.parametrize("member_id", sorted(S88_PROTECTED_MEMBER_IDS))
-def test_each_s88_protected_member_omission_refuses_before_signing(
+@pytest.mark.parametrize("member_id", sorted(S88_BUNDLE_MEMBER_IDS))
+def test_each_s88_bundle_member_omission_refuses_before_signing(
         tmp_path, member_id):
     manifest = complete_manifest()
     manifest["members"] = [
@@ -91,7 +92,9 @@ def test_contract_contains_exact_accepted_22_route_owned_files():
     assert len(pairs) == len(set(pairs)) == 22
 
 
-def test_contract_covers_complete_s88_face_a_and_face_b_runtime_sets():
+def test_contract_covers_complete_s88_face_a_and_face_b_bundle_sets():
+    assert len(EXPECTED_MEMBERS) == 93
+    assert len(set(EXPECTED_MEMBERS.values())) == 93
     assert len(FACE_A_MEMBER_IDS) == 11
     assert len(FACE_B_MEMBER_IDS) == 8
     assert FACE_A_MEMBER_IDS < set(EXPECTED_MEMBERS)
@@ -100,11 +103,22 @@ def test_contract_covers_complete_s88_face_a_and_face_b_runtime_sets():
     pairs = [EXPECTED_MEMBERS[member_id]
              for member_id in FACE_A_MEMBER_IDS | FACE_B_MEMBER_IDS]
     assert len(pairs) == len(set(pairs)) == 19
-    assert S88_PROTECTED_MEMBER_IDS == (
+    assert S88_BUNDLE_MEMBER_IDS == (
         FACE_A_MEMBER_IDS
         | FACE_B_MEMBER_IDS
         | {"authority-library", "verify-only-resolver"}
     )
+
+
+def test_face_b_fixture_is_labeled_isolated_not_protected_production():
+    assert FACE_B_ISOLATED_FIXTURE_MEMBER_IDS == {
+        "successor-subject-isolated-fixture",
+    }
+    assert EXPECTED_MEMBERS["successor-subject-isolated-fixture"] == (
+        "research_enforcement_activation",
+        "write_integrity/authority/successor_subject/run_fixture.py",
+    )
+    assert "successor-subject-protected-entrypoint" not in EXPECTED_MEMBERS
 
 
 def test_divergent_pinned_public_key_copy_refuses():
