@@ -170,6 +170,15 @@ class HostedAuthorityVerifierTests(unittest.TestCase):
         self.assertIn("workflow_dispatch:", trigger_block)
         self.assertNotIn("push:", trigger_block)
 
+    def test_publish_script_validates_and_confirms_before_destination_write(self) -> None:
+        script = (ROOT / "publish.sh").read_text(encoding="utf-8")
+        validate_index = script.index('bash "$VALIDATE_CONTENT" "$PROJECT_DIR"')
+        mount_index = script.index('python3 "$SITE_DIR/scripts/blog_publish_mount.py"')
+        confirm_index = script.index('read -rp "Publish? [y/N] " CONFIRM')
+        self.assertLess(validate_index, mount_index)
+        self.assertLess(confirm_index, mount_index)
+        self.assertIn("CLAIM_TAG_PATTERN", script)
+
 
 if __name__ == "__main__":
     unittest.main()

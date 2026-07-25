@@ -12,6 +12,9 @@ set -euo pipefail
 SITE_DIR="$(cd "$(dirname "$0")" && pwd)"
 CONTENT_DIR="${SITE_DIR}/content/posts"
 STATIC_DIR="${SITE_DIR}/static/images"
+GOVML_DIR="${GOVML_DIR:-${HOME}/ml-governance-templates}"
+VALIDATE_CONTENT="${GOVML_DIR}/scripts/validate_content.sh"
+CLAIM_TAG_PATTERN='\[([[:space:]]*(HYPOTHESIZED|DEMONSTRATED|SUGGESTED|VALIDATED|ASSUMED|APPROXIMATE|PROJECTED)([[:space:]]*,[[:space:]]*(HYPOTHESIZED|DEMONSTRATED|SUGGESTED|VALIDATED|ASSUMED|APPROXIMATE|PROJECTED))*[[:space:]]*)\]|\[SEED:'
 
 # --- Argument parsing -----------------------------------------------------------
 
@@ -55,6 +58,12 @@ fi
 
 echo "Source:  ${DRAFT_FILE}"
 echo "Target:  ${CONTENT_DIR}/${POST_SLUG}.md"
+
+if [[ ! -f "$VALIDATE_CONTENT" ]]; then
+    echo "Error: content validator not found at ${VALIDATE_CONTENT}."
+    exit 1
+fi
+bash "$VALIDATE_CONTENT" "$PROJECT_DIR"
 
 # --- Step 2: Stage final bytes outside the destination --------------------------
 
@@ -149,6 +158,18 @@ sed -i -E "s|src=\"(\./)?images/|src=\"/images/${POST_SLUG}/|g" "$FINAL_FILE"
 
 echo "Image paths updated."
 
+FINAL_INTERNAL_TAGS=$(grep -cE "$CLAIM_TAG_PATTERN" "$FINAL_FILE" 2>/dev/null || echo 0)
+if [[ "$FINAL_INTERNAL_TAGS" -ne 0 ]]; then
+    echo "Error: ${FINAL_INTERNAL_TAGS} internal claim tag(s) remain in final post bytes."
+    exit 1
+fi
+
+read -rp "Publish? [y/N] " CONFIRM
+if [[ "$CONFIRM" != "y" && "$CONFIRM" != "Y" ]]; then
+    echo "Aborted before destination write."
+    exit 0
+fi
+
 # The Hugo destination is unreachable until the exact final bytes above are
 # admitted and their one-attempt authorization is consumed.
 python3 "$SITE_DIR/scripts/blog_publish_mount.py" "$FINAL_FILE" "$DEST_FILE"
@@ -194,14 +215,6 @@ git -C "$SITE_DIR" diff --stat
 echo ""
 git -C "$SITE_DIR" diff -- "$DEST_FILE" | head -80
 echo ""
-
-# --- Step 9: Confirmation -------------------------------------------------------
-
-read -rp "Publish? [y/N] " CONFIRM
-if [[ "$CONFIRM" != "y" && "$CONFIRM" != "Y" ]]; then
-    echo "Aborted. File is at ${DEST_FILE} — you can publish manually later."
-    exit 0
-fi
 
 # --- Step 10: Git add, commit, push ---------------------------------------------
 
