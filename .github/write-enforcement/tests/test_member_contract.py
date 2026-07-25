@@ -93,8 +93,8 @@ def test_contract_contains_exact_accepted_22_route_owned_files():
 
 
 def test_contract_covers_complete_s88_face_a_and_face_b_bundle_sets():
-    assert len(EXPECTED_MEMBERS) == 94
-    assert len(set(EXPECTED_MEMBERS.values())) == 94
+    assert len(EXPECTED_MEMBERS) == 102
+    assert len(set(EXPECTED_MEMBERS.values())) == 102
     assert len(FACE_A_MEMBER_IDS) == 11
     assert len(FACE_B_MEMBER_IDS) == 9
     assert FACE_A_MEMBER_IDS < set(EXPECTED_MEMBERS)
@@ -106,7 +106,10 @@ def test_contract_covers_complete_s88_face_a_and_face_b_bundle_sets():
     assert S88_BUNDLE_MEMBER_IDS == (
         FACE_A_MEMBER_IDS
         | FACE_B_MEMBER_IDS
-        | {"authority-library", "verify-only-resolver"}
+        | {
+            "authority-library", "verify-only-resolver", "wea-lifetime-library",
+            "coverage-registry-library", "close-accounting-gate",
+        }
     )
 
 
@@ -152,13 +155,24 @@ def test_divergent_pinned_public_key_copy_refuses():
     assert captured.value.reason_code == "TRUST_ROOT_COPY_MISMATCH"
 
 
-def test_generation_3_constants_and_tag_derivation_are_exact():
+def test_generation_4_constants_and_tag_derivation_are_exact():
     commit = "a" * 40
-    assert AUTHORITY_GENERATION == 3
-    assert GENERATION_MANIFEST_NAME == "frozen_bundle_manifest.generation-3.json"
-    assert generation_tag(commit) == "rea-wea-generation-3-" + "a" * 12
+    assert AUTHORITY_GENERATION == 4
+    assert GENERATION_MANIFEST_NAME == "frozen_bundle_manifest.generation-4.json"
+    assert generation_tag(commit) == "rea-wea-generation-4-" + "a" * 12
     with pytest.raises(ValueError):
         generation_tag("a" * 39)
+
+
+def test_generation_4_member_contract_covers_lifetime_reach_and_close_gate():
+    required = {
+        "wea-lifetime-library",
+        "r4-plan-builder",
+        "r4-matrix-harness",
+        "coverage-registry-library",
+        "close-accounting-gate",
+    }
+    assert required <= set(EXPECTED_MEMBERS)
 
 
 def test_ruleset_response_refuses_capability_elision():

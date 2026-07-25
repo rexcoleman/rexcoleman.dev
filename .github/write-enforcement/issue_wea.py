@@ -123,11 +123,28 @@ def issuance_times(now: datetime, mode: str) -> tuple[datetime, datetime]:
     raise ValueError("issuance time mode")
 
 
+def sign_payload(payload: dict, private_key: Path) -> dict:
+    signed_digest = digest(canonical(payload))
+    digest_path, signature_path = private_key.parent / "unsigned.digest", private_key.parent / "wea.sig"
+    digest_path.write_bytes(bytes.fromhex(signed_digest))
+    openssl(["pkeyutl", "-sign", "-rawin", "-inkey", str(private_key),
+             "-in", str(digest_path), "-out", str(signature_path)])
+    signed = dict(payload)
+    signed["signature"] = {
+        "algorithm": "ed25519",
+        "signed_digest": signed_digest,
+        "value": base64.b64encode(signature_path.read_bytes()).decode(),
+    }
+    digest_path.unlink(); signature_path.unlink()
+    return signed
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     for name in ("manifest", "workspace", "ruleset-json", "private-key", "output"):
         parser.add_argument("--" + name, required=True, type=Path)
     parser.add_argument("--time-mode", choices=("active", "expired_fixture"), default="active")
+    parser.add_argument("--predecessor-wea-digest", default="")
     args = parser.parse_args()
     manifest = load_manifest(args.manifest)
     loaded = verify_members(manifest, args.workspace)
@@ -155,25 +172,50 @@ def main() -> int:
     verify_trust_roots(loaded, public)
     now = datetime.now(timezone.utc).replace(microsecond=0)
     issued_at, expires_at = issuance_times(now, args.time_mode)
-    wea = {
-        "schema_version": "rea.write.wea.v1", "state": "ENFORCING",
-        "authority_generation": manifest["authority_generation"], "issuer": ISSUER,
+    predecessor = args.predecessor_wea_digest.strip() or None
+    if args.time_mode == "active":
+        if AUTHORITY_GENERATION > 1 and not re.fullmatch(r"[0-9a-f]{64}", predecessor or ""):
+            raise IssuerRefusal("PREDECESSOR_WEA_DIGEST_REQUIRED", "active generation-4 issuance")
+        payload = {
+            "schema_version": "rea.write.wea.live.v2",
+            "purpose": "LIVE_ENFORCEMENT",
+            "state": "ENFORCING",
+            "authority_epoch": manifest["authority_generation"],
+            "predecessor_wea_digest": predecessor,
+            "issuer": ISSUER,
+            "issuer_source_digest": digest(loaded["remote-issuer"] + loaded["remote-member-contract"]),
+            "renewal_policy_digest": digest(b"successor-required:no-human-cadence:v1"),
+            "issuance_receipt_digest": digest(f"pending:{os.environ['GITHUB_RUN_ID']}:{now.isoformat()}".encode()),
+            "coverage_registry_digest": digest(loaded["profile-registry"]),
+            "coverage_registry_generation": manifest["authority_generation"],
+            "publishing_capability_scope": scope,
+            "required_surfaces": ["report", "blog", "publication", "distribution"],
+        }
+    else:
+        payload = {
+            "schema_version": "rea.write.wea.r4-fixture.v1",
+            "purpose": "R4_NEGATIVE_FIXTURE",
+            "state": "FIXTURE",
+            "authority_epoch": manifest["authority_generation"],
+            "predecessor_wea_digest": None,
+            "issuer": ISSUER,
+            "issuer_source_digest": digest(loaded["remote-issuer"] + loaded["remote-member-contract"]),
+            "renewal_policy_digest": digest(b"fixture:no-production-use:v1"),
+            "issuance_receipt_digest": digest(f"fixture:{os.environ['GITHUB_RUN_ID']}:{now.isoformat()}".encode()),
+            "coverage_registry_digest": digest(loaded["profile-registry"]),
+            "coverage_registry_generation": manifest["authority_generation"],
+            "fixture_id": f"r4-fixture-{os.environ['GITHUB_RUN_ID']}-{os.environ['GITHUB_RUN_ATTEMPT']}",
+            "production_eligible": False,
+        }
+    payload.update({
         "issued_at": issued_at.isoformat().replace("+00:00", "Z"),
+        "not_before": issued_at.isoformat().replace("+00:00", "Z"),
         "expires_at": expires_at.isoformat().replace("+00:00", "Z"),
-        "publishing_capability_scope": scope,
-        "required_surfaces": ["report", "blog", "publication", "distribution"],
         "enforcement_bundle_manifest_digest": manifest["manifest_digest"],
         "claim_policy_digest": digest(loaded["claim-policy"]),
         "trusted_key_id": f"rea-wea-ed25519-{digest(public)[:16]}",
-    }
-    signed_digest = digest(canonical(wea))
-    digest_path, signature_path = args.output / "unsigned.digest", args.output / "wea.sig"
-    digest_path.write_bytes(bytes.fromhex(signed_digest))
-    openssl(["pkeyutl", "-sign", "-rawin", "-inkey", str(args.private_key),
-             "-in", str(digest_path), "-out", str(signature_path)])
-    wea["signature"] = {"algorithm": "ed25519", "signed_digest": signed_digest,
-                        "value": base64.b64encode(signature_path.read_bytes()).decode()}
-    digest_path.unlink(); signature_path.unlink()
+    })
+    wea = sign_payload(payload, args.private_key)
     wea_path = args.output / "write_enforcement_attestation.json"
     manifest_path = args.output / "enforcement_bundle_manifest.json"
     wea_path.write_bytes(canonical(wea) + b"\n")

@@ -99,9 +99,23 @@ def verify(args: argparse.Namespace) -> dict:
     registry = json.loads((roots["research_enforcement_activation"] / "write_integrity/foundation/publishing_capability_profiles.json").read_bytes())
     scope = [row["profile_id"] for row in registry["profiles"] if row.get("publishes") is True]
     policy = (roots["research_enforcement_activation"] / "write_integrity/authority/claim_policy.json").read_bytes()
-    if (wea.get("issuer") != ISSUER or wea.get("state") != "ENFORCING"
+    if wea.get("schema_version") == "rea.write.wea.r4-fixture.v1" or wea.get("purpose") == "R4_NEGATIVE_FIXTURE":
+        raise HostedWEARefusal("WEA_WRONG_PURPOSE", "R4_NEGATIVE_FIXTURE")
+    if wea.get("schema_version") == "rea.write.wea.live.v2":
+        generation = wea.get("authority_epoch")
+        if (
+            wea.get("issuer") != ISSUER
+            or wea.get("purpose") != "LIVE_ENFORCEMENT"
+            or wea.get("state") != "ENFORCING"
+            or generation != AUTHORITY_GENERATION
+            or not lower_hex(wea.get("predecessor_wea_digest"), 64)
+        ):
+            raise HostedWEARefusal("WEA_CORRUPT", "remote_state")
+    elif (wea.get("issuer") != ISSUER or wea.get("state") != "ENFORCING"
             or wea.get("authority_generation") != AUTHORITY_GENERATION):
         raise HostedWEARefusal("WEA_CORRUPT", "remote_state")
+    else:
+        generation = wea["authority_generation"]
     if wea.get("publishing_capability_scope") != scope or set(wea.get("required_surfaces", [])) != SURFACES:
         raise HostedWEARefusal("WEA_CORRUPT", "scope")
     if wea.get("enforcement_bundle_manifest_digest") != manifest["manifest_digest"] or wea.get("claim_policy_digest") != digest(policy):
@@ -140,7 +154,7 @@ def verify(args: argparse.Namespace) -> dict:
         raise HostedWEARefusal("WEA_CORRUPT", "remote_provenance")
     tuple_value = {
         "state": "ENFORCING", "state_digest": digest(wea_raw),
-        "authority_generation": wea["authority_generation"],
+        "authority_generation": generation,
         "enforcement_bundle_manifest_digest": manifest["manifest_digest"],
         "required_surfaces": wea["required_surfaces"],
     }

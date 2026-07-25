@@ -1,10 +1,10 @@
-"""Immutable generation-3 member and ruleset contract required before signing."""
+"""Immutable generation-4 member and ruleset contract required before signing."""
 
 import re
 
 
-AUTHORITY_GENERATION = 3
-GENERATION_MANIFEST_NAME = "frozen_bundle_manifest.generation-3.json"
+AUTHORITY_GENERATION = 4
+GENERATION_MANIFEST_NAME = "frozen_bundle_manifest.generation-4.json"
 RULESET_ID = 19564990
 RULESET_FIELDS = (
     "name", "target", "enforcement", "conditions", "rules", "bypass_actors",
@@ -12,7 +12,7 @@ RULESET_FIELDS = (
 
 
 def generation_tag(commit: str) -> str:
-    """Derive the one generation-3 tag name from the later manifest commit."""
+    """Derive the one generation-4 tag name from the later manifest commit."""
     if re.fullmatch(r"[0-9a-f]{40}", commit) is None:
         raise ValueError("generation tag commit")
     return f"rea-wea-generation-{AUTHORITY_GENERATION}-{commit[:12]}"
@@ -42,6 +42,14 @@ def normalize_ruleset(value: dict) -> dict:
 EXPECTED_MEMBERS = {
     # Authority, schemas, resolver, gates, and canonical consumer.
     "verify-only-resolver": ("research_enforcement_activation", "write_integrity/attestation/wea_verifier.py"),
+    "wea-lifetime-library": ("research_enforcement_activation", "write_integrity/attestation/lifetime.py"),
+    "r4-plan-builder": ("research_enforcement_activation", "write_integrity/attestation/build_r4_plan.py"),
+    "r4-matrix-harness": ("research_enforcement_activation", "write_integrity/attestation/run_r4_matrix.py"),
+    "r4-harness-common": ("research_enforcement_activation", "write_integrity/attestation/harness_common.py"),
+    "r4-actor-probe": ("research_enforcement_activation", "write_integrity/attestation/r4_actor_probe.py"),
+    "r4-actor-inventory": ("research_enforcement_activation", "write_integrity/attestation/r4_actor_inventory.json"),
+    "coverage-registry-library": ("research_enforcement_activation", "write_integrity/coverage_registry.py"),
+    "close-accounting-gate": ("research_enforcement_activation", "write_integrity/close_accounting_gate.py"),
     "claim-policy": ("research_enforcement_activation", "write_integrity/authority/claim_policy.json"),
     "claim-registry": ("research_enforcement_activation", "write_integrity/authority/claim_registry.json"),
     "authority-manifest": ("research_enforcement_activation", "write_integrity/authority/authority_manifest.json"),
@@ -138,7 +146,7 @@ EXPECTED_MEMBERS = {
     "remote-member-contract": ("rexcoleman.dev", ".github/write-enforcement/member_contract.py"),
     "remote-freeze-sequence": ("rexcoleman.dev", ".github/write-enforcement/FREEZE_SEQUENCE.md"),
     "generation-2-owner-runbook": ("rexcoleman.dev", ".github/write-enforcement/GENERATION_2_OWNER_RUNBOOK.md"),
-    "generation-3-owner-runbook": ("rexcoleman.dev", ".github/write-enforcement/GENERATION_3_OWNER_RUNBOOK.md"),
+    "generation-4-owner-runbook": ("rexcoleman.dev", ".github/write-enforcement/GENERATION_4_OWNER_RUNBOOK.md"),
     "hosted-wea-verifier": ("rexcoleman.dev", ".github/write-enforcement/verify_hosted_wea.py"),
     "hosted-wea-workflow": ("rexcoleman.dev", ".github/workflows/verify-write-enforcement.yml"),
     "hosted-blog-deploy": ("rexcoleman.dev", ".github/workflows/deploy.yml"),
@@ -188,7 +196,10 @@ FACE_B_ISOLATED_FIXTURE_MEMBER_IDS = {
 S88_BUNDLE_MEMBER_IDS = (
     FACE_A_MEMBER_IDS
     | FACE_B_MEMBER_IDS
-    | {"authority-library", "verify-only-resolver"}
+    | {
+        "authority-library", "verify-only-resolver", "wea-lifetime-library",
+        "coverage-registry-library", "close-accounting-gate",
+    }
 )
 
 
