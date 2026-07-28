@@ -139,6 +139,14 @@ def sign_payload(payload: dict, private_key: Path) -> dict:
     return signed
 
 
+def sign_envelope(payload: dict, private_key: Path) -> dict:
+    signed = sign_payload(payload, private_key)
+    return {
+        "payload": {key: value for key, value in signed.items() if key != "signature"},
+        "signature": signed["signature"],
+    }
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     for name in ("manifest", "workspace", "ruleset-json", "private-key", "output"):
@@ -230,8 +238,59 @@ def main() -> int:
         "issued_at": wea["issued_at"],
     }
     (args.output / "issuance_receipt.json").write_bytes(canonical(receipt) + b"\n")
-    names = ("write_enforcement_attestation.json", "enforcement_bundle_manifest.json",
-             "issuance_receipt.json", "trusted_wea_public.pem")
+    registry_path = args.output / "claim_registry.json"
+    policy_path = args.output / "claim_policy.json"
+    provider_path = args.output / "hybrid_capability_provider"
+    runtime_path = args.output / "runtime_mount.py"
+    registry_path.write_bytes(loaded["claim-registry"])
+    policy_path.write_bytes(loaded["claim-policy"])
+    provider_path.write_bytes(loaded["hybrid-capability-provider"])
+    runtime_path.write_bytes(loaded["route-runtime-mount"])
+    provider_path.chmod(0o755)
+    runtime_path.chmod(0o755)
+    route_inventory = json.loads(loaded["route-inventory"])
+    route_rows = route_inventory.get("routes", [])
+    route_surface_bindings = {
+        row["id"]: row["surface"]
+        for row in route_rows
+        if isinstance(row, dict)
+        and isinstance(row.get("id"), str)
+        and isinstance(row.get("surface"), str)
+    }
+    if (
+        not isinstance(route_rows, list)
+        or not route_surface_bindings
+        or len(route_surface_bindings) != len(route_rows)
+    ):
+        raise IssuerRefusal("ROUTE_INVENTORY_INVALID", "no_route_bindings")
+    hybrid_payload = {
+        "schema_version": "rea.write.hybrid-capability-authority.v1",
+        "purpose": "VERIFY_ONLY_CURRENT_REGISTRY",
+        "issuer": ISSUER,
+        "authority_epoch": manifest["authority_generation"],
+        "wea_sha256": digest(wea_path.read_bytes()),
+        "enforcement_bundle_manifest_digest": manifest["manifest_digest"],
+        "claim_registry_sha256": digest(registry_path.read_bytes()),
+        "claim_policy_sha256": digest(policy_path.read_bytes()),
+        "provider_sha256": digest(provider_path.read_bytes()),
+        "runtime_mount_sha256": digest(runtime_path.read_bytes()),
+        "route_surface_bindings": route_surface_bindings,
+        "issued_at": wea["issued_at"],
+        "expires_at": wea["expires_at"],
+    }
+    authority_path = args.output / "hybrid_capability_authority.json"
+    authority_path.write_bytes(canonical(sign_envelope(hybrid_payload, args.private_key)) + b"\n")
+    names = (
+        "write_enforcement_attestation.json",
+        "enforcement_bundle_manifest.json",
+        "issuance_receipt.json",
+        "trusted_wea_public.pem",
+        "claim_registry.json",
+        "claim_policy.json",
+        "hybrid_capability_provider",
+        "runtime_mount.py",
+        "hybrid_capability_authority.json",
+    )
     (args.output / "SHA256SUMS").write_text("".join(
         f"{digest((args.output / name).read_bytes())}  {name}\n" for name in names), encoding="ascii")
     return 0

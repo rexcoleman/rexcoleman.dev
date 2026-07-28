@@ -16,6 +16,41 @@ GOVML_DIR="${GOVML_DIR:-${HOME}/ml-governance-templates}"
 VALIDATE_CONTENT="${GOVML_DIR}/scripts/validate_content.sh"
 CLAIM_TAG_PATTERN='\[([[:space:]]*(HYPOTHESIZED|DEMONSTRATED|SUGGESTED|VALIDATED|ASSUMED|APPROXIMATE|PROJECTED)([[:space:]]*,[[:space:]]*(HYPOTHESIZED|DEMONSTRATED|SUGGESTED|VALIDATED|ASSUMED|APPROXIMATE|PROJECTED))*[[:space:]]*)\]|\[SEED:'
 
+# Registered proof mode bypasses only interactive staging and external effects.
+# It is available solely from an isolated /tmp site worktree and still crosses
+# the production BLG-08 final-byte mount used by the ordinary publish path.
+if [[ "${1:-}" == "--registered-proof-source" ]]; then
+    if [[ "$#" -ne 3 ]]; then
+        echo "REFUSE(REGISTERED_PROOF_ARGUMENTS): expected source and destination" >&2
+        exit 3
+    fi
+    PROOF_SOURCE="$(realpath "$2")"
+    PROOF_DESTINATION="$(realpath -m "$3")"
+    case "$SITE_DIR" in
+        /tmp/*) ;;
+        *)
+            echo "REFUSE(ISOLATED_SITE_WORKTREE_REQUIRED): ${SITE_DIR}" >&2
+            exit 3
+            ;;
+    esac
+    case "$PROOF_SOURCE:$PROOF_DESTINATION" in
+        /tmp/*:/tmp/*) ;;
+        *)
+            echo "REFUSE(TEMP_PROOF_PATHS_REQUIRED)" >&2
+            exit 3
+            ;;
+    esac
+    if [[ ! -f "$PROOF_SOURCE" || -L "$PROOF_SOURCE" || -e "$PROOF_DESTINATION" \
+          || ! -d "$(dirname "$PROOF_DESTINATION")" ]]; then
+        echo "REFUSE(REGISTERED_PROOF_PRECONDITION)" >&2
+        exit 3
+    fi
+    python3 "$SITE_DIR/scripts/blog_publish_mount.py" \
+        "$PROOF_SOURCE" "$PROOF_DESTINATION"
+    echo "BLG-08_REGISTERED_PROOF_EFFECT_COMMITTED ${PROOF_DESTINATION}"
+    exit 0
+fi
+
 # --- Argument parsing -----------------------------------------------------------
 
 DRAFT=false

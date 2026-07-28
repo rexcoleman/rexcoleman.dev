@@ -93,8 +93,8 @@ def test_contract_contains_exact_accepted_22_route_owned_files():
 
 
 def test_contract_covers_complete_s88_face_a_and_face_b_bundle_sets():
-    assert len(EXPECTED_MEMBERS) == 102
-    assert len(set(EXPECTED_MEMBERS.values())) == 102
+    assert len(EXPECTED_MEMBERS) == 104
+    assert len(set(EXPECTED_MEMBERS.values())) == 104
     assert len(FACE_A_MEMBER_IDS) == 11
     assert len(FACE_B_MEMBER_IDS) == 9
     assert FACE_A_MEMBER_IDS < set(EXPECTED_MEMBERS)

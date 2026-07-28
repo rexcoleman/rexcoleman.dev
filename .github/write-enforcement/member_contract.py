@@ -68,6 +68,7 @@ EXPECTED_MEMBERS = {
     "surface-gate-distribution": ("research_enforcement_activation", "write_integrity/gates/distribution_gate.py"),
     "gate-token-engine": ("research_enforcement_activation", "write_integrity/gates/gate_lib.py"),
     "atomic-consumer": ("research_enforcement_activation", "write_integrity/consumer/atomic_consumer.py"),
+    "hybrid-capability-provider": ("research_enforcement_activation", "write_integrity/hybrid/capability_provider.py"),
     "route-runtime-mount": ("research_enforcement_activation", "write_integrity/mounts/runtime_mount.py"),
     "subject-runner": ("research_enforcement_activation", "write_integrity/runners/subject_runner.py"),
     # Accepted s88 Face A production request provisioner and its closed inputs.
@@ -111,6 +112,7 @@ EXPECTED_MEMBERS = {
     "write-side-arm": ("govML", "templates/build/enforcement/write_side_arm.py"),
     "route-blog-wrapper": ("govML", "scripts/generators/blog_runtime_mount.py"),
     "route-report": ("govML", "scripts/generators/gen_research_report.py"),
+    "route-publication-wrapper": ("govML", "scripts/generators/hybrid_publish_mount.py"),
     "route-publication": ("govML", "scripts/generators/gen_newsletter_issue.py"),
     "route-blog-01": ("govML", "scripts/generators/gen_blog_post.py"),
     "route-blog-02": ("govML", "scripts/generators/gen_paper_analysis.py"),

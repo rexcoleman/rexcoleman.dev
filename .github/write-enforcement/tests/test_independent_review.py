@@ -65,7 +65,7 @@ def state(repo="rexcoleman/rexcoleman.dev"):
         "manifest": {
             "manifest_sha256": value.expected_manifest_sha256,
             "manifest_digest": "d" * 64,
-            "member_count": 102,
+            "member_count": 104,
             "member_contract": "EXACT",
         },
         "ruleset": {
@@ -73,7 +73,7 @@ def state(repo="rexcoleman/rexcoleman.dev"):
             "id": 19768000,
             "name": "rexcoleman-dev-main-integrity",
             "bypass_actors": [],
-            "required_approving_review_count": 1,
+            "required_approving_review_count": 0,
             "dismiss_stale_reviews_on_push": True,
             "required_review_thread_resolution": True,
             "target": "refs/heads/main",
@@ -98,8 +98,8 @@ def test_site_policy_accepts_exact_predeclared_state():
             "manifest bytes",
         ),
         (
-            lambda value: value["ruleset"].update(required_approving_review_count=0),
-            "ruleset is not active",
+            lambda value: value["ruleset"].update(required_approving_review_count=1),
+            "zero approvals",
         ),
         (
             lambda value: value["ruleset"].update(target="refs/heads/wrong"),
@@ -126,16 +126,6 @@ def test_site_policy_refuses_cheapest_strict_subsets(mutation, expected):
         MODULE.assert_policy(value, args())
 
 
-def test_rea_approval_refuses_before_ruleset_exists():
-    value = state("rexcoleman/research_enforcement_activation")
-    value["ruleset"] = {"status": "NOT_YET_INSTALLED"}
-    with pytest.raises(MODULE.Refusal, match="disabled until"):
-        MODULE.assert_policy(
-            value,
-            args("rexcoleman/research_enforcement_activation", mode="approve"),
-        )
-
-
 def test_rea_preflight_allows_ruleset_not_yet_installed():
     value = state("rexcoleman/research_enforcement_activation")
     value["ruleset"] = {"status": "NOT_YET_INSTALLED"}
@@ -145,14 +135,13 @@ def test_rea_preflight_allows_ruleset_not_yet_installed():
     )
 
 
-def test_manifest_contract_accepts_current_frozen_manifest():
+def test_pre_convergence_frozen_manifest_is_superseded():
     raw = (
         Path(__file__).parents[1]
         / "frozen_bundle_manifest.generation-4.json"
     ).read_bytes()
-    result = MODULE.manifest_contract(raw)
-    assert result["member_count"] == 102
-    assert result["member_contract"] == "EXACT"
+    with pytest.raises(MODULE.Refusal, match="manifest contract differs"):
+        MODULE.manifest_contract(raw)
 
 
 def test_manifest_contract_refuses_self_consistent_wrong_member():
@@ -161,6 +150,26 @@ def test_manifest_contract_refuses_self_consistent_wrong_member():
         / "frozen_bundle_manifest.generation-4.json"
     )
     value = json.loads(path.read_bytes())
+    value["members"].append(
+        {
+            "member_id": "hybrid-capability-provider",
+            "repository": "research_enforcement_activation",
+            "commit": "a" * 40,
+            "path": "write_integrity/hybrid/capability_provider.py",
+            "sha256": "b" * 64,
+            "byte_length": 1,
+        }
+    )
+    value["members"].append(
+        {
+            "member_id": "route-publication-wrapper",
+            "repository": "govML",
+            "commit": "a" * 40,
+            "path": "scripts/generators/hybrid_publish_mount.py",
+            "sha256": "b" * 64,
+            "byte_length": 1,
+        }
+    )
     value["members"][0]["path"] = "wrong/path.py"
     unsigned = dict(value)
     unsigned.pop("manifest_digest")
@@ -181,7 +190,25 @@ def test_preflight_mode_has_no_mutating_api_path(monkeypatch, capsys):
 
     monkeypatch.setattr(MODULE, "api", refuse_api)
     assert MODULE.run(args()) == 0
-    assert capsys.readouterr().out.startswith("SECOND_PRINCIPAL_PREFLIGHT_PASS ")
+    assert capsys.readouterr().out.startswith("OPTION_A_POSTHOC_PREFLIGHT_PASS ")
+
+
+def test_parser_exposes_no_approval_mode():
+    with pytest.raises(SystemExit):
+        MODULE.parser().parse_args(
+            [
+                "--mode",
+                "approve",
+                "--repository",
+                "rexcoleman/rexcoleman.dev",
+                "--pull-request",
+                "2",
+                "--expected-head",
+                "b" * 40,
+                "--expected-files-sha256",
+                "c" * 64,
+            ]
+        )
 
 
 def test_workflow_exposes_credential_only_after_environment_review():
