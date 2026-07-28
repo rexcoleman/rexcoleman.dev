@@ -1,16 +1,18 @@
-name: Independent in-platform second-principal review
+# OPTION A POST-HOC DETECTION ONLY.
+# This workflow is not a required status check, approval authority, or merge
+# prevention. The single-operator account has no independent approving principal.
+name: Option A post-hoc exact-head detection (non-preventive)
 
 on:
   workflow_dispatch:
     inputs:
       mode:
-        description: Read-only preflight or exact-head approval
+        description: Read-only exact-head audit evidence; never merge prevention
         required: true
         default: preflight
         type: choice
         options:
           - preflight
-          - approve
       repository:
         description: Exact repository admitted by policy
         required: true
@@ -44,7 +46,7 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  independent-review:
+  option-a-post-hoc-detection:
     environment: rea-write-enforcement-issuer
     runs-on: ubuntu-24.04
     timeout-minutes: 10
@@ -63,7 +65,7 @@ jobs:
           repositories: |-
             research_enforcement_activation
             rexcoleman.dev
-      - name: Run exact-head policy
+      - name: Emit read-only exact-head detection evidence
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
