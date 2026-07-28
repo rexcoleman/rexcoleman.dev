@@ -169,3 +169,30 @@ def test_manifest_contract_refuses_self_consistent_wrong_member():
         MODULE.manifest_contract(
             json.dumps(value, sort_keys=True, separators=(",", ":")).encode()
         )
+
+
+def test_preflight_mode_has_no_mutating_api_path(monkeypatch, capsys):
+    value = state()
+    monkeypatch.setenv("GH_TOKEN", "test-token-not-a-credential")
+    monkeypatch.setattr(MODULE, "read_state", lambda _token, _args: value)
+
+    def refuse_api(*_args, **_kwargs):
+        raise AssertionError("preflight attempted an API mutation")
+
+    monkeypatch.setattr(MODULE, "api", refuse_api)
+    assert MODULE.run(args()) == 0
+    assert capsys.readouterr().out.startswith("SECOND_PRINCIPAL_PREFLIGHT_PASS ")
+
+
+def test_workflow_exposes_credential_only_after_environment_review():
+    text = (
+        Path(__file__).parents[2]
+        / "workflows/independent-second-principal-review.yml"
+    ).read_text()
+    assert "\n  workflow_dispatch:\n" in text
+    assert "\n  pull_request:" not in text
+    assert "\n  pull_request_target:" not in text
+    assert "environment: rea-write-enforcement-issuer" in text
+    assert text.count("secrets.REA_SECOND_PRINCIPAL_PRIVATE_KEY") == 1
+    assert "persist-credentials: false" in text
+    assert "permissions:\n  contents: read" in text
