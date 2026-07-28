@@ -1,0 +1,77 @@
+name: Independent in-platform second-principal review
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: Read-only preflight or exact-head approval
+        required: true
+        default: preflight
+        type: choice
+        options:
+          - preflight
+          - approve
+      repository:
+        description: Exact repository admitted by policy
+        required: true
+        type: choice
+        options:
+          - rexcoleman/research_enforcement_activation
+          - rexcoleman/rexcoleman.dev
+      pull_request:
+        description: Exact open pull-request number
+        required: true
+        type: string
+      expected_head:
+        description: Independently verified 40-hex pull-request head
+        required: true
+        type: string
+      expected_files_sha256:
+        description: Independently verified canonical PR file-set SHA-256
+        required: true
+        type: string
+      expected_manifest_sha256:
+        description: Required exact generation-4 manifest SHA-256 for rexcoleman.dev
+        required: false
+        default: ""
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: second-principal-${{ inputs.repository }}-${{ inputs.pull_request }}
+  cancel-in-progress: false
+
+jobs:
+  independent-review:
+    environment: rea-write-enforcement-issuer
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+          fetch-depth: 1
+      - name: Create installation token scoped to exactly two repositories
+        id: app-token
+        uses: actions/create-github-app-token@fee1f7d63c2ff003460e3d139729b119787bc349
+        with:
+          app-id: ${{ vars.REA_SECOND_PRINCIPAL_APP_ID }}
+          private-key: ${{ secrets.REA_SECOND_PRINCIPAL_PRIVATE_KEY }}
+          owner: rexcoleman
+          repositories: |-
+            research_enforcement_activation
+            rexcoleman.dev
+      - name: Run exact-head policy
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: |
+          set -euo pipefail
+          python3 .github/write-enforcement/independent_review.py \
+            --mode "${{ inputs.mode }}" \
+            --repository "${{ inputs.repository }}" \
+            --pull-request "${{ inputs.pull_request }}" \
+            --expected-head "${{ inputs.expected_head }}" \
+            --expected-files-sha256 "${{ inputs.expected_files_sha256 }}" \
+            --expected-manifest-sha256 "${{ inputs.expected_manifest_sha256 }}"
