@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Fail-closed GitHub App review bound to an exact PR head and file digest."""
+"""Read-only Option A audit bound to an exact PR head and file digest."""
 
 from __future__ import annotations
 
@@ -13,7 +13,6 @@ import re
 import sys
 import urllib.error
 import urllib.request
-import uuid
 from pathlib import Path
 
 API = "https://api.github.com"
@@ -23,8 +22,7 @@ ALLOWED_REPOSITORIES = {
 }
 SITE_RULESET_ID = 19768000
 SITE_MANIFEST = ".github/write-enforcement/frozen_bundle_manifest.generation-4.json"
-POLICY = "rea-in-platform-second-principal-v1"
-CHECK_NAME = "rea-independent-review/exact-head-v1"
+POLICY = "rea-option-a-posthoc-exact-head-v2"
 MEMBER_CONTRACT = Path(__file__).with_name("member_contract.py")
 REQUIRED_MEMBER_CLASSES = {
     "boundary_gate",
@@ -124,8 +122,8 @@ def expected_members() -> dict[str, tuple[str, str]]:
     if match is None:
         raise Refusal("trusted member contract cannot be parsed")
     value = ast.literal_eval(match.group(1))
-    if not isinstance(value, dict) or len(value) != 102:
-        raise Refusal("trusted member contract does not contain exactly 102 members")
+    if not isinstance(value, dict) or len(value) != 104:
+        raise Refusal("trusted member contract does not contain exactly 104 members")
     return value
 
 
@@ -157,7 +155,7 @@ def manifest_contract(raw: bytes) -> dict:
         or re.fullmatch(r"[0-9a-f]{64}", value["normalized_ruleset_sha256"])
         is None
         or not isinstance(value["members"], list)
-        or len(value["members"]) != 102
+        or len(value["members"]) != 104
     ):
         raise Refusal("generation-4 manifest contract differs")
     observed: dict[str, tuple[str, str]] = {}
@@ -187,7 +185,7 @@ def manifest_contract(raw: bytes) -> dict:
     return {
         "manifest_sha256": hashlib.sha256(raw).hexdigest(),
         "manifest_digest": claimed,
-        "member_count": 102,
+        "member_count": 104,
         "member_contract": "EXACT",
     }
 
@@ -229,8 +227,8 @@ def ruleset_state(token: str, repo: str) -> dict:
     if len(pull_rules) != 1:
         raise Refusal("ruleset does not contain exactly one pull-request rule")
     params = pull_rules[0]["parameters"]
-    if params["required_approving_review_count"] != 1:
-        raise Refusal("ruleset does not require exactly one approving review")
+    if params["required_approving_review_count"] != 0:
+        raise Refusal("ruleset does not require exactly zero approving reviews")
     if not params["dismiss_stale_reviews_on_push"]:
         raise Refusal("ruleset does not dismiss stale reviews")
     if not params["required_review_thread_resolution"]:
@@ -240,7 +238,7 @@ def ruleset_state(token: str, repo: str) -> dict:
         "id": detail["id"],
         "name": detail["name"],
         "bypass_actors": detail.get("bypass_actors"),
-        "required_approving_review_count": 1,
+        "required_approving_review_count": 0,
         "dismiss_stale_reviews_on_push": True,
         "required_review_thread_resolution": True,
         "target": expected_ref,
@@ -315,8 +313,8 @@ def assert_policy(state: dict, args: argparse.Namespace) -> None:
             raise Refusal("site review ruleset is not active")
         if state["ruleset"].get("bypass_actors") not in ([], None):
             raise Refusal("site ruleset re-admits a bypass actor")
-        if state["ruleset"].get("required_approving_review_count") != 1:
-            raise Refusal("site ruleset does not require one approval")
+        if state["ruleset"].get("required_approving_review_count") != 0:
+            raise Refusal("site ruleset does not require zero approvals")
         if state["ruleset"].get("dismiss_stale_reviews_on_push") is not True:
             raise Refusal("site ruleset does not dismiss stale reviews")
         if state["ruleset"].get("required_review_thread_resolution") is not True:
@@ -329,8 +327,6 @@ def assert_policy(state: dict, args: argparse.Namespace) -> None:
             "pull_request",
         ]:
             raise Refusal("site ruleset rule population differs")
-    elif args.mode == "approve" and state["ruleset"]["status"] != "ACTIVE":
-        raise Refusal("REA approval is disabled until its branch ruleset is active")
 
 
 def run(args: argparse.Namespace) -> int:
@@ -371,65 +367,16 @@ def run(args: argparse.Namespace) -> int:
         "state_sha256": canonical_digest(before),
         "mutation_count": 0,
     }
-    if args.mode == "preflight":
-        print(
-            "SECOND_PRINCIPAL_PREFLIGHT_PASS "
-            + json.dumps(evidence, sort_keys=True, separators=(",", ":"))
-        )
-        return 0
-
-    if any(
-        review["state"] == "APPROVED"
-        and review["commit_id"] == args.expected_head
-        for review in before["reviews"]
-    ):
-        raise Refusal("an approval already exists for this exact head")
-
-    invocation = str(uuid.uuid4())
-    check = api(
-        token,
-        f"/repos/{args.repository}/check-runs",
-        "POST",
-        {
-            "name": CHECK_NAME,
-            "head_sha": args.expected_head,
-            "status": "completed",
-            "conclusion": "success",
-            "output": {
-                "title": "Independent exact-head policy passed",
-                "summary": (
-                    f"policy={POLICY}\nhead={args.expected_head}\n"
-                    f"state_sha256={evidence['state_sha256']}\n"
-                    f"invocation={invocation}"
-                ),
-            },
-        },
-    )
-    review = api(
-        token,
-        f"/repos/{args.repository}/pulls/{args.pull_request}/reviews",
-        "POST",
-        {
-            "commit_id": args.expected_head,
-            "event": "APPROVE",
-            "body": (
-                f"Independent in-platform review passed.\npolicy={POLICY}\n"
-                f"head={args.expected_head}\nstate_sha256={evidence['state_sha256']}\n"
-                f"invocation={invocation}\ncheck_run_id={check['id']}"
-            ),
-        },
-    )
     print(
-        "SECOND_PRINCIPAL_APPROVAL_PASS "
-        f"head={args.expected_head} check_run_id={check['id']} "
-        f"review_id={review['id']} state_sha256={evidence['state_sha256']}"
+        "OPTION_A_POSTHOC_PREFLIGHT_PASS "
+        + json.dumps(evidence, sort_keys=True, separators=(",", ":"))
     )
     return 0
 
 
 def parser() -> argparse.ArgumentParser:
     value = argparse.ArgumentParser()
-    value.add_argument("--mode", choices=("preflight", "approve"), required=True)
+    value.add_argument("--mode", choices=("preflight",), required=True)
     value.add_argument("--repository", required=True)
     value.add_argument("--pull-request", required=True, type=int)
     value.add_argument("--expected-head", required=True)
@@ -442,5 +389,5 @@ if __name__ == "__main__":
     try:
         sys.exit(run(parser().parse_args()))
     except (AssertionError, KeyError, Refusal, TypeError, ValueError) as exc:
-        print(f"SECOND_PRINCIPAL_REFUSE: {exc}", file=sys.stderr)
+        print(f"OPTION_A_POSTHOC_REFUSE: {exc}", file=sys.stderr)
         sys.exit(3)

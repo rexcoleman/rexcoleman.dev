@@ -95,6 +95,26 @@ jobs:
             --issuance issuance --workspace repos \
             --consumer-id issuer-hosted-self-check \
             | tee issuer-hosted-wea-report.json
+      - name: Prove published artifact has public custody only
+        run: |
+          set -euo pipefail
+          expected=$'SHA256SUMS\nclaim_policy.json\nclaim_registry.json\nenforcement_bundle_manifest.json\nhybrid_capability_authority.json\nhybrid_capability_provider\nissuance_receipt.json\nruntime_mount.py\ntrusted_wea_public.pem\nwrite_enforcement_attestation.json'
+          observed="$(find issuance -maxdepth 1 -type f -printf '%f\n' | LC_ALL=C sort)"
+          test "$observed" = "$expected"
+          while IFS= read -r name; do
+            test ! issuance/"$name" -ef "$RUNNER_TEMP/wea-private.pem"
+            if cmp -s issuance/"$name" "$RUNNER_TEMP/wea-private.pem"; then
+              echo "private signing key copied into artifact: $name" >&2
+              exit 1
+            fi
+            if grep -aEq -- '-----BEGIN ([A-Z0-9]+ )*PRIVATE KEY-----' issuance/"$name"; then
+              echo "private PEM material present in artifact: $name" >&2
+              exit 1
+            fi
+          done <<< "$observed"
+          test -x issuance/hybrid_capability_provider
+          test -x issuance/runtime_mount.py
+          echo "PUBLIC_ONLY_ARTIFACT_PASS files=10 private_key_copy=absent"
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: rea-write-enforcement-attestation-${{ github.run_id }}

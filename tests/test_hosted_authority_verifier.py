@@ -173,10 +173,16 @@ class HostedAuthorityVerifierTests(unittest.TestCase):
     def test_publish_script_validates_and_confirms_before_destination_write(self) -> None:
         script = (ROOT / "publish.sh").read_text(encoding="utf-8")
         validate_index = script.index('bash "$VALIDATE_CONTENT" "$PROJECT_DIR"')
-        mount_index = script.index('python3 "$SITE_DIR/scripts/blog_publish_mount.py"')
         confirm_index = script.index('read -rp "Publish? [y/N] " CONFIRM')
+        mount_index = script.index(
+            'python3 "$SITE_DIR/scripts/blog_publish_mount.py"',
+            confirm_index,
+        )
         self.assertLess(validate_index, mount_index)
         self.assertLess(confirm_index, mount_index)
+        self.assertIn('if [[ "${1:-}" == "--registered-proof-source" ]]', script)
+        self.assertIn("BLG-08_REGISTERED_PROOF_EFFECT_COMMITTED", script)
+        self.assertIn("ISOLATED_SITE_WORKTREE_REQUIRED", script)
         self.assertIn("CLAIM_TAG_PATTERN", script)
 
 
