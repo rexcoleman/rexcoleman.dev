@@ -12,6 +12,6 @@ the site at an arbitrary checkout as an operational workaround. Publication
 must remain refused until either the revert is reviewed and merged or the
 installed consumer is repaired and its exact bytes are redeployed.
 
-The `REA_WRITE_INTEGRITY_ISOLATED_RUNTIME_MOUNT` override is accepted only when
-the explicit isolated hybrid context is also present. It exists for scratch
-integration tests and is not a production override.
+The production wrapper has no environment or caller-controlled runtime-module
+override. Isolated tests may monkeypatch the module constant only inside the
+test process; that seam does not exist in the production entrypoint.
