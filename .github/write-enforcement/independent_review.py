@@ -4,14 +4,17 @@
 from __future__ import annotations
 
 import argparse
+import ast
 import base64
 import hashlib
 import json
 import os
+import re
 import sys
 import urllib.error
 import urllib.request
 import uuid
+from pathlib import Path
 
 API = "https://api.github.com"
 ALLOWED_REPOSITORIES = {
@@ -22,6 +25,21 @@ SITE_RULESET_ID = 19768000
 SITE_MANIFEST = ".github/write-enforcement/frozen_bundle_manifest.generation-4.json"
 POLICY = "rea-in-platform-second-principal-v1"
 CHECK_NAME = "rea-independent-review/exact-head-v1"
+MEMBER_CONTRACT = Path(__file__).with_name("member_contract.py")
+REQUIRED_MEMBER_CLASSES = {
+    "boundary_gate",
+    "resolver",
+    "readiness_consumer",
+    "live_emitter_binding",
+    "master_runner_binding",
+    "project_runner_binding",
+    "scaffold_installer",
+    "remote_workflow",
+    "remote_ruleset",
+    "claim_policy",
+    "profile_registry",
+    "trusted_public_key",
+}
 
 
 class Refusal(RuntimeError):
@@ -89,11 +107,89 @@ def pull_files(token: str, repo: str, number: int) -> list[dict]:
     ]
 
 
-def content_sha256(token: str, repo: str, path: str, ref: str) -> str:
+def content_bytes(token: str, repo: str, path: str, ref: str) -> bytes:
     response = api(token, f"/repos/{repo}/contents/{path}?ref={ref}")
     if response.get("encoding") != "base64" or response.get("type") != "file":
         raise Refusal(f"content response for {path} is not an inline base64 file")
-    return hashlib.sha256(base64.b64decode(response["content"])).hexdigest()
+    return base64.b64decode(response["content"])
+
+
+def expected_members() -> dict[str, tuple[str, str]]:
+    source = MEMBER_CONTRACT.read_text()
+    match = re.search(
+        r"EXPECTED_MEMBERS\s*=\s*(\{.*?\})\n\nROUTE_OWNED_MEMBER_IDS",
+        source,
+        flags=re.DOTALL,
+    )
+    if match is None:
+        raise Refusal("trusted member contract cannot be parsed")
+    value = ast.literal_eval(match.group(1))
+    if not isinstance(value, dict) or len(value) != 102:
+        raise Refusal("trusted member contract does not contain exactly 102 members")
+    return value
+
+
+def manifest_contract(raw: bytes) -> dict:
+    try:
+        value = json.loads(raw)
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise Refusal(f"generation-4 manifest is not JSON: {type(exc).__name__}") from exc
+    expected_keys = {
+        "schema_version",
+        "authority_generation",
+        "ruleset_id",
+        "normalized_ruleset_sha256",
+        "required_member_classes",
+        "members",
+        "manifest_digest",
+    }
+    if not isinstance(value, dict) or set(value) != expected_keys:
+        raise Refusal("generation-4 manifest has a non-canonical top-level shape")
+    unsigned = dict(value)
+    claimed = unsigned.pop("manifest_digest")
+    if claimed != canonical_digest(unsigned):
+        raise Refusal("generation-4 manifest self-digest differs")
+    if (
+        value["schema_version"] != "rea.write.enforcement-bundle-manifest.v1"
+        or value["authority_generation"] != 4
+        or value["ruleset_id"] != 19564990
+        or set(value["required_member_classes"]) != REQUIRED_MEMBER_CLASSES
+        or re.fullmatch(r"[0-9a-f]{64}", value["normalized_ruleset_sha256"])
+        is None
+        or not isinstance(value["members"], list)
+        or len(value["members"]) != 102
+    ):
+        raise Refusal("generation-4 manifest contract differs")
+    observed: dict[str, tuple[str, str]] = {}
+    for row in value["members"]:
+        if (
+            not isinstance(row, dict)
+            or set(row)
+            != {
+                "member_id",
+                "repository",
+                "commit",
+                "path",
+                "sha256",
+                "byte_length",
+            }
+            or not isinstance(row["member_id"], str)
+            or row["member_id"] in observed
+            or re.fullmatch(r"[0-9a-f]{40}", row["commit"]) is None
+            or re.fullmatch(r"[0-9a-f]{64}", row["sha256"]) is None
+            or not isinstance(row["byte_length"], int)
+            or row["byte_length"] <= 0
+        ):
+            raise Refusal("generation-4 manifest member shape differs")
+        observed[row["member_id"]] = (row["repository"], row["path"])
+    if observed != expected_members():
+        raise Refusal("generation-4 manifest member contract differs")
+    return {
+        "manifest_sha256": hashlib.sha256(raw).hexdigest(),
+        "manifest_digest": claimed,
+        "member_count": 102,
+        "member_contract": "EXACT",
+    }
 
 
 def ruleset_state(token: str, repo: str) -> dict:
@@ -118,6 +214,17 @@ def ruleset_state(token: str, repo: str) -> dict:
         raise Refusal("branch ruleset is not active")
     if detail.get("bypass_actors") not in ([], None):
         raise Refusal("branch ruleset contains bypass actors")
+    expected_ref = (
+        "refs/heads/main"
+        if repo == "rexcoleman/rexcoleman.dev"
+        else "refs/heads/master"
+    )
+    ref_name = detail.get("conditions", {}).get("ref_name", {})
+    if ref_name != {"exclude": [], "include": [expected_ref]}:
+        raise Refusal("branch ruleset target differs")
+    rule_types = sorted(rule.get("type") for rule in detail.get("rules", []))
+    if rule_types != ["deletion", "non_fast_forward", "pull_request"]:
+        raise Refusal("branch ruleset rule population differs")
     pull_rules = [rule for rule in detail["rules"] if rule["type"] == "pull_request"]
     if len(pull_rules) != 1:
         raise Refusal("ruleset does not contain exactly one pull-request rule")
@@ -126,6 +233,8 @@ def ruleset_state(token: str, repo: str) -> dict:
         raise Refusal("ruleset does not require exactly one approving review")
     if not params["dismiss_stale_reviews_on_push"]:
         raise Refusal("ruleset does not dismiss stale reviews")
+    if not params["required_review_thread_resolution"]:
+        raise Refusal("ruleset does not require conversation resolution")
     return {
         "status": "ACTIVE",
         "id": detail["id"],
@@ -133,6 +242,9 @@ def ruleset_state(token: str, repo: str) -> dict:
         "bypass_actors": detail.get("bypass_actors"),
         "required_approving_review_count": 1,
         "dismiss_stale_reviews_on_push": True,
+        "required_review_thread_resolution": True,
+        "target": expected_ref,
+        "rule_types": rule_types,
     }
 
 
@@ -166,8 +278,10 @@ def read_state(token: str, args: argparse.Namespace) -> dict:
         ], key=lambda item: (item["actor"], item["state"], item["commit_id"] or "")),
     }
     if args.repository == "rexcoleman/rexcoleman.dev":
-        state["manifest_sha256"] = content_sha256(
-            token, args.repository, SITE_MANIFEST, args.expected_head
+        state["manifest"] = manifest_contract(
+            content_bytes(
+                token, args.repository, SITE_MANIFEST, args.expected_head
+            )
         )
     return state
 
@@ -195,7 +309,7 @@ def assert_policy(state: dict, args: argparse.Namespace) -> None:
             raise Refusal("site review is not a one-file generation-4 manifest change")
         if not args.expected_manifest_sha256:
             raise Refusal("site review requires expected manifest SHA-256")
-        if state["manifest_sha256"] != args.expected_manifest_sha256:
+        if state["manifest"]["manifest_sha256"] != args.expected_manifest_sha256:
             raise Refusal("generation-4 manifest bytes do not match predeclared digest")
         if state["ruleset"]["status"] != "ACTIVE":
             raise Refusal("site review ruleset is not active")
@@ -205,6 +319,16 @@ def assert_policy(state: dict, args: argparse.Namespace) -> None:
             raise Refusal("site ruleset does not require one approval")
         if state["ruleset"].get("dismiss_stale_reviews_on_push") is not True:
             raise Refusal("site ruleset does not dismiss stale reviews")
+        if state["ruleset"].get("required_review_thread_resolution") is not True:
+            raise Refusal("site ruleset does not require conversation resolution")
+        if state["ruleset"].get("target") != "refs/heads/main":
+            raise Refusal("site ruleset targets the wrong branch")
+        if state["ruleset"].get("rule_types") != [
+            "deletion",
+            "non_fast_forward",
+            "pull_request",
+        ]:
+            raise Refusal("site ruleset rule population differs")
     elif args.mode == "approve" and state["ruleset"]["status"] != "ACTIVE":
         raise Refusal("REA approval is disabled until its branch ruleset is active")
 

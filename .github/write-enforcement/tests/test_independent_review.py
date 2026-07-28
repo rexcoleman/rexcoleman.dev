@@ -62,7 +62,12 @@ def state(repo="rexcoleman/rexcoleman.dev"):
         },
         "files": files,
         "files_sha256": digest(files),
-        "manifest_sha256": value.expected_manifest_sha256,
+        "manifest": {
+            "manifest_sha256": value.expected_manifest_sha256,
+            "manifest_digest": "d" * 64,
+            "member_count": 102,
+            "member_contract": "EXACT",
+        },
         "ruleset": {
             "status": "ACTIVE",
             "id": 19768000,
@@ -70,6 +75,9 @@ def state(repo="rexcoleman/rexcoleman.dev"):
             "bypass_actors": [],
             "required_approving_review_count": 1,
             "dismiss_stale_reviews_on_push": True,
+            "required_review_thread_resolution": True,
+            "target": "refs/heads/main",
+            "rule_types": ["deletion", "non_fast_forward", "pull_request"],
         },
         "reviews": [],
     }
@@ -85,10 +93,29 @@ def test_site_policy_accepts_exact_predeclared_state():
         (lambda value: value["installation_repositories"].pop(), "installation scope"),
         (lambda value: value["pull_request"].update(head_sha="d" * 40), "head moved"),
         (lambda value: value.update(files_sha256="d" * 64), "file-set digest"),
-        (lambda value: value.update(manifest_sha256="d" * 64), "manifest bytes"),
+        (
+            lambda value: value["manifest"].update(manifest_sha256="d" * 64),
+            "manifest bytes",
+        ),
         (
             lambda value: value["ruleset"].update(required_approving_review_count=0),
             "ruleset is not active",
+        ),
+        (
+            lambda value: value["ruleset"].update(target="refs/heads/wrong"),
+            "wrong branch",
+        ),
+        (
+            lambda value: value["ruleset"].update(
+                rule_types=["pull_request"]
+            ),
+            "rule population",
+        ),
+        (
+            lambda value: value["ruleset"].update(
+                required_review_thread_resolution=False
+            ),
+            "conversation resolution",
         ),
     ],
 )
@@ -116,3 +143,29 @@ def test_rea_preflight_allows_ruleset_not_yet_installed():
         value,
         args("rexcoleman/research_enforcement_activation", mode="preflight"),
     )
+
+
+def test_manifest_contract_accepts_current_frozen_manifest():
+    raw = (
+        Path(__file__).parents[1]
+        / "frozen_bundle_manifest.generation-4.json"
+    ).read_bytes()
+    result = MODULE.manifest_contract(raw)
+    assert result["member_count"] == 102
+    assert result["member_contract"] == "EXACT"
+
+
+def test_manifest_contract_refuses_self_consistent_wrong_member():
+    path = (
+        Path(__file__).parents[1]
+        / "frozen_bundle_manifest.generation-4.json"
+    )
+    value = json.loads(path.read_bytes())
+    value["members"][0]["path"] = "wrong/path.py"
+    unsigned = dict(value)
+    unsigned.pop("manifest_digest")
+    value["manifest_digest"] = MODULE.canonical_digest(unsigned)
+    with pytest.raises(MODULE.Refusal, match="member contract"):
+        MODULE.manifest_contract(
+            json.dumps(value, sort_keys=True, separators=(",", ":")).encode()
+        )
