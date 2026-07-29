@@ -12,6 +12,7 @@ from pathlib import Path
 from member_contract import (
     AUTHORITY_GENERATION,
     GENERATION_MANIFEST_NAME,
+    REQUIRED_MEMBER_CLASSES,
     RULESET_ID,
     grouped_members,
     normalize_ruleset,
@@ -83,13 +84,7 @@ def main() -> int:
         "authority_generation": AUTHORITY_GENERATION,
         "ruleset_id": RULESET_ID,
         "normalized_ruleset_sha256": sha(canonical(normalized)),
-        "required_member_classes": [
-            "boundary_gate", "resolver", "readiness_consumer", "live_emitter_binding",
-            "master_runner_binding", "project_runner_binding", "scaffold_installer",
-            "invocation_receipt", "close_readiness_gate",
-            "remote_workflow", "remote_ruleset", "claim_policy", "profile_registry",
-            "trusted_public_key",
-        ],
+        "required_member_classes": list(REQUIRED_MEMBER_CLASSES),
         "members": rows,
     }
     manifest["manifest_digest"] = sha(canonical(manifest))

@@ -27,31 +27,16 @@ SIGNED_RUNTIME_MEMBERS = {
         "templates/build/enforcement/enforcement_fired_gate.sh",
     ),
 }
-REQUIRED_CLASSES = {
-    "boundary_gate",
-    "resolver",
-    "readiness_consumer",
-    "live_emitter_binding",
-    "master_runner_binding",
-    "project_runner_binding",
-    "scaffold_installer",
-    "invocation_receipt",
-    "close_readiness_gate",
-    "remote_workflow",
-    "remote_ruleset",
-    "claim_policy",
-    "profile_registry",
-    "trusted_public_key",
-}
+REQUIRED_CLASSES = set(member_contract.REQUIRED_MEMBER_CLASSES)
 
 
 def test_generation4_contract_registers_all_runtime_consumers_exactly_once():
-    assert len(member_contract.EXPECTED_MEMBERS) == 106
+    assert len(member_contract.EXPECTED_MEMBERS) == 110
     assert {
         key: member_contract.EXPECTED_MEMBERS[key]
         for key in SIGNED_RUNTIME_MEMBERS
     } == SIGNED_RUNTIME_MEMBERS
-    assert len(set(member_contract.EXPECTED_MEMBERS.values())) == 106
+    assert len(set(member_contract.EXPECTED_MEMBERS.values())) == 110
 
 
 def test_issuer_refuses_manifest_missing_signed_runtime_consumers(tmp_path):
@@ -104,9 +89,6 @@ def test_issuer_refuses_tampered_signed_runtime_member(tmp_path, member_id):
 def test_manifest_builder_and_issuer_require_same_runtime_classes():
     builder = (TOOLS / "build_frozen_manifest.py").read_text(encoding="utf-8")
     issuer = (TOOLS / "issue_wea.py").read_text(encoding="utf-8")
-    for member_class in (
-        "invocation_receipt",
-        "close_readiness_gate",
-    ):
-        assert builder.count(f'"{member_class}"') == 1
-        assert issuer.count(f'"{member_class}"') == 1
+    assert "list(REQUIRED_MEMBER_CLASSES)" in builder
+    assert "set(REQUIRED_MEMBER_CLASSES)" in issuer
+    assert len(REQUIRED_CLASSES) == 14

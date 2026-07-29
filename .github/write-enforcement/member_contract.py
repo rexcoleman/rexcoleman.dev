@@ -9,6 +9,22 @@ RULESET_ID = 19564990
 RULESET_FIELDS = (
     "name", "target", "enforcement", "conditions", "rules", "bypass_actors",
 )
+REQUIRED_MEMBER_CLASSES = (
+    "boundary_gate",
+    "resolver",
+    "readiness_consumer",
+    "live_emitter_binding",
+    "master_runner_binding",
+    "project_runner_binding",
+    "scaffold_installer",
+    "invocation_receipt",
+    "close_readiness_gate",
+    "remote_workflow",
+    "remote_ruleset",
+    "claim_policy",
+    "profile_registry",
+    "trusted_public_key",
+)
 
 
 def generation_tag(commit: str) -> str:
