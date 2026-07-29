@@ -65,7 +65,7 @@ def state(repo="rexcoleman/rexcoleman.dev"):
         "manifest": {
             "manifest_sha256": value.expected_manifest_sha256,
             "manifest_digest": "d" * 64,
-            "member_count": 104,
+            "member_count": 106,
             "member_contract": "EXACT",
         },
         "ruleset": {
@@ -150,25 +150,29 @@ def test_manifest_contract_refuses_self_consistent_wrong_member():
         / "frozen_bundle_manifest.generation-4.json"
     )
     value = json.loads(path.read_bytes())
-    value["members"].append(
-        {
-            "member_id": "hybrid-capability-provider",
-            "repository": "research_enforcement_activation",
-            "commit": "a" * 40,
-            "path": "write_integrity/hybrid/capability_provider.py",
-            "sha256": "b" * 64,
-            "byte_length": 1,
-        }
-    )
-    value["members"].append(
-        {
-            "member_id": "route-publication-wrapper",
-            "repository": "govML",
-            "commit": "a" * 40,
-            "path": "scripts/generators/hybrid_publish_mount.py",
-            "sha256": "b" * 64,
-            "byte_length": 1,
-        }
+    additions = {
+        "gate-invocation-receipt": (
+            "govML",
+            "templates/build/enforcement/gate_invocation_receipt.py",
+        ),
+        "enforcement-fired-gate": (
+            "govML",
+            "templates/build/enforcement/enforcement_fired_gate.sh",
+        ),
+    }
+    for member_id, (repository, path) in additions.items():
+        value["members"].append(
+            {
+                "member_id": member_id,
+                "repository": repository,
+                "commit": "a" * 40,
+                "path": path,
+                "sha256": "b" * 64,
+                "byte_length": 1,
+            }
+        )
+    value["required_member_classes"].extend(
+        ["invocation_receipt", "close_readiness_gate"]
     )
     value["members"][0]["path"] = "wrong/path.py"
     unsigned = dict(value)
