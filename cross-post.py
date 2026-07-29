@@ -22,7 +22,9 @@ from pathlib import Path
 
 
 SITE_URL = "https://rexcoleman.dev"
-RUNTIME_MOUNT = Path("/home/azureuser/research_enforcement_activation/write_integrity/mounts/runtime_mount.py")
+RUNTIME_MOUNT = (
+    Path.home() / ".local/libexec/rea_enforcement/runtime_mount.py"
+)
 
 
 def consume_distribution_effect(*, candidate, destination, effect_callback):

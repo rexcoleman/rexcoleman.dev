@@ -107,6 +107,8 @@ EXPECTED_MEMBERS = {
     "project-runner-f07": ("govML", "templates/build/enforcement/project_run_gates_F07.sh"),
     "project-runner-f08": ("govML", "templates/build/enforcement/project_run_gates_F08.sh"),
     "project-runner-f09": ("govML", "templates/build/enforcement/project_run_gates_F09.sh"),
+    "gate-invocation-receipt": ("govML", "templates/build/enforcement/gate_invocation_receipt.py"),
+    "enforcement-fired-gate": ("govML", "templates/build/enforcement/enforcement_fired_gate.sh"),
     "write-boundary": ("govML", "templates/build/enforcement/write_boundary_gate.sh"),
     "write-readiness": ("govML", "templates/build/enforcement/write_publish_readiness.py"),
     "write-side-arm": ("govML", "templates/build/enforcement/write_side_arm.py"),

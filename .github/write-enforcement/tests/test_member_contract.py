@@ -24,6 +24,7 @@ from member_contract import (  # noqa: E402
 REQUIRED_CLASSES = [
     "boundary_gate", "resolver", "readiness_consumer", "live_emitter_binding",
     "master_runner_binding", "project_runner_binding", "scaffold_installer",
+    "invocation_receipt", "close_readiness_gate",
     "remote_workflow", "remote_ruleset", "claim_policy", "profile_registry",
     "trusted_public_key",
 ]
@@ -93,8 +94,8 @@ def test_contract_contains_exact_accepted_22_route_owned_files():
 
 
 def test_contract_covers_complete_s88_face_a_and_face_b_bundle_sets():
-    assert len(EXPECTED_MEMBERS) == 104
-    assert len(set(EXPECTED_MEMBERS.values())) == 104
+    assert len(EXPECTED_MEMBERS) == 106
+    assert len(set(EXPECTED_MEMBERS.values())) == 106
     assert len(FACE_A_MEMBER_IDS) == 11
     assert len(FACE_B_MEMBER_IDS) == 9
     assert FACE_A_MEMBER_IDS < set(EXPECTED_MEMBERS)

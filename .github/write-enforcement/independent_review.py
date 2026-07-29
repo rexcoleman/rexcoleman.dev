@@ -32,6 +32,8 @@ REQUIRED_MEMBER_CLASSES = {
     "master_runner_binding",
     "project_runner_binding",
     "scaffold_installer",
+    "invocation_receipt",
+    "close_readiness_gate",
     "remote_workflow",
     "remote_ruleset",
     "claim_policy",
@@ -122,8 +124,8 @@ def expected_members() -> dict[str, tuple[str, str]]:
     if match is None:
         raise Refusal("trusted member contract cannot be parsed")
     value = ast.literal_eval(match.group(1))
-    if not isinstance(value, dict) or len(value) != 104:
-        raise Refusal("trusted member contract does not contain exactly 104 members")
+    if not isinstance(value, dict) or len(value) != 106:
+        raise Refusal("trusted member contract does not contain exactly 106 members")
     return value
 
 
@@ -155,7 +157,7 @@ def manifest_contract(raw: bytes) -> dict:
         or re.fullmatch(r"[0-9a-f]{64}", value["normalized_ruleset_sha256"])
         is None
         or not isinstance(value["members"], list)
-        or len(value["members"]) != 104
+        or len(value["members"]) != 106
     ):
         raise Refusal("generation-4 manifest contract differs")
     observed: dict[str, tuple[str, str]] = {}
@@ -185,7 +187,7 @@ def manifest_contract(raw: bytes) -> dict:
     return {
         "manifest_sha256": hashlib.sha256(raw).hexdigest(),
         "manifest_digest": claimed,
-        "member_count": 104,
+        "member_count": 106,
         "member_contract": "EXACT",
     }
 

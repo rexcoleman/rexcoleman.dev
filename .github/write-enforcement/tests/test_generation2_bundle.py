@@ -166,6 +166,7 @@ def test_post_freeze_bound_member_mutation_refuses(monkeypatch, tmp_path):
         "boundary_gate", "resolver", "readiness_consumer",
         "live_emitter_binding", "master_runner_binding",
         "project_runner_binding", "scaffold_installer", "remote_workflow",
+        "invocation_receipt", "close_readiness_gate",
         "remote_ruleset", "claim_policy", "profile_registry",
         "trusted_public_key",
     ]
