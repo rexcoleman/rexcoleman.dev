@@ -17,6 +17,7 @@ import member_contract
 from member_contract import (
     AUTHORITY_GENERATION,
     EXPECTED_MEMBERS,
+    REQUIRED_MEMBER_CLASSES,
     RULESET_ID,
     normalize_ruleset,
 )
@@ -71,14 +72,12 @@ def load_manifest(path: Path) -> dict:
 
 
 def verify_members(manifest: dict, workspace: Path) -> dict[str, bytes]:
-    required_classes = {
-        "boundary_gate", "resolver", "readiness_consumer", "live_emitter_binding",
-        "master_runner_binding", "project_runner_binding", "scaffold_installer",
-        "invocation_receipt", "close_readiness_gate",
-        "remote_workflow", "remote_ruleset", "claim_policy", "profile_registry",
-        "trusted_public_key",
-    }
-    if set(manifest.get("required_member_classes", [])) != required_classes:
+    classes = manifest.get("required_member_classes")
+    if (
+        not isinstance(classes, list)
+        or len(classes) != len(REQUIRED_MEMBER_CLASSES)
+        or set(classes) != set(REQUIRED_MEMBER_CLASSES)
+    ):
         raise IssuerRefusal("BUNDLE_MEMBER_SET_MISMATCH", "member_classes")
     observed = {}
     for row in manifest["members"]:
