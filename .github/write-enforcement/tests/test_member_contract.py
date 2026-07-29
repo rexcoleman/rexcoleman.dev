@@ -94,8 +94,8 @@ def test_contract_contains_exact_accepted_22_route_owned_files():
 
 
 def test_contract_covers_complete_s88_face_a_and_face_b_bundle_sets():
-    assert len(EXPECTED_MEMBERS) == 106
-    assert len(set(EXPECTED_MEMBERS.values())) == 106
+    assert len(EXPECTED_MEMBERS) == 110
+    assert len(set(EXPECTED_MEMBERS.values())) == 110
     assert len(FACE_A_MEMBER_IDS) == 11
     assert len(FACE_B_MEMBER_IDS) == 9
     assert FACE_A_MEMBER_IDS < set(EXPECTED_MEMBERS)
@@ -174,6 +174,43 @@ def test_generation_4_member_contract_covers_lifetime_reach_and_close_gate():
         "close-accounting-gate",
     }
     assert required <= set(EXPECTED_MEMBERS)
+
+
+def test_runner_adapter_complete_fixed_canonical_dependency_closure_is_signed():
+    expected = {
+        "runner-adapter": (
+            "research_enforcement_activation",
+            "write_integrity/runners/runner_adapter.py",
+        ),
+        "authority-library": (
+            "research_enforcement_activation",
+            "write_integrity/authority/authority_lib.py",
+        ),
+        "authority-generated-constants": (
+            "research_enforcement_activation",
+            "write_integrity/authority/generated_constants.py",
+        ),
+        "subject-runner": (
+            "research_enforcement_activation",
+            "write_integrity/runners/subject_runner.py",
+        ),
+        "wea-consumer": (
+            "research_enforcement_activation",
+            "write_integrity/attestation/wea_consumer.py",
+        ),
+        "verify-only-resolver": (
+            "research_enforcement_activation",
+            "write_integrity/attestation/wea_verifier.py",
+        ),
+        "runner-adapter-launcher": (
+            "govML",
+            "templates/build/enforcement/runner_adapter_launcher.py",
+        ),
+    }
+    assert {
+        member_id: EXPECTED_MEMBERS[member_id]
+        for member_id in expected
+    } == expected
 
 
 def test_ruleset_response_refuses_capability_elision():
