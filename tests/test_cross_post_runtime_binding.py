@@ -1,10 +1,9 @@
 import importlib.util
+import json
 import os
 from pathlib import Path
 import subprocess
 import sys
-
-import pytest
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -12,7 +11,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 def load_cross_post():
     spec = importlib.util.spec_from_file_location(
-        "s111_cross_post", ROOT / "cross-post.py"
+        "s123_cross_post", ROOT / "cross-post.py"
     )
     assert spec is not None and spec.loader is not None
     module = importlib.util.module_from_spec(spec)
@@ -20,69 +19,65 @@ def load_cross_post():
     return module
 
 
-def test_cross_post_uses_installed_runtime_and_forwards_exact_bytes(
+def test_cross_post_forwards_one_exact_data_only_bundle(
     tmp_path, monkeypatch
 ):
     module = load_cross_post()
-    runtime = tmp_path / "runtime_mount.py"
-    runtime.write_text(
-        "def consume_effect(**kwargs):\n"
-        "    return kwargs\n",
+    post = tmp_path / "exact-post.md"
+    post.write_text(
+        "---\ntitle: Exact\ntags: [research]\n---\n\n"
+        "## Result\n\nThe bounded result reached 42% in this sample.\n",
         encoding="utf-8",
     )
-    monkeypatch.setattr(module, "RUNTIME_MOUNT", runtime)
-    monkeypatch.setenv("REA_WRITE_INTEGRITY_RUN_ID", "s111-positive")
-    callback = lambda exact: {"sha": len(exact)}
-
-    result = module.consume_distribution_effect(
-        candidate=b"exact candidate",
-        destination="distribution://fixture",
-        effect_callback=callback,
+    captured = []
+    monkeypatch.setattr(
+        module,
+        "consume_exact_bundle",
+        lambda **kwargs: captured.append(kwargs) or {"verdict": "EFFECT_COMMITTED"},
     )
+    monkeypatch.setattr(sys, "argv", ["cross-post.py", str(post)])
 
-    assert result["route_id"] == "DST-02"
-    assert result["surface"] == "distribution"
-    assert result["candidate"] == b"exact candidate"
-    assert result["run_id"] == "s111-positive:cross-post"
-    assert result["effect_callback"] is callback
+    assert module.main() == 0
+    assert len(captured) == 1
+    call = captured[0]
+    assert call["route_id"] == "DST-02"
+    decoded = json.loads(call["candidate"])
+    assert {
+        row["path"]
+        for row in decoded["members"]
+        if not row["path"].startswith(".rea/")
+    } == {
+        "cross-posts/exact-post_devto.md",
+        "cross-posts/exact-post_linkedin.txt",
+        "cross-posts/exact-post_reddit.md",
+    }
+    assert "effect_callback" not in call
 
 
-def test_cross_post_refuses_before_callback_when_installed_runtime_missing(
-    tmp_path, monkeypatch
-):
+def test_production_binding_uses_installed_verify_only_provider():
     module = load_cross_post()
-    missing = tmp_path / "missing-runtime.py"
-    monkeypatch.setattr(module, "RUNTIME_MOUNT", missing)
-    reached = []
-
-    with pytest.raises(FileNotFoundError):
-        module.consume_distribution_effect(
-            candidate=b"blocked",
-            destination="distribution://fixture",
-            effect_callback=lambda exact: reached.append(exact),
-        )
-
-    assert reached == []
+    assert module.consume_exact_bundle.__module__ == "rex_hybrid_mount"
+    control = (ROOT / "scripts/rex_hybrid_mount.py").read_text()
+    assert "research_enforcement_activation" not in control
+    assert "INSTALLED_VERIFY_ONLY_PROVIDER" in control
+    assert "effect_callback" not in control
 
 
-def test_production_binding_is_installed_not_checkout():
-    module = load_cross_post()
-    assert module.RUNTIME_MOUNT == (
-        Path.home() / ".local/libexec/rea_enforcement/runtime_mount.py"
-    )
-    assert "research_enforcement_activation" not in str(module.RUNTIME_MOUNT)
-
-
-def test_installed_runtime_follows_disposable_home(tmp_path):
+def test_installed_provider_follows_disposable_home(tmp_path):
     program = (
-        "import importlib.util,sys;"
-        "s=importlib.util.spec_from_file_location('isolated_cross',sys.argv[1]);"
-        "m=importlib.util.module_from_spec(s);"
-        "s.loader.exec_module(m);"
-        "print(m.RUNTIME_MOUNT)"
+        "import sys;"
+        "sys.path.insert(0,sys.argv[1]);"
+        "import rex_hybrid_mount as m;"
+        "print(m.INSTALLED_VERIFY_ONLY_PROVIDER)"
     )
     completed = subprocess.run(
-        [sys.executable, "-I", "-c", program, str(ROOT / "cross-post.py")],
+        [
+            sys.executable,
+            "-I",
+            "-c",
+            program,
+            str(ROOT / "scripts"),
+        ],
         capture_output=True,
         text=True,
         check=False,
@@ -94,5 +89,6 @@ def test_installed_runtime_follows_disposable_home(tmp_path):
     )
     assert completed.returncode == 0, completed.stderr
     assert completed.stdout.strip() == str(
-        tmp_path / ".local/libexec/rea_enforcement/runtime_mount.py"
+        tmp_path
+        / ".local/libexec/rea_enforcement/hybrid_capability_provider"
     )

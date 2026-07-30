@@ -94,6 +94,19 @@ fi
 echo "Source:  ${DRAFT_FILE}"
 echo "Target:  ${CONTENT_DIR}/${POST_SLUG}.md"
 
+CURRENT_BRANCH="$(git -C "$SITE_DIR" branch --show-current)"
+case "$CURRENT_BRANCH" in
+    main|master|"")
+        echo "Error: publication must start on a named non-main PR branch."
+        exit 1
+        ;;
+    codex/*|feature/*|fix/*) ;;
+    *)
+        echo "Error: unsupported PR branch '${CURRENT_BRANCH}'."
+        exit 1
+        ;;
+esac
+
 if [[ ! -f "$VALIDATE_CONTENT" ]]; then
     echo "Error: content validator not found at ${VALIDATE_CONTENT}."
     exit 1
@@ -207,20 +220,25 @@ fi
 
 # The Hugo destination is unreachable until the exact final bytes above are
 # admitted and their one-attempt authorization is consumed.
-python3 "$SITE_DIR/scripts/blog_publish_mount.py" "$FINAL_FILE" "$DEST_FILE"
+MOUNT_RECEIPT="$(
+    python3 "$SITE_DIR/scripts/blog_publish_mount.py" \
+        "$FINAL_FILE" "$DEST_FILE" --image-source "$IMG_SRC"
+)"
+ADMISSION_RELATIVE="$(
+    python3 -c 'import json,sys; value=json.loads(sys.argv[1]); print(next(row["path"] for row in value["target"]["members"] if row["path"].startswith(".rea/c3/hybrid-subject-manifests/")))' \
+        "$MOUNT_RECEIPT"
+)"
+echo "BLG-08 exact bundle and deterministic subject manifest committed: ${ADMISSION_RELATIVE}"
 
 if [[ "${REA_WRITE_INTEGRITY_PRE_EXTERNAL_ONLY:-0}" == "1" ]]; then
     echo "BLG-08 local Hugo effect committed; PRE_EXTERNAL_BOUNDARY"
     exit 0
 fi
 
-# Images are ancillary to the already-authorized post effect. They cannot cause
-# the post copy to precede final-byte authorization.
-if [[ -d "$IMG_SRC" ]] && [[ -n "$(ls -A "$IMG_SRC" 2>/dev/null)" ]]; then
-    mkdir -p "$IMG_DEST"
-    cp -r "${IMG_SRC}/"* "$IMG_DEST/"
+# Images were members of the same exact BLG-08 bundle as the post.
+if [[ -d "$IMG_DEST" ]] && [[ -n "$(ls -A "$IMG_DEST" 2>/dev/null)" ]]; then
     IMG_COUNT=$(find "$IMG_DEST" -type f | wc -l)
-    echo "Copied ${IMG_COUNT} image(s) to ${IMG_DEST}/"
+    echo "Committed ${IMG_COUNT} exact image member(s) to ${IMG_DEST}/"
 else
     echo "No images found at ${IMG_SRC}/ — skipping."
 fi
@@ -256,6 +274,7 @@ echo ""
 cd "$SITE_DIR"
 git add "$DEST_FILE"
 [[ -d "$IMG_DEST" ]] && git add "$IMG_DEST" 2>/dev/null || true
+git add "$SITE_DIR/$ADMISSION_RELATIVE"
 
 COMMIT_MSG="Publish: ${POST_SLUG}"
 if $DRAFT; then
@@ -263,10 +282,12 @@ if $DRAFT; then
 fi
 
 git commit -m "$COMMIT_MSG"
-git push origin main
+python3 "$SITE_DIR/scripts/rex_release.py" push
 
 echo ""
-echo "Published! Post will be live after GitHub Actions deploy completes."
+echo "PRE_MAIN_BOUNDARY: exact PR branch commit pushed."
+echo "Open a pull request to protected main; one distinct approval is required."
+echo "Publication and deployment are not established until protected merge and BLG-10."
 echo "  Post: ${DEST_FILE}"
 [[ -d "$IMG_DEST" ]] && echo "  Images: ${IMG_DEST}/"
 echo "  URL:  https://rexcoleman.dev/posts/${POST_SLUG}/"

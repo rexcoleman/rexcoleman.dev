@@ -12,33 +12,21 @@ Output:
 """
 
 import argparse
-import importlib.util
-import os
 import re
 import sys
 import textwrap
-import uuid
 from pathlib import Path
 
-
-SITE_URL = "https://rexcoleman.dev"
-RUNTIME_MOUNT = (
-    Path.home() / ".local/libexec/rea_enforcement/runtime_mount.py"
+sys.path.insert(0, str(Path(__file__).resolve().parent / "scripts"))
+from rex_hybrid_mount import (
+    RexHybridRefusal,
+    build_bundle,
+    bundle_plan,
+    bundle_target,
+    consume_exact_bundle,
 )
 
-
-def consume_distribution_effect(*, candidate, destination, effect_callback):
-    spec = importlib.util.spec_from_file_location("rea_runtime_mount", RUNTIME_MOUNT)
-    if spec is None or spec.loader is None:
-        raise RuntimeError(f"REFUSE(CONSUMER_BINDING_MISSING): {RUNTIME_MOUNT}")
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    run_id = os.environ.get("REA_WRITE_INTEGRITY_RUN_ID") or f"dst-02-{uuid.uuid4().hex}"
-    return module.consume_effect(
-        route_id="DST-02", surface="distribution", candidate=candidate,
-        destination=destination, requested_effect="write",
-        run_id=f"{run_id}:cross-post", effect_callback=effect_callback,
-    )
+SITE_URL = "https://rexcoleman.dev"
 
 
 def strip_front_matter(text: str) -> tuple[dict, str]:
@@ -249,20 +237,22 @@ def main():
     linkedin_path = out_dir / f"{slug}_linkedin.txt"
     reddit_path = out_dir / f"{slug}_reddit.md"
 
-    artifacts = ((devto_path, devto), (linkedin_path, linkedin), (reddit_path, reddit))
-    candidate = b"\n\n".join(text.encode("utf-8") for _, text in artifacts)
-
-    def write_artifacts(_candidate):
-        out_dir.mkdir(exist_ok=True)
-        for path, text in artifacts:
-            path.write_text(text, encoding="utf-8")
-        return {"paths": [str(path) for path, _ in artifacts]}
-
-    consume_distribution_effect(
-        candidate=candidate,
-        destination=f"file://{out_dir.resolve()}/",
-        effect_callback=write_artifacts,
+    artifacts = (
+        (f"cross-posts/{slug}_devto.md", devto.encode("utf-8")),
+        (f"cross-posts/{slug}_linkedin.txt", linkedin.encode("utf-8")),
+        (f"cross-posts/{slug}_reddit.md", reddit.encode("utf-8")),
     )
+    candidate = build_bundle("DST-02", slug, list(artifacts))
+    try:
+        consume_exact_bundle(
+            route_id="DST-02",
+            candidate=candidate,
+            effect_plan=bundle_plan("DST-02", candidate),
+            target=bundle_target("DST-02", candidate),
+        )
+    except RexHybridRefusal as exc:
+        print(str(exc), file=sys.stderr)
+        return exc.raw_exit
 
     print(f"Generated cross-post files in {out_dir}/:")
     print(f"  {devto_path.name:<30} ({len(devto):>5} chars)  — dev.to")
@@ -271,7 +261,8 @@ def main():
 
     if len(linkedin) > 1300:
         print(f"\n  WARNING: LinkedIn version is {len(linkedin)} chars (limit: 1300)")
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())
