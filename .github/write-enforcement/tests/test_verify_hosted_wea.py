@@ -31,6 +31,60 @@ def test_public_artifact_inventory_remains_exact_ten():
     }
 
 
+def public_packet_fixture(tmp_path):
+    issuance = tmp_path / "packet"
+    issuance.mkdir()
+    names = sorted(MODULE.PUBLIC_ARTIFACTS - {"SHA256SUMS"})
+    for name in names:
+        (issuance / name).write_bytes(f"artifact:{name}\n".encode())
+    (issuance / "SHA256SUMS").write_text("".join(
+        f"{MODULE.digest((issuance / name).read_bytes())}  {name}\n"
+        for name in names
+    ), encoding="ascii")
+    return issuance
+
+
+def test_public_checksum_closure_verifies_all_nine_payload_files(tmp_path):
+    issuance = public_packet_fixture(tmp_path)
+    observed = MODULE.verify_public_checksums(issuance)
+    assert set(observed) == MODULE.PUBLIC_ARTIFACTS - {"SHA256SUMS"}
+
+
+@pytest.mark.parametrize("name", sorted(MODULE.PUBLIC_ARTIFACTS - {"SHA256SUMS"}))
+def test_public_checksum_closure_refuses_each_changed_artifact(tmp_path, name):
+    issuance = public_packet_fixture(tmp_path)
+    (issuance / name).write_bytes(b"changed-after-checksum\n")
+    with pytest.raises(MODULE.HostedWEARefusal) as captured:
+        MODULE.verify_public_checksums(issuance)
+    assert captured.value.reason_code == "WEA_WRONG_BUNDLE"
+    assert captured.value.detail == f"sha256sums:{name}"
+
+
+@pytest.mark.parametrize("artifact_name,member_id", [
+    ("claim_registry.json", "claim-registry"),
+    ("claim_policy.json", "claim-policy"),
+    ("hybrid_capability_provider", "hybrid-capability-provider"),
+    ("runtime_mount.py", "route-runtime-mount"),
+])
+def test_hosted_verifier_refuses_carried_member_copy_drift(
+        tmp_path, artifact_name, member_id):
+    issuance = public_packet_fixture(tmp_path)
+    loaded = {
+        "claim-registry": (issuance / "claim_registry.json").read_bytes(),
+        "claim-policy": (issuance / "claim_policy.json").read_bytes(),
+        "hybrid-capability-provider": (
+            issuance / "hybrid_capability_provider"
+        ).read_bytes(),
+        "route-runtime-mount": (issuance / "runtime_mount.py").read_bytes(),
+    }
+    MODULE.verify_carried_member_copies(issuance, loaded)
+    loaded[member_id] = b"different-signed-member-bytes\n"
+    with pytest.raises(MODULE.HostedWEARefusal) as captured:
+        MODULE.verify_carried_member_copies(issuance, loaded)
+    assert captured.value.reason_code == "WEA_WRONG_BUNDLE"
+    assert captured.value.detail == f"carried_member:{artifact_name}"
+
+
 @pytest.mark.parametrize("mode,reason,readable", [
     ("deleted", "WEA_MISSING", False),
     ("expired", "WEA_EXPIRED", True),

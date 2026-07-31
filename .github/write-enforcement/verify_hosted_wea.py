@@ -7,6 +7,7 @@ import argparse
 import base64
 import hashlib
 import json
+import re
 import subprocess
 import tempfile
 from datetime import datetime, timezone
@@ -55,6 +56,46 @@ def load(path: Path) -> tuple[bytes, dict]:
     if not isinstance(value, dict):
         raise ValueError(f"not object: {path}")
     return raw, value
+
+
+def verify_public_checksums(issuance: Path) -> dict[str, str]:
+    """Verify the closed exact-ten public packet before semantic inspection."""
+    expected_names = PUBLIC_ARTIFACTS - {"SHA256SUMS"}
+    raw = (issuance / "SHA256SUMS").read_bytes()
+    try:
+        text = raw.decode("ascii")
+    except UnicodeDecodeError:
+        raise HostedWEARefusal("WEA_CORRUPT", "sha256sums_non_ascii") from None
+    if not text.endswith("\n") or "\r" in text:
+        raise HostedWEARefusal("WEA_CORRUPT", "sha256sums_shape")
+    observed: dict[str, str] = {}
+    for line in text.splitlines():
+        match = re.fullmatch(r"([0-9a-f]{64})  ([A-Za-z0-9_.-]+)", line)
+        if match is None or match.group(2) in observed:
+            raise HostedWEARefusal("WEA_CORRUPT", "sha256sums_shape")
+        observed[match.group(2)] = match.group(1)
+    if set(observed) != expected_names:
+        raise HostedWEARefusal("WEA_CORRUPT", "sha256sums_member_set")
+    for name, claimed in observed.items():
+        if digest((issuance / name).read_bytes()) != claimed:
+            raise HostedWEARefusal("WEA_WRONG_BUNDLE", f"sha256sums:{name}")
+    return observed
+
+
+def verify_carried_member_copies(
+    issuance: Path, loaded: dict[str, bytes]
+) -> None:
+    carried = {
+        "claim_registry.json": "claim-registry",
+        "claim_policy.json": "claim-policy",
+        "hybrid_capability_provider": "hybrid-capability-provider",
+        "runtime_mount.py": "route-runtime-mount",
+    }
+    for artifact_name, member_id in carried.items():
+        if (issuance / artifact_name).read_bytes() != loaded[member_id]:
+            raise HostedWEARefusal(
+                "WEA_WRONG_BUNDLE", f"carried_member:{artifact_name}"
+            )
 
 
 def verify_signature(public: Path, signed_digest: str, signature_b64: str) -> None:
@@ -149,6 +190,7 @@ def verify(args: argparse.Namespace) -> dict:
     }
     if {path.name for path in args.issuance.iterdir() if path.is_file()} != PUBLIC_ARTIFACTS:
         raise HostedWEARefusal("WEA_CORRUPT", "public_artifact_set")
+    checksum_inventory = verify_public_checksums(args.issuance)
     wea_raw, wea = load(args.issuance / "write_enforcement_attestation.json")
     manifest_raw, manifest = load(args.issuance / "enforcement_bundle_manifest.json")
     _, receipt = load(args.issuance / "issuance_receipt.json")
@@ -185,6 +227,7 @@ def verify(args: argparse.Namespace) -> dict:
     }
     if observed_members != EXPECTED_MEMBERS or len(loaded) != len(EXPECTED_MEMBERS):
         raise HostedWEARefusal("WEA_WRONG_BUNDLE", "member_set")
+    verify_carried_member_copies(args.issuance, loaded)
 
     _, hybrid_authority = load(args.issuance / "hybrid_capability_authority.json")
     hybrid_payload = verify_envelope(public, hybrid_authority, "hybrid_authority")
@@ -269,6 +312,8 @@ def verify(args: argparse.Namespace) -> dict:
         "workflow_run_id": receipt["workflow_run_id"],
         "write_boundary_policy_sha256": expected_policy_digest,
         "write_boundary_route_count": len(expected_route_bindings),
+        "public_artifact_count": len(checksum_inventory) + 1,
+        "public_checksums_verified": True,
     }
     return report
 
