@@ -19,7 +19,9 @@ from member_contract import (
     EXPECTED_MEMBERS,
     REQUIRED_MEMBER_CLASSES,
     RULESET_ID,
+    derive_write_boundary_route_surface_bindings,
     normalize_ruleset,
+    write_boundary_policy_digest,
 )
 
 ISSUER = "https://github.com/rexcoleman/rexcoleman.dev/actions/workflows/issue-write-enforcement-attestation.yml"
@@ -248,21 +250,16 @@ def main() -> int:
     runtime_path.write_bytes(loaded["route-runtime-mount"])
     provider_path.chmod(0o755)
     runtime_path.chmod(0o755)
-    route_inventory = json.loads(loaded["route-inventory"])
-    route_rows = route_inventory.get("routes", [])
-    route_surface_bindings = {
-        row["id"]: row["surface"]
-        for row in route_rows
-        if isinstance(row, dict)
-        and isinstance(row.get("id"), str)
-        and isinstance(row.get("surface"), str)
-    }
-    if (
-        not isinstance(route_rows, list)
-        or not route_surface_bindings
-        or len(route_surface_bindings) != len(route_rows)
-    ):
-        raise IssuerRefusal("ROUTE_INVENTORY_INVALID", "no_route_bindings")
+    try:
+        route_surface_bindings = derive_write_boundary_route_surface_bindings(
+            loaded["write-boundary-row-registry"],
+            loaded["write-boundary-seam-registry"],
+        )
+        boundary_policy_sha256 = write_boundary_policy_digest(loaded)
+    except (KeyError, TypeError, ValueError, json.JSONDecodeError) as exc:
+        raise IssuerRefusal(
+            "WRITE_BOUNDARY_POLICY_INVALID", type(exc).__name__
+        ) from None
     hybrid_payload = {
         "schema_version": "rea.write.hybrid-capability-authority.v1",
         "purpose": "VERIFY_ONLY_CURRENT_REGISTRY",
@@ -274,6 +271,7 @@ def main() -> int:
         "claim_policy_sha256": digest(policy_path.read_bytes()),
         "provider_sha256": digest(provider_path.read_bytes()),
         "runtime_mount_sha256": digest(runtime_path.read_bytes()),
+        "write_boundary_policy_sha256": boundary_policy_sha256,
         "route_surface_bindings": route_surface_bindings,
         "issued_at": wea["issued_at"],
         "expires_at": wea["expires_at"],

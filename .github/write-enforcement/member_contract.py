@@ -1,5 +1,7 @@
 """Immutable generation-4 member and ruleset contract required before signing."""
 
+import hashlib
+import json
 import re
 
 
@@ -25,6 +27,142 @@ REQUIRED_MEMBER_CLASSES = (
     "profile_registry",
     "trusted_public_key",
 )
+
+WRITE_BOUNDARY_POLICY_MEMBERS = (
+    ("write-boundary-engine", "write_integrity/write_boundary/boundary_engine.py"),
+    ("write-boundary-trusted-admission", "write_integrity/write_boundary/trusted_admission.py"),
+    ("write-boundary-row-registry", "write_integrity/write_boundary/row_registry.json"),
+    ("write-boundary-seam-registry", "write_integrity/write_boundary/seam_registry.json"),
+    ("write-boundary-transform-registry", "write_integrity/write_boundary/transform_registry.json"),
+    ("write-boundary-request-schema", "write_integrity/write_boundary/schemas/request.schema.json"),
+    ("write-boundary-parent-admission-schema", "write_integrity/write_boundary/schemas/parent_admission.schema.json"),
+    ("write-boundary-receipt-schema", "write_integrity/write_boundary/schemas/receipt.schema.json"),
+    ("write-boundary-ledger-schema", "write_integrity/write_boundary/schemas/ledger.schema.json"),
+)
+WRITE_BOUNDARY_SURFACES = frozenset({"report", "blog", "publication", "distribution"})
+WRITE_BOUNDARY_CANONICAL_ACTOR_COUNT = 29
+WRITE_BOUNDARY_SEAM_COUNT = 10
+WRITE_BOUNDARY_ROW_COUNT = 44
+WRITE_BOUNDARY_ALIASES = {"RPT-01A": "RPT-01"}
+
+
+def canonical(value: object) -> bytes:
+    return json.dumps(
+        value, sort_keys=True, separators=(",", ":"), ensure_ascii=False
+    ).encode()
+
+
+def digest(raw: bytes) -> str:
+    return hashlib.sha256(raw).hexdigest()
+
+
+def write_boundary_policy_digest(loaded: dict[str, bytes]) -> str:
+    """Hash only the nine already-verified committed policy member bytes."""
+    hashes = {}
+    for member_id, relative in WRITE_BOUNDARY_POLICY_MEMBERS:
+        raw = loaded.get(member_id)
+        if not isinstance(raw, bytes):
+            raise ValueError(f"write-boundary policy member unavailable: {member_id}")
+        hashes[relative] = digest(raw)
+    return digest(canonical(hashes))
+
+
+def derive_write_boundary_route_surface_bindings(
+    row_registry_raw: bytes, seam_registry_raw: bytes
+) -> dict[str, str | list[str]]:
+    """Derive the closed runtime route/surface map from verified registry bytes."""
+    row_registry = json.loads(row_registry_raw)
+    seam_registry = json.loads(seam_registry_raw)
+    if not isinstance(row_registry, dict) or not isinstance(seam_registry, dict):
+        raise ValueError("write-boundary registry shape")
+    population = row_registry.get("population")
+    actors = row_registry.get("canonical_actor_ids")
+    aliases = row_registry.get("aliases")
+    rows = row_registry.get("rows")
+    seams = seam_registry.get("seams")
+    if (
+        row_registry.get("schema_version") != "rea.write-boundary.row-registry.v1"
+        or seam_registry.get("schema_version") != "rea.write-boundary.seam-registry.v1"
+        or population != {
+            "first_path_id": "F22", "last_path_id": "F65", "expected_count": 44
+        }
+        or aliases != WRITE_BOUNDARY_ALIASES
+        or not isinstance(actors, list)
+        or len(actors) != WRITE_BOUNDARY_CANONICAL_ACTOR_COUNT
+        or len(set(actors)) != len(actors)
+        or "RPT-01A" in actors
+        or not all(isinstance(actor, str) and actor for actor in actors)
+        or not isinstance(rows, list)
+        or len(rows) != WRITE_BOUNDARY_ROW_COUNT
+        or not isinstance(seams, list)
+        or len(seams) != WRITE_BOUNDARY_SEAM_COUNT
+    ):
+        raise ValueError("write-boundary registry closure")
+
+    expected_paths = {f"F{number}" for number in range(22, 66)}
+    observed_paths: set[str] = set()
+    actor_surfaces = {actor: set() for actor in actors}
+    actorless_paths: set[str] = set()
+    for row in rows:
+        if not isinstance(row, dict):
+            raise ValueError("write-boundary row shape")
+        path_id = row.get("path_id")
+        surface = row.get("surface")
+        row_actors = row.get("actor_ids")
+        if (
+            path_id not in expected_paths
+            or path_id in observed_paths
+            or surface not in WRITE_BOUNDARY_SURFACES
+            or not isinstance(row_actors, list)
+            or len(row_actors) != len(set(row_actors))
+            or any(actor not in actor_surfaces for actor in row_actors)
+        ):
+            raise ValueError("write-boundary row closure")
+        observed_paths.add(path_id)
+        if row_actors:
+            for actor in row_actors:
+                actor_surfaces[actor].add(surface)
+        else:
+            actorless_paths.add(path_id)
+    if observed_paths != expected_paths or any(not surfaces for surfaces in actor_surfaces.values()):
+        raise ValueError("write-boundary row population")
+
+    seam_surfaces: dict[str, set[str]] = {}
+    seam_paths: set[str] = set()
+    row_surfaces = {row["path_id"]: row["surface"] for row in rows}
+    for seam in seams:
+        if not isinstance(seam, dict):
+            raise ValueError("write-boundary seam shape")
+        path_id = seam.get("path_id")
+        seam_id = seam.get("seam_id")
+        if (
+            path_id not in actorless_paths
+            or path_id in seam_paths
+            or not isinstance(seam_id, str)
+            or not seam_id
+            or seam_id in seam_surfaces
+        ):
+            raise ValueError("write-boundary seam closure")
+        seam_paths.add(path_id)
+        seam_surfaces[seam_id] = {row_surfaces[path_id]}
+    if seam_paths != actorless_paths:
+        raise ValueError("write-boundary seam population")
+
+    bindings: dict[str, str | list[str]] = {}
+    for route, surfaces in {
+        **actor_surfaces,
+        **{f"SEAM:{seam}": value for seam, value in seam_surfaces.items()},
+    }.items():
+        ordered = sorted(surfaces)
+        bindings[route] = ordered[0] if len(ordered) == 1 else ordered
+    if (
+        len(bindings) != WRITE_BOUNDARY_CANONICAL_ACTOR_COUNT + WRITE_BOUNDARY_SEAM_COUNT
+        or "RPT-01A" in bindings
+        or bindings.get("PUB-04") != ["publication", "report"]
+        or bindings.get("DST-02") != "blog"
+    ):
+        raise ValueError("write-boundary route closure")
+    return bindings
 
 
 def generation_tag(commit: str) -> str:
@@ -87,6 +225,15 @@ EXPECTED_MEMBERS = {
     "atomic-consumer": ("research_enforcement_activation", "write_integrity/consumer/atomic_consumer.py"),
     "hybrid-capability-provider": ("research_enforcement_activation", "write_integrity/hybrid/capability_provider.py"),
     "route-runtime-mount": ("research_enforcement_activation", "write_integrity/mounts/runtime_mount.py"),
+    "write-boundary-engine": ("research_enforcement_activation", "write_integrity/write_boundary/boundary_engine.py"),
+    "write-boundary-trusted-admission": ("research_enforcement_activation", "write_integrity/write_boundary/trusted_admission.py"),
+    "write-boundary-row-registry": ("research_enforcement_activation", "write_integrity/write_boundary/row_registry.json"),
+    "write-boundary-seam-registry": ("research_enforcement_activation", "write_integrity/write_boundary/seam_registry.json"),
+    "write-boundary-transform-registry": ("research_enforcement_activation", "write_integrity/write_boundary/transform_registry.json"),
+    "write-boundary-request-schema": ("research_enforcement_activation", "write_integrity/write_boundary/schemas/request.schema.json"),
+    "write-boundary-parent-admission-schema": ("research_enforcement_activation", "write_integrity/write_boundary/schemas/parent_admission.schema.json"),
+    "write-boundary-receipt-schema": ("research_enforcement_activation", "write_integrity/write_boundary/schemas/receipt.schema.json"),
+    "write-boundary-ledger-schema": ("research_enforcement_activation", "write_integrity/write_boundary/schemas/ledger.schema.json"),
     "wea-consumer": ("research_enforcement_activation", "write_integrity/attestation/wea_consumer.py"),
     "subject-runner": ("research_enforcement_activation", "write_integrity/runners/subject_runner.py"),
     "runner-adapter": ("research_enforcement_activation", "write_integrity/runners/runner_adapter.py"),

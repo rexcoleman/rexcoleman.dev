@@ -31,12 +31,23 @@ REQUIRED_CLASSES = set(member_contract.REQUIRED_MEMBER_CLASSES)
 
 
 def test_generation4_contract_registers_all_runtime_consumers_exactly_once():
-    assert len(member_contract.EXPECTED_MEMBERS) == 110
+    assert len(member_contract.EXPECTED_MEMBERS) == 119
     assert {
         key: member_contract.EXPECTED_MEMBERS[key]
         for key in SIGNED_RUNTIME_MEMBERS
     } == SIGNED_RUNTIME_MEMBERS
-    assert len(set(member_contract.EXPECTED_MEMBERS.values())) == 110
+    assert len(set(member_contract.EXPECTED_MEMBERS.values())) == 119
+
+
+def test_successor_contract_registers_exact_nine_write_boundary_policy_members():
+    assert len(member_contract.WRITE_BOUNDARY_POLICY_MEMBERS) == 9
+    assert {
+        member_id: member_contract.EXPECTED_MEMBERS[member_id]
+        for member_id, _path in member_contract.WRITE_BOUNDARY_POLICY_MEMBERS
+    } == {
+        member_id: ("research_enforcement_activation", path)
+        for member_id, path in member_contract.WRITE_BOUNDARY_POLICY_MEMBERS
+    }
 
 
 def test_issuer_refuses_manifest_missing_signed_runtime_consumers(tmp_path):

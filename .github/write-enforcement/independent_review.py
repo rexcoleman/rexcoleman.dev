@@ -24,6 +24,7 @@ SITE_RULESET_ID = 19768000
 SITE_MANIFEST = ".github/write-enforcement/frozen_bundle_manifest.generation-4.json"
 POLICY = "rea-option-a-posthoc-exact-head-v2"
 MEMBER_CONTRACT = Path(__file__).with_name("member_contract.py")
+GENERATION_MEMBER_COUNT = 119
 REQUIRED_MEMBER_CLASSES = {
     "boundary_gate",
     "resolver",
@@ -124,8 +125,11 @@ def expected_members() -> dict[str, tuple[str, str]]:
     if match is None:
         raise Refusal("trusted member contract cannot be parsed")
     value = ast.literal_eval(match.group(1))
-    if not isinstance(value, dict) or len(value) != 106:
-        raise Refusal("trusted member contract does not contain exactly 106 members")
+    if not isinstance(value, dict) or len(value) != GENERATION_MEMBER_COUNT:
+        raise Refusal(
+            "trusted member contract does not contain exactly "
+            f"{GENERATION_MEMBER_COUNT} members"
+        )
     return value
 
 
@@ -157,7 +161,7 @@ def manifest_contract(raw: bytes) -> dict:
         or re.fullmatch(r"[0-9a-f]{64}", value["normalized_ruleset_sha256"])
         is None
         or not isinstance(value["members"], list)
-        or len(value["members"]) != 106
+        or len(value["members"]) != GENERATION_MEMBER_COUNT
     ):
         raise Refusal("generation-4 manifest contract differs")
     observed: dict[str, tuple[str, str]] = {}
@@ -187,7 +191,7 @@ def manifest_contract(raw: bytes) -> dict:
     return {
         "manifest_sha256": hashlib.sha256(raw).hexdigest(),
         "manifest_digest": claimed,
-        "member_count": 106,
+        "member_count": GENERATION_MEMBER_COUNT,
         "member_contract": "EXACT",
     }
 

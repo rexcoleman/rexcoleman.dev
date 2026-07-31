@@ -65,7 +65,7 @@ def state(repo="rexcoleman/rexcoleman.dev"):
         "manifest": {
             "manifest_sha256": value.expected_manifest_sha256,
             "manifest_digest": "d" * 64,
-            "member_count": 106,
+            "member_count": MODULE.GENERATION_MEMBER_COUNT,
             "member_contract": "EXACT",
         },
         "ruleset": {
@@ -145,39 +145,23 @@ def test_pre_convergence_frozen_manifest_is_superseded():
 
 
 def test_manifest_contract_refuses_self_consistent_wrong_member():
-    path = (
-        Path(__file__).parents[1]
-        / "frozen_bundle_manifest.generation-4.json"
-    )
-    value = json.loads(path.read_bytes())
-    additions = {
-        "gate-invocation-receipt": (
-            "govML",
-            "templates/build/enforcement/gate_invocation_receipt.py",
-        ),
-        "enforcement-fired-gate": (
-            "govML",
-            "templates/build/enforcement/enforcement_fired_gate.sh",
-        ),
-    }
-    for member_id, (repository, path) in additions.items():
-        value["members"].append(
+    value = {
+        "schema_version": "rea.write.enforcement-bundle-manifest.v1",
+        "authority_generation": 4,
+        "ruleset_id": 19564990,
+        "normalized_ruleset_sha256": "c" * 64,
+        "required_member_classes": sorted(MODULE.REQUIRED_MEMBER_CLASSES),
+        "members": [
             {
-                "member_id": member_id,
-                "repository": repository,
-                "commit": "a" * 40,
-                "path": path,
-                "sha256": "b" * 64,
-                "byte_length": 1,
+                "member_id": member_id, "repository": repository,
+                "commit": "a" * 40, "path": path,
+                "sha256": "b" * 64, "byte_length": 1,
             }
-        )
-    value["required_member_classes"].extend(
-        ["invocation_receipt", "close_readiness_gate"]
-    )
+            for member_id, (repository, path) in MODULE.expected_members().items()
+        ],
+    }
     value["members"][0]["path"] = "wrong/path.py"
-    unsigned = dict(value)
-    unsigned.pop("manifest_digest")
-    value["manifest_digest"] = MODULE.canonical_digest(unsigned)
+    value["manifest_digest"] = MODULE.canonical_digest(value)
     with pytest.raises(MODULE.Refusal, match="member contract"):
         MODULE.manifest_contract(
             json.dumps(value, sort_keys=True, separators=(",", ":")).encode()
