@@ -44,6 +44,10 @@ WRITE_BOUNDARY_CANONICAL_ACTOR_COUNT = 29
 WRITE_BOUNDARY_SEAM_COUNT = 10
 WRITE_BOUNDARY_ROW_COUNT = 44
 WRITE_BOUNDARY_ALIASES = {"RPT-01A": "RPT-01"}
+SIGNED_SCAFFOLD_MEMBER_IDS = frozenset({
+    "scaffold-hybrid-route-consumer",
+    "scaffold-hybrid-install-manifest",
+})
 
 
 def canonical(value: object) -> bytes:
@@ -265,6 +269,8 @@ EXPECTED_MEMBERS = {
     "trusted-public-key": ("govML", "templates/build/enforcement/trusted_wea_public.pem"),
     "scaffold-verifier": ("govML", "templates/build/enforcement/write_enforcement_state.py"),
     "scaffold-installer": ("govML", "templates/build/enforcement/install_write_enforcement.py"),
+    "scaffold-hybrid-route-consumer": ("govML", "templates/build/enforcement/hybrid_route_consumer.py"),
+    "scaffold-hybrid-install-manifest": ("govML", "templates/build/enforcement/hybrid_install_manifest.json"),
     "scaffold-transform": ("govML", "templates/build/enforcement/write_scaffold_transform.py"),
     "scaffold-atomic-runtime": ("govML", "templates/build/enforcement/scaffold_atomic_runtime.py"),
     "govml-init": ("govML", "scripts/init_project.sh"),

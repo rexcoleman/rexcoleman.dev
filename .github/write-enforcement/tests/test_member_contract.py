@@ -16,6 +16,7 @@ from member_contract import (  # noqa: E402
     FACE_B_ISOLATED_FIXTURE_MEMBER_IDS,
     GENERATION_MANIFEST_NAME,
     ROUTE_OWNED_MEMBER_IDS,
+    SIGNED_SCAFFOLD_MEMBER_IDS,
     S88_BUNDLE_MEMBER_IDS,
     WRITE_BOUNDARY_POLICY_MEMBERS,
     derive_write_boundary_route_surface_bindings,
@@ -98,8 +99,8 @@ def test_contract_contains_exact_accepted_22_route_owned_files():
 
 
 def test_contract_covers_complete_s88_face_a_and_face_b_bundle_sets():
-    assert len(EXPECTED_MEMBERS) == 119
-    assert len(set(EXPECTED_MEMBERS.values())) == 119
+    assert len(EXPECTED_MEMBERS) == 121
+    assert len(set(EXPECTED_MEMBERS.values())) == 121
     assert len(FACE_A_MEMBER_IDS) == 11
     assert len(FACE_B_MEMBER_IDS) == 9
     assert FACE_A_MEMBER_IDS < set(EXPECTED_MEMBERS)
@@ -116,6 +117,25 @@ def test_contract_covers_complete_s88_face_a_and_face_b_bundle_sets():
             "coverage-registry-library", "close-accounting-gate",
         }
     )
+
+
+def test_signed_scaffold_root_adds_exactly_two_bound_members():
+    expected = {
+        "scaffold-hybrid-route-consumer": (
+            "govML",
+            "templates/build/enforcement/hybrid_route_consumer.py",
+        ),
+        "scaffold-hybrid-install-manifest": (
+            "govML",
+            "templates/build/enforcement/hybrid_install_manifest.json",
+        ),
+    }
+    assert SIGNED_SCAFFOLD_MEMBER_IDS == set(expected)
+    assert {
+        member_id: EXPECTED_MEMBERS[member_id]
+        for member_id in SIGNED_SCAFFOLD_MEMBER_IDS
+    } == expected
+    assert len(EXPECTED_MEMBERS) - len(SIGNED_SCAFFOLD_MEMBER_IDS) == 119
 
 
 def test_face_b_fixture_is_labeled_isolated_not_protected_production():
