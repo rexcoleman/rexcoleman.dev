@@ -1,3 +1,4 @@
+import json
 import sys
 from pathlib import Path
 
@@ -16,8 +17,11 @@ from member_contract import (  # noqa: E402
     GENERATION_MANIFEST_NAME,
     ROUTE_OWNED_MEMBER_IDS,
     S88_BUNDLE_MEMBER_IDS,
+    WRITE_BOUNDARY_POLICY_MEMBERS,
+    derive_write_boundary_route_surface_bindings,
     generation_tag,
     normalize_ruleset,
+    write_boundary_policy_digest,
 )
 
 
@@ -94,8 +98,8 @@ def test_contract_contains_exact_accepted_22_route_owned_files():
 
 
 def test_contract_covers_complete_s88_face_a_and_face_b_bundle_sets():
-    assert len(EXPECTED_MEMBERS) == 110
-    assert len(set(EXPECTED_MEMBERS.values())) == 110
+    assert len(EXPECTED_MEMBERS) == 119
+    assert len(set(EXPECTED_MEMBERS.values())) == 119
     assert len(FACE_A_MEMBER_IDS) == 11
     assert len(FACE_B_MEMBER_IDS) == 9
     assert FACE_A_MEMBER_IDS < set(EXPECTED_MEMBERS)
@@ -227,3 +231,124 @@ def test_ruleset_response_refuses_capability_elision():
     del complete["bypass_actors"]
     with pytest.raises(ValueError, match="capability-gated"):
         normalize_ruleset(complete)
+
+
+def boundary_registry_fixture():
+    actors = [
+        "RPT-01", "BLG-01", "BLG-02", "BLG-03", "BLG-04", "BLG-05",
+        "BLG-06", "BLG-07", "BLG-08", "BLG-09", "BLG-10", "PUB-01A",
+        "PUB-01B", "PUB-01C", "PUB-02", "PUB-03", "PUB-04", "DST-01",
+        "DST-02", "DST-03", "DST-04", "DST-05A", "DST-05B", "DST-06",
+        "DST-07", "DST-08", "DST-09", "DST-10", "DST-11",
+    ]
+    seam_paths = {f"F{number}" for number in range(22, 32)}
+    rows = []
+    actor_index = 0
+    for number in range(22, 66):
+        path_id = f"F{number}"
+        if path_id in seam_paths:
+            surface, row_actors = "report", []
+        elif actor_index < len(actors):
+            actor = actors[actor_index]
+            actor_index += 1
+            surface = "blog" if actor == "DST-02" else (
+                "report" if actor == "PUB-04" else "distribution"
+            )
+            row_actors = [actor]
+        else:
+            surface, row_actors = "publication", ["PUB-04"]
+        rows.append({
+            "path_id": path_id, "surface": surface,
+            "operation": f"operation-{path_id}", "actor_ids": row_actors,
+            "coverage": "registered",
+        })
+    row_registry = {
+        "schema_version": "rea.write-boundary.row-registry.v1",
+        "population": {
+            "first_path_id": "F22", "last_path_id": "F65", "expected_count": 44,
+        },
+        "canonical_actor_ids": actors,
+        "aliases": {"RPT-01A": "RPT-01"},
+        "rows": rows,
+    }
+    seam_registry = {
+        "schema_version": "rea.write-boundary.seam-registry.v1",
+        "seams": [
+            {
+                "path_id": path_id, "seam_id": f"seam-{path_id}",
+                "design_section": path_id, "description": path_id,
+            }
+            for path_id in sorted(seam_paths)
+        ],
+    }
+    return (
+        json.dumps(row_registry).encode(), json.dumps(seam_registry).encode()
+    )
+
+
+def test_write_boundary_policy_is_exact_nine_verified_member_closure():
+    assert len(WRITE_BOUNDARY_POLICY_MEMBERS) == 9
+    assert dict(WRITE_BOUNDARY_POLICY_MEMBERS) == {
+        member_id: EXPECTED_MEMBERS[member_id][1]
+        for member_id, _relative in WRITE_BOUNDARY_POLICY_MEMBERS
+    }
+    loaded = {
+        member_id: f"verified-commit-bytes:{member_id}".encode()
+        for member_id, _relative in WRITE_BOUNDARY_POLICY_MEMBERS
+    }
+    baseline = write_boundary_policy_digest(loaded)
+    loaded["unrelated-mutable-workspace-byte"] = b"ignored"
+    assert write_boundary_policy_digest(loaded) == baseline
+    changed = dict(loaded)
+    changed[WRITE_BOUNDARY_POLICY_MEMBERS[0][0]] += b"changed"
+    assert write_boundary_policy_digest(changed) != baseline
+    del changed[WRITE_BOUNDARY_POLICY_MEMBERS[1][0]]
+    with pytest.raises(ValueError, match="policy member unavailable"):
+        write_boundary_policy_digest(changed)
+
+
+@pytest.mark.parametrize(
+    "member_id", [member_id for member_id, _ in WRITE_BOUNDARY_POLICY_MEMBERS]
+)
+def test_each_write_boundary_policy_member_omission_refuses_before_signing(
+        tmp_path, member_id):
+    manifest = complete_manifest()
+    manifest["members"] = [
+        row for row in manifest["members"] if row["member_id"] != member_id
+    ]
+    with pytest.raises(IssuerRefusal) as captured:
+        verify_members(manifest, tmp_path)
+    assert captured.value.reason_code == "BUNDLE_MEMBER_SET_MISMATCH"
+    assert member_id in captured.value.detail
+
+
+def test_route_bindings_are_exact_44_row_29_actor_10_seam_closure():
+    row_raw, seam_raw = boundary_registry_fixture()
+    bindings = derive_write_boundary_route_surface_bindings(row_raw, seam_raw)
+    assert len(bindings) == 39
+    assert "RPT-01A" not in bindings
+    assert bindings["PUB-04"] == ["publication", "report"]
+    assert bindings["DST-02"] == "blog"
+    assert len([route for route in bindings if route.startswith("SEAM:")]) == 10
+
+
+def test_route_bindings_refuse_narrowed_rows_aliases_and_seams():
+    row_raw, seam_raw = boundary_registry_fixture()
+    row_registry = json.loads(row_raw)
+    seam_registry = json.loads(seam_raw)
+    row_registry["rows"].pop()
+    with pytest.raises(ValueError, match="registry closure"):
+        derive_write_boundary_route_surface_bindings(
+            json.dumps(row_registry).encode(), seam_raw
+        )
+    row_registry = json.loads(row_raw)
+    row_registry["aliases"]["RPT-01A"] = "PUB-04"
+    with pytest.raises(ValueError, match="registry closure"):
+        derive_write_boundary_route_surface_bindings(
+            json.dumps(row_registry).encode(), seam_raw
+        )
+    seam_registry["seams"].pop()
+    with pytest.raises(ValueError, match="registry closure"):
+        derive_write_boundary_route_surface_bindings(
+            row_raw, json.dumps(seam_registry).encode()
+        )
