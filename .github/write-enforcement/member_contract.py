@@ -80,6 +80,8 @@ SIGNED_SCAFFOLD_MEMBER_IDS = frozenset({
     "scaffold-report-surface",
     "scaffold-report-auditor-generator",
     "canonical-exact-byte-handoff",
+    "scaffold-report-orchestrator",
+    "scaffold-wea-consumer",
 })
 
 
@@ -340,6 +342,8 @@ EXPECTED_MEMBERS = {
     "scaffold-report-surface": ("govML", "templates/build/enforcement/report_surface.py"),
     "scaffold-report-auditor-generator": ("govML", "scripts/generators/gen_report_auditor.py"),
     "canonical-exact-byte-handoff": ("govML", "templates/build/enforcement/exact_byte_handoff.py"),
+    "scaffold-report-orchestrator": ("govML", "scripts/generators/orchestrate.py"),
+    "scaffold-wea-consumer": ("govML", "templates/build/enforcement/write_enforcement_consumer.py"),
     "scaffold-transform": ("govML", "templates/build/enforcement/write_scaffold_transform.py"),
     "scaffold-atomic-runtime": ("govML", "templates/build/enforcement/scaffold_atomic_runtime.py"),
     "govml-init": ("govML", "scripts/init_project.sh"),

@@ -99,8 +99,8 @@ def test_contract_contains_exact_accepted_22_route_owned_files():
 
 
 def test_contract_covers_complete_s88_face_a_and_face_b_bundle_sets():
-    assert len(EXPECTED_MEMBERS) == 154
-    assert len(set(EXPECTED_MEMBERS.values())) == 154
+    assert len(EXPECTED_MEMBERS) == 156
+    assert len(set(EXPECTED_MEMBERS.values())) == 156
     assert len(FACE_A_MEMBER_IDS) == 11
     assert len(FACE_B_MEMBER_IDS) == 9
     assert FACE_A_MEMBER_IDS < set(EXPECTED_MEMBERS)
@@ -176,13 +176,20 @@ def test_signed_scaffold_installer_closes_all_transitive_comparison_inputs():
         "canonical-exact-byte-handoff": (
             "govML", "templates/build/enforcement/exact_byte_handoff.py",
         ),
+        "scaffold-report-orchestrator": (
+            "govML", "scripts/generators/orchestrate.py",
+        ),
+        "scaffold-wea-consumer": (
+            "govML",
+            "templates/build/enforcement/write_enforcement_consumer.py",
+        ),
     }
     assert SIGNED_SCAFFOLD_MEMBER_IDS == set(expected)
     assert {
         member_id: EXPECTED_MEMBERS[member_id]
         for member_id in SIGNED_SCAFFOLD_MEMBER_IDS
     } == expected
-    assert len(SIGNED_SCAFFOLD_MEMBER_IDS) == 35
+    assert len(SIGNED_SCAFFOLD_MEMBER_IDS) == 37
     assert len(EXPECTED_MEMBERS) - len(SIGNED_SCAFFOLD_MEMBER_IDS) == 119
     assert "scaffold_installer" in REQUIRED_CLASSES
 
