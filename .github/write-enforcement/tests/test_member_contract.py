@@ -99,8 +99,8 @@ def test_contract_contains_exact_accepted_22_route_owned_files():
 
 
 def test_contract_covers_complete_s88_face_a_and_face_b_bundle_sets():
-    assert len(EXPECTED_MEMBERS) == 121
-    assert len(set(EXPECTED_MEMBERS.values())) == 121
+    assert len(EXPECTED_MEMBERS) == 139
+    assert len(set(EXPECTED_MEMBERS.values())) == 139
     assert len(FACE_A_MEMBER_IDS) == 11
     assert len(FACE_B_MEMBER_IDS) == 9
     assert FACE_A_MEMBER_IDS < set(EXPECTED_MEMBERS)
@@ -119,7 +119,7 @@ def test_contract_covers_complete_s88_face_a_and_face_b_bundle_sets():
     )
 
 
-def test_signed_scaffold_root_adds_exactly_two_bound_members():
+def test_signed_scaffold_installer_closes_all_transitive_comparison_inputs():
     expected = {
         "scaffold-hybrid-route-consumer": (
             "govML",
@@ -129,13 +129,69 @@ def test_signed_scaffold_root_adds_exactly_two_bound_members():
             "govML",
             "templates/build/enforcement/hybrid_install_manifest.json",
         ),
+        "hybrid-package-init": (
+            "research_enforcement_activation", "write_integrity/hybrid/__init__.py",
+        ),
+        "hybrid-durable-spend": (
+            "research_enforcement_activation", "write_integrity/hybrid/durable_spend.py",
+        ),
+        "hybrid-protocol": (
+            "research_enforcement_activation", "write_integrity/hybrid/protocol.py",
+        ),
+        "hybrid-authorized-mapping-schema": (
+            "research_enforcement_activation", "write_integrity/hybrid/schemas/authorized_mapping.schema.json",
+        ),
+        "hybrid-external-evidence-receipt-schema": (
+            "research_enforcement_activation", "write_integrity/hybrid/schemas/external_evidence_receipt.schema.json",
+        ),
+        "hybrid-claim-lineage-schema": (
+            "research_enforcement_activation", "write_integrity/hybrid/schemas/hybrid_claim_lineage.schema.json",
+        ),
+        "hybrid-project-close-receipt-schema": (
+            "research_enforcement_activation", "write_integrity/hybrid/schemas/project_close_receipt.schema.json",
+        ),
+        "hybrid-revocation-registry-schema": (
+            "research_enforcement_activation", "write_integrity/hybrid/schemas/revocation_registry.schema.json",
+        ),
+        "hybrid-route-neutral-capability-schema": (
+            "research_enforcement_activation", "write_integrity/hybrid/schemas/route_neutral_capability.schema.json",
+        ),
+        "hybrid-trusted-issuer-schema": (
+            "research_enforcement_activation", "write_integrity/hybrid/schemas/trusted_issuer.schema.json",
+        ),
+        "write-boundary-corpus-honest": (
+            "research_enforcement_activation", "write_integrity/write_boundary/corpus/honest.jsonl",
+        ),
+        "write-boundary-corpus-manifest": (
+            "research_enforcement_activation", "write_integrity/write_boundary/corpus/manifest.json",
+        ),
+        "write-boundary-corpus-planted": (
+            "research_enforcement_activation", "write_integrity/write_boundary/corpus/planted.jsonl",
+        ),
+        "write-boundary-protected-receive": (
+            "research_enforcement_activation", "write_integrity/write_boundary/protected_receive.py",
+        ),
+        "write-boundary-row-complete-verifier": (
+            "research_enforcement_activation", "write_integrity/write_boundary/row_complete_verifier.py",
+        ),
+        "scaffold-report-surface": (
+            "govML", "templates/build/enforcement/report_surface.py",
+        ),
+        "scaffold-report-auditor-generator": (
+            "govML", "scripts/generators/gen_report_auditor.py",
+        ),
+        "canonical-exact-byte-handoff": (
+            "govML", "templates/build/enforcement/exact_byte_handoff.py",
+        ),
     }
     assert SIGNED_SCAFFOLD_MEMBER_IDS == set(expected)
     assert {
         member_id: EXPECTED_MEMBERS[member_id]
         for member_id in SIGNED_SCAFFOLD_MEMBER_IDS
     } == expected
+    assert len(SIGNED_SCAFFOLD_MEMBER_IDS) == 20
     assert len(EXPECTED_MEMBERS) - len(SIGNED_SCAFFOLD_MEMBER_IDS) == 119
+    assert "scaffold_installer" in REQUIRED_CLASSES
 
 
 def test_face_b_fixture_is_labeled_isolated_not_protected_production():

@@ -58,6 +58,26 @@ def load(path: Path) -> tuple[bytes, dict]:
     return raw, value
 
 
+def committed_member_bytes(root: Path, member: dict) -> bytes:
+    """Resolve a signed member from its exact Git object, never worktree bytes."""
+    completed = subprocess.run(
+        [
+            "git", "-C", str(root), "show",
+            f"{member['commit']}:{member['path']}",
+        ],
+        check=False,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        timeout=30,
+    )
+    if completed.returncode:
+        raise HostedWEARefusal(
+            "WEA_WRONG_BUNDLE",
+            f"{member['member_id']}:signed_commit_unavailable",
+        )
+    return completed.stdout
+
+
 def verify_public_checksums(issuance: Path) -> dict[str, str]:
     """Verify the closed exact-ten public packet before semantic inspection."""
     expected_names = PUBLIC_ARTIFACTS - {"SHA256SUMS"}
@@ -196,12 +216,6 @@ def verify(args: argparse.Namespace) -> dict:
     _, receipt = load(args.issuance / "issuance_receipt.json")
     public = args.issuance / "trusted_wea_public.pem"
     public_raw = public.read_bytes()
-    pinned = [
-        roots["govML"] / "templates/build/enforcement/trusted_wea_public.pem",
-        roots["newsletter"] / ".github/integrity/wea/trusted_wea_public.pem",
-    ]
-    if any(path.read_bytes() != public_raw for path in pinned):
-        raise HostedWEARefusal("WEA_CORRUPT", "trusted_public_key_mismatch")
     unsigned_manifest = {key: value for key, value in manifest.items() if key != "manifest_digest"}
     if manifest.get("schema_version") != "rea.write.enforcement-bundle-manifest.v1" or digest(canonical(unsigned_manifest)) != manifest.get("manifest_digest"):
         raise HostedWEARefusal("WEA_CORRUPT", "manifest_digest")
@@ -213,11 +227,30 @@ def verify(args: argparse.Namespace) -> dict:
     seen = set()
     loaded: dict[str, bytes] = {}
     for row in members:
+        if not isinstance(row, dict) or set(row) != {
+            "member_id", "repository", "commit", "path", "sha256",
+            "byte_length",
+        }:
+            raise HostedWEARefusal("WEA_CORRUPT", "manifest_member_shape")
         member_id, repository, relative = row["member_id"], row["repository"], row["path"]
-        if member_id in seen or repository not in roots or Path(relative).is_absolute() or ".." in Path(relative).parts:
+        if (
+            not isinstance(member_id, str)
+            or not member_id
+            or member_id in seen
+            or repository not in roots
+            or not lower_hex(row.get("commit"), 40)
+            or not isinstance(relative, str)
+            or not relative
+            or Path(relative).is_absolute()
+            or ".." in Path(relative).parts
+            or not lower_hex(row.get("sha256"), 64)
+            or isinstance(row.get("byte_length"), bool)
+            or not isinstance(row.get("byte_length"), int)
+            or row["byte_length"] < 0
+        ):
             raise HostedWEARefusal("WEA_CORRUPT", "manifest_member_shape")
         seen.add(member_id)
-        payload = (roots[repository] / relative).read_bytes()
+        payload = committed_member_bytes(roots[repository], row)
         if digest(payload) != row["sha256"] or len(payload) != row["byte_length"]:
             raise HostedWEARefusal("WEA_WRONG_BUNDLE", member_id)
         loaded[member_id] = payload
@@ -227,6 +260,11 @@ def verify(args: argparse.Namespace) -> dict:
     }
     if observed_members != EXPECTED_MEMBERS or len(loaded) != len(EXPECTED_MEMBERS):
         raise HostedWEARefusal("WEA_WRONG_BUNDLE", "member_set")
+    if (
+        loaded["trusted-public-key"] != public_raw
+        or loaded["newsletter-trusted-public-key"] != public_raw
+    ):
+        raise HostedWEARefusal("WEA_CORRUPT", "trusted_public_key_mismatch")
     verify_carried_member_copies(args.issuance, loaded)
 
     _, hybrid_authority = load(args.issuance / "hybrid_capability_authority.json")
@@ -236,9 +274,9 @@ def verify(args: argparse.Namespace) -> dict:
             hybrid_payload, loaded, manifest, wea_raw
         )
     )
-    registry = json.loads((roots["research_enforcement_activation"] / "write_integrity/foundation/publishing_capability_profiles.json").read_bytes())
+    registry = json.loads(loaded["profile-registry"])
     scope = [row["profile_id"] for row in registry["profiles"] if row.get("publishes") is True]
-    policy = (roots["research_enforcement_activation"] / "write_integrity/authority/claim_policy.json").read_bytes()
+    policy = loaded["claim-policy"]
     if wea.get("schema_version") == "rea.write.wea.r4-fixture.v1" or wea.get("purpose") == "R4_NEGATIVE_FIXTURE":
         raise HostedWEARefusal("WEA_WRONG_PURPOSE", "R4_NEGATIVE_FIXTURE")
     if wea.get("schema_version") == "rea.write.wea.live.v2":
