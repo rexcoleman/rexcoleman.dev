@@ -99,8 +99,8 @@ def test_contract_contains_exact_accepted_22_route_owned_files():
 
 
 def test_contract_covers_complete_s88_face_a_and_face_b_bundle_sets():
-    assert len(EXPECTED_MEMBERS) == 121
-    assert len(set(EXPECTED_MEMBERS.values())) == 121
+    assert len(EXPECTED_MEMBERS) == 124
+    assert len(set(EXPECTED_MEMBERS.values())) == 124
     assert len(FACE_A_MEMBER_IDS) == 11
     assert len(FACE_B_MEMBER_IDS) == 9
     assert FACE_A_MEMBER_IDS < set(EXPECTED_MEMBERS)
@@ -119,7 +119,7 @@ def test_contract_covers_complete_s88_face_a_and_face_b_bundle_sets():
     )
 
 
-def test_signed_scaffold_root_adds_exactly_two_bound_members():
+def test_signed_scaffold_root_adds_exactly_five_bound_members():
     expected = {
         "scaffold-hybrid-route-consumer": (
             "govML",
@@ -128,6 +128,18 @@ def test_signed_scaffold_root_adds_exactly_two_bound_members():
         "scaffold-hybrid-install-manifest": (
             "govML",
             "templates/build/enforcement/hybrid_install_manifest.json",
+        ),
+        "scaffold-report-surface": (
+            "govML",
+            "templates/build/enforcement/report_surface.py",
+        ),
+        "scaffold-report-auditor-generator": (
+            "govML",
+            "scripts/generators/gen_report_auditor.py",
+        ),
+        "canonical-exact-byte-handoff": (
+            "govML",
+            "templates/build/enforcement/exact_byte_handoff.py",
         ),
     }
     assert SIGNED_SCAFFOLD_MEMBER_IDS == set(expected)

@@ -47,6 +47,9 @@ WRITE_BOUNDARY_ALIASES = {"RPT-01A": "RPT-01"}
 SIGNED_SCAFFOLD_MEMBER_IDS = frozenset({
     "scaffold-hybrid-route-consumer",
     "scaffold-hybrid-install-manifest",
+    "scaffold-report-surface",
+    "scaffold-report-auditor-generator",
+    "canonical-exact-byte-handoff",
 })
 
 
@@ -271,6 +274,9 @@ EXPECTED_MEMBERS = {
     "scaffold-installer": ("govML", "templates/build/enforcement/install_write_enforcement.py"),
     "scaffold-hybrid-route-consumer": ("govML", "templates/build/enforcement/hybrid_route_consumer.py"),
     "scaffold-hybrid-install-manifest": ("govML", "templates/build/enforcement/hybrid_install_manifest.json"),
+    "scaffold-report-surface": ("govML", "templates/build/enforcement/report_surface.py"),
+    "scaffold-report-auditor-generator": ("govML", "scripts/generators/gen_report_auditor.py"),
+    "canonical-exact-byte-handoff": ("govML", "templates/build/enforcement/exact_byte_handoff.py"),
     "scaffold-transform": ("govML", "templates/build/enforcement/write_scaffold_transform.py"),
     "scaffold-atomic-runtime": ("govML", "templates/build/enforcement/scaffold_atomic_runtime.py"),
     "govml-init": ("govML", "scripts/init_project.sh"),

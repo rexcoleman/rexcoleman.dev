@@ -31,12 +31,12 @@ REQUIRED_CLASSES = set(member_contract.REQUIRED_MEMBER_CLASSES)
 
 
 def test_generation4_contract_registers_all_runtime_consumers_exactly_once():
-    assert len(member_contract.EXPECTED_MEMBERS) == 121
+    assert len(member_contract.EXPECTED_MEMBERS) == 124
     assert {
         key: member_contract.EXPECTED_MEMBERS[key]
         for key in SIGNED_RUNTIME_MEMBERS
     } == SIGNED_RUNTIME_MEMBERS
-    assert len(set(member_contract.EXPECTED_MEMBERS.values())) == 121
+    assert len(set(member_contract.EXPECTED_MEMBERS.values())) == 124
 
 
 def test_successor_contract_registers_exact_nine_write_boundary_policy_members():
