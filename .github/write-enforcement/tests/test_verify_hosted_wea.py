@@ -1,6 +1,9 @@
 import argparse
+import base64
 import importlib.util
 import json
+import subprocess
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import pytest
@@ -42,6 +45,162 @@ def public_packet_fixture(tmp_path):
         for name in names
     ), encoding="ascii")
     return issuance
+
+
+def _git(root, *args):
+    completed = subprocess.run(
+        ["git", "-C", str(root), *args],
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        check=False,
+    )
+    assert completed.returncode == 0, completed.stderr
+    return completed.stdout.strip()
+
+
+def artifact_relative_packet(tmp_path, monkeypatch, changed_member_id):
+    workspace = tmp_path / "workspace"
+    member_bytes = {
+        member_id: f"signed:{member_id}\n".encode()
+        for member_id in MODULE.EXPECTED_MEMBERS
+    }
+    public = b"fixture-public-key-bytes\n"
+    member_bytes["trusted-public-key"] = public
+    member_bytes["newsletter-trusted-public-key"] = public
+    member_bytes["profile-registry"] = MODULE.canonical({
+        "schema_version": "rea.write.publishing_profiles.v1",
+        "profiles": [
+            {"profile_id": "research", "publishes": True},
+            {"profile_id": "nonpublishing", "publishes": False},
+        ],
+    })
+    member_bytes["claim-policy"] = b'{"policy":"signed-object"}\n'
+
+    roots = {}
+    for repository in sorted({pair[0] for pair in MODULE.EXPECTED_MEMBERS.values()}):
+        root = workspace / repository
+        root.mkdir(parents=True)
+        _git(root, "init", "-q")
+        _git(root, "config", "user.name", "hosted verifier fixture")
+        _git(root, "config", "user.email", "fixture@example.invalid")
+        roots[repository] = root
+    for member_id, (repository, relative) in MODULE.EXPECTED_MEMBERS.items():
+        target = roots[repository] / relative
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes(member_bytes[member_id])
+    commits = {}
+    for repository, root in roots.items():
+        _git(root, "add", ".")
+        _git(root, "commit", "-q", "-m", "signed fixture")
+        commits[repository] = _git(root, "rev-parse", "HEAD")
+
+    members = []
+    for member_id, (repository, relative) in MODULE.EXPECTED_MEMBERS.items():
+        raw = member_bytes[member_id]
+        members.append({
+            "member_id": member_id,
+            "repository": repository,
+            "commit": commits[repository],
+            "path": relative,
+            "sha256": MODULE.digest(raw),
+            "byte_length": len(raw),
+        })
+    manifest = {
+        "schema_version": "rea.write.enforcement-bundle-manifest.v1",
+        "authority_generation": MODULE.AUTHORITY_GENERATION,
+        "members": members,
+    }
+    manifest["manifest_digest"] = MODULE.digest(MODULE.canonical(manifest))
+    now = datetime.now(timezone.utc).replace(microsecond=0)
+    issued = (now - timedelta(minutes=1)).isoformat().replace("+00:00", "Z")
+    expires = (now + timedelta(hours=1)).isoformat().replace("+00:00", "Z")
+    wea = {
+        "schema_version": "rea.write.wea.live.v2",
+        "purpose": "LIVE_ENFORCEMENT",
+        "state": "ENFORCING",
+        "authority_epoch": MODULE.AUTHORITY_GENERATION,
+        "predecessor_wea_digest": "1" * 64,
+        "issuer": MODULE.ISSUER,
+        "issued_at": issued,
+        "expires_at": expires,
+        "publishing_capability_scope": ["research"],
+        "required_surfaces": sorted(MODULE.SURFACES),
+        "enforcement_bundle_manifest_digest": manifest["manifest_digest"],
+        "claim_policy_digest": MODULE.digest(member_bytes["claim-policy"]),
+        "trusted_key_id": f"rea-wea-ed25519-{MODULE.digest(public)[:16]}",
+    }
+    signed_digest = MODULE.digest(MODULE.canonical(wea))
+    wea["signature"] = {
+        "algorithm": "ed25519",
+        "signed_digest": signed_digest,
+        "value": base64.b64encode(b"0" * 64).decode(),
+    }
+    issuance = tmp_path / "issuance"
+    issuance.mkdir()
+    payloads = {
+        "write_enforcement_attestation.json": MODULE.canonical(wea) + b"\n",
+        "enforcement_bundle_manifest.json": MODULE.canonical(manifest) + b"\n",
+        "trusted_wea_public.pem": public,
+        "claim_policy.json": member_bytes["claim-policy"],
+        "claim_registry.json": member_bytes["claim-registry"],
+        "hybrid_capability_provider": member_bytes["hybrid-capability-provider"],
+        "runtime_mount.py": member_bytes["route-runtime-mount"],
+        "hybrid_capability_authority.json": b"{}\n",
+    }
+    workflow = next(row for row in members if row["member_id"] == "remote-issuer-workflow")
+    receipt = {
+        "issuer": MODULE.ISSUER,
+        "workflow_repository": "rexcoleman/rexcoleman.dev",
+        "event": "workflow_dispatch",
+        "workflow_ref": "refs/tags/rea-wea-generation-4-fixture",
+        "workflow_sha": "2" * 40,
+        "workflow_run_id": 123,
+        "wea_sha256": MODULE.digest(payloads["write_enforcement_attestation.json"]),
+        "manifest_sha256": manifest["manifest_digest"],
+        "workflow_blob_sha256": workflow["sha256"],
+    }
+    payloads["issuance_receipt.json"] = MODULE.canonical(receipt) + b"\n"
+    for name, raw in payloads.items():
+        (issuance / name).write_bytes(raw)
+    (issuance / "SHA256SUMS").write_text("".join(
+        f"{MODULE.digest((issuance / name).read_bytes())}  {name}\n"
+        for name in sorted(payloads)
+    ), encoding="ascii")
+
+    changed_repository, changed_relative = MODULE.EXPECTED_MEMBERS[changed_member_id]
+    (roots[changed_repository] / changed_relative).write_bytes(b"mutable-checkout-drift\n")
+    monkeypatch.setattr(MODULE, "verify_signature", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(
+        MODULE,
+        "verify_envelope",
+        lambda *_args, **_kwargs: {"issued_at": issued, "expires_at": expires},
+    )
+    monkeypatch.setattr(
+        MODULE,
+        "verify_successor_authority_bindings",
+        lambda *_args, **_kwargs: ("a" * 64, {"PUB-01A": "publication"}),
+    )
+    return argparse.Namespace(
+        issuance=issuance,
+        workspace=workspace,
+        consumer_id="artifact-relative-regression",
+        surface="publication",
+    )
+
+
+@pytest.mark.parametrize("changed_member_id", [
+    "claim-policy",
+    "profile-registry",
+    "trusted-public-key",
+    "route-report",
+])
+def test_hosted_verifier_uses_exact_commit_objects_despite_checkout_drift(
+        tmp_path, monkeypatch, changed_member_id):
+    parsed = artifact_relative_packet(tmp_path, monkeypatch, changed_member_id)
+    report = MODULE.verify(parsed)
+    assert report["verdict"] == "PASS"
+    assert report["public_checksums_verified"] is True
 
 
 def test_public_checksum_closure_verifies_all_nine_payload_files(tmp_path):

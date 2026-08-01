@@ -99,8 +99,8 @@ def test_contract_contains_exact_accepted_22_route_owned_files():
 
 
 def test_contract_covers_complete_s88_face_a_and_face_b_bundle_sets():
-    assert len(EXPECTED_MEMBERS) == 121
-    assert len(set(EXPECTED_MEMBERS.values())) == 121
+    assert len(EXPECTED_MEMBERS) == 156
+    assert len(set(EXPECTED_MEMBERS.values())) == 156
     assert len(FACE_A_MEMBER_IDS) == 11
     assert len(FACE_B_MEMBER_IDS) == 9
     assert FACE_A_MEMBER_IDS < set(EXPECTED_MEMBERS)
@@ -119,7 +119,39 @@ def test_contract_covers_complete_s88_face_a_and_face_b_bundle_sets():
     )
 
 
-def test_signed_scaffold_root_adds_exactly_two_bound_members():
+def test_signed_scaffold_installer_closes_all_transitive_comparison_inputs():
+    core = {
+        "scaffold-hybrid-core-atomic-consumer": "write_integrity/consumer/atomic_consumer.py",
+        "scaffold-hybrid-core-package-init": "write_integrity/hybrid/__init__.py",
+        "scaffold-hybrid-core-durable-spend": "write_integrity/hybrid/durable_spend.py",
+        "scaffold-hybrid-core-protocol": "write_integrity/hybrid/protocol.py",
+        "scaffold-hybrid-core-authorized-mapping-schema": "write_integrity/hybrid/schemas/authorized_mapping.schema.json",
+        "scaffold-hybrid-core-external-evidence-receipt-schema": "write_integrity/hybrid/schemas/external_evidence_receipt.schema.json",
+        "scaffold-hybrid-core-claim-lineage-schema": "write_integrity/hybrid/schemas/hybrid_claim_lineage.schema.json",
+        "scaffold-hybrid-core-project-close-receipt-schema": "write_integrity/hybrid/schemas/project_close_receipt.schema.json",
+        "scaffold-hybrid-core-revocation-registry-schema": "write_integrity/hybrid/schemas/revocation_registry.schema.json",
+        "scaffold-hybrid-core-route-neutral-capability-schema": "write_integrity/hybrid/schemas/route_neutral_capability.schema.json",
+        "scaffold-hybrid-core-trusted-issuer-schema": "write_integrity/hybrid/schemas/trusted_issuer.schema.json",
+        "scaffold-hybrid-core-runtime-mount": "write_integrity/mounts/runtime_mount.py",
+        "scaffold-hybrid-core-provisioning-package-init": "write_integrity/provisioning/__init__.py",
+        "scaffold-hybrid-core-provisioning-boundary": "write_integrity/provisioning/boundary.py",
+        "scaffold-hybrid-core-provisioning-fixed-adapter": "write_integrity/provisioning/fixed_adapter.py",
+        "scaffold-hybrid-core-provisioning-prp": "write_integrity/provisioning/prp.py",
+        "scaffold-hybrid-core-write-boundary-engine": "write_integrity/write_boundary/boundary_engine.py",
+        "scaffold-hybrid-core-corpus-honest": "write_integrity/write_boundary/corpus/honest.jsonl",
+        "scaffold-hybrid-core-corpus-manifest": "write_integrity/write_boundary/corpus/manifest.json",
+        "scaffold-hybrid-core-corpus-planted": "write_integrity/write_boundary/corpus/planted.jsonl",
+        "scaffold-hybrid-core-protected-receive": "write_integrity/write_boundary/protected_receive.py",
+        "scaffold-hybrid-core-row-complete-verifier": "write_integrity/write_boundary/row_complete_verifier.py",
+        "scaffold-hybrid-core-row-registry": "write_integrity/write_boundary/row_registry.json",
+        "scaffold-hybrid-core-ledger-schema": "write_integrity/write_boundary/schemas/ledger.schema.json",
+        "scaffold-hybrid-core-parent-admission-schema": "write_integrity/write_boundary/schemas/parent_admission.schema.json",
+        "scaffold-hybrid-core-receipt-schema": "write_integrity/write_boundary/schemas/receipt.schema.json",
+        "scaffold-hybrid-core-request-schema": "write_integrity/write_boundary/schemas/request.schema.json",
+        "scaffold-hybrid-core-seam-registry": "write_integrity/write_boundary/seam_registry.json",
+        "scaffold-hybrid-core-transform-registry": "write_integrity/write_boundary/transform_registry.json",
+        "scaffold-hybrid-core-trusted-admission": "write_integrity/write_boundary/trusted_admission.py",
+    }
     expected = {
         "scaffold-hybrid-route-consumer": (
             "govML",
@@ -129,13 +161,37 @@ def test_signed_scaffold_root_adds_exactly_two_bound_members():
             "govML",
             "templates/build/enforcement/hybrid_install_manifest.json",
         ),
+        **{
+            member_id: (
+                "govML", f"templates/build/enforcement/hybrid_core/{path}"
+            )
+            for member_id, path in core.items()
+        },
+        "scaffold-report-surface": (
+            "govML", "templates/build/enforcement/report_surface.py",
+        ),
+        "scaffold-report-auditor-generator": (
+            "govML", "scripts/generators/gen_report_auditor.py",
+        ),
+        "canonical-exact-byte-handoff": (
+            "govML", "templates/build/enforcement/exact_byte_handoff.py",
+        ),
+        "scaffold-report-orchestrator": (
+            "govML", "scripts/generators/orchestrate.py",
+        ),
+        "scaffold-wea-consumer": (
+            "govML",
+            "templates/build/enforcement/write_enforcement_consumer.py",
+        ),
     }
     assert SIGNED_SCAFFOLD_MEMBER_IDS == set(expected)
     assert {
         member_id: EXPECTED_MEMBERS[member_id]
         for member_id in SIGNED_SCAFFOLD_MEMBER_IDS
     } == expected
+    assert len(SIGNED_SCAFFOLD_MEMBER_IDS) == 37
     assert len(EXPECTED_MEMBERS) - len(SIGNED_SCAFFOLD_MEMBER_IDS) == 119
+    assert "scaffold_installer" in REQUIRED_CLASSES
 
 
 def test_face_b_fixture_is_labeled_isolated_not_protected_production():
