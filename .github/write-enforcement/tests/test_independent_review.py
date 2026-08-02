@@ -135,13 +135,18 @@ def test_rea_preflight_allows_ruleset_not_yet_installed():
     )
 
 
-def test_pre_convergence_frozen_manifest_is_superseded():
+def test_converged_frozen_manifest_satisfies_exact_contract():
     raw = (
         Path(__file__).parents[1]
         / "frozen_bundle_manifest.generation-4.json"
     ).read_bytes()
-    with pytest.raises(MODULE.Refusal, match="manifest contract differs"):
-        MODULE.manifest_contract(raw)
+    result = MODULE.manifest_contract(raw)
+    assert result == {
+        "manifest_sha256": hashlib.sha256(raw).hexdigest(),
+        "manifest_digest": json.loads(raw)["manifest_digest"],
+        "member_count": MODULE.GENERATION_MEMBER_COUNT,
+        "member_contract": "EXACT",
+    }
 
 
 def test_manifest_contract_refuses_self_consistent_wrong_member():
