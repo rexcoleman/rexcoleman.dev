@@ -34,6 +34,29 @@ def fixture_repository(tmp_path: Path) -> tuple[Path, str]:
     return root, git(root, "rev-parse", "HEAD")
 
 
+def full_population_repositories(
+    tmp_path: Path,
+) -> tuple[dict[str, Path], dict[str, str]]:
+    roots = {}
+    commits = {}
+    grouped = builder.group_member_contract(builder.EXPECTED_MEMBERS)
+    for repository, members in grouped.items():
+        root = tmp_path / repository
+        root.mkdir()
+        git(root, "init", "-q")
+        git(root, "config", "user.email", "s132-fixture@example.invalid")
+        git(root, "config", "user.name", "s132 totality fixture")
+        for member_id, relative in members:
+            path = root / relative
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_bytes(f"{member_id}\n".encode())
+        git(root, "add", ".")
+        git(root, "commit", "-q", "-m", "complete frozen population")
+        roots[repository] = root
+        commits[repository] = git(root, "rev-parse", "HEAD")
+    return roots, commits
+
+
 def ruleset(path: Path) -> None:
     path.write_text(json.dumps({
         "id": 19564990,
@@ -56,6 +79,38 @@ def test_builder_reads_clean_committed_head_bytes(tmp_path):
     assert builder.committed_member_bytes(root, commit, "member.txt") == (
         b"committed member\n"
     )
+
+
+def test_full_frozen_population_opens_at_selected_authoritative_commits(tmp_path):
+    roots, commits = full_population_repositories(tmp_path)
+    loaded = builder.open_frozen_population(roots, commits)
+    assert set(loaded) == set(builder.EXPECTED_MEMBERS)
+    assert len(loaded) == len(builder.EXPECTED_MEMBERS) == 229
+    for member_id, raw in loaded.items():
+        assert raw == f"{member_id}\n".encode()
+
+
+def test_full_population_refuses_wrong_member_mapping(tmp_path):
+    roots, commits = full_population_repositories(tmp_path)
+    contract = dict(builder.EXPECTED_MEMBERS)
+    contract["newsletter-upgrade-workflow"] = (
+        "newsletter", ".github/workflows/not-the-upgrade-authority.yml"
+    )
+    with pytest.raises(
+        ValueError,
+        match="frozen population member unavailable:newsletter-upgrade-workflow",
+    ):
+        builder.open_frozen_population(roots, commits, contract)
+
+
+def test_full_population_refuses_absent_repository_mapping(tmp_path):
+    roots, commits = full_population_repositories(tmp_path)
+    roots.pop("newsletter")
+    with pytest.raises(
+        ValueError,
+        match="frozen population repository mapping invalid:roots_missing=\\['newsletter'\\]",
+    ):
+        builder.open_frozen_population(roots, commits)
 
 
 def test_builder_refuses_post_commit_bound_member_mutation(tmp_path):

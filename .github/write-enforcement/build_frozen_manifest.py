@@ -69,6 +69,45 @@ def committed_member_bytes(root: Path, commit: str, path: str) -> bytes:
     return committed.stdout
 
 
+def open_frozen_population(
+    roots: dict[str, Path],
+    commits: dict[str, str],
+    expected_members=None,
+) -> dict[str, bytes]:
+    """Open every declared member at its selected immutable repository ref."""
+    contract = expected_members or EXPECTED_MEMBERS
+    repositories = set(group_member_contract(contract))
+    root_names = set(roots)
+    commit_names = set(commits)
+    if root_names != repositories or commit_names != repositories:
+        raise ValueError(
+            "frozen population repository mapping invalid:"
+            f"roots_missing={sorted(repositories - root_names)}:"
+            f"roots_extra={sorted(root_names - repositories)}:"
+            f"commits_missing={sorted(repositories - commit_names)}:"
+            f"commits_extra={sorted(commit_names - repositories)}"
+        )
+    loaded = {}
+    for member_id, (repository, path) in sorted(contract.items()):
+        commit = commits[repository]
+        if not isinstance(commit, str) or re.fullmatch(r"[0-9a-f]{40}", commit) is None:
+            raise ValueError(
+                f"frozen population selected commit invalid:{repository}:{commit!r}"
+            )
+        try:
+            loaded[member_id] = committed_member_bytes(
+                roots[repository], commit, path
+            )
+        except ValueError as exc:
+            raise ValueError(
+                "frozen population member unavailable:"
+                f"{member_id}:{repository}@{commit}:{path}:{exc}"
+            ) from None
+    if set(loaded) != set(contract):
+        raise ValueError("frozen population member set incomplete")
+    return loaded
+
+
 def authoritative_repository_slug(repository: str, expected_members=None) -> str:
     """Resolve one logical contract name through the closed remote mapping."""
     expected = set(group_member_contract(expected_members or EXPECTED_MEMBERS))
@@ -213,11 +252,13 @@ def main() -> int:
             f"{GENERATION_MANIFEST_NAME}"
         )
     roots = {name: getattr(args, "root_" + name.lower().replace(".", "_")) for name in members}
+    commits = {repository: head(root) for repository, root in roots.items()}
+    loaded = open_frozen_population(roots, commits, expected_members)
     if "govML" in roots:
         validate_installed_population(
-            roots["govML"], head(roots["govML"]), expected_members
+            roots["govML"], commits["govML"], expected_members
         )
-    subjects = {(repository, head(roots[repository])) for repository in members}
+    subjects = set(commits.items())
     # Unit fixtures use a synthetic repository name.  Production's closed
     # contract contains only the five authoritative repositories.
     if not synthetic_contract:
@@ -232,9 +273,9 @@ def main() -> int:
                 )
     rows = []
     for repository, specs in members.items():
-        commit = head(roots[repository])
+        commit = commits[repository]
         for member_id, path in specs:
-            raw = committed_member_bytes(roots[repository], commit, path)
+            raw = loaded[member_id]
             rows.append({"member_id": member_id, "repository": repository, "commit": commit,
                          "path": path, "sha256": sha(raw), "byte_length": len(raw)})
     ruleset = json.loads(args.ruleset_json.read_bytes())
