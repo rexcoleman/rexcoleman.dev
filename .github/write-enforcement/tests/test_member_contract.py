@@ -18,7 +18,6 @@ from member_contract import (  # noqa: E402
     EXTERNAL_FREEZE_PROCEDURE_SUBJECT,
     EXTERNAL_GENERATION4_OWNER_RUNBOOK_SUBJECT,
     EXTERNAL_EMITTER_AUTHORING_SUBJECTS,
-    EXTERNAL_R4_MEASUREMENT_SUBJECTS,
     FACE_A_MEMBER_IDS,
     FACE_B_MEMBER_IDS,
     FACE_B_ISOLATED_FIXTURE_MEMBER_IDS,
@@ -174,19 +173,9 @@ def test_signed_bundle_closes_master_chain_direct_and_transitive_files():
         "master-readme-checker": ("govML", "scripts/generators/gen_readme.py"),
         "master-generalizability": ("govML", "scripts/check_generalizability.sh"),
         "master-build-pipeline": ("govML", "scripts/build_pipeline_gate.sh"),
-        "master-build-hc26": ("govML", "scripts/hc26_internal_smoke_gate.sh"),
-        "master-build-k-register": ("govML", "scripts/k_register_present_gate.sh"),
-        "master-build-known-boundaries": (
-            "govML", "scripts/known_boundaries_present_gate.sh"
-        ),
-        "master-build-h-pattern": (
-            "govML", "scripts/h_pattern_dispositions_present_gate.sh"
-        ),
-        "master-build-spec-implementation": (
-            "govML", "scripts/spec_implementation_present_gate.sh"
-        ),
-        "master-build-session-close": (
-            "govML", "scripts/spec_implementation_session_close_gate.sh"
+        "master-build-profile-gate-bundle": (
+            "govML",
+            "templates/build/enforcement/installed_build_profile_gate_bundle.py",
         ),
         "canonical-enforcement-block": (
             "govML",
@@ -224,12 +213,7 @@ def test_signed_bundle_closes_master_chain_direct_and_transitive_files():
             "master-readme-checker",
             "master-generalizability",
             "master-build-pipeline",
-            "master-build-hc26",
-            "master-build-k-register",
-            "master-build-known-boundaries",
-            "master-build-h-pattern",
-            "master-build-spec-implementation",
-            "master-build-session-close",
+            "master-build-profile-gate-bundle",
         },
         "master-pre-compute-check": {
             "signed-hypothesis-gate",
@@ -274,14 +258,19 @@ def test_each_complete_chain_dependency_retarget_refuses_before_signing(
     assert member_id in captured.value.detail
 
 
-def test_external_r4_measurement_tools_are_not_installed_runtime_members():
-    assert len(EXTERNAL_R4_MEASUREMENT_SUBJECTS) == 5
-    assert not set(EXTERNAL_R4_MEASUREMENT_SUBJECTS) & set(EXPECTED_MEMBERS)
-    assert all(
-        repository == "research_enforcement_activation"
-        and path.startswith("write_integrity/attestation/")
-        for repository, path in EXTERNAL_R4_MEASUREMENT_SUBJECTS.values()
-    )
+def test_r4_authority_tools_remain_signed_runtime_members():
+    expected = {
+        "r4-plan-builder": "write_integrity/attestation/build_r4_plan.py",
+        "r4-matrix-harness": "write_integrity/attestation/run_r4_matrix.py",
+        "r4-harness-common": "write_integrity/attestation/harness_common.py",
+        "r4-actor-probe": "write_integrity/attestation/r4_actor_probe.py",
+        "r4-actor-inventory": "write_integrity/attestation/r4_actor_inventory.json",
+    }
+    assert {
+        member_id: EXPECTED_MEMBERS[member_id][1] for member_id in expected
+    } == expected
+    assert all(EXPECTED_MEMBERS[member_id][0] == "research_enforcement_activation"
+               for member_id in expected)
     assert "generation-2-owner-runbook" not in EXPECTED_MEMBERS
     assert "remote-freeze-sequence" not in EXPECTED_MEMBERS
     assert "generation-4-owner-runbook" not in EXPECTED_MEMBERS
@@ -508,7 +497,7 @@ def test_generation_4_member_contract_covers_runtime_lifetime_and_close_gate():
         "close-accounting-gate",
     }
     assert runtime_required <= set(EXPECTED_MEMBERS)
-    assert EXTERNAL_R4_MEASUREMENT_SUBJECTS == {
+    expected_r4 = {
         "r4-plan-builder": (
             "research_enforcement_activation",
             "write_integrity/attestation/build_r4_plan.py",
@@ -530,6 +519,9 @@ def test_generation_4_member_contract_covers_runtime_lifetime_and_close_gate():
             "write_integrity/attestation/r4_actor_inventory.json",
         ),
     }
+    assert {
+        member_id: EXPECTED_MEMBERS[member_id] for member_id in expected_r4
+    } == expected_r4
 
 
 def test_runner_adapter_complete_fixed_canonical_dependency_closure_is_signed():

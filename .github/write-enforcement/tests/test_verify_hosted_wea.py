@@ -328,6 +328,18 @@ def test_r4_modes_emit_typed_refusal_with_digest_context(tmp_path, monkeypatch, 
     assert "INERT" not in json.dumps(report)
 
 
+def test_missing_wea_refuses_before_public_packet_shape_check(tmp_path):
+    parsed = args(tmp_path)
+    # A deleted canonical WEA makes the actor's symlink dangling.  The hosted
+    # verifier must preserve the typed R4 reason instead of collapsing it into
+    # a generic packet-set corruption.
+    (parsed.issuance / "enforcement_bundle_manifest.json").write_bytes(b"{}")
+    raw_exit, report = MODULE.run(parsed)
+    assert raw_exit == 3
+    assert report["reason_code"] == "WEA_MISSING"
+    assert report["mutation_observed"] is False
+
+
 def successor_loaded_fixture():
     actors = [
         "RPT-01", "BLG-01", "BLG-02", "BLG-03", "BLG-04", "BLG-05",

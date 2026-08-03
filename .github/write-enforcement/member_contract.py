@@ -102,12 +102,7 @@ SIGNED_COMPLETE_CHAIN_MEMBER_IDS = frozenset({
     "master-readme-checker",
     "master-generalizability",
     "master-build-pipeline",
-    "master-build-hc26",
-    "master-build-k-register",
-    "master-build-known-boundaries",
-    "master-build-h-pattern",
-    "master-build-spec-implementation",
-    "master-build-session-close",
+    "master-build-profile-gate-bundle",
     "canonical-enforcement-block",
     "canonical-agent-pre-check-runner",
     "canonical-research-integrity-checklist",
@@ -131,12 +126,7 @@ COMPLETE_CHAIN_DEPENDENCIES = {
         "master-readme-checker",
         "master-generalizability",
         "master-build-pipeline",
-        "master-build-hc26",
-        "master-build-k-register",
-        "master-build-known-boundaries",
-        "master-build-h-pattern",
-        "master-build-spec-implementation",
-        "master-build-session-close",
+        "master-build-profile-gate-bundle",
     }),
     "canonical-enforcement-block": frozenset({
         "canonical-agent-pre-check-runner",
@@ -147,32 +137,13 @@ COMPLETE_CHAIN_DEPENDENCIES = {
         "canonical-landscape-depth-gate",
     }),
 }
-
-# These five files remain committed, remote-reachable measurement tools at the
-# same immutable REA ref selected by the manifest.  They inspect an artifact;
-# they are not installed enforcement-runtime members.  Retiring them from the
-# fixed-size member population does not delete or bypass the R4 evidence path.
-EXTERNAL_R4_MEASUREMENT_SUBJECTS = {
-    "r4-plan-builder": (
-        "research_enforcement_activation",
-        "write_integrity/attestation/build_r4_plan.py",
-    ),
-    "r4-matrix-harness": (
-        "research_enforcement_activation",
-        "write_integrity/attestation/run_r4_matrix.py",
-    ),
-    "r4-harness-common": (
-        "research_enforcement_activation",
-        "write_integrity/attestation/harness_common.py",
-    ),
-    "r4-actor-probe": (
-        "research_enforcement_activation",
-        "write_integrity/attestation/r4_actor_probe.py",
-    ),
-    "r4-actor-inventory": (
-        "research_enforcement_activation",
-        "write_integrity/attestation/r4_actor_inventory.json",
-    ),
+PACKAGED_BUILD_PROFILE_GATE_SOURCES = {
+    "hc26": ("govML", "scripts/hc26_internal_smoke_gate.sh", 0o755),
+    "k-register": ("govML", "scripts/k_register_present_gate.sh", 0o755),
+    "known-boundaries": ("govML", "scripts/known_boundaries_present_gate.sh", 0o755),
+    "h-pattern": ("govML", "scripts/h_pattern_dispositions_present_gate.sh", 0o755),
+    "spec-implementation": ("govML", "scripts/spec_implementation_present_gate.sh", 0o755),
+    "session-close": ("govML", "scripts/spec_implementation_session_close_gate.sh", 0o755),
 }
 
 # These procedures remain committed and reviewable on the exact
@@ -362,6 +333,11 @@ EXPECTED_MEMBERS = {
     # Authority, schemas, resolver, gates, and canonical consumer.
     "verify-only-resolver": ("research_enforcement_activation", "write_integrity/attestation/wea_verifier.py"),
     "wea-lifetime-library": ("research_enforcement_activation", "write_integrity/attestation/lifetime.py"),
+    "r4-plan-builder": ("research_enforcement_activation", "write_integrity/attestation/build_r4_plan.py"),
+    "r4-matrix-harness": ("research_enforcement_activation", "write_integrity/attestation/run_r4_matrix.py"),
+    "r4-harness-common": ("research_enforcement_activation", "write_integrity/attestation/harness_common.py"),
+    "r4-actor-probe": ("research_enforcement_activation", "write_integrity/attestation/r4_actor_probe.py"),
+    "r4-actor-inventory": ("research_enforcement_activation", "write_integrity/attestation/r4_actor_inventory.json"),
     "coverage-registry-library": ("research_enforcement_activation", "write_integrity/coverage_registry.py"),
     "close-accounting-gate": ("research_enforcement_activation", "write_integrity/close_accounting_gate.py"),
     "claim-policy": ("research_enforcement_activation", "write_integrity/authority/claim_policy.json"),
@@ -489,19 +465,9 @@ EXPECTED_MEMBERS = {
     "master-readme-checker": ("govML", "scripts/generators/gen_readme.py"),
     "master-generalizability": ("govML", "scripts/check_generalizability.sh"),
     "master-build-pipeline": ("govML", "scripts/build_pipeline_gate.sh"),
-    "master-build-hc26": ("govML", "scripts/hc26_internal_smoke_gate.sh"),
-    "master-build-k-register": ("govML", "scripts/k_register_present_gate.sh"),
-    "master-build-known-boundaries": (
-        "govML", "scripts/known_boundaries_present_gate.sh"
-    ),
-    "master-build-h-pattern": (
-        "govML", "scripts/h_pattern_dispositions_present_gate.sh"
-    ),
-    "master-build-spec-implementation": (
-        "govML", "scripts/spec_implementation_present_gate.sh"
-    ),
-    "master-build-session-close": (
-        "govML", "scripts/spec_implementation_session_close_gate.sh"
+    "master-build-profile-gate-bundle": (
+        "govML",
+        "templates/build/enforcement/installed_build_profile_gate_bundle.py",
     ),
     "quality-loop": ("govML", "scripts/quality_loop.sh"),
     "quality-semantic-review": ("govML", "scripts/semantic_review.py"),

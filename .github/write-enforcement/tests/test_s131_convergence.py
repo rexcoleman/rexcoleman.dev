@@ -142,6 +142,14 @@ def _materialize_candidate_subjects(
                 if not destination.exists():
                     destination.parent.mkdir(parents=True, exist_ok=True)
                     shutil.copyfile(source, destination)
+            for _logical_id, (_repository, relative, _mode) in (
+                contract.PACKAGED_BUILD_PROFILE_GATE_SOURCES.items()
+            ):
+                source = source_roots[repository] / relative
+                destination = root / relative
+                destination.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copyfile(source, destination)
+                destination.chmod(0o755)
         _commit(root, "exact candidate subjects")
         roots[repository] = root
     assert set(roots) == set(contract.grouped_members())

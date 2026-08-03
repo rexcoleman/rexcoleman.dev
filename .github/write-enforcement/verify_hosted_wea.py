@@ -244,10 +244,13 @@ def verify(args: argparse.Namespace) -> dict:
         "newsletter": args.workspace / "newsletter",
         "rexcoleman.dev": args.workspace / "rexcoleman.dev",
     }
+    wea_path = args.issuance / "write_enforcement_attestation.json"
+    if not wea_path.is_file():
+        raise FileNotFoundError(2, "missing", str(wea_path))
     if {path.name for path in args.issuance.iterdir() if path.is_file()} != PUBLIC_ARTIFACTS:
         raise HostedWEARefusal("WEA_CORRUPT", "public_artifact_set")
     checksum_inventory = verify_public_checksums(args.issuance)
-    wea_raw, wea = load(args.issuance / "write_enforcement_attestation.json")
+    wea_raw, wea = load(wea_path)
     predecessor_raw, predecessor = load(
         args.issuance / "predecessor_write_enforcement_attestation.json"
     )
