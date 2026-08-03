@@ -348,6 +348,9 @@ EXPECTED_MEMBERS = {
     "scaffold-atomic-runtime": ("govML", "templates/build/enforcement/scaffold_atomic_runtime.py"),
     "govml-init": ("govML", "scripts/init_project.sh"),
     "master-runner": ("govML", "scripts/check_all_gates.sh"),
+    "quality-loop": ("govML", "scripts/quality_loop.sh"),
+    "quality-semantic-review": ("govML", "scripts/semantic_review.py"),
+    "quality-findings-audit-generator": ("govML", "scripts/generators/gen_findings_audit.py"),
     "project-runner": ("govML", "templates/build/enforcement/project_run_gates.sh"),
     "project-runner-f07": ("govML", "templates/build/enforcement/project_run_gates_F07.sh"),
     "project-runner-f08": ("govML", "templates/build/enforcement/project_run_gates_F08.sh"),
@@ -659,8 +662,8 @@ STAGED_NONPRODUCTION_ADDITIONAL_MEMBERS = {
 def staged_nonproduction_members():
     """Return the frozen staging contract without production trust roots.
 
-    Staging is an explicit 227-member superset with one dedicated committed
-    fixture key.  The production 226-member contract and both production
+    Staging is an explicit 230-member superset with one dedicated committed
+    fixture key.  The production 229-member contract and both production
     trust roots remain present and unchanged.
     """
     members = dict(EXPECTED_MEMBERS)

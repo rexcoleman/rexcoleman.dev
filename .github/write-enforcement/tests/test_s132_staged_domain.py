@@ -20,8 +20,8 @@ def fixture_public() -> bytes:
 def test_staged_contract_is_exact_production_plus_one():
     production = member_contract.EXPECTED_MEMBERS
     staged = member_contract.staged_nonproduction_members()
-    assert len(production) == 226
-    assert len(staged) == 227
+    assert len(production) == 229
+    assert len(staged) == 230
     assert set(staged) - set(production) == {
         "staged-nonproduction-trusted-public-key"
     }
