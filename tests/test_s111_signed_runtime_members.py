@@ -27,16 +27,35 @@ SIGNED_RUNTIME_MEMBERS = {
         "templates/build/enforcement/enforcement_fired_gate.sh",
     ),
 }
+SIGNED_QUALITY_RUNTIME_MEMBERS = {
+    "quality-loop": ("govML", "scripts/quality_loop.sh"),
+    "quality-semantic-review": ("govML", "scripts/semantic_review.py"),
+    "quality-findings-audit-generator": (
+        "govML",
+        "scripts/generators/gen_findings_audit.py",
+    ),
+}
 REQUIRED_CLASSES = set(member_contract.REQUIRED_MEMBER_CLASSES)
 
 
 def test_generation4_contract_registers_all_runtime_consumers_exactly_once():
-    assert len(member_contract.EXPECTED_MEMBERS) == 156
+    production = member_contract.EXPECTED_MEMBERS
+    staged = member_contract.staged_nonproduction_members()
+    assert len(production) == 229
+    assert len(staged) == 230
+    assert set(staged) - set(production) == {
+        "staged-nonproduction-trusted-public-key"
+    }
     assert {
-        key: member_contract.EXPECTED_MEMBERS[key]
+        key: production[key]
         for key in SIGNED_RUNTIME_MEMBERS
     } == SIGNED_RUNTIME_MEMBERS
-    assert len(set(member_contract.EXPECTED_MEMBERS.values())) == 156
+    assert {
+        key: production[key]
+        for key in SIGNED_QUALITY_RUNTIME_MEMBERS
+    } == SIGNED_QUALITY_RUNTIME_MEMBERS
+    assert len(set(production.values())) == len(production)
+    assert len(set(staged.values())) == len(staged)
 
 
 def test_successor_contract_registers_exact_nine_write_boundary_policy_members():
