@@ -1,0 +1,157 @@
+import importlib.util
+import json
+import subprocess
+from pathlib import Path
+
+import pytest
+
+
+HERE = Path(__file__).resolve().parents[1]
+REPO_ROOT = HERE.parents[1]
+SPEC = importlib.util.spec_from_file_location(
+    "newsletter_upgrade_validator", HERE / "validate_newsletter_upgrade.py"
+)
+validator = importlib.util.module_from_spec(SPEC)
+assert SPEC.loader is not None
+SPEC.loader.exec_module(validator)
+
+
+LEGACY_WORKFLOW = """name: newsletter-integrity
+
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+
+jobs:
+  newsletter-remote-integrity:
+    name: newsletter-remote-integrity
+    uses: rexcoleman/Moonshots_Career_Thesis/.github/workflows/newsletter-integrity-authority.yml@44e61952b101aacb222091f04c4cf728b5ec3f04
+    permissions:
+      contents: read
+    with:
+      candidate_repository: ${{ github.event.pull_request.head.repo.full_name }}
+      event_sha: ${{ github.event.pull_request.head.sha }}
+      base_sha: ${{ github.event.pull_request.base.sha }}
+      control_sha: ef258446edbcebf988f5136e0b809482f476c8c7
+      wea_issuance_run_id: ${{ vars.REA_WEA_RUN_ID }}
+    secrets:
+      REA_WEA_READ_TOKEN: ${{ secrets.REA_WEA_READ_TOKEN }}
+      REA_BUNDLE_READ_TOKEN: ${{ secrets.REA_BUNDLE_READ_TOKEN }}
+"""
+
+
+def git(root: Path, *args: str) -> str:
+    return subprocess.run(
+        ["git", "-C", str(root), *args], check=True,
+        capture_output=True, text=True,
+    ).stdout.strip()
+
+
+def authority_commit() -> str:
+    return git(REPO_ROOT, "rev-parse", "HEAD")
+
+
+def write(root: Path, relative: str, raw: str | bytes) -> None:
+    path = root / relative
+    path.parent.mkdir(parents=True, exist_ok=True)
+    if isinstance(raw, bytes):
+        path.write_bytes(raw)
+    else:
+        path.write_text(raw, encoding="utf-8")
+
+
+def candidate(tmp_path: Path) -> tuple[Path, str, str, str]:
+    root = tmp_path / "newsletter"
+    root.mkdir()
+    git(root, "init", "-q")
+    git(root, "config", "user.email", "s132-fixture@example.invalid")
+    git(root, "config", "user.name", "s132 validator fixture")
+    write(root, str(validator.LEGACY_WORKFLOW), LEGACY_WORKFLOW)
+    write(root, "newsletter.md", "published content\n")
+    git(root, "add", ".")
+    git(root, "commit", "-q", "-m", "base")
+    base = git(root, "rev-parse", "HEAD")
+    authority = authority_commit()
+    write(
+        root, str(validator.UPGRADE_WORKFLOW),
+        validator.expected_upgrade_workflow(authority),
+    )
+    write(root, str(validator.CAPABILITY), validator.expected_capability(authority))
+    git(root, "add", ".")
+    git(root, "commit", "-q", "-m", "bootstrap upgrade control")
+    return root, base, git(root, "rev-parse", "HEAD"), authority
+
+
+def validate(root: Path, base: str, head: str):
+    return validator.validate(
+        root, "rexcoleman/newsletter", base, head, REPO_ROOT
+    )
+
+
+def recommit(root: Path, message: str = "adversarial mutation") -> str:
+    git(root, "add", ".")
+    git(root, "commit", "-q", "-m", message)
+    return git(root, "rev-parse", "HEAD")
+
+
+def test_exact_two_path_bootstrap_passes_without_candidate_execution(tmp_path):
+    root, base, head, authority = candidate(tmp_path)
+    result = validate(root, base, head)
+    assert result["verdict"] == "PASS"
+    assert result["raw_exit"] == 0
+    assert result["authority_commit"] == authority
+    assert result["changed"] == sorted(validator.ALLOWED_CONTROL_PATHS)
+    assert result["candidate_code_executed"] is False
+    assert result["mutation_authorized"] is False
+
+
+@pytest.mark.parametrize("relative,raw,reason", [
+    ("newsletter.md", "changed content\n", "CONTROL_CHANGE_SET"),
+    (".github/workflows/backdoor.yml", "permissions: write-all\n", "CONTROL_CHANGE_SET"),
+    (str(validator.UPGRADE_WORKFLOW), "name: attacker\n", "UPGRADE_WORKFLOW_BYTES_NOT_APPROVED"),
+    (str(validator.CAPABILITY), b"{}\n", "BOOTSTRAP_CAPABILITY_BYTES_NOT_APPROVED"),
+])
+def test_content_extra_workflow_and_bound_control_tampering_refuse(
+    tmp_path, relative, raw, reason,
+):
+    root, base, _head, _authority = candidate(tmp_path)
+    write(root, relative, raw)
+    head = recommit(root)
+    with pytest.raises(validator.Refusal, match=reason):
+        validate(root, base, head)
+
+
+@pytest.mark.parametrize("needle,replacement,reason", [
+    ("pull_request_target:", "pull_request:", "LEGACY_EVENT_NOT_PULL_REQUEST_TARGET_ONLY"),
+    ("contents: read", "contents: write", "WORKFLOW_WRITE_PERMISSION"),
+    ("@44e61952b101aacb222091f04c4cf728b5ec3f04", "@main", "LEGACY_REUSABLE_WORKFLOW_PIN"),
+    ("    uses: rexcoleman/", "    steps:\n      - run: true\n    uses: rexcoleman/", "LEGACY_CANDIDATE_EXECUTION"),
+])
+def test_legacy_control_semantic_attacks_refuse(
+    tmp_path, needle, replacement, reason,
+):
+    raw = LEGACY_WORKFLOW.replace(needle, replacement, 1)
+    with pytest.raises(validator.Refusal, match=reason):
+        validator.validate_legacy_workflow(raw)
+
+
+def test_wrong_repository_and_checkout_identity_refuse(tmp_path):
+    root, base, head, _authority = candidate(tmp_path)
+    with pytest.raises(validator.Refusal, match="REPOSITORY_IDENTITY"):
+        validator.validate(root, "attacker/newsletter", base, head, REPO_ROOT)
+    with pytest.raises(validator.Refusal, match="CHECKOUT_SHA_MISMATCH"):
+        validator.validate(root, "rexcoleman/newsletter", base, base, REPO_ROOT)
+
+
+def test_expected_capability_binds_exact_authority_commit():
+    commit = "a" * 40
+    loaded = json.loads(validator.expected_capability(commit))
+    assert loaded["validator_authority"] == (
+        "rexcoleman/rexcoleman.dev@" + commit
+        + ":.github/write-enforcement/validate_newsletter_upgrade.py"
+    )
+    assert loaded["candidate_self_bootstraps"] is True
+    assert loaded["candidate_code_executed"] is False

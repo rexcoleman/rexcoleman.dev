@@ -448,7 +448,7 @@ EXPECTED_MEMBERS.update({
     "emitter-runtime-channel-voice-checker": ("govML", "scripts/generators/gen_channel_voice_check.py"),
     "newsletter-upgrade-workflow": ("newsletter", ".github/workflows/newsletter-upgrade-integrity.yml"),
     "newsletter-bootstrap-capability": ("newsletter", ".github/integrity/newsletter/bootstrap-capability.json"),
-    "newsletter-bootstrap-validator": ("newsletter", ".github/integrity/newsletter/validate_upgrade_control.py"),
+    "newsletter-bootstrap-validator": ("rexcoleman.dev", ".github/write-enforcement/validate_newsletter_upgrade.py"),
 })
 
 # The authoring generators above are not the installed comparison identity.
