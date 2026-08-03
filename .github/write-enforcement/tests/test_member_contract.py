@@ -119,6 +119,30 @@ def test_contract_covers_complete_s88_face_a_and_face_b_bundle_sets():
     )
 
 
+def test_single_runner_replaces_legacy_copies_with_authority_closure():
+    assert {
+        member_id: EXPECTED_MEMBERS[member_id]
+        for member_id in (
+            "external-judge-authority-issuer",
+            "external-judge-authority-verifier",
+            "external-judge-authority-judge",
+        )
+    } == {
+        "external-judge-authority-issuer": (
+            "govML", "scripts/issue_external_judge_authority.py"
+        ),
+        "external-judge-authority-verifier": (
+            "govML", "scripts/external_judge_authority.py"
+        ),
+        "external-judge-authority-judge": (
+            "govML", "scripts/landscape_depth_judge.py"
+        ),
+    }
+    assert not {
+        "project-runner-f07", "project-runner-f08", "project-runner-f09"
+    } & set(EXPECTED_MEMBERS)
+
+
 def test_signed_scaffold_installer_closes_all_transitive_comparison_inputs():
     core = {
         "scaffold-hybrid-core-atomic-consumer": "write_integrity/consumer/atomic_consumer.py",
