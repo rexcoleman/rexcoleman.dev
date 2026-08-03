@@ -6,11 +6,15 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import re
 import subprocess
+import types
 from pathlib import Path
 
 from member_contract import (
     AUTHORITY_GENERATION,
+    EXPECTED_EMITTER_RUNTIME_INSTALLATIONS,
+    EXPECTED_MEMBERS,
     GENERATION_MANIFEST_NAME,
     REQUIRED_MEMBER_CLASSES,
     RULESET_ID,
@@ -19,6 +23,13 @@ from member_contract import (
 )
 
 MEMBERS = grouped_members()
+AUTHORITATIVE_REPOSITORY_SLUGS = (
+    ("research_enforcement_activation", "research_enforcement_activation"),
+    ("govML", "govML"),
+    ("Moonshots_Career_Thesis_v2", "Moonshots_Career_Thesis"),
+    ("newsletter", "newsletter"),
+    ("rexcoleman.dev", "rexcoleman.dev"),
+)
 
 
 def canonical(value: object) -> bytes:
@@ -55,6 +66,110 @@ def committed_member_bytes(root: Path, commit: str, path: str) -> bytes:
     return committed.stdout
 
 
+def authoritative_repository_slug(repository: str) -> str:
+    """Resolve one logical contract name through the closed remote mapping."""
+    expected = set(grouped_members())
+    logical_names = [logical for logical, _slug in AUTHORITATIVE_REPOSITORY_SLUGS]
+    slugs = [slug for _logical, slug in AUTHORITATIVE_REPOSITORY_SLUGS]
+    duplicate_logical = sorted({name for name in logical_names
+                                if logical_names.count(name) > 1})
+    duplicate_slugs = sorted({slug for slug in slugs if slugs.count(slug) > 1})
+    observed = set(logical_names)
+    missing = sorted(expected - observed)
+    extra = sorted(observed - expected)
+    invalid_slugs = sorted(
+        repr(slug) for slug in slugs
+        if not isinstance(slug, str)
+        or re.fullmatch(r"[A-Za-z0-9_.-]+", slug) is None
+    )
+    if duplicate_logical or duplicate_slugs or missing or extra or invalid_slugs:
+        raise ValueError(
+            "authoritative repository mapping invalid:"
+            f"missing={missing}:extra={extra}:"
+            f"duplicate_logical={duplicate_logical}:"
+            f"duplicate_slugs={duplicate_slugs}:invalid_slugs={invalid_slugs}"
+        )
+    if repository not in expected:
+        raise ValueError(f"unknown logical repository: {repository}")
+    return dict(AUTHORITATIVE_REPOSITORY_SLUGS)[repository]
+
+
+def verify_remote_reachability(repository: str, commit: str) -> None:
+    """Derive reachability from the authoritative GitHub commit endpoint."""
+    slug = authoritative_repository_slug(repository)
+    result = subprocess.run(
+        ["gh", "api", f"repos/rexcoleman/{slug}/commits/{commit}",
+         "--jq", ".sha"],
+        check=False, capture_output=True, text=True, timeout=30,
+    )
+    observed = result.stdout.strip()
+    if result.returncode or observed != commit:
+        raise ValueError(
+            f"authoritative remote member unreachable: "
+            f"{repository}[rexcoleman/{slug}]@{commit};"
+            f"raw_exit={result.returncode};observed={observed!r}"
+        )
+
+
+def validate_installed_population(govml_root: Path, commit: str) -> None:
+    module_relative = (
+        "templates/build/enforcement/managed_enforcement_inventory.py"
+    )
+    module_path = govml_root / module_relative
+    module_raw = committed_member_bytes(govml_root, commit, module_relative)
+    module = types.ModuleType("managed_inventory")
+    module.__file__ = str(module_path)
+    exec(compile(module_raw, str(module_path), "exec"), module.__dict__)
+    expected = EXPECTED_EMITTER_RUNTIME_INSTALLATIONS
+    observed_names = set(module.emitter_runtime_names())
+    expected_names = {
+        destination.rsplit("/", 1)[-1] for destination in expected
+    }
+    if observed_names != expected_names:
+        raise ValueError(
+            "installed emitter runtime set mismatch:"
+            f"missing={sorted(expected_names - observed_names)}:"
+            f"extra={sorted(observed_names - expected_names)}"
+        )
+    installed = {
+        ("govML", f"templates/build/enforcement/{path}")
+        for path in module.all_installed_sources()
+    }
+    frozen = {
+        value for value in EXPECTED_MEMBERS.values()
+        if value[0] == "govML"
+    }
+    frozen_subjects = set(EXPECTED_MEMBERS.values())
+    for destination, subjects in sorted(expected.items()):
+        authoring = tuple(subjects["authoring"])
+        installed_subject = tuple(subjects["installed"])
+        if authoring not in frozen_subjects or installed_subject not in frozen_subjects:
+            raise ValueError(
+                f"unsigned installed runtime path: {destination}:"
+                f"authoring={authoring}:installed={installed_subject}"
+            )
+        try:
+            authoring_raw = committed_member_bytes(
+                govml_root, commit, authoring[1]
+            )
+            installed_raw = committed_member_bytes(
+                govml_root, commit, installed_subject[1]
+            )
+        except ValueError as exc:
+            raise ValueError(
+                f"missing installed runtime path: {destination}:{exc}"
+            ) from None
+        if authoring_raw != installed_raw:
+            raise ValueError(
+                f"installed runtime digest divergence: {destination}:"
+                f"authoring_sha256={sha(authoring_raw)}:"
+                f"installed_sha256={sha(installed_raw)}"
+            )
+    missing = sorted(installed - frozen)
+    if missing:
+        raise ValueError(f"unsigned installed members: {missing}")
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--output", type=Path, required=True)
@@ -70,6 +185,23 @@ def main() -> int:
             f"{GENERATION_MANIFEST_NAME}"
         )
     roots = {name: getattr(args, "root_" + name.lower().replace(".", "_")) for name in MEMBERS}
+    if "govML" in roots:
+        validate_installed_population(
+            roots["govML"], head(roots["govML"])
+        )
+    subjects = {(repository, head(roots[repository])) for repository in MEMBERS}
+    # Unit fixtures use a synthetic repository name.  Production's closed
+    # contract contains only the five authoritative repositories.
+    if set(MEMBERS) == set(grouped_members()):
+        for repository, commit in sorted(subjects):
+            verify_remote_reachability(repository, commit)
+        for repository, specs in sorted(MEMBERS.items()):
+            commit = head(roots[repository])
+            for member_id, path in specs:
+                print(
+                    f"REMOTE_REACHABLE member_id={member_id} "
+                    f"repository={repository} commit={commit} path={path}"
+                )
     rows = []
     for repository, specs in MEMBERS.items():
         commit = head(roots[repository])

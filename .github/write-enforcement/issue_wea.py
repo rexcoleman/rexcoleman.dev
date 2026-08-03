@@ -5,11 +5,13 @@ from __future__ import annotations
 
 import argparse
 import base64
+import binascii
 import hashlib
 import json
 import os
 import re
 import subprocess
+import tempfile
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -117,12 +119,9 @@ def verify_trust_roots(loaded: dict[str, bytes], public: bytes) -> None:
         raise IssuerRefusal("TRUST_ROOT_COPY_MISMATCH", "govml_or_newsletter")
 
 
-def issuance_times(now: datetime, mode: str) -> tuple[datetime, datetime]:
-    if mode == "active":
-        return now, now + timedelta(hours=24)
-    if mode == "expired_fixture":
-        return now - timedelta(hours=48), now - timedelta(hours=24)
-    raise ValueError("issuance time mode")
+def issuance_times(now: datetime) -> tuple[datetime, datetime]:
+    """Production issuer exposes one coherent active-successor mode."""
+    return now, now + timedelta(hours=24)
 
 
 def sign_payload(payload: dict, private_key: Path) -> dict:
@@ -149,12 +148,54 @@ def sign_envelope(payload: dict, private_key: Path) -> dict:
     }
 
 
+def authenticated_predecessor(path: Path, public_key: Path) -> tuple[bytes, dict]:
+    """Authenticate the exact artifact being replaced and derive its epoch."""
+    raw = path.read_bytes()
+    value = json.loads(raw)
+    if not isinstance(value, dict):
+        raise IssuerRefusal("PREDECESSOR_WEA_INVALID", "not_object")
+    signature = value.get("signature")
+    payload = {key: item for key, item in value.items() if key != "signature"}
+    signed_digest = digest(canonical(payload))
+    if (
+        not isinstance(signature, dict)
+        or signature.get("algorithm") != "ed25519"
+        or signature.get("signed_digest") != signed_digest
+        or payload.get("schema_version") != "rea.write.wea.live.v2"
+        or payload.get("purpose") != "LIVE_ENFORCEMENT"
+        or payload.get("state") != "ENFORCING"
+        or payload.get("issuer") != ISSUER
+        or isinstance(payload.get("authority_epoch"), bool)
+        or not isinstance(payload.get("authority_epoch"), int)
+        or payload["authority_epoch"] < 1
+    ):
+        raise IssuerRefusal("PREDECESSOR_WEA_INVALID", "shape")
+    try:
+        signature_raw = base64.b64decode(signature.get("value", ""), validate=True)
+        if len(signature_raw) != 64:
+            raise ValueError("signature_length")
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            (root / "digest").write_bytes(bytes.fromhex(signed_digest))
+            (root / "signature").write_bytes(signature_raw)
+            result = subprocess.run(
+                ["openssl", "pkeyutl", "-verify", "-pubin", "-inkey", str(public_key),
+                 "-rawin", "-in", str(root / "digest"), "-sigfile", str(root / "signature")],
+                check=False, capture_output=True, timeout=15,
+            )
+            if result.returncode:
+                raise ValueError("signature")
+    except (ValueError, binascii.Error):
+        raise IssuerRefusal("PREDECESSOR_WEA_INVALID", "signature") from None
+    return raw, payload
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     for name in ("manifest", "workspace", "ruleset-json", "private-key", "output"):
         parser.add_argument("--" + name, required=True, type=Path)
-    parser.add_argument("--time-mode", choices=("active", "expired_fixture"), default="active")
-    parser.add_argument("--predecessor-wea-digest", default="")
+    parser.add_argument("--predecessor-wea", type=Path)
+    parser.add_argument("--predecessor-wea-sha256", required=True)
     args = parser.parse_args()
     manifest = load_manifest(args.manifest)
     loaded = verify_members(manifest, args.workspace)
@@ -181,41 +222,32 @@ def main() -> int:
     public = public_path.read_bytes()
     verify_trust_roots(loaded, public)
     now = datetime.now(timezone.utc).replace(microsecond=0)
-    issued_at, expires_at = issuance_times(now, args.time_mode)
-    predecessor = args.predecessor_wea_digest.strip() or None
-    if args.time_mode == "active":
-        if AUTHORITY_GENERATION > 1 and not re.fullmatch(r"[0-9a-f]{64}", predecessor or ""):
-            raise IssuerRefusal("PREDECESSOR_WEA_DIGEST_REQUIRED", "active generation-4 issuance")
-        payload = {
+    issued_at, expires_at = issuance_times(now)
+    if args.predecessor_wea is None:
+        raise IssuerRefusal("PREDECESSOR_WEA_REQUIRED", "active issuance")
+    predecessor_raw, predecessor_payload = authenticated_predecessor(
+        args.predecessor_wea, public_path
+    )
+    predecessor = digest(predecessor_raw)
+    if predecessor != args.predecessor_wea_sha256:
+        raise IssuerRefusal("PREDECESSOR_WEA_INVALID", "dispatch_digest_mismatch")
+    issuance_epoch = predecessor_payload["authority_epoch"] + 1
+    payload = {
             "schema_version": "rea.write.wea.live.v2",
             "purpose": "LIVE_ENFORCEMENT",
             "state": "ENFORCING",
-            "authority_epoch": manifest["authority_generation"],
+            "authority_epoch": issuance_epoch,
             "predecessor_wea_digest": predecessor,
             "issuer": ISSUER,
             "issuer_source_digest": digest(loaded["remote-issuer"] + loaded["remote-member-contract"]),
             "renewal_policy_digest": digest(b"successor-required:no-human-cadence:v1"),
             "issuance_receipt_digest": digest(f"pending:{os.environ['GITHUB_RUN_ID']}:{now.isoformat()}".encode()),
-            "coverage_registry_digest": digest(loaded["profile-registry"]),
+            "coverage_registry_digest": digest(
+                loaded["managed-gate-coverage-registry"]
+            ),
             "coverage_registry_generation": manifest["authority_generation"],
             "publishing_capability_scope": scope,
             "required_surfaces": ["report", "blog", "publication", "distribution"],
-        }
-    else:
-        payload = {
-            "schema_version": "rea.write.wea.r4-fixture.v1",
-            "purpose": "R4_NEGATIVE_FIXTURE",
-            "state": "FIXTURE",
-            "authority_epoch": manifest["authority_generation"],
-            "predecessor_wea_digest": None,
-            "issuer": ISSUER,
-            "issuer_source_digest": digest(loaded["remote-issuer"] + loaded["remote-member-contract"]),
-            "renewal_policy_digest": digest(b"fixture:no-production-use:v1"),
-            "issuance_receipt_digest": digest(f"fixture:{os.environ['GITHUB_RUN_ID']}:{now.isoformat()}".encode()),
-            "coverage_registry_digest": digest(loaded["profile-registry"]),
-            "coverage_registry_generation": manifest["authority_generation"],
-            "fixture_id": f"r4-fixture-{os.environ['GITHUB_RUN_ID']}-{os.environ['GITHUB_RUN_ATTEMPT']}",
-            "production_eligible": False,
         }
     payload.update({
         "issued_at": issued_at.isoformat().replace("+00:00", "Z"),
@@ -264,7 +296,7 @@ def main() -> int:
         "schema_version": "rea.write.hybrid-capability-authority.v1",
         "purpose": "VERIFY_ONLY_CURRENT_REGISTRY",
         "issuer": ISSUER,
-        "authority_epoch": manifest["authority_generation"],
+        "authority_epoch": payload["authority_epoch"],
         "wea_sha256": digest(wea_path.read_bytes()),
         "enforcement_bundle_manifest_digest": manifest["manifest_digest"],
         "claim_registry_sha256": digest(registry_path.read_bytes()),
@@ -278,6 +310,9 @@ def main() -> int:
     }
     authority_path = args.output / "hybrid_capability_authority.json"
     authority_path.write_bytes(canonical(sign_envelope(hybrid_payload, args.private_key)) + b"\n")
+    (args.output / "predecessor_write_enforcement_attestation.json").write_bytes(
+        predecessor_raw
+    )
     names = (
         "write_enforcement_attestation.json",
         "enforcement_bundle_manifest.json",
@@ -289,6 +324,7 @@ def main() -> int:
         "runtime_mount.py",
         "hybrid_capability_authority.json",
     )
+    names = names + ("predecessor_write_enforcement_attestation.json",)
     (args.output / "SHA256SUMS").write_text("".join(
         f"{digest((args.output / name).read_bytes())}  {name}\n" for name in names), encoding="ascii")
     return 0

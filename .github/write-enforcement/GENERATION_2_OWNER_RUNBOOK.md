@@ -77,7 +77,7 @@ BASELINE_RUN_ID="$(
     --jq '.workflow_runs[0].id // 0'
 )"
 gh workflow run issue-write-enforcement-attestation.yml \
-  --repo "$ISSUER_REPO" --ref "$ISSUER_TAG" -f time_mode=active
+  --repo "$ISSUER_REPO" --ref "$ISSUER_TAG"
 RUN_ID=
 attempt=0
 while [ "$attempt" -lt 60 ]; do

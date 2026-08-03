@@ -3,22 +3,18 @@ name: Issue write enforcement attestation
 on:
   workflow_dispatch:
     inputs:
-      time_mode:
-        description: Active WEA or remote-signed expired R4 fixture
+      predecessor_run_id:
+        description: Workflow run containing the exact authenticated WEA being replaced
         required: true
-        default: active
-        type: choice
-        options:
-          - active
-          - expired_fixture
+        type: string
       predecessor_wea_sha256:
-        description: Required predecessor WEA digest for active generation-4 issuance
-        required: false
-        default: ""
+        description: SHA-256 of the exact installed predecessor authenticated before dispatch
+        required: true
         type: string
 
 permissions:
   contents: read
+  actions: read
 
 concurrency:
   group: rea-write-enforcement-issuer
@@ -29,7 +25,77 @@ defaults:
     shell: bash
 
 jobs:
+  preflight-predecessor:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Authenticate exact predecessor before protected environment
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PREDECESSOR_RUN_ID: ${{ inputs.predecessor_run_id }}
+          PREDECESSOR_WEA_SHA256: ${{ inputs.predecessor_wea_sha256 }}
+        run: |
+          set -euo pipefail
+          [[ "$PREDECESSOR_RUN_ID" =~ ^[1-9][0-9]*$ ]]
+          [[ "$PREDECESSOR_WEA_SHA256" =~ ^[0-9a-f]{64}$ ]]
+          gh run view "$PREDECESSOR_RUN_ID" --repo rexcoleman/rexcoleman.dev \
+            --json databaseId,event,workflowName,status,conclusion,url > predecessor-run.json
+          python3 - "$PREDECESSOR_RUN_ID" predecessor-run.json <<'PY'
+          import json, sys
+          run_id = int(sys.argv[1]); value = json.load(open(sys.argv[2]))
+          assert value == {
+              "databaseId": run_id, "event": "workflow_dispatch",
+              "workflowName": "Issue write enforcement attestation",
+              "status": "completed", "conclusion": "success",
+              "url": f"https://github.com/rexcoleman/rexcoleman.dev/actions/runs/{run_id}",
+          }
+          PY
+          gh api "repos/rexcoleman/rexcoleman.dev/actions/runs/$PREDECESSOR_RUN_ID/artifacts" > predecessor-artifacts.json
+          python3 - "$PREDECESSOR_RUN_ID" predecessor-artifacts.json <<'PY'
+          import json, sys
+          run_id = int(sys.argv[1]); value = json.load(open(sys.argv[2]))
+          name = f"rea-write-enforcement-attestation-{run_id}"
+          rows = [row for row in value["artifacts"] if row["name"] == name]
+          assert len(rows) == 1 and rows[0]["expired"] is False
+          assert rows[0]["workflow_run"]["id"] == run_id
+          PY
+          mkdir predecessor
+          gh run download "$PREDECESSOR_RUN_ID" --repo rexcoleman/rexcoleman.dev \
+            --name "rea-write-enforcement-attestation-$PREDECESSOR_RUN_ID" \
+            --dir predecessor
+          expected=$'SHA256SUMS\nclaim_policy.json\nclaim_registry.json\nenforcement_bundle_manifest.json\nhybrid_capability_authority.json\nhybrid_capability_provider\nissuance_receipt.json\npredecessor_write_enforcement_attestation.json\nruntime_mount.py\ntrusted_wea_public.pem\nwrite_enforcement_attestation.json'
+          observed="$(find predecessor -maxdepth 1 -type f -printf '%f\n' | LC_ALL=C sort)"
+          test "$observed" = "$expected"
+          (cd predecessor && sha256sum -c SHA256SUMS)
+          test "$(sha256sum predecessor/write_enforcement_attestation.json | cut -d' ' -f1)" = "$PREDECESSOR_WEA_SHA256"
+          python3 - "$PREDECESSOR_RUN_ID" predecessor <<'PY'
+          import base64, hashlib, json, pathlib, sys
+          run_id = int(sys.argv[1]); root = pathlib.Path(sys.argv[2])
+          raw = (root / "write_enforcement_attestation.json").read_bytes()
+          wea = json.loads(raw); receipt = json.loads((root / "issuance_receipt.json").read_bytes())
+          assert receipt["workflow_run_id"] == run_id
+          assert receipt["workflow_repository"] == "rexcoleman/rexcoleman.dev"
+          assert receipt["event"] == "workflow_dispatch"
+          assert receipt["wea_sha256"] == hashlib.sha256(raw).hexdigest()
+          signature = wea.pop("signature")
+          signed = json.dumps(wea, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode()
+          digest = hashlib.sha256(signed).hexdigest()
+          assert signature["algorithm"] == "ed25519" and signature["signed_digest"] == digest
+          (root / ".signed-digest").write_bytes(bytes.fromhex(digest))
+          (root / ".signature").write_bytes(base64.b64decode(signature["value"], validate=True))
+          PY
+          openssl pkeyutl -verify -pubin -inkey predecessor/trusted_wea_public.pem \
+            -rawin -in predecessor/.signed-digest -sigfile predecessor/.signature
+          rm predecessor/.signed-digest predecessor/.signature
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: authenticated-predecessor-${{ github.run_id }}
+          path: predecessor/write_enforcement_attestation.json
+          if-no-files-found: error
+          retention-days: 1
+
   issue-wea:
+    needs: preflight-predecessor
     environment: rea-write-enforcement-issuer
     runs-on: ubuntu-24.04
     timeout-minutes: 20
@@ -78,6 +144,16 @@ jobs:
           test -n "$WEA_KEY_B64"
           umask 077
           printf '%s' "$WEA_KEY_B64" | base64 --decode > "$RUNNER_TEMP/wea-private.pem"
+      - name: Download authenticated predecessor
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: authenticated-predecessor-${{ github.run_id }}
+          path: predecessor
+      - name: Recompare authenticated predecessor before signing
+        run: |
+          set -euo pipefail
+          test -s predecessor/write_enforcement_attestation.json
+          test "$(sha256sum predecessor/write_enforcement_attestation.json | cut -d' ' -f1)" = "${{ inputs.predecessor_wea_sha256 }}"
       - name: Verify frozen bundle and issue
         run: |
           set -euo pipefail
@@ -85,8 +161,8 @@ jobs:
             --manifest repos/rexcoleman.dev/.github/write-enforcement/frozen_bundle_manifest.generation-4.json \
             --workspace repos --ruleset-json "$RUNNER_TEMP/ruleset.json" \
             --private-key "$RUNNER_TEMP/wea-private.pem" --output issuance \
-            --time-mode "${{ inputs.time_mode }}" \
-            --predecessor-wea-digest "${{ inputs.predecessor_wea_sha256 }}"
+            --predecessor-wea predecessor/write_enforcement_attestation.json \
+            --predecessor-wea-sha256 "${{ inputs.predecessor_wea_sha256 }}"
           (cd issuance && sha256sum -c SHA256SUMS)
       - name: Verify issued WEA on hosted runner
         run: |
@@ -98,7 +174,7 @@ jobs:
       - name: Prove published artifact has public custody only
         run: |
           set -euo pipefail
-          expected=$'SHA256SUMS\nclaim_policy.json\nclaim_registry.json\nenforcement_bundle_manifest.json\nhybrid_capability_authority.json\nhybrid_capability_provider\nissuance_receipt.json\nruntime_mount.py\ntrusted_wea_public.pem\nwrite_enforcement_attestation.json'
+          expected=$'SHA256SUMS\nclaim_policy.json\nclaim_registry.json\nenforcement_bundle_manifest.json\nhybrid_capability_authority.json\nhybrid_capability_provider\nissuance_receipt.json\npredecessor_write_enforcement_attestation.json\nruntime_mount.py\ntrusted_wea_public.pem\nwrite_enforcement_attestation.json'
           observed="$(find issuance -maxdepth 1 -type f -printf '%f\n' | LC_ALL=C sort)"
           test "$observed" = "$expected"
           while IFS= read -r name; do
@@ -114,7 +190,7 @@ jobs:
           done <<< "$observed"
           test -x issuance/hybrid_capability_provider
           test -x issuance/runtime_mount.py
-          echo "PUBLIC_ONLY_ARTIFACT_PASS files=10 private_key_copy=absent"
+          echo "PUBLIC_ONLY_ARTIFACT_PASS files=11 private_key_copy=absent"
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: rea-write-enforcement-attestation-${{ github.run_id }}

@@ -24,13 +24,14 @@ def args(tmp_path):
     )
 
 
-def test_public_artifact_inventory_remains_exact_ten():
-    assert len(MODULE.PUBLIC_ARTIFACTS) == 10
+def test_public_artifact_inventory_remains_exact_eleven():
+    assert len(MODULE.PUBLIC_ARTIFACTS) == 11
     assert MODULE.PUBLIC_ARTIFACTS == {
         "SHA256SUMS", "claim_policy.json", "claim_registry.json",
         "enforcement_bundle_manifest.json", "hybrid_capability_authority.json",
         "hybrid_capability_provider", "issuance_receipt.json", "runtime_mount.py",
         "trusted_wea_public.pem", "write_enforcement_attestation.json",
+        "predecessor_write_enforcement_attestation.json",
     }
 
 
@@ -115,12 +116,24 @@ def artifact_relative_packet(tmp_path, monkeypatch, changed_member_id):
     now = datetime.now(timezone.utc).replace(microsecond=0)
     issued = (now - timedelta(minutes=1)).isoformat().replace("+00:00", "Z")
     expires = (now + timedelta(hours=1)).isoformat().replace("+00:00", "Z")
+    predecessor = {
+        "schema_version": "rea.write.wea.live.v2",
+        "purpose": "LIVE_ENFORCEMENT", "state": "ENFORCING",
+        "issuer": MODULE.ISSUER,
+        "authority_epoch": MODULE.AUTHORITY_GENERATION - 1,
+    }
+    predecessor_digest = MODULE.digest(MODULE.canonical(predecessor))
+    predecessor["signature"] = {
+        "algorithm": "ed25519", "signed_digest": predecessor_digest,
+        "value": base64.b64encode(b"0" * 64).decode(),
+    }
+    predecessor_raw = MODULE.canonical(predecessor) + b"\n"
     wea = {
         "schema_version": "rea.write.wea.live.v2",
         "purpose": "LIVE_ENFORCEMENT",
         "state": "ENFORCING",
         "authority_epoch": MODULE.AUTHORITY_GENERATION,
-        "predecessor_wea_digest": "1" * 64,
+        "predecessor_wea_digest": MODULE.digest(predecessor_raw),
         "issuer": MODULE.ISSUER,
         "issued_at": issued,
         "expires_at": expires,
@@ -128,6 +141,10 @@ def artifact_relative_packet(tmp_path, monkeypatch, changed_member_id):
         "required_surfaces": sorted(MODULE.SURFACES),
         "enforcement_bundle_manifest_digest": manifest["manifest_digest"],
         "claim_policy_digest": MODULE.digest(member_bytes["claim-policy"]),
+        "coverage_registry_digest": MODULE.digest(
+            member_bytes["managed-gate-coverage-registry"]
+        ),
+        "coverage_registry_generation": MODULE.AUTHORITY_GENERATION,
         "trusted_key_id": f"rea-wea-ed25519-{MODULE.digest(public)[:16]}",
     }
     signed_digest = MODULE.digest(MODULE.canonical(wea))
@@ -147,6 +164,7 @@ def artifact_relative_packet(tmp_path, monkeypatch, changed_member_id):
         "hybrid_capability_provider": member_bytes["hybrid-capability-provider"],
         "runtime_mount.py": member_bytes["route-runtime-mount"],
         "hybrid_capability_authority.json": b"{}\n",
+        "predecessor_write_enforcement_attestation.json": predecessor_raw,
     }
     workflow = next(row for row in members if row["member_id"] == "remote-issuer-workflow")
     receipt = {
@@ -201,6 +219,39 @@ def test_hosted_verifier_uses_exact_commit_objects_despite_checkout_drift(
     report = MODULE.verify(parsed)
     assert report["verdict"] == "PASS"
     assert report["public_checksums_verified"] is True
+
+
+def test_hosted_verifier_refuses_crossed_signed_coverage_registry_digest(
+        tmp_path, monkeypatch):
+    parsed = artifact_relative_packet(
+        tmp_path, monkeypatch, "managed-gate-coverage-registry"
+    )
+    issuance = parsed.issuance
+    wea_path = issuance / "write_enforcement_attestation.json"
+    wea = json.loads(wea_path.read_bytes())
+    wea["coverage_registry_digest"] = "0" * 64
+    unsigned = dict(wea)
+    unsigned.pop("signature")
+    signed_digest = MODULE.digest(MODULE.canonical(unsigned))
+    wea["signature"] = {
+        "algorithm": "ed25519", "signed_digest": signed_digest,
+        "value": base64.b64encode(b"0" * 64).decode(),
+    }
+    wea_path.write_bytes(MODULE.canonical(wea) + b"\n")
+    receipt_path = issuance / "issuance_receipt.json"
+    receipt = json.loads(receipt_path.read_bytes())
+    receipt["wea_sha256"] = MODULE.digest(wea_path.read_bytes())
+    receipt_path.write_bytes(MODULE.canonical(receipt) + b"\n")
+    payloads = sorted(MODULE.PUBLIC_ARTIFACTS - {"SHA256SUMS"})
+    (issuance / "SHA256SUMS").write_text("".join(
+        f"{MODULE.digest((issuance / name).read_bytes())}  {name}\n"
+        for name in payloads
+    ), encoding="ascii")
+
+    with pytest.raises(MODULE.HostedWEARefusal) as captured:
+        MODULE.verify(parsed)
+    assert captured.value.reason_code == "WEA_WRONG_BUNDLE"
+    assert captured.value.detail == "coverage_registry_digest"
 
 
 def test_public_checksum_closure_verifies_all_nine_payload_files(tmp_path):
