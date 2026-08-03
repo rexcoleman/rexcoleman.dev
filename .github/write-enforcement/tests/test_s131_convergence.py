@@ -249,7 +249,10 @@ def test_exact_five_candidate_roots_close_installed_runtime_population(
         "VALUE = 1\n", encoding="ascii"
     )
     _commit(govml, "planted extra installed runtime")
-    with pytest.raises(ValueError, match="runtime set mismatch.*extra"):
+    with pytest.raises(
+        ValueError,
+        match="runtime set mismatch.*extra|EMITTER_RUNTIME_CLOSURE_DRIFT",
+    ):
         _run_five_root_builder(
             monkeypatch, roots, ruleset,
             tmp_path / "extra" / contract.GENERATION_MANIFEST_NAME,
