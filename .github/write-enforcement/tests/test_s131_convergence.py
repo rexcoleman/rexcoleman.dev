@@ -133,7 +133,10 @@ def _materialize_candidate_subjects(
             assert source.is_file() and not source.is_symlink(), source
             destination = root / relative
             destination.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copyfile(source, destination)
+            # The frozen contract binds executable modes as well as bytes.
+            # Preserve the exact candidate tree mode in this synthetic Git
+            # repository so the integration test exercises that contract.
+            shutil.copy2(source, destination)
         if repository == "govML":
             for subjects in contract.EXPECTED_EMITTER_RUNTIME_INSTALLATIONS.values():
                 _authoring_repository, relative = subjects["authoring"]
@@ -141,14 +144,14 @@ def _materialize_candidate_subjects(
                 destination = root / relative
                 if not destination.exists():
                     destination.parent.mkdir(parents=True, exist_ok=True)
-                    shutil.copyfile(source, destination)
+                    shutil.copy2(source, destination)
             for _logical_id, (_repository, relative, _mode) in (
                 contract.PACKAGED_BUILD_PROFILE_GATE_SOURCES.items()
             ):
                 source = source_roots[repository] / relative
                 destination = root / relative
                 destination.parent.mkdir(parents=True, exist_ok=True)
-                shutil.copyfile(source, destination)
+                shutil.copy2(source, destination)
                 destination.chmod(0o755)
         _commit(root, "exact candidate subjects")
         roots[repository] = root
