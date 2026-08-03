@@ -1,4 +1,5 @@
 import json
+import subprocess
 import sys
 from pathlib import Path
 
@@ -8,14 +9,18 @@ HERE = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(HERE))
 
 from issue_wea import IssuerRefusal, verify_members, verify_trust_roots  # noqa: E402
+import issue_wea as issue_module  # noqa: E402
 from member_contract import (  # noqa: E402
     AUTHORITY_GENERATION,
+    COMPLETE_CHAIN_DEPENDENCIES,
     EXPECTED_MEMBERS,
+    EXTERNAL_R4_MEASUREMENT_SUBJECTS,
     FACE_A_MEMBER_IDS,
     FACE_B_MEMBER_IDS,
     FACE_B_ISOLATED_FIXTURE_MEMBER_IDS,
     GENERATION_MANIFEST_NAME,
     ROUTE_OWNED_MEMBER_IDS,
+    SIGNED_COMPLETE_CHAIN_MEMBER_IDS,
     SIGNED_SCAFFOLD_MEMBER_IDS,
     S88_BUNDLE_MEMBER_IDS,
     WRITE_BOUNDARY_POLICY_MEMBERS,
@@ -141,6 +146,136 @@ def test_single_runner_replaces_legacy_copies_with_authority_closure():
     assert not {
         "project-runner-f07", "project-runner-f08", "project-runner-f09"
     } & set(EXPECTED_MEMBERS)
+
+
+def test_signed_bundle_closes_master_chain_direct_and_transitive_files():
+    expected = {
+        "master-pre-compute-check": (
+            "govML", "scripts/pre_compute_check.sh"
+        ),
+        "canonical-enforcement-block": (
+            "govML",
+            "templates/build/enforcement/run_gates_enforcement_block.sh",
+        ),
+        "canonical-agent-pre-check-runner": (
+            "govML", "scripts/agent_pre_check_runner.sh"
+        ),
+        "canonical-research-integrity-checklist": (
+            "govML", "checklists/research_integrity.checklist"
+        ),
+        "canonical-landscape-depth-f3": (
+            "govML", "scripts/landscape_depth_gate_F3.sh"
+        ),
+        "canonical-landscape-depth-gate": (
+            "govML", "scripts/landscape_depth_gate.sh"
+        ),
+    }
+    assert SIGNED_COMPLETE_CHAIN_MEMBER_IDS == set(expected)
+    assert {
+        member_id: EXPECTED_MEMBERS[member_id]
+        for member_id in SIGNED_COMPLETE_CHAIN_MEMBER_IDS
+    } == expected
+    assert COMPLETE_CHAIN_DEPENDENCIES == {
+        "master-runner": {
+            "master-pre-compute-check",
+            "canonical-enforcement-block",
+        },
+        "canonical-enforcement-block": {
+            "canonical-agent-pre-check-runner",
+            "canonical-research-integrity-checklist",
+            "canonical-landscape-depth-f3",
+        },
+        "canonical-landscape-depth-f3": {
+            "canonical-landscape-depth-gate",
+        },
+    }
+    assert set(COMPLETE_CHAIN_DEPENDENCIES) < set(EXPECTED_MEMBERS)
+    assert set().union(*COMPLETE_CHAIN_DEPENDENCIES.values()) == set(expected)
+
+
+@pytest.mark.parametrize("member_id", sorted(SIGNED_COMPLETE_CHAIN_MEMBER_IDS))
+def test_each_complete_chain_dependency_omission_refuses_before_signing(
+        tmp_path, member_id):
+    manifest = complete_manifest()
+    manifest["members"] = [
+        row for row in manifest["members"] if row["member_id"] != member_id
+    ]
+    with pytest.raises(IssuerRefusal) as captured:
+        verify_members(manifest, tmp_path)
+    assert captured.value.reason_code == "BUNDLE_MEMBER_SET_MISMATCH"
+    assert member_id in captured.value.detail
+
+
+@pytest.mark.parametrize("member_id", sorted(SIGNED_COMPLETE_CHAIN_MEMBER_IDS))
+def test_each_complete_chain_dependency_retarget_refuses_before_signing(
+        tmp_path, member_id):
+    manifest = complete_manifest()
+    row = next(
+        item for item in manifest["members"] if item["member_id"] == member_id
+    )
+    row["path"] = "forged/complete-chain-substitute"
+    with pytest.raises(IssuerRefusal) as captured:
+        verify_members(manifest, tmp_path)
+    assert captured.value.reason_code == "BUNDLE_MEMBER_SET_MISMATCH"
+    assert member_id in captured.value.detail
+
+
+def test_external_r4_measurement_tools_are_not_installed_runtime_members():
+    assert len(EXTERNAL_R4_MEASUREMENT_SUBJECTS) == 5
+    assert not set(EXTERNAL_R4_MEASUREMENT_SUBJECTS) & set(EXPECTED_MEMBERS)
+    assert all(
+        repository == "research_enforcement_activation"
+        and path.startswith("write_integrity/attestation/")
+        for repository, path in EXTERNAL_R4_MEASUREMENT_SUBJECTS.values()
+    )
+    assert "generation-2-owner-runbook" not in EXPECTED_MEMBERS
+    assert len(EXPECTED_MEMBERS) == 229
+
+
+def test_complete_chain_member_tampered_bytes_refuse(tmp_path, monkeypatch):
+    workspace = tmp_path / "workspace"
+    repository = workspace / "govML"
+    subject = repository / "templates/build/enforcement/run_gates_enforcement_block.sh"
+    subject.parent.mkdir(parents=True)
+    subject.write_bytes(b"signed canonical block\n")
+    subprocess.run(["git", "-C", str(repository), "init", "-q"], check=True)
+    subprocess.run(
+        ["git", "-C", str(repository), "config", "user.email",
+         "s134-builder@example.invalid"], check=True,
+    )
+    subprocess.run(
+        ["git", "-C", str(repository), "config", "user.name",
+         "s134 Builder ARCH"], check=True,
+    )
+    subprocess.run(["git", "-C", str(repository), "add", "-A"], check=True)
+    subprocess.run(
+        ["git", "-C", str(repository), "commit", "-q", "-m", "fixture"],
+        check=True,
+    )
+    commit = subprocess.run(
+        ["git", "-C", str(repository), "rev-parse", "HEAD"],
+        check=True, capture_output=True, text=True,
+    ).stdout.strip()
+    expected = {
+        "canonical-enforcement-block": (
+            "govML",
+            "templates/build/enforcement/run_gates_enforcement_block.sh",
+        ),
+    }
+    monkeypatch.setattr(issue_module, "EXPECTED_MEMBERS", expected)
+    manifest = {
+        "required_member_classes": REQUIRED_CLASSES,
+        "members": [{
+            "member_id": "canonical-enforcement-block",
+            "repository": "govML",
+            "commit": commit,
+            "path": "templates/build/enforcement/run_gates_enforcement_block.sh",
+            "sha256": "0" * 64,
+            "byte_length": len(subject.read_bytes()),
+        }],
+    }
+    with pytest.raises(ValueError, match="member mismatch: canonical-enforcement-block"):
+        verify_members(manifest, workspace)
 
 
 def test_signed_scaffold_installer_closes_all_transitive_comparison_inputs():
@@ -269,15 +404,35 @@ def test_generation_4_constants_and_tag_derivation_are_exact():
         generation_tag("a" * 39)
 
 
-def test_generation_4_member_contract_covers_lifetime_reach_and_close_gate():
-    required = {
+def test_generation_4_member_contract_covers_runtime_lifetime_and_close_gate():
+    runtime_required = {
         "wea-lifetime-library",
-        "r4-plan-builder",
-        "r4-matrix-harness",
         "coverage-registry-library",
         "close-accounting-gate",
     }
-    assert required <= set(EXPECTED_MEMBERS)
+    assert runtime_required <= set(EXPECTED_MEMBERS)
+    assert EXTERNAL_R4_MEASUREMENT_SUBJECTS == {
+        "r4-plan-builder": (
+            "research_enforcement_activation",
+            "write_integrity/attestation/build_r4_plan.py",
+        ),
+        "r4-matrix-harness": (
+            "research_enforcement_activation",
+            "write_integrity/attestation/run_r4_matrix.py",
+        ),
+        "r4-harness-common": (
+            "research_enforcement_activation",
+            "write_integrity/attestation/harness_common.py",
+        ),
+        "r4-actor-probe": (
+            "research_enforcement_activation",
+            "write_integrity/attestation/r4_actor_probe.py",
+        ),
+        "r4-actor-inventory": (
+            "research_enforcement_activation",
+            "write_integrity/attestation/r4_actor_inventory.json",
+        ),
+    }
 
 
 def test_runner_adapter_complete_fixed_canonical_dependency_closure_is_signed():

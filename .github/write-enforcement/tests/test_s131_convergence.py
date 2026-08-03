@@ -202,7 +202,17 @@ def test_exact_five_candidate_roots_close_installed_runtime_population(
     installed_raw = installed_path.read_bytes()
     installed_path.unlink()
     _commit(govml, "planted missing installed runtime")
-    with pytest.raises(ValueError, match="missing installed runtime path"):
+    # The frozen-population opener may refuse the removed signed member before
+    # the later installation-closure classifier sees the same missing path.
+    # Both are fail-closed and precede manifest emission.
+    with pytest.raises(
+        ValueError,
+        match=(
+            "missing installed runtime path|"
+            "frozen population member unavailable:"
+            f"{removed_id}:"
+        ),
+    ):
         _run_five_root_builder(
             monkeypatch, roots, ruleset,
             tmp_path / "missing" / contract.GENERATION_MANIFEST_NAME,
