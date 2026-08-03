@@ -13,11 +13,13 @@ from pathlib import Path
 
 
 CHECKOUT_PIN = "11bd71901bbe5b1630ceea73d27597364c9af683"
-LEGACY_AUTHORITY_PIN = "44e61952b101aacb222091f04c4cf728b5ec3f04"
+TARGET_AUTHORITY_PIN = "179b7d30a5904fbc2cde9e3bee0bfe3771114feb"
 LEGACY_WORKFLOW = Path(".github/workflows/newsletter-integrity.yml")
 UPGRADE_WORKFLOW = Path(".github/workflows/newsletter-upgrade-integrity.yml")
 CAPABILITY = Path(".github/integrity/newsletter/bootstrap-capability.json")
-ALLOWED_CONTROL_PATHS = {str(UPGRADE_WORKFLOW), str(CAPABILITY)}
+ALLOWED_CONTROL_PATHS = {
+    str(LEGACY_WORKFLOW), str(UPGRADE_WORKFLOW), str(CAPABILITY),
+}
 
 
 class Refusal(RuntimeError):
@@ -231,7 +233,7 @@ def validate_legacy_workflow(raw: str) -> None:
     uses = re.findall(r"(?m)^\s+uses:\s*(\S+)\s*(?:#.*)?$", raw)
     expected = (
         "rexcoleman/Moonshots_Career_Thesis/.github/workflows/"
-        f"newsletter-integrity-authority.yml@{LEGACY_AUTHORITY_PIN}"
+        f"newsletter-integrity-authority.yml@{TARGET_AUTHORITY_PIN}"
     )
     if uses != [expected]:
         raise Refusal("LEGACY_REUSABLE_WORKFLOW_PIN")
