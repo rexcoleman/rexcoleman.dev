@@ -24,7 +24,7 @@ SITE_RULESET_ID = 19768000
 SITE_MANIFEST = ".github/write-enforcement/frozen_bundle_manifest.generation-4.json"
 POLICY = "rea-option-a-posthoc-exact-head-v2"
 MEMBER_CONTRACT = Path(__file__).with_name("member_contract.py")
-GENERATION_MEMBER_COUNT = 204
+GENERATION_MEMBER_COUNT = 225
 REQUIRED_MEMBER_CLASSES = {
     "boundary_gate",
     "resolver",

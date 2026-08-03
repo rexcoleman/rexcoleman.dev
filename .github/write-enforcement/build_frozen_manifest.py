@@ -5,13 +5,14 @@ from __future__ import annotations
 
 import argparse
 import hashlib
-import importlib.util
 import json
 import subprocess
+import types
 from pathlib import Path
 
 from member_contract import (
     AUTHORITY_GENERATION,
+    EXPECTED_EMITTER_RUNTIME_INSTALLATIONS,
     EXPECTED_MEMBERS,
     GENERATION_MANIFEST_NAME,
     REQUIRED_MEMBER_CLASSES,
@@ -72,15 +73,26 @@ def verify_remote_reachability(repository: str, commit: str) -> None:
         )
 
 
-def validate_installed_population(govml_root: Path) -> None:
-    module_path = (
-        govml_root / "templates/build/enforcement/managed_enforcement_inventory.py"
+def validate_installed_population(govml_root: Path, commit: str) -> None:
+    module_relative = (
+        "templates/build/enforcement/managed_enforcement_inventory.py"
     )
-    spec = importlib.util.spec_from_file_location("managed_inventory", module_path)
-    if spec is None or spec.loader is None:
-        raise ValueError("managed enforcement inventory unavailable")
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
+    module_path = govml_root / module_relative
+    module_raw = committed_member_bytes(govml_root, commit, module_relative)
+    module = types.ModuleType("managed_inventory")
+    module.__file__ = str(module_path)
+    exec(compile(module_raw, str(module_path), "exec"), module.__dict__)
+    expected = EXPECTED_EMITTER_RUNTIME_INSTALLATIONS
+    observed_names = set(module.emitter_runtime_names())
+    expected_names = {
+        destination.rsplit("/", 1)[-1] for destination in expected
+    }
+    if observed_names != expected_names:
+        raise ValueError(
+            "installed emitter runtime set mismatch:"
+            f"missing={sorted(expected_names - observed_names)}:"
+            f"extra={sorted(observed_names - expected_names)}"
+        )
     installed = {
         ("govML", f"templates/build/enforcement/{path}")
         for path in module.all_installed_sources()
@@ -89,6 +101,32 @@ def validate_installed_population(govml_root: Path) -> None:
         value for value in EXPECTED_MEMBERS.values()
         if value[0] == "govML"
     }
+    frozen_subjects = set(EXPECTED_MEMBERS.values())
+    for destination, subjects in sorted(expected.items()):
+        authoring = tuple(subjects["authoring"])
+        installed_subject = tuple(subjects["installed"])
+        if authoring not in frozen_subjects or installed_subject not in frozen_subjects:
+            raise ValueError(
+                f"unsigned installed runtime path: {destination}:"
+                f"authoring={authoring}:installed={installed_subject}"
+            )
+        try:
+            authoring_raw = committed_member_bytes(
+                govml_root, commit, authoring[1]
+            )
+            installed_raw = committed_member_bytes(
+                govml_root, commit, installed_subject[1]
+            )
+        except ValueError as exc:
+            raise ValueError(
+                f"missing installed runtime path: {destination}:{exc}"
+            ) from None
+        if authoring_raw != installed_raw:
+            raise ValueError(
+                f"installed runtime digest divergence: {destination}:"
+                f"authoring_sha256={sha(authoring_raw)}:"
+                f"installed_sha256={sha(installed_raw)}"
+            )
     missing = sorted(installed - frozen)
     if missing:
         raise ValueError(f"unsigned installed members: {missing}")
@@ -110,7 +148,9 @@ def main() -> int:
         )
     roots = {name: getattr(args, "root_" + name.lower().replace(".", "_")) for name in MEMBERS}
     if "govML" in roots:
-        validate_installed_population(roots["govML"])
+        validate_installed_population(
+            roots["govML"], head(roots["govML"])
+        )
     subjects = {(repository, head(roots[repository])) for repository in MEMBERS}
     # Unit fixtures use a synthetic repository name.  Production's closed
     # contract contains only the five authoritative repositories.

@@ -447,6 +447,121 @@ EXPECTED_MEMBERS.update({
     "newsletter-bootstrap-validator": ("newsletter", ".github/integrity/newsletter/validate_upgrade_control.py"),
 })
 
+# The authoring generators above are not the installed comparison identity.
+# Each publishing scaffold receives the vendored subject below at the listed
+# destination.  Both subjects remain frozen so manifest construction can prove
+# source-to-vendor digest equality before any installation is attempted.
+EXPECTED_EMITTER_RUNTIME_INSTALLATIONS = {
+    "scripts/publishing_emitters/blog_publish_mount.py": {
+        "authoring": ("govML", "scripts/generators/blog_publish_mount.py"),
+        "installed": ("govML", "templates/build/enforcement/blog_publish_mount.py"),
+    },
+    "scripts/publishing_emitters/blog_runtime_mount.py": {
+        "authoring": ("govML", "scripts/generators/blog_runtime_mount.py"),
+        "installed": ("govML", "templates/build/enforcement/blog_runtime_mount.py"),
+    },
+    "scripts/publishing_emitters/content_remediate.py": {
+        "authoring": ("govML", "scripts/generators/content_remediate.py"),
+        "installed": ("govML", "templates/build/enforcement/content_remediate.py"),
+    },
+    "scripts/publishing_emitters/gen_blog_post.py": {
+        "authoring": ("govML", "scripts/generators/gen_blog_post.py"),
+        "installed": ("govML", "templates/build/enforcement/gen_blog_post.py"),
+    },
+    "scripts/publishing_emitters/gen_channel_voice_check.py": {
+        "authoring": ("govML", "scripts/generators/gen_channel_voice_check.py"),
+        "installed": ("govML", "templates/build/enforcement/gen_channel_voice_check.py"),
+    },
+    "scripts/publishing_emitters/gen_data_report_checker.py": {
+        "authoring": ("govML", "scripts/generators/gen_data_report_checker.py"),
+        "installed": ("govML", "templates/build/enforcement/gen_data_report_checker.py"),
+    },
+    "scripts/publishing_emitters/gen_distribution_kit.py": {
+        "authoring": ("govML", "scripts/generators/gen_distribution_kit.py"),
+        "installed": ("govML", "templates/build/enforcement/gen_distribution_kit.py"),
+    },
+    "scripts/publishing_emitters/gen_experiment_learning.py": {
+        "authoring": ("govML", "scripts/generators/gen_experiment_learning.py"),
+        "installed": ("govML", "templates/build/enforcement/gen_experiment_learning.py"),
+    },
+    "scripts/publishing_emitters/gen_integrity_checker.py": {
+        "authoring": ("govML", "scripts/generators/gen_integrity_checker.py"),
+        "installed": ("govML", "templates/build/enforcement/gen_integrity_checker.py"),
+    },
+    "scripts/publishing_emitters/gen_manifest_verifier.py": {
+        "authoring": ("govML", "scripts/generators/gen_manifest_verifier.py"),
+        "installed": ("govML", "templates/build/enforcement/gen_manifest_verifier.py"),
+    },
+    "scripts/publishing_emitters/gen_market_signal.py": {
+        "authoring": ("govML", "scripts/generators/gen_market_signal.py"),
+        "installed": ("govML", "templates/build/enforcement/gen_market_signal.py"),
+    },
+    "scripts/publishing_emitters/gen_methodology_overview.py": {
+        "authoring": ("govML", "scripts/generators/gen_methodology_overview.py"),
+        "installed": ("govML", "templates/build/enforcement/gen_methodology_overview.py"),
+    },
+    "scripts/publishing_emitters/gen_newsletter_issue.py": {
+        "authoring": ("govML", "scripts/generators/gen_newsletter_issue.py"),
+        "installed": ("govML", "templates/build/enforcement/gen_newsletter_issue.py"),
+    },
+    "scripts/publishing_emitters/gen_paper_analysis.py": {
+        "authoring": ("govML", "scripts/generators/gen_paper_analysis.py"),
+        "installed": ("govML", "templates/build/enforcement/gen_paper_analysis.py"),
+    },
+    "scripts/publishing_emitters/gen_phase_gates.py": {
+        "authoring": ("govML", "scripts/generators/gen_phase_gates.py"),
+        "installed": ("govML", "templates/build/enforcement/gen_phase_gates.py"),
+    },
+    "scripts/publishing_emitters/gen_report_auditor.py": {
+        "authoring": ("govML", "scripts/generators/gen_report_auditor.py"),
+        "installed": ("govML", "templates/build/enforcement/gen_report_auditor.py"),
+    },
+    "scripts/publishing_emitters/gen_research_report.py": {
+        "authoring": ("govML", "scripts/generators/gen_research_report.py"),
+        "installed": ("govML", "templates/build/enforcement/gen_research_report.py"),
+    },
+    "scripts/publishing_emitters/gen_rubric_checker.py": {
+        "authoring": ("govML", "scripts/generators/gen_rubric_checker.py"),
+        "installed": ("govML", "templates/build/enforcement/gen_rubric_checker.py"),
+    },
+    "scripts/publishing_emitters/gen_sweep.py": {
+        "authoring": ("govML", "scripts/generators/gen_sweep.py"),
+        "installed": ("govML", "templates/build/enforcement/gen_sweep.py"),
+    },
+    "scripts/publishing_emitters/hybrid_publish_mount.py": {
+        "authoring": ("govML", "scripts/generators/hybrid_publish_mount.py"),
+        "installed": ("govML", "templates/build/enforcement/hybrid_publish_mount.py"),
+    },
+    "scripts/publishing_emitters/orchestrate.py": {
+        "authoring": ("govML", "scripts/generators/orchestrate.py"),
+        "installed": ("govML", "templates/build/enforcement/orchestrate.py"),
+    },
+}
+
+EXPECTED_MEMBERS.update({
+    "installed-emitter-runtime-blog-publish-mount": ("govML", "templates/build/enforcement/blog_publish_mount.py"),
+    "installed-emitter-runtime-blog-runtime-mount": ("govML", "templates/build/enforcement/blog_runtime_mount.py"),
+    "installed-emitter-runtime-content-remediate": ("govML", "templates/build/enforcement/content_remediate.py"),
+    "installed-emitter-runtime-gen-blog-post": ("govML", "templates/build/enforcement/gen_blog_post.py"),
+    "installed-emitter-runtime-gen-channel-voice-check": ("govML", "templates/build/enforcement/gen_channel_voice_check.py"),
+    "installed-emitter-runtime-gen-data-report-checker": ("govML", "templates/build/enforcement/gen_data_report_checker.py"),
+    "installed-emitter-runtime-gen-distribution-kit": ("govML", "templates/build/enforcement/gen_distribution_kit.py"),
+    "installed-emitter-runtime-gen-experiment-learning": ("govML", "templates/build/enforcement/gen_experiment_learning.py"),
+    "installed-emitter-runtime-gen-integrity-checker": ("govML", "templates/build/enforcement/gen_integrity_checker.py"),
+    "installed-emitter-runtime-gen-manifest-verifier": ("govML", "templates/build/enforcement/gen_manifest_verifier.py"),
+    "installed-emitter-runtime-gen-market-signal": ("govML", "templates/build/enforcement/gen_market_signal.py"),
+    "installed-emitter-runtime-gen-methodology-overview": ("govML", "templates/build/enforcement/gen_methodology_overview.py"),
+    "installed-emitter-runtime-gen-newsletter-issue": ("govML", "templates/build/enforcement/gen_newsletter_issue.py"),
+    "installed-emitter-runtime-gen-paper-analysis": ("govML", "templates/build/enforcement/gen_paper_analysis.py"),
+    "installed-emitter-runtime-gen-phase-gates": ("govML", "templates/build/enforcement/gen_phase_gates.py"),
+    "installed-emitter-runtime-gen-report-auditor": ("govML", "templates/build/enforcement/gen_report_auditor.py"),
+    "installed-emitter-runtime-gen-research-report": ("govML", "templates/build/enforcement/gen_research_report.py"),
+    "installed-emitter-runtime-gen-rubric-checker": ("govML", "templates/build/enforcement/gen_rubric_checker.py"),
+    "installed-emitter-runtime-gen-sweep": ("govML", "templates/build/enforcement/gen_sweep.py"),
+    "installed-emitter-runtime-hybrid-publish-mount": ("govML", "templates/build/enforcement/hybrid_publish_mount.py"),
+    "installed-emitter-runtime-orchestrate": ("govML", "templates/build/enforcement/orchestrate.py"),
+})
+
 EXPECTED_MEMBERS.update({
     "moon-agent-build-orchestrator": ("Moonshots_Career_Thesis_v2", ".claude/agents/build-orchestrator.md"),
     "moon-agent-build-runner": ("Moonshots_Career_Thesis_v2", ".claude/agents/build-runner.md"),
