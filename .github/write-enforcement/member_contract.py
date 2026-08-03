@@ -631,3 +631,44 @@ def grouped_members():
     for member_id, (repository, path) in EXPECTED_MEMBERS.items():
         grouped.setdefault(repository, []).append((member_id, path))
     return {repository: tuple(rows) for repository, rows in grouped.items()}
+
+
+STAGED_NONPRODUCTION_MANIFEST_SCHEMA = (
+    "rea.write.enforcement-bundle-manifest.staged-nonproduction.v1"
+)
+STAGED_NONPRODUCTION_WEA_SCHEMA = "rea.write.wea.staged-nonproduction.v1"
+STAGED_NONPRODUCTION_PURPOSE = "STAGED_NONPRODUCTION_CONVERGENCE_PROOF"
+STAGED_NONPRODUCTION_RECEIPT_SCHEMA = (
+    "rea.write.remote-issuance-receipt.staged-nonproduction.v1"
+)
+STAGED_NONPRODUCTION_HYBRID_SCHEMA = (
+    "rea.write.hybrid-capability-authority.staged-nonproduction.v1"
+)
+STAGED_NONPRODUCTION_HYBRID_PURPOSE = (
+    "VERIFY_ONLY_STAGED_NONPRODUCTION_REGISTRY"
+)
+STAGED_NONPRODUCTION_ADDITIONAL_MEMBERS = {
+    "staged-nonproduction-trusted-public-key": (
+        "govML",
+        "tests/fixtures/s132_staged_nonproduction_ed25519_public.pem",
+    ),
+}
+
+
+def staged_nonproduction_members():
+    """Return the frozen staging contract without production trust roots.
+
+    Staging is an explicit 226-member superset with one dedicated committed
+    fixture key.  The production 225-member contract and both production
+    trust roots remain present and unchanged.
+    """
+    members = dict(EXPECTED_MEMBERS)
+    members.update(STAGED_NONPRODUCTION_ADDITIONAL_MEMBERS)
+    return members
+
+
+def group_member_contract(contract):
+    grouped = {}
+    for member_id, (repository, path) in contract.items():
+        grouped.setdefault(repository, []).append((member_id, path))
+    return {repository: tuple(rows) for repository, rows in grouped.items()}
