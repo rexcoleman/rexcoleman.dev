@@ -28,6 +28,7 @@ PUBLIC_ARTIFACTS = {
     "enforcement_bundle_manifest.json", "hybrid_capability_authority.json",
     "hybrid_capability_provider", "issuance_receipt.json", "runtime_mount.py",
     "trusted_wea_public.pem", "write_enforcement_attestation.json",
+    "predecessor_write_enforcement_attestation.json",
 }
 
 
@@ -158,6 +159,7 @@ def verify_successor_authority_bindings(
     loaded: dict[str, bytes],
     manifest: dict,
     wea_raw: bytes,
+    successor_epoch: int = AUTHORITY_GENERATION,
 ) -> tuple[str, dict[str, str | list[str]]]:
     """Recompute successor policy and route closure from verified member bytes."""
     required_hybrid_fields = {
@@ -181,7 +183,7 @@ def verify_successor_authority_bindings(
         != "rea.write.hybrid-capability-authority.v1"
         or hybrid_payload.get("purpose") != "VERIFY_ONLY_CURRENT_REGISTRY"
         or hybrid_payload.get("issuer") != ISSUER
-        or hybrid_payload.get("authority_epoch") != AUTHORITY_GENERATION
+        or hybrid_payload.get("authority_epoch") != successor_epoch
         or hybrid_payload.get("wea_sha256") != digest(wea_raw)
         or hybrid_payload.get("enforcement_bundle_manifest_digest")
         != manifest["manifest_digest"]
@@ -212,6 +214,9 @@ def verify(args: argparse.Namespace) -> dict:
         raise HostedWEARefusal("WEA_CORRUPT", "public_artifact_set")
     checksum_inventory = verify_public_checksums(args.issuance)
     wea_raw, wea = load(args.issuance / "write_enforcement_attestation.json")
+    predecessor_raw, predecessor = load(
+        args.issuance / "predecessor_write_enforcement_attestation.json"
+    )
     manifest_raw, manifest = load(args.issuance / "enforcement_bundle_manifest.json")
     _, receipt = load(args.issuance / "issuance_receipt.json")
     public = args.issuance / "trusted_wea_public.pem"
@@ -267,11 +272,14 @@ def verify(args: argparse.Namespace) -> dict:
         raise HostedWEARefusal("WEA_CORRUPT", "trusted_public_key_mismatch")
     verify_carried_member_copies(args.issuance, loaded)
 
+    successor_epoch = wea.get("authority_epoch")
+    if isinstance(successor_epoch, bool) or not isinstance(successor_epoch, int):
+        raise HostedWEARefusal("WEA_CORRUPT", "authority_epoch")
     _, hybrid_authority = load(args.issuance / "hybrid_capability_authority.json")
     hybrid_payload = verify_envelope(public, hybrid_authority, "hybrid_authority")
     expected_policy_digest, expected_route_bindings = (
         verify_successor_authority_bindings(
-            hybrid_payload, loaded, manifest, wea_raw
+            hybrid_payload, loaded, manifest, wea_raw, successor_epoch
         )
     )
     registry = json.loads(loaded["profile-registry"])
@@ -280,13 +288,13 @@ def verify(args: argparse.Namespace) -> dict:
     if wea.get("schema_version") == "rea.write.wea.r4-fixture.v1" or wea.get("purpose") == "R4_NEGATIVE_FIXTURE":
         raise HostedWEARefusal("WEA_WRONG_PURPOSE", "R4_NEGATIVE_FIXTURE")
     if wea.get("schema_version") == "rea.write.wea.live.v2":
-        generation = wea.get("authority_epoch")
+        generation = successor_epoch
         if (
             wea.get("issuer") != ISSUER
             or wea.get("purpose") != "LIVE_ENFORCEMENT"
             or wea.get("state") != "ENFORCING"
-            or generation != AUTHORITY_GENERATION
-            or not lower_hex(wea.get("predecessor_wea_digest"), 64)
+            or generation < 2
+            or wea.get("predecessor_wea_digest") != digest(predecessor_raw)
         ):
             raise HostedWEARefusal("WEA_CORRUPT", "remote_state")
     elif (wea.get("issuer") != ISSUER or wea.get("state") != "ENFORCING"
@@ -298,6 +306,14 @@ def verify(args: argparse.Namespace) -> dict:
         raise HostedWEARefusal("WEA_CORRUPT", "scope")
     if wea.get("enforcement_bundle_manifest_digest") != manifest["manifest_digest"] or wea.get("claim_policy_digest") != digest(policy):
         raise HostedWEARefusal("WEA_WRONG_BUNDLE", "bundle_or_policy")
+    if (
+        wea.get("schema_version") == "rea.write.wea.live.v2"
+        and wea.get("coverage_registry_digest")
+        != digest(loaded["managed-gate-coverage-registry"])
+    ):
+        raise HostedWEARefusal(
+            "WEA_WRONG_BUNDLE", "coverage_registry_digest"
+        )
     if wea.get("trusted_key_id") != f"rea-wea-ed25519-{digest(public_raw)[:16]}":
         raise HostedWEARefusal("WEA_CORRUPT", "key_id")
     signature = wea.get("signature")
@@ -309,6 +325,31 @@ def verify(args: argparse.Namespace) -> dict:
         verify_signature(public, signed_digest, signature.get("value", ""))
     except (ValueError, subprocess.CalledProcessError) as exc:
         raise HostedWEARefusal("WEA_CORRUPT", f"signature:{type(exc).__name__}") from None
+    predecessor_signature = predecessor.get("signature")
+    predecessor_unsigned = {
+        key: value for key, value in predecessor.items() if key != "signature"
+    }
+    predecessor_signed_digest = digest(canonical(predecessor_unsigned))
+    if (
+        predecessor.get("schema_version") != "rea.write.wea.live.v2"
+        or predecessor.get("purpose") != "LIVE_ENFORCEMENT"
+        or predecessor.get("state") != "ENFORCING"
+        or predecessor.get("issuer") != ISSUER
+        or isinstance(predecessor.get("authority_epoch"), bool)
+        or not isinstance(predecessor.get("authority_epoch"), int)
+        or predecessor["authority_epoch"] + 1 != generation
+        or not isinstance(predecessor_signature, dict)
+        or predecessor_signature.get("algorithm") != "ed25519"
+        or predecessor_signature.get("signed_digest") != predecessor_signed_digest
+    ):
+        raise HostedWEARefusal("WEA_PREDECESSOR_INVALID", "shape_or_epoch")
+    try:
+        verify_signature(
+            public, predecessor_signed_digest,
+            predecessor_signature.get("value", ""),
+        )
+    except (ValueError, subprocess.CalledProcessError):
+        raise HostedWEARefusal("WEA_PREDECESSOR_INVALID", "signature") from None
     now = datetime.now(timezone.utc)
     issued = datetime.fromisoformat(wea["issued_at"].replace("Z", "+00:00"))
     expires = datetime.fromisoformat(wea["expires_at"].replace("Z", "+00:00"))
@@ -337,7 +378,9 @@ def verify(args: argparse.Namespace) -> dict:
         raise HostedWEARefusal("WEA_CORRUPT", "remote_provenance")
     tuple_value = {
         "state": "ENFORCING", "state_digest": digest(wea_raw),
-        "authority_generation": generation,
+        "authority_generation": manifest["authority_generation"],
+        "authority_epoch": generation,
+        "predecessor_wea_digest": wea["predecessor_wea_digest"],
         "enforcement_bundle_manifest_digest": manifest["manifest_digest"],
         "required_surfaces": wea["required_surfaces"],
     }

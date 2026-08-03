@@ -45,8 +45,12 @@ Generation 4 uses exactly this two-commit rex sequence:
    Thus the manifest is later than the implementation without a Git hash fixed
    point and without accepting mutable workflow bytes.
 
-Generation 4 active issuance requires the preserved expired generation-3 WEA
-SHA-256 as `predecessor_wea_sha256`; omission or a non-64-lower-hex value must
-refuse before signing. Any later workflow/member byte change requires explicit
+Every active issuance requires `predecessor_run_id`, the protected workflow run
+whose public artifact contains the exact WEA currently installed. The issuer
+downloads and authenticates those bytes, derives their digest itself, and sets
+`authority_epoch = predecessor.authority_epoch + 1`. `authority_generation`
+continues to identify this member-contract generation and is deliberately not
+the issuance epoch. Caller-supplied predecessor digests and static generation
+fixtures are refused. Any later workflow/member byte change requires explicit
 new authority and a new manifest frozen before measurement. A mutable branch
 name is never issuance provenance.

@@ -24,7 +24,7 @@ SITE_RULESET_ID = 19768000
 SITE_MANIFEST = ".github/write-enforcement/frozen_bundle_manifest.generation-4.json"
 POLICY = "rea-option-a-posthoc-exact-head-v2"
 MEMBER_CONTRACT = Path(__file__).with_name("member_contract.py")
-GENERATION_MEMBER_COUNT = 156
+GENERATION_MEMBER_COUNT = 204
 REQUIRED_MEMBER_CLASSES = {
     "boundary_gate",
     "resolver",
@@ -117,14 +117,26 @@ def content_bytes(token: str, repo: str, path: str, ref: str) -> bytes:
 
 def expected_members() -> dict[str, tuple[str, str]]:
     source = MEMBER_CONTRACT.read_text()
-    match = re.search(
-        r"EXPECTED_MEMBERS\s*=\s*(\{.*?\})\n\nROUTE_OWNED_MEMBER_IDS",
-        source,
-        flags=re.DOTALL,
-    )
-    if match is None:
-        raise Refusal("trusted member contract cannot be parsed")
-    value = ast.literal_eval(match.group(1))
+    value: dict[str, tuple[str, str]] = {}
+    for node in ast.parse(source).body:
+        if (
+            isinstance(node, ast.Assign)
+            and len(node.targets) == 1
+            and isinstance(node.targets[0], ast.Name)
+            and node.targets[0].id == "EXPECTED_MEMBERS"
+        ):
+            value = ast.literal_eval(node.value)
+        elif (
+            isinstance(node, ast.Expr)
+            and isinstance(node.value, ast.Call)
+            and isinstance(node.value.func, ast.Attribute)
+            and isinstance(node.value.func.value, ast.Name)
+            and node.value.func.value.id == "EXPECTED_MEMBERS"
+            and node.value.func.attr == "update"
+            and len(node.value.args) == 1
+            and not node.value.keywords
+        ):
+            value.update(ast.literal_eval(node.value.args[0]))
     if not isinstance(value, dict) or len(value) != GENERATION_MEMBER_COUNT:
         raise Refusal(
             "trusted member contract does not contain exactly "

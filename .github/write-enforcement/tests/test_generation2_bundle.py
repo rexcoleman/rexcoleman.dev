@@ -76,7 +76,7 @@ def test_issuer_checksum_uses_manifest_directory_and_runs_hosted_verifier():
 def test_issuer_artifact_is_closed_public_only_and_never_exports_private_key():
     issuer_raw, _ = workflow("issue-write-enforcement-attestation.yml")
     source = (ROOT / "issue_wea.py").read_text(encoding="utf-8")
-    assert "PUBLIC_ONLY_ARTIFACT_PASS files=10 private_key_copy=absent" in issuer_raw
+    assert "PUBLIC_ONLY_ARTIFACT_PASS files=11 private_key_copy=absent" in issuer_raw
     assert "cmp -s issuance/" in issuer_raw
     assert "BEGIN ([A-Z0-9]+ )*PRIVATE KEY" in issuer_raw
     assert "hybrid_provider_private" not in source
@@ -123,9 +123,11 @@ def test_issuer_refuses_workflow_byte_drift_before_signing(
         "--manifest", str(tmp_path / GENERATION_MANIFEST_NAME),
         "--workspace", str(tmp_path / "workspace"),
         "--ruleset-json", str(ruleset_path),
-        "--private-key", str(tmp_path / "private.pem"),
-        "--output", str(tmp_path / "output"),
-    ])
+            "--private-key", str(tmp_path / "private.pem"),
+            "--output", str(tmp_path / "output"),
+            "--predecessor-wea", str(tmp_path / "predecessor.json"),
+            "--predecessor-wea-sha256", "0" * 64,
+        ])
     with pytest.raises(ValueError, match="workflow byte drift"):
         issue_wea.main()
     assert not (tmp_path / "output").exists()
