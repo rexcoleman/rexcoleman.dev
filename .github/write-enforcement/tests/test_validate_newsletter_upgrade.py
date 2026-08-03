@@ -42,6 +42,11 @@ jobs:
       REA_BUNDLE_READ_TOKEN: ${{ secrets.REA_BUNDLE_READ_TOKEN }}
 """
 
+TARGET_WORKFLOW = LEGACY_WORKFLOW.replace(
+    "44e61952b101aacb222091f04c4cf728b5ec3f04",
+    validator.TARGET_AUTHORITY_PIN,
+)
+
 
 def git(root: Path, *args: str) -> str:
     return subprocess.run(
@@ -80,6 +85,7 @@ def candidate(tmp_path: Path) -> tuple[Path, str, str, str]:
         validator.expected_upgrade_workflow(authority),
     )
     write(root, str(validator.CAPABILITY), validator.expected_capability(authority))
+    write(root, str(validator.LEGACY_WORKFLOW), TARGET_WORKFLOW)
     git(root, "add", ".")
     git(root, "commit", "-q", "-m", "bootstrap upgrade control")
     return root, base, git(root, "rev-parse", "HEAD"), authority
@@ -127,15 +133,20 @@ def test_content_extra_workflow_and_bound_control_tampering_refuse(
 @pytest.mark.parametrize("needle,replacement,reason", [
     ("pull_request_target:", "pull_request:", "LEGACY_EVENT_NOT_PULL_REQUEST_TARGET_ONLY"),
     ("contents: read", "contents: write", "WORKFLOW_WRITE_PERMISSION"),
-    ("@44e61952b101aacb222091f04c4cf728b5ec3f04", "@main", "LEGACY_REUSABLE_WORKFLOW_PIN"),
+    ("@179b7d30a5904fbc2cde9e3bee0bfe3771114feb", "@main", "LEGACY_REUSABLE_WORKFLOW_PIN"),
     ("    uses: rexcoleman/", "    steps:\n      - run: true\n    uses: rexcoleman/", "LEGACY_CANDIDATE_EXECUTION"),
 ])
 def test_legacy_control_semantic_attacks_refuse(
     tmp_path, needle, replacement, reason,
 ):
-    raw = LEGACY_WORKFLOW.replace(needle, replacement, 1)
+    raw = TARGET_WORKFLOW.replace(needle, replacement, 1)
     with pytest.raises(validator.Refusal, match=reason):
         validator.validate_legacy_workflow(raw)
+
+
+def test_superseded_generation_three_authority_pin_refuses():
+    with pytest.raises(validator.Refusal, match="LEGACY_REUSABLE_WORKFLOW_PIN"):
+        validator.validate_legacy_workflow(LEGACY_WORKFLOW)
 
 
 def test_wrong_repository_and_checkout_identity_refuse(tmp_path):
