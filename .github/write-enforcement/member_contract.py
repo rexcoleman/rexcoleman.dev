@@ -372,6 +372,7 @@ EXPECTED_MEMBERS = {
     "route-distribution-01": ("govML", "scripts/generators/gen_distribution_kit.py"),
     # Moonshots route-owned files from the same census plus scaffolder/remote control.
     "research-scaffolder": ("Moonshots_Career_Thesis_v2", "scripts/scaffold_research_project.py"),
+    "t3-score-engine": ("Moonshots_Career_Thesis_v2", "scripts/score_t3.py"),
     "route-distribution-wrapper": ("Moonshots_Career_Thesis_v2", "scripts/write_integrity_mount.py"),
     "route-distribution-main": ("Moonshots_Career_Thesis_v2", "scripts/distribute.py"),
     "route-review-queue": ("Moonshots_Career_Thesis_v2", "scripts/review_queue.py"),
@@ -658,8 +659,8 @@ STAGED_NONPRODUCTION_ADDITIONAL_MEMBERS = {
 def staged_nonproduction_members():
     """Return the frozen staging contract without production trust roots.
 
-    Staging is an explicit 226-member superset with one dedicated committed
-    fixture key.  The production 225-member contract and both production
+    Staging is an explicit 227-member superset with one dedicated committed
+    fixture key.  The production 226-member contract and both production
     trust roots remain present and unchanged.
     """
     members = dict(EXPECTED_MEMBERS)
