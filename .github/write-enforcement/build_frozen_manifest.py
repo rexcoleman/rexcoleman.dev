@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import re
 import subprocess
 import types
 from pathlib import Path
@@ -22,6 +23,13 @@ from member_contract import (
 )
 
 MEMBERS = grouped_members()
+AUTHORITATIVE_REPOSITORY_SLUGS = (
+    ("research_enforcement_activation", "research_enforcement_activation"),
+    ("govML", "govML"),
+    ("Moonshots_Career_Thesis_v2", "Moonshots_Career_Thesis"),
+    ("newsletter", "newsletter"),
+    ("rexcoleman.dev", "rexcoleman.dev"),
+)
 
 
 def canonical(value: object) -> bytes:
@@ -58,17 +66,47 @@ def committed_member_bytes(root: Path, commit: str, path: str) -> bytes:
     return committed.stdout
 
 
+def authoritative_repository_slug(repository: str) -> str:
+    """Resolve one logical contract name through the closed remote mapping."""
+    expected = set(grouped_members())
+    logical_names = [logical for logical, _slug in AUTHORITATIVE_REPOSITORY_SLUGS]
+    slugs = [slug for _logical, slug in AUTHORITATIVE_REPOSITORY_SLUGS]
+    duplicate_logical = sorted({name for name in logical_names
+                                if logical_names.count(name) > 1})
+    duplicate_slugs = sorted({slug for slug in slugs if slugs.count(slug) > 1})
+    observed = set(logical_names)
+    missing = sorted(expected - observed)
+    extra = sorted(observed - expected)
+    invalid_slugs = sorted(
+        repr(slug) for slug in slugs
+        if not isinstance(slug, str)
+        or re.fullmatch(r"[A-Za-z0-9_.-]+", slug) is None
+    )
+    if duplicate_logical or duplicate_slugs or missing or extra or invalid_slugs:
+        raise ValueError(
+            "authoritative repository mapping invalid:"
+            f"missing={missing}:extra={extra}:"
+            f"duplicate_logical={duplicate_logical}:"
+            f"duplicate_slugs={duplicate_slugs}:invalid_slugs={invalid_slugs}"
+        )
+    if repository not in expected:
+        raise ValueError(f"unknown logical repository: {repository}")
+    return dict(AUTHORITATIVE_REPOSITORY_SLUGS)[repository]
+
+
 def verify_remote_reachability(repository: str, commit: str) -> None:
     """Derive reachability from the authoritative GitHub commit endpoint."""
+    slug = authoritative_repository_slug(repository)
     result = subprocess.run(
-        ["gh", "api", f"repos/rexcoleman/{repository}/commits/{commit}",
+        ["gh", "api", f"repos/rexcoleman/{slug}/commits/{commit}",
          "--jq", ".sha"],
         check=False, capture_output=True, text=True, timeout=30,
     )
     observed = result.stdout.strip()
     if result.returncode or observed != commit:
         raise ValueError(
-            f"authoritative remote member unreachable: {repository}@{commit};"
+            f"authoritative remote member unreachable: "
+            f"{repository}[rexcoleman/{slug}]@{commit};"
             f"raw_exit={result.returncode};observed={observed!r}"
         )
 
