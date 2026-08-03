@@ -212,7 +212,7 @@ def artifact_relative_packet(tmp_path, monkeypatch, changed_member_id):
     "claim-policy",
     "profile-registry",
     "trusted-public-key",
-    "route-report",
+    "installed-emitter-runtime-gen-research-report",
 ])
 def test_hosted_verifier_uses_exact_commit_objects_despite_checkout_drift(
         tmp_path, monkeypatch, changed_member_id):
