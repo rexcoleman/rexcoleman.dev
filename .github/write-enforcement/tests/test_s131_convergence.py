@@ -24,8 +24,8 @@ builder = load("build_frozen_manifest")
 
 def test_member_population_is_complete_and_two_method_count():
     contract = load("member_contract")
-    assert len(contract.EXPECTED_MEMBERS) == 225
-    assert len(set(contract.EXPECTED_MEMBERS.values())) == 225
+    assert len(contract.EXPECTED_MEMBERS) == 229
+    assert len(set(contract.EXPECTED_MEMBERS.values())) == 229
     independently_parsed = load("independent_review").expected_members()
     assert independently_parsed == contract.EXPECTED_MEMBERS
 
@@ -179,7 +179,7 @@ def test_exact_five_candidate_roots_close_installed_runtime_population(
     honest = tmp_path / "honest" / contract.GENERATION_MANIFEST_NAME
     honest.parent.mkdir()
     assert _run_five_root_builder(monkeypatch, roots, ruleset, honest) == 0
-    assert len(json.loads(honest.read_bytes())["members"]) == 225
+    assert len(json.loads(honest.read_bytes())["members"]) == 229
 
     destination, subjects = next(iter(
         contract.EXPECTED_EMITTER_RUNTIME_INSTALLATIONS.items()

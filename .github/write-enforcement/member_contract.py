@@ -348,6 +348,9 @@ EXPECTED_MEMBERS = {
     "scaffold-atomic-runtime": ("govML", "templates/build/enforcement/scaffold_atomic_runtime.py"),
     "govml-init": ("govML", "scripts/init_project.sh"),
     "master-runner": ("govML", "scripts/check_all_gates.sh"),
+    "quality-loop": ("govML", "scripts/quality_loop.sh"),
+    "quality-semantic-review": ("govML", "scripts/semantic_review.py"),
+    "quality-findings-audit-generator": ("govML", "scripts/generators/gen_findings_audit.py"),
     "project-runner": ("govML", "templates/build/enforcement/project_run_gates.sh"),
     "project-runner-f07": ("govML", "templates/build/enforcement/project_run_gates_F07.sh"),
     "project-runner-f08": ("govML", "templates/build/enforcement/project_run_gates_F08.sh"),
@@ -372,6 +375,7 @@ EXPECTED_MEMBERS = {
     "route-distribution-01": ("govML", "scripts/generators/gen_distribution_kit.py"),
     # Moonshots route-owned files from the same census plus scaffolder/remote control.
     "research-scaffolder": ("Moonshots_Career_Thesis_v2", "scripts/scaffold_research_project.py"),
+    "t3-score-engine": ("Moonshots_Career_Thesis_v2", "scripts/score_t3.py"),
     "route-distribution-wrapper": ("Moonshots_Career_Thesis_v2", "scripts/write_integrity_mount.py"),
     "route-distribution-main": ("Moonshots_Career_Thesis_v2", "scripts/distribute.py"),
     "route-review-queue": ("Moonshots_Career_Thesis_v2", "scripts/review_queue.py"),
@@ -629,5 +633,46 @@ S88_BUNDLE_MEMBER_IDS = (
 def grouped_members():
     grouped = {}
     for member_id, (repository, path) in EXPECTED_MEMBERS.items():
+        grouped.setdefault(repository, []).append((member_id, path))
+    return {repository: tuple(rows) for repository, rows in grouped.items()}
+
+
+STAGED_NONPRODUCTION_MANIFEST_SCHEMA = (
+    "rea.write.enforcement-bundle-manifest.staged-nonproduction.v1"
+)
+STAGED_NONPRODUCTION_WEA_SCHEMA = "rea.write.wea.staged-nonproduction.v1"
+STAGED_NONPRODUCTION_PURPOSE = "STAGED_NONPRODUCTION_CONVERGENCE_PROOF"
+STAGED_NONPRODUCTION_RECEIPT_SCHEMA = (
+    "rea.write.remote-issuance-receipt.staged-nonproduction.v1"
+)
+STAGED_NONPRODUCTION_HYBRID_SCHEMA = (
+    "rea.write.hybrid-capability-authority.staged-nonproduction.v1"
+)
+STAGED_NONPRODUCTION_HYBRID_PURPOSE = (
+    "VERIFY_ONLY_STAGED_NONPRODUCTION_REGISTRY"
+)
+STAGED_NONPRODUCTION_ADDITIONAL_MEMBERS = {
+    "staged-nonproduction-trusted-public-key": (
+        "govML",
+        "tests/fixtures/s132_staged_nonproduction_ed25519_public.pem",
+    ),
+}
+
+
+def staged_nonproduction_members():
+    """Return the frozen staging contract without production trust roots.
+
+    Staging is an explicit 230-member superset with one dedicated committed
+    fixture key.  The production 229-member contract and both production
+    trust roots remain present and unchanged.
+    """
+    members = dict(EXPECTED_MEMBERS)
+    members.update(STAGED_NONPRODUCTION_ADDITIONAL_MEMBERS)
+    return members
+
+
+def group_member_contract(contract):
+    grouped = {}
+    for member_id, (repository, path) in contract.items():
         grouped.setdefault(repository, []).append((member_id, path))
     return {repository: tuple(rows) for repository, rows in grouped.items()}

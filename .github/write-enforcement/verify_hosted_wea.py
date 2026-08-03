@@ -16,7 +16,14 @@ from pathlib import Path
 from member_contract import (
     AUTHORITY_GENERATION,
     EXPECTED_MEMBERS,
+    STAGED_NONPRODUCTION_MANIFEST_SCHEMA,
+    STAGED_NONPRODUCTION_HYBRID_PURPOSE,
+    STAGED_NONPRODUCTION_HYBRID_SCHEMA,
+    STAGED_NONPRODUCTION_PURPOSE,
+    STAGED_NONPRODUCTION_RECEIPT_SCHEMA,
+    STAGED_NONPRODUCTION_WEA_SCHEMA,
     derive_write_boundary_route_surface_bindings,
+    staged_nonproduction_members,
     write_boundary_policy_digest,
 )
 
@@ -160,6 +167,7 @@ def verify_successor_authority_bindings(
     manifest: dict,
     wea_raw: bytes,
     successor_epoch: int = AUTHORITY_GENERATION,
+    staged_nonproduction: bool = False,
 ) -> tuple[str, dict[str, str | list[str]]]:
     """Recompute successor policy and route closure from verified member bytes."""
     required_hybrid_fields = {
@@ -180,8 +188,16 @@ def verify_successor_authority_bindings(
     if (
         set(hybrid_payload) != required_hybrid_fields
         or hybrid_payload.get("schema_version")
-        != "rea.write.hybrid-capability-authority.v1"
-        or hybrid_payload.get("purpose") != "VERIFY_ONLY_CURRENT_REGISTRY"
+        != (
+            STAGED_NONPRODUCTION_HYBRID_SCHEMA
+            if staged_nonproduction
+            else "rea.write.hybrid-capability-authority.v1"
+        )
+        or hybrid_payload.get("purpose") != (
+            STAGED_NONPRODUCTION_HYBRID_PURPOSE
+            if staged_nonproduction
+            else "VERIFY_ONLY_CURRENT_REGISTRY"
+        )
         or hybrid_payload.get("issuer") != ISSUER
         or hybrid_payload.get("authority_epoch") != successor_epoch
         or hybrid_payload.get("wea_sha256") != digest(wea_raw)
@@ -203,6 +219,24 @@ def verify_successor_authority_bindings(
 
 
 def verify(args: argparse.Namespace) -> dict:
+    staged_nonproduction = getattr(args, "staged_nonproduction", False)
+    if staged_nonproduction:
+        try:
+            args.issuance.resolve().relative_to(Path("/tmp"))
+            args.workspace.resolve().relative_to(Path("/tmp"))
+        except ValueError:
+            raise HostedWEARefusal(
+                "STAGED_NONPRODUCTION_TMP_REQUIRED", "issuance_or_workspace"
+            ) from None
+    expected_members = (
+        staged_nonproduction_members()
+        if staged_nonproduction else EXPECTED_MEMBERS
+    )
+    expected_manifest_schema = (
+        STAGED_NONPRODUCTION_MANIFEST_SCHEMA
+        if staged_nonproduction
+        else "rea.write.enforcement-bundle-manifest.v1"
+    )
     roots = {
         "research_enforcement_activation": args.workspace / "research_enforcement_activation",
         "govML": args.workspace / "govML",
@@ -222,7 +256,7 @@ def verify(args: argparse.Namespace) -> dict:
     public = args.issuance / "trusted_wea_public.pem"
     public_raw = public.read_bytes()
     unsigned_manifest = {key: value for key, value in manifest.items() if key != "manifest_digest"}
-    if manifest.get("schema_version") != "rea.write.enforcement-bundle-manifest.v1" or digest(canonical(unsigned_manifest)) != manifest.get("manifest_digest"):
+    if manifest.get("schema_version") != expected_manifest_schema or digest(canonical(unsigned_manifest)) != manifest.get("manifest_digest"):
         raise HostedWEARefusal("WEA_CORRUPT", "manifest_digest")
     if manifest.get("authority_generation") != AUTHORITY_GENERATION:
         raise HostedWEARefusal("WEA_WRONG_BUNDLE", "authority_generation")
@@ -263,12 +297,20 @@ def verify(args: argparse.Namespace) -> dict:
         row["member_id"]: (row["repository"], row["path"])
         for row in members
     }
-    if observed_members != EXPECTED_MEMBERS or len(loaded) != len(EXPECTED_MEMBERS):
+    if observed_members != expected_members or len(loaded) != len(expected_members):
         raise HostedWEARefusal("WEA_WRONG_BUNDLE", "member_set")
-    if (
-        loaded["trusted-public-key"] != public_raw
-        or loaded["newsletter-trusted-public-key"] != public_raw
-    ):
+    if staged_nonproduction:
+        trust_valid = (
+            loaded["staged-nonproduction-trusted-public-key"] == public_raw
+            and loaded["trusted-public-key"] != public_raw
+            and loaded["newsletter-trusted-public-key"] != public_raw
+        )
+    else:
+        trust_valid = (
+            loaded["trusted-public-key"] == public_raw
+            and loaded["newsletter-trusted-public-key"] == public_raw
+        )
+    if not trust_valid:
         raise HostedWEARefusal("WEA_CORRUPT", "trusted_public_key_mismatch")
     verify_carried_member_copies(args.issuance, loaded)
 
@@ -279,7 +321,12 @@ def verify(args: argparse.Namespace) -> dict:
     hybrid_payload = verify_envelope(public, hybrid_authority, "hybrid_authority")
     expected_policy_digest, expected_route_bindings = (
         verify_successor_authority_bindings(
-            hybrid_payload, loaded, manifest, wea_raw, successor_epoch
+            hybrid_payload,
+            loaded,
+            manifest,
+            wea_raw,
+            successor_epoch,
+            staged_nonproduction=staged_nonproduction,
         )
     )
     registry = json.loads(loaded["profile-registry"])
@@ -287,11 +334,19 @@ def verify(args: argparse.Namespace) -> dict:
     policy = loaded["claim-policy"]
     if wea.get("schema_version") == "rea.write.wea.r4-fixture.v1" or wea.get("purpose") == "R4_NEGATIVE_FIXTURE":
         raise HostedWEARefusal("WEA_WRONG_PURPOSE", "R4_NEGATIVE_FIXTURE")
-    if wea.get("schema_version") == "rea.write.wea.live.v2":
+    expected_wea_schema = (
+        STAGED_NONPRODUCTION_WEA_SCHEMA
+        if staged_nonproduction else "rea.write.wea.live.v2"
+    )
+    expected_purpose = (
+        STAGED_NONPRODUCTION_PURPOSE
+        if staged_nonproduction else "LIVE_ENFORCEMENT"
+    )
+    if wea.get("schema_version") == expected_wea_schema:
         generation = successor_epoch
         if (
             wea.get("issuer") != ISSUER
-            or wea.get("purpose") != "LIVE_ENFORCEMENT"
+            or wea.get("purpose") != expected_purpose
             or wea.get("state") != "ENFORCING"
             or generation < 2
             or wea.get("predecessor_wea_digest") != digest(predecessor_raw)
@@ -307,7 +362,7 @@ def verify(args: argparse.Namespace) -> dict:
     if wea.get("enforcement_bundle_manifest_digest") != manifest["manifest_digest"] or wea.get("claim_policy_digest") != digest(policy):
         raise HostedWEARefusal("WEA_WRONG_BUNDLE", "bundle_or_policy")
     if (
-        wea.get("schema_version") == "rea.write.wea.live.v2"
+        wea.get("schema_version") == expected_wea_schema
         and wea.get("coverage_registry_digest")
         != digest(loaded["managed-gate-coverage-registry"])
     ):
@@ -331,8 +386,8 @@ def verify(args: argparse.Namespace) -> dict:
     }
     predecessor_signed_digest = digest(canonical(predecessor_unsigned))
     if (
-        predecessor.get("schema_version") != "rea.write.wea.live.v2"
-        or predecessor.get("purpose") != "LIVE_ENFORCEMENT"
+        predecessor.get("schema_version") != expected_wea_schema
+        or predecessor.get("purpose") != expected_purpose
         or predecessor.get("state") != "ENFORCING"
         or predecessor.get("issuer") != ISSUER
         or isinstance(predecessor.get("authority_epoch"), bool)
@@ -365,7 +420,12 @@ def verify(args: argparse.Namespace) -> dict:
     workflow_sha = receipt.get("workflow_sha")
     workflow_rows = [row for row in members if row["member_id"] == "remote-issuer-workflow"]
     if (
-        receipt.get("issuer") != ISSUER
+        receipt.get("schema_version") != (
+            STAGED_NONPRODUCTION_RECEIPT_SCHEMA
+            if staged_nonproduction
+            else "rea.write.remote-issuance-receipt.v1"
+        )
+        or receipt.get("issuer") != ISSUER
         or receipt.get("workflow_repository") != "rexcoleman/rexcoleman.dev"
         or receipt.get("event") != "workflow_dispatch"
         or not isinstance(workflow_ref, str) or not workflow_ref.startswith(REF_PREFIX) or workflow_ref == REF_PREFIX
@@ -387,7 +447,9 @@ def verify(args: argparse.Namespace) -> dict:
     report = {
         "schema_version": "rea.write.wea-consumer-report.v1",
         "consumer_id": args.consumer_id, "surface": args.surface,
-        "verdict": "PASS", "raw_exit": 0, "remote_issued": True,
+        "verdict": "PASS", "raw_exit": 0,
+        "remote_issued": not staged_nonproduction,
+        "staged_nonproduction": staged_nonproduction,
         "wea_status_tuple": tuple_value,
         "wea_status_tuple_digest": digest(canonical(tuple_value)),
         "workflow_run_id": receipt["workflow_run_id"],
@@ -437,6 +499,7 @@ def main() -> int:
     parser.add_argument("--workspace", type=Path, required=True)
     parser.add_argument("--consumer-id", required=True)
     parser.add_argument("--surface", choices=sorted(SURFACES))
+    parser.add_argument("--staged-nonproduction", action="store_true")
     args = parser.parse_args()
     raw_exit, report = run(args)
     print(json.dumps(report, sort_keys=True))

@@ -168,6 +168,7 @@ def artifact_relative_packet(tmp_path, monkeypatch, changed_member_id):
     }
     workflow = next(row for row in members if row["member_id"] == "remote-issuer-workflow")
     receipt = {
+        "schema_version": "rea.write.remote-issuance-receipt.v1",
         "issuer": MODULE.ISSUER,
         "workflow_repository": "rexcoleman/rexcoleman.dev",
         "event": "workflow_dispatch",

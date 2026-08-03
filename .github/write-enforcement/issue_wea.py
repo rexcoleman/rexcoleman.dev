@@ -21,8 +21,15 @@ from member_contract import (
     EXPECTED_MEMBERS,
     REQUIRED_MEMBER_CLASSES,
     RULESET_ID,
+    STAGED_NONPRODUCTION_MANIFEST_SCHEMA,
+    STAGED_NONPRODUCTION_HYBRID_PURPOSE,
+    STAGED_NONPRODUCTION_HYBRID_SCHEMA,
+    STAGED_NONPRODUCTION_PURPOSE,
+    STAGED_NONPRODUCTION_RECEIPT_SCHEMA,
+    STAGED_NONPRODUCTION_WEA_SCHEMA,
     derive_write_boundary_route_surface_bindings,
     normalize_ruleset,
+    staged_nonproduction_members,
     write_boundary_policy_digest,
 )
 
@@ -63,10 +70,15 @@ def committed_bytes(root: Path, commit: str, path: str) -> bytes:
     return result.stdout
 
 
-def load_manifest(path: Path) -> dict:
+def load_manifest(path: Path, *, staged_nonproduction: bool = False) -> dict:
     value = json.loads(path.read_bytes())
     unsigned = {key: item for key, item in value.items() if key != "manifest_digest"}
-    if (value.get("schema_version") != "rea.write.enforcement-bundle-manifest.v1"
+    expected_schema = (
+        STAGED_NONPRODUCTION_MANIFEST_SCHEMA
+        if staged_nonproduction
+        else "rea.write.enforcement-bundle-manifest.v1"
+    )
+    if (value.get("schema_version") != expected_schema
             or value.get("manifest_digest") != digest(canonical(unsigned))
             or value.get("authority_generation") != AUTHORITY_GENERATION
             or value.get("ruleset_id") != RULESET_ID
@@ -75,7 +87,12 @@ def load_manifest(path: Path) -> dict:
     return value
 
 
-def verify_members(manifest: dict, workspace: Path) -> dict[str, bytes]:
+def verify_members(
+    manifest: dict,
+    workspace: Path,
+    *,
+    staged_nonproduction: bool = False,
+) -> dict[str, bytes]:
     classes = manifest.get("required_member_classes")
     if (
         not isinstance(classes, list)
@@ -83,15 +100,20 @@ def verify_members(manifest: dict, workspace: Path) -> dict[str, bytes]:
         or set(classes) != set(REQUIRED_MEMBER_CLASSES)
     ):
         raise IssuerRefusal("BUNDLE_MEMBER_SET_MISMATCH", "member_classes")
+    expected_members = (
+        staged_nonproduction_members()
+        if staged_nonproduction
+        else EXPECTED_MEMBERS
+    )
     observed = {}
     for row in manifest["members"]:
         if isinstance(row, dict) and isinstance(row.get("member_id"), str):
             observed[row["member_id"]] = (row.get("repository"), row.get("path"))
-    if observed != EXPECTED_MEMBERS or len(observed) != len(manifest["members"]):
-        missing = sorted(set(EXPECTED_MEMBERS) - set(observed))
-        extra = sorted(set(observed) - set(EXPECTED_MEMBERS))
-        changed = sorted(key for key in set(observed) & set(EXPECTED_MEMBERS)
-                         if observed[key] != EXPECTED_MEMBERS[key])
+    if observed != expected_members or len(observed) != len(manifest["members"]):
+        missing = sorted(set(expected_members) - set(observed))
+        extra = sorted(set(observed) - set(expected_members))
+        changed = sorted(key for key in set(observed) & set(expected_members)
+                         if observed[key] != expected_members[key])
         raise IssuerRefusal("BUNDLE_MEMBER_SET_MISMATCH",
                             f"missing={missing};extra={extra};changed={changed}")
     loaded: dict[str, bytes] = {}
@@ -113,9 +135,22 @@ def openssl(args: list[str]) -> None:
         raise ValueError("openssl operation")
 
 
-def verify_trust_roots(loaded: dict[str, bytes], public: bytes) -> None:
-    if (loaded.get("trusted-public-key") != public
-            or loaded.get("newsletter-trusted-public-key") != public):
+def verify_trust_roots(
+    loaded: dict[str, bytes], public: bytes, *, staged_nonproduction: bool = False
+) -> None:
+    if staged_nonproduction:
+        staged = loaded.get("staged-nonproduction-trusted-public-key")
+        production = (
+            loaded.get("trusted-public-key"),
+            loaded.get("newsletter-trusted-public-key"),
+        )
+        valid = staged == public and all(root != public for root in production)
+    else:
+        valid = (
+            loaded.get("trusted-public-key") == public
+            and loaded.get("newsletter-trusted-public-key") == public
+        )
+    if not valid:
         raise IssuerRefusal("TRUST_ROOT_COPY_MISMATCH", "govml_or_newsletter")
 
 
@@ -148,7 +183,9 @@ def sign_envelope(payload: dict, private_key: Path) -> dict:
     }
 
 
-def authenticated_predecessor(path: Path, public_key: Path) -> tuple[bytes, dict]:
+def authenticated_predecessor(
+    path: Path, public_key: Path, *, staged_nonproduction: bool = False
+) -> tuple[bytes, dict]:
     """Authenticate the exact artifact being replaced and derive its epoch."""
     raw = path.read_bytes()
     value = json.loads(raw)
@@ -161,8 +198,14 @@ def authenticated_predecessor(path: Path, public_key: Path) -> tuple[bytes, dict
         not isinstance(signature, dict)
         or signature.get("algorithm") != "ed25519"
         or signature.get("signed_digest") != signed_digest
-        or payload.get("schema_version") != "rea.write.wea.live.v2"
-        or payload.get("purpose") != "LIVE_ENFORCEMENT"
+        or payload.get("schema_version") != (
+            STAGED_NONPRODUCTION_WEA_SCHEMA
+            if staged_nonproduction else "rea.write.wea.live.v2"
+        )
+        or payload.get("purpose") != (
+            STAGED_NONPRODUCTION_PURPOSE
+            if staged_nonproduction else "LIVE_ENFORCEMENT"
+        )
         or payload.get("state") != "ENFORCING"
         or payload.get("issuer") != ISSUER
         or isinstance(payload.get("authority_epoch"), bool)
@@ -196,9 +239,29 @@ def main() -> int:
         parser.add_argument("--" + name, required=True, type=Path)
     parser.add_argument("--predecessor-wea", type=Path)
     parser.add_argument("--predecessor-wea-sha256", required=True)
+    parser.add_argument("--staged-nonproduction", action="store_true")
     args = parser.parse_args()
-    manifest = load_manifest(args.manifest)
-    loaded = verify_members(manifest, args.workspace)
+    if args.staged_nonproduction:
+        if os.environ.get("GITHUB_ACTIONS", "").lower() == "true":
+            raise IssuerRefusal(
+                "STAGED_NONPRODUCTION_HOSTED_REFUSED", "GITHUB_ACTIONS"
+            )
+        try:
+            args.output.resolve().relative_to(Path("/tmp"))
+            args.private_key.resolve().relative_to(Path("/tmp"))
+            args.workspace.resolve().relative_to(Path("/tmp"))
+        except ValueError:
+            raise IssuerRefusal(
+                "STAGED_NONPRODUCTION_TMP_REQUIRED", "output_private_workspace"
+            ) from None
+    if args.staged_nonproduction:
+        manifest = load_manifest(args.manifest, staged_nonproduction=True)
+        loaded = verify_members(
+            manifest, args.workspace, staged_nonproduction=True
+        )
+    else:
+        manifest = load_manifest(args.manifest)
+        loaded = verify_members(manifest, args.workspace)
     ruleset = json.loads(args.ruleset_json.read_bytes())
     if (ruleset.get("id") != RULESET_ID
             or digest(canonical(normalize_ruleset(ruleset))) != manifest.get("normalized_ruleset_sha256")):
@@ -220,21 +283,31 @@ def main() -> int:
     public_path = args.output / "trusted_wea_public.pem"
     openssl(["pkey", "-in", str(args.private_key), "-pubout", "-out", str(public_path)])
     public = public_path.read_bytes()
-    verify_trust_roots(loaded, public)
+    verify_trust_roots(
+        loaded, public, staged_nonproduction=args.staged_nonproduction
+    )
     now = datetime.now(timezone.utc).replace(microsecond=0)
     issued_at, expires_at = issuance_times(now)
     if args.predecessor_wea is None:
         raise IssuerRefusal("PREDECESSOR_WEA_REQUIRED", "active issuance")
     predecessor_raw, predecessor_payload = authenticated_predecessor(
-        args.predecessor_wea, public_path
+        args.predecessor_wea,
+        public_path,
+        staged_nonproduction=args.staged_nonproduction,
     )
     predecessor = digest(predecessor_raw)
     if predecessor != args.predecessor_wea_sha256:
         raise IssuerRefusal("PREDECESSOR_WEA_INVALID", "dispatch_digest_mismatch")
     issuance_epoch = predecessor_payload["authority_epoch"] + 1
     payload = {
-            "schema_version": "rea.write.wea.live.v2",
-            "purpose": "LIVE_ENFORCEMENT",
+            "schema_version": (
+                STAGED_NONPRODUCTION_WEA_SCHEMA
+                if args.staged_nonproduction else "rea.write.wea.live.v2"
+            ),
+            "purpose": (
+                STAGED_NONPRODUCTION_PURPOSE
+                if args.staged_nonproduction else "LIVE_ENFORCEMENT"
+            ),
             "state": "ENFORCING",
             "authority_epoch": issuance_epoch,
             "predecessor_wea_digest": predecessor,
@@ -263,7 +336,11 @@ def main() -> int:
     wea_path.write_bytes(canonical(wea) + b"\n")
     manifest_path.write_bytes(canonical(manifest) + b"\n")
     receipt = {
-        "schema_version": "rea.write.remote-issuance-receipt.v1", "issuer": ISSUER,
+        "schema_version": (
+            STAGED_NONPRODUCTION_RECEIPT_SCHEMA
+            if args.staged_nonproduction
+            else "rea.write.remote-issuance-receipt.v1"
+        ), "issuer": ISSUER,
         "workflow_repository": os.environ["GITHUB_REPOSITORY"], "workflow_ref": os.environ["GITHUB_REF"],
         "workflow_sha": os.environ["GITHUB_SHA"], "workflow_blob_sha256": digest(live_workflow),
         "workflow_run_id": int(os.environ["GITHUB_RUN_ID"]),
@@ -293,8 +370,16 @@ def main() -> int:
             "WRITE_BOUNDARY_POLICY_INVALID", type(exc).__name__
         ) from None
     hybrid_payload = {
-        "schema_version": "rea.write.hybrid-capability-authority.v1",
-        "purpose": "VERIFY_ONLY_CURRENT_REGISTRY",
+        "schema_version": (
+            STAGED_NONPRODUCTION_HYBRID_SCHEMA
+            if args.staged_nonproduction
+            else "rea.write.hybrid-capability-authority.v1"
+        ),
+        "purpose": (
+            STAGED_NONPRODUCTION_HYBRID_PURPOSE
+            if args.staged_nonproduction
+            else "VERIFY_ONLY_CURRENT_REGISTRY"
+        ),
         "issuer": ISSUER,
         "authority_epoch": payload["authority_epoch"],
         "wea_sha256": digest(wea_path.read_bytes()),

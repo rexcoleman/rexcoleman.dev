@@ -18,8 +18,11 @@ from member_contract import (
     GENERATION_MANIFEST_NAME,
     REQUIRED_MEMBER_CLASSES,
     RULESET_ID,
+    STAGED_NONPRODUCTION_MANIFEST_SCHEMA,
+    group_member_contract,
     grouped_members,
     normalize_ruleset,
+    staged_nonproduction_members,
 )
 
 MEMBERS = grouped_members()
@@ -66,9 +69,9 @@ def committed_member_bytes(root: Path, commit: str, path: str) -> bytes:
     return committed.stdout
 
 
-def authoritative_repository_slug(repository: str) -> str:
+def authoritative_repository_slug(repository: str, expected_members=None) -> str:
     """Resolve one logical contract name through the closed remote mapping."""
-    expected = set(grouped_members())
+    expected = set(group_member_contract(expected_members or EXPECTED_MEMBERS))
     logical_names = [logical for logical, _slug in AUTHORITATIVE_REPOSITORY_SLUGS]
     slugs = [slug for _logical, slug in AUTHORITATIVE_REPOSITORY_SLUGS]
     duplicate_logical = sorted({name for name in logical_names
@@ -94,9 +97,11 @@ def authoritative_repository_slug(repository: str) -> str:
     return dict(AUTHORITATIVE_REPOSITORY_SLUGS)[repository]
 
 
-def verify_remote_reachability(repository: str, commit: str) -> None:
+def verify_remote_reachability(
+    repository: str, commit: str, expected_members=None
+) -> None:
     """Derive reachability from the authoritative GitHub commit endpoint."""
-    slug = authoritative_repository_slug(repository)
+    slug = authoritative_repository_slug(repository, expected_members)
     result = subprocess.run(
         ["gh", "api", f"repos/rexcoleman/{slug}/commits/{commit}",
          "--jq", ".sha"],
@@ -111,7 +116,9 @@ def verify_remote_reachability(repository: str, commit: str) -> None:
         )
 
 
-def validate_installed_population(govml_root: Path, commit: str) -> None:
+def validate_installed_population(
+    govml_root: Path, commit: str, expected_members=None
+) -> None:
     module_relative = (
         "templates/build/enforcement/managed_enforcement_inventory.py"
     )
@@ -135,11 +142,12 @@ def validate_installed_population(govml_root: Path, commit: str) -> None:
         ("govML", f"templates/build/enforcement/{path}")
         for path in module.all_installed_sources()
     }
+    contract = expected_members or EXPECTED_MEMBERS
     frozen = {
-        value for value in EXPECTED_MEMBERS.values()
+        value for value in contract.values()
         if value[0] == "govML"
     }
-    frozen_subjects = set(EXPECTED_MEMBERS.values())
+    frozen_subjects = set(contract.values())
     for destination, subjects in sorted(expected.items()):
         authoring = tuple(subjects["authoring"])
         installed_subject = tuple(subjects["installed"])
@@ -174,28 +182,48 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--ruleset-json", type=Path, required=True)
+    parser.add_argument("--staged-nonproduction", action="store_true")
     for name in MEMBERS:
         slug = name.lower().replace("_", "-").replace(".", "-")
         parser.add_argument("--root-" + slug, dest="root_" + name.lower().replace(".", "_"),
                             type=Path, required=True)
     args = parser.parse_args()
+    expected_members = (
+        staged_nonproduction_members()
+        if args.staged_nonproduction
+        else EXPECTED_MEMBERS
+    )
+    synthetic_contract = (
+        not args.staged_nonproduction and MEMBERS != grouped_members()
+    )
+    if synthetic_contract:
+        # Unit fixtures may replace the closed production map with a synthetic
+        # repository contract; production and staging never enter this branch.
+        members = MEMBERS
+        expected_members = {
+            member_id: (repository, path)
+            for repository, rows in MEMBERS.items()
+            for member_id, path in rows
+        }
+    else:
+        members = group_member_contract(expected_members)
     if args.output.name != GENERATION_MANIFEST_NAME:
         raise ValueError(
             f"generation-{AUTHORITY_GENERATION} manifest path must end in "
             f"{GENERATION_MANIFEST_NAME}"
         )
-    roots = {name: getattr(args, "root_" + name.lower().replace(".", "_")) for name in MEMBERS}
+    roots = {name: getattr(args, "root_" + name.lower().replace(".", "_")) for name in members}
     if "govML" in roots:
         validate_installed_population(
-            roots["govML"], head(roots["govML"])
+            roots["govML"], head(roots["govML"]), expected_members
         )
-    subjects = {(repository, head(roots[repository])) for repository in MEMBERS}
+    subjects = {(repository, head(roots[repository])) for repository in members}
     # Unit fixtures use a synthetic repository name.  Production's closed
     # contract contains only the five authoritative repositories.
-    if set(MEMBERS) == set(grouped_members()):
+    if not synthetic_contract:
         for repository, commit in sorted(subjects):
-            verify_remote_reachability(repository, commit)
-        for repository, specs in sorted(MEMBERS.items()):
+            verify_remote_reachability(repository, commit, expected_members)
+        for repository, specs in sorted(members.items()):
             commit = head(roots[repository])
             for member_id, path in specs:
                 print(
@@ -203,7 +231,7 @@ def main() -> int:
                     f"repository={repository} commit={commit} path={path}"
                 )
     rows = []
-    for repository, specs in MEMBERS.items():
+    for repository, specs in members.items():
         commit = head(roots[repository])
         for member_id, path in specs:
             raw = committed_member_bytes(roots[repository], commit, path)
@@ -212,7 +240,11 @@ def main() -> int:
     ruleset = json.loads(args.ruleset_json.read_bytes())
     normalized = normalize_ruleset(ruleset)
     manifest = {
-        "schema_version": "rea.write.enforcement-bundle-manifest.v1",
+        "schema_version": (
+            STAGED_NONPRODUCTION_MANIFEST_SCHEMA
+            if args.staged_nonproduction
+            else "rea.write.enforcement-bundle-manifest.v1"
+        ),
         "authority_generation": AUTHORITY_GENERATION,
         "ruleset_id": RULESET_ID,
         "normalized_ruleset_sha256": sha(canonical(normalized)),
