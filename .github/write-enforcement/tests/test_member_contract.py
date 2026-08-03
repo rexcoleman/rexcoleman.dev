@@ -14,6 +14,10 @@ from member_contract import (  # noqa: E402
     AUTHORITY_GENERATION,
     COMPLETE_CHAIN_DEPENDENCIES,
     EXPECTED_MEMBERS,
+    EXPECTED_EMITTER_RUNTIME_INSTALLATIONS,
+    EXTERNAL_FREEZE_PROCEDURE_SUBJECT,
+    EXTERNAL_GENERATION4_OWNER_RUNBOOK_SUBJECT,
+    EXTERNAL_EMITTER_AUTHORING_SUBJECTS,
     EXTERNAL_R4_MEASUREMENT_SUBJECTS,
     FACE_A_MEMBER_IDS,
     FACE_B_MEMBER_IDS,
@@ -153,6 +157,37 @@ def test_signed_bundle_closes_master_chain_direct_and_transitive_files():
         "master-pre-compute-check": (
             "govML", "scripts/pre_compute_check.sh"
         ),
+        "signed-hypothesis-gate": (
+            "Moonshots_Career_Thesis_v2", "scripts/hypothesis_gate.sh"
+        ),
+        "master-readability-checker": (
+            "govML", "scripts/generators/gen_readability_check.py"
+        ),
+        "emitter-runtime-channel-voice-checker": (
+            "govML", "scripts/generators/gen_channel_voice_check.py"
+        ),
+        "master-gate05": ("govML", "scripts/check_gate05.sh"),
+        "master-gate05-scaffold": ("govML", "scripts/check_gate05_scaffold.sh"),
+        "master-handoff-scrutiny": ("govML", "scripts/handoff_scrutiny_gate.sh"),
+        "master-loop-exit": ("govML", "scripts/loop_exit_gate.sh"),
+        "master-file-re-reading": ("govML", "scripts/file_re_reading_gate.sh"),
+        "master-readme-checker": ("govML", "scripts/generators/gen_readme.py"),
+        "master-generalizability": ("govML", "scripts/check_generalizability.sh"),
+        "master-build-pipeline": ("govML", "scripts/build_pipeline_gate.sh"),
+        "master-build-hc26": ("govML", "scripts/hc26_internal_smoke_gate.sh"),
+        "master-build-k-register": ("govML", "scripts/k_register_present_gate.sh"),
+        "master-build-known-boundaries": (
+            "govML", "scripts/known_boundaries_present_gate.sh"
+        ),
+        "master-build-h-pattern": (
+            "govML", "scripts/h_pattern_dispositions_present_gate.sh"
+        ),
+        "master-build-spec-implementation": (
+            "govML", "scripts/spec_implementation_present_gate.sh"
+        ),
+        "master-build-session-close": (
+            "govML", "scripts/spec_implementation_session_close_gate.sh"
+        ),
         "canonical-enforcement-block": (
             "govML",
             "templates/build/enforcement/run_gates_enforcement_block.sh",
@@ -179,6 +214,25 @@ def test_signed_bundle_closes_master_chain_direct_and_transitive_files():
         "master-runner": {
             "master-pre-compute-check",
             "canonical-enforcement-block",
+            "master-readability-checker",
+            "emitter-runtime-channel-voice-checker",
+            "master-gate05",
+            "master-gate05-scaffold",
+            "master-handoff-scrutiny",
+            "master-loop-exit",
+            "master-file-re-reading",
+            "master-readme-checker",
+            "master-generalizability",
+            "master-build-pipeline",
+            "master-build-hc26",
+            "master-build-k-register",
+            "master-build-known-boundaries",
+            "master-build-h-pattern",
+            "master-build-spec-implementation",
+            "master-build-session-close",
+        },
+        "master-pre-compute-check": {
+            "signed-hypothesis-gate",
         },
         "canonical-enforcement-block": {
             "canonical-agent-pre-check-runner",
@@ -229,13 +283,61 @@ def test_external_r4_measurement_tools_are_not_installed_runtime_members():
         for repository, path in EXTERNAL_R4_MEASUREMENT_SUBJECTS.values()
     )
     assert "generation-2-owner-runbook" not in EXPECTED_MEMBERS
+    assert "remote-freeze-sequence" not in EXPECTED_MEMBERS
+    assert "generation-4-owner-runbook" not in EXPECTED_MEMBERS
+    assert EXTERNAL_FREEZE_PROCEDURE_SUBJECT == (
+        "rexcoleman.dev", ".github/write-enforcement/FREEZE_SEQUENCE.md"
+    )
+    assert EXTERNAL_GENERATION4_OWNER_RUNBOOK_SUBJECT == (
+        "rexcoleman.dev",
+        ".github/write-enforcement/GENERATION_4_OWNER_RUNBOOK.md",
+    )
     assert len(EXPECTED_MEMBERS) == 229
 
 
-def test_complete_chain_member_tampered_bytes_refuse(tmp_path, monkeypatch):
+def test_external_authoring_paths_are_exact_commit_inputs_not_installed_ids():
+    assert len(EXTERNAL_EMITTER_AUTHORING_SUBJECTS) == 14
+    assert not set(EXTERNAL_EMITTER_AUTHORING_SUBJECTS) & set(EXPECTED_MEMBERS)
+    installed_subjects = {
+        tuple(subjects["installed"])
+        for subjects in EXPECTED_EMITTER_RUNTIME_INSTALLATIONS.values()
+    }
+    assert installed_subjects <= set(EXPECTED_MEMBERS.values())
+    assert all(
+        repository == "govML" and path.startswith("scripts/generators/")
+        for repository, path in EXTERNAL_EMITTER_AUTHORING_SUBJECTS.values()
+    )
+
+
+def test_external_owner_documents_have_no_live_code_or_workflow_caller():
+    repository = HERE.parents[1]
+    forbidden = {"FREEZE_SEQUENCE.md", "GENERATION_4_OWNER_RUNBOOK.md"}
+    live_files = [
+        path
+        for root in (repository / ".github/workflows", HERE)
+        for path in root.rglob("*")
+        if path.is_file()
+        and path.suffix in {".py", ".sh", ".yml", ".yaml"}
+        and path.name != "member_contract.py"
+        and "tests" not in path.parts
+    ]
+    hits = {
+        str(path.relative_to(repository)): sorted(
+            name for name in forbidden
+            if name in path.read_text(encoding="utf-8")
+        )
+        for path in live_files
+    }
+    assert not {path: names for path, names in hits.items() if names}
+
+
+@pytest.mark.parametrize("member_id", sorted(SIGNED_COMPLETE_CHAIN_MEMBER_IDS))
+def test_each_complete_chain_member_tampered_bytes_refuses(
+        tmp_path, monkeypatch, member_id):
     workspace = tmp_path / "workspace"
-    repository = workspace / "govML"
-    subject = repository / "templates/build/enforcement/run_gates_enforcement_block.sh"
+    repository_name, relative = EXPECTED_MEMBERS[member_id]
+    repository = workspace / repository_name
+    subject = repository / relative
     subject.parent.mkdir(parents=True)
     subject.write_bytes(b"signed canonical block\n")
     subprocess.run(["git", "-C", str(repository), "init", "-q"], check=True)
@@ -256,25 +358,20 @@ def test_complete_chain_member_tampered_bytes_refuse(tmp_path, monkeypatch):
         ["git", "-C", str(repository), "rev-parse", "HEAD"],
         check=True, capture_output=True, text=True,
     ).stdout.strip()
-    expected = {
-        "canonical-enforcement-block": (
-            "govML",
-            "templates/build/enforcement/run_gates_enforcement_block.sh",
-        ),
-    }
+    expected = {member_id: (repository_name, relative)}
     monkeypatch.setattr(issue_module, "EXPECTED_MEMBERS", expected)
     manifest = {
         "required_member_classes": REQUIRED_CLASSES,
         "members": [{
-            "member_id": "canonical-enforcement-block",
-            "repository": "govML",
+            "member_id": member_id,
+            "repository": repository_name,
             "commit": commit,
-            "path": "templates/build/enforcement/run_gates_enforcement_block.sh",
+            "path": relative,
             "sha256": "0" * 64,
             "byte_length": len(subject.read_bytes()),
         }],
     }
-    with pytest.raises(ValueError, match="member mismatch: canonical-enforcement-block"):
+    with pytest.raises(ValueError, match=f"member mismatch: {member_id}"):
         verify_members(manifest, workspace)
 
 

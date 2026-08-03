@@ -190,10 +190,10 @@ def validate_installed_population(
     for destination, subjects in sorted(expected.items()):
         authoring = tuple(subjects["authoring"])
         installed_subject = tuple(subjects["installed"])
-        if authoring not in frozen_subjects or installed_subject not in frozen_subjects:
+        if installed_subject not in frozen_subjects:
             raise ValueError(
                 f"unsigned installed runtime path: {destination}:"
-                f"authoring={authoring}:installed={installed_subject}"
+                f"installed={installed_subject}"
             )
         try:
             authoring_raw = committed_member_bytes(
