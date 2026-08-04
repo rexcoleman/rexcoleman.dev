@@ -212,7 +212,7 @@ def artifact_relative_packet(tmp_path, monkeypatch, changed_member_id):
     "claim-policy",
     "profile-registry",
     "trusted-public-key",
-    "route-report",
+    "installed-emitter-runtime-gen-research-report",
 ])
 def test_hosted_verifier_uses_exact_commit_objects_despite_checkout_drift(
         tmp_path, monkeypatch, changed_member_id):
@@ -326,6 +326,18 @@ def test_r4_modes_emit_typed_refusal_with_digest_context(tmp_path, monkeypatch, 
     assert "PASS" not in json.dumps(report)
     assert "SKIP" not in json.dumps(report)
     assert "INERT" not in json.dumps(report)
+
+
+def test_missing_wea_refuses_before_public_packet_shape_check(tmp_path):
+    parsed = args(tmp_path)
+    # A deleted canonical WEA makes the actor's symlink dangling.  The hosted
+    # verifier must preserve the typed R4 reason instead of collapsing it into
+    # a generic packet-set corruption.
+    (parsed.issuance / "enforcement_bundle_manifest.json").write_bytes(b"{}")
+    raw_exit, report = MODULE.run(parsed)
+    assert raw_exit == 3
+    assert report["reason_code"] == "WEA_MISSING"
+    assert report["mutation_observed"] is False
 
 
 def successor_loaded_fixture():

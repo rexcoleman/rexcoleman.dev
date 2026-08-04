@@ -4,6 +4,9 @@
 from __future__ import annotations
 
 import argparse
+import ast
+import base64
+import gzip
 import hashlib
 import json
 import re
@@ -18,6 +21,7 @@ from member_contract import (
     GENERATION_MANIFEST_NAME,
     REQUIRED_MEMBER_CLASSES,
     RULESET_ID,
+    PACKAGED_BUILD_PROFILE_GATE_SOURCES,
     STAGED_NONPRODUCTION_MANIFEST_SCHEMA,
     group_member_contract,
     grouped_members,
@@ -190,10 +194,10 @@ def validate_installed_population(
     for destination, subjects in sorted(expected.items()):
         authoring = tuple(subjects["authoring"])
         installed_subject = tuple(subjects["installed"])
-        if authoring not in frozen_subjects or installed_subject not in frozen_subjects:
+        if installed_subject not in frozen_subjects:
             raise ValueError(
                 f"unsigned installed runtime path: {destination}:"
-                f"authoring={authoring}:installed={installed_subject}"
+                f"installed={installed_subject}"
             )
         try:
             authoring_raw = committed_member_bytes(
@@ -215,6 +219,71 @@ def validate_installed_population(
     missing = sorted(installed - frozen)
     if missing:
         raise ValueError(f"unsigned installed members: {missing}")
+
+    bundle_relative = (
+        "templates/build/enforcement/installed_build_profile_gate_bundle.py"
+    )
+    bundle_raw = committed_member_bytes(govml_root, commit, bundle_relative)
+    tree = subprocess.run(
+        ["git", "-C", str(govml_root), "ls-tree", commit, bundle_relative],
+        check=True, capture_output=True, text=True,
+    ).stdout.split()
+    if not tree or tree[0] != "100755" or tree[1] != "blob":
+        raise ValueError("installed build-profile bundle mode/type invalid")
+    try:
+        syntax = ast.parse(bundle_raw.decode("ascii"), bundle_relative)
+        assignment = next(
+            node for node in syntax.body
+            if isinstance(node, ast.Assign)
+            and any(isinstance(target, ast.Name) and target.id == "ENTRIES"
+                    for target in node.targets)
+        )
+        entries = ast.literal_eval(assignment.value)
+    except (UnicodeDecodeError, StopIteration, SyntaxError, ValueError) as exc:
+        raise ValueError(
+            f"installed build-profile bundle metadata invalid:{type(exc).__name__}"
+        ) from None
+    expected_ids = set(PACKAGED_BUILD_PROFILE_GATE_SOURCES)
+    if not isinstance(entries, dict) or set(entries) != expected_ids:
+        raise ValueError("installed build-profile bundle logical population invalid")
+    seen_paths = set()
+    for logical_id, expected_source in sorted(
+        PACKAGED_BUILD_PROFILE_GATE_SOURCES.items()
+    ):
+        repository, relative, expected_mode = expected_source
+        row = entries[logical_id]
+        if not isinstance(row, dict) or set(row) != {
+            "path", "mode", "sha256", "byte_length", "gzip_base64",
+        }:
+            raise ValueError(f"installed build-profile bundle row invalid:{logical_id}")
+        path = Path(row["path"]) if isinstance(row.get("path"), str) else Path("/")
+        if (
+            repository != "govML" or path.is_absolute() or ".." in path.parts
+            or path.as_posix() != relative or relative in seen_paths
+            or row.get("mode") != expected_mode
+        ):
+            raise ValueError(f"installed build-profile bundle path/mode invalid:{logical_id}")
+        source_tree = subprocess.run(
+            ["git", "-C", str(govml_root), "ls-tree", commit, relative],
+            check=True, capture_output=True, text=True,
+        ).stdout.split()
+        if not source_tree or source_tree[0] != "100755" or source_tree[1] != "blob":
+            raise ValueError(f"installed build-profile source mode/type invalid:{logical_id}")
+        source_raw = committed_member_bytes(govml_root, commit, relative)
+        try:
+            payload = gzip.decompress(base64.b64decode(
+                row["gzip_base64"].encode("ascii"), validate=True,
+            ))
+        except Exception as exc:
+            raise ValueError(
+                f"installed build-profile payload invalid:{logical_id}:{type(exc).__name__}"
+            ) from None
+        if (
+            payload != source_raw or row.get("sha256") != sha(source_raw)
+            or row.get("byte_length") != len(source_raw)
+        ):
+            raise ValueError(f"installed build-profile payload divergence:{logical_id}")
+        seen_paths.add(relative)
 
 
 def main() -> int:

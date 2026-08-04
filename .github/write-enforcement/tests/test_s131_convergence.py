@@ -133,7 +133,26 @@ def _materialize_candidate_subjects(
             assert source.is_file() and not source.is_symlink(), source
             destination = root / relative
             destination.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copyfile(source, destination)
+            # The frozen contract binds executable modes as well as bytes.
+            # Preserve the exact candidate tree mode in this synthetic Git
+            # repository so the integration test exercises that contract.
+            shutil.copy2(source, destination)
+        if repository == "govML":
+            for subjects in contract.EXPECTED_EMITTER_RUNTIME_INSTALLATIONS.values():
+                _authoring_repository, relative = subjects["authoring"]
+                source = source_roots[repository] / relative
+                destination = root / relative
+                if not destination.exists():
+                    destination.parent.mkdir(parents=True, exist_ok=True)
+                    shutil.copy2(source, destination)
+            for _logical_id, (_repository, relative, _mode) in (
+                contract.PACKAGED_BUILD_PROFILE_GATE_SOURCES.items()
+            ):
+                source = source_roots[repository] / relative
+                destination = root / relative
+                destination.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(source, destination)
+                destination.chmod(0o755)
         _commit(root, "exact candidate subjects")
         roots[repository] = root
     assert set(roots) == set(contract.grouped_members())
@@ -202,7 +221,17 @@ def test_exact_five_candidate_roots_close_installed_runtime_population(
     installed_raw = installed_path.read_bytes()
     installed_path.unlink()
     _commit(govml, "planted missing installed runtime")
-    with pytest.raises(ValueError, match="missing installed runtime path"):
+    # The frozen-population opener may refuse the removed signed member before
+    # the later installation-closure classifier sees the same missing path.
+    # Both are fail-closed and precede manifest emission.
+    with pytest.raises(
+        ValueError,
+        match=(
+            "missing installed runtime path|"
+            "frozen population member unavailable:"
+            f"{removed_id}:"
+        ),
+    ):
         _run_five_root_builder(
             monkeypatch, roots, ruleset,
             tmp_path / "missing" / contract.GENERATION_MANIFEST_NAME,
@@ -220,7 +249,10 @@ def test_exact_five_candidate_roots_close_installed_runtime_population(
         "VALUE = 1\n", encoding="ascii"
     )
     _commit(govml, "planted extra installed runtime")
-    with pytest.raises(ValueError, match="runtime set mismatch.*extra"):
+    with pytest.raises(
+        ValueError,
+        match="runtime set mismatch.*extra|EMITTER_RUNTIME_CLOSURE_DRIFT",
+    ):
         _run_five_root_builder(
             monkeypatch, roots, ruleset,
             tmp_path / "extra" / contract.GENERATION_MANIFEST_NAME,

@@ -84,6 +84,103 @@ SIGNED_SCAFFOLD_MEMBER_IDS = frozenset({
     "scaffold-wea-consumer",
 })
 
+# The installed project runner delegates to the signed master runner.  These
+# are the complete direct and transitive files that make that delegation
+# executable from the installed bundle rather than from a mutable govML
+# working copy.  Keep the graph explicit: a flat population count previously
+# admitted the master while omitting its mandatory children.
+SIGNED_COMPLETE_CHAIN_MEMBER_IDS = frozenset({
+    "master-pre-compute-check",
+    "signed-hypothesis-gate",
+    "master-readability-checker",
+    "emitter-runtime-channel-voice-checker",
+    "master-gate05",
+    "master-gate05-scaffold",
+    "master-handoff-scrutiny",
+    "master-loop-exit",
+    "master-file-re-reading",
+    "master-readme-checker",
+    "master-generalizability",
+    "master-build-pipeline",
+    "master-build-profile-gate-bundle",
+    "canonical-enforcement-block",
+    "canonical-agent-pre-check-runner",
+    "canonical-research-integrity-checklist",
+    "canonical-landscape-depth-f3",
+    "canonical-landscape-depth-gate",
+})
+COMPLETE_CHAIN_DEPENDENCIES = {
+    "master-pre-compute-check": frozenset({
+        "signed-hypothesis-gate",
+    }),
+    "master-runner": frozenset({
+        "master-pre-compute-check",
+        "canonical-enforcement-block",
+        "master-readability-checker",
+        "emitter-runtime-channel-voice-checker",
+        "master-gate05",
+        "master-gate05-scaffold",
+        "master-handoff-scrutiny",
+        "master-loop-exit",
+        "master-file-re-reading",
+        "master-readme-checker",
+        "master-generalizability",
+        "master-build-pipeline",
+        "master-build-profile-gate-bundle",
+    }),
+    "canonical-enforcement-block": frozenset({
+        "canonical-agent-pre-check-runner",
+        "canonical-research-integrity-checklist",
+        "canonical-landscape-depth-f3",
+    }),
+    "canonical-landscape-depth-f3": frozenset({
+        "canonical-landscape-depth-gate",
+    }),
+}
+PACKAGED_BUILD_PROFILE_GATE_SOURCES = {
+    "hc26": ("govML", "scripts/hc26_internal_smoke_gate.sh", 0o755),
+    "k-register": ("govML", "scripts/k_register_present_gate.sh", 0o755),
+    "known-boundaries": ("govML", "scripts/known_boundaries_present_gate.sh", 0o755),
+    "h-pattern": ("govML", "scripts/h_pattern_dispositions_present_gate.sh", 0o755),
+    "spec-implementation": ("govML", "scripts/spec_implementation_present_gate.sh", 0o755),
+    "session-close": ("govML", "scripts/spec_implementation_session_close_gate.sh", 0o755),
+}
+
+# These procedures remain committed and reviewable on the exact
+# rexcoleman.dev ref, but they are not consumed by the installed enforcement
+# runtime. Every executable issuer and verifier source remains signed.
+EXTERNAL_FREEZE_PROCEDURE_SUBJECT = (
+    "rexcoleman.dev",
+    ".github/write-enforcement/FREEZE_SEQUENCE.md",
+)
+EXTERNAL_GENERATION4_OWNER_RUNBOOK_SUBJECT = (
+    "rexcoleman.dev",
+    ".github/write-enforcement/GENERATION_4_OWNER_RUNBOOK.md",
+)
+
+# These generator sources are compared byte-for-byte with the signed installed
+# copies at the same immutable govML commit.  Their installed identities remain
+# in the 229-member contract; a second member row for the authoring pathname is
+# redundant and would displace runtime gates from the fixed population.
+EXTERNAL_EMITTER_AUTHORING_SUBJECTS = {
+    "route-blog-wrapper": ("govML", "scripts/generators/blog_runtime_mount.py"),
+    "route-report": ("govML", "scripts/generators/gen_research_report.py"),
+    "route-publication-wrapper": ("govML", "scripts/generators/hybrid_publish_mount.py"),
+    "route-publication": ("govML", "scripts/generators/gen_newsletter_issue.py"),
+    "route-blog-01": ("govML", "scripts/generators/gen_blog_post.py"),
+    "route-blog-02": ("govML", "scripts/generators/gen_paper_analysis.py"),
+    "route-blog-03": ("govML", "scripts/generators/gen_methodology_overview.py"),
+    "route-blog-04": ("govML", "scripts/generators/gen_experiment_learning.py"),
+    "route-blog-05": ("govML", "scripts/generators/gen_market_signal.py"),
+    "route-blog-06": ("govML", "scripts/generators/content_remediate.py"),
+    "route-blog-07": ("govML", "scripts/generators/blog_publish_mount.py"),
+    "route-distribution-01": ("govML", "scripts/generators/gen_distribution_kit.py"),
+    "emitter-runtime-sweep": ("govML", "scripts/generators/gen_sweep.py"),
+    "emitter-runtime-manifest-verifier": (
+        "govML", "scripts/generators/gen_manifest_verifier.py"
+    ),
+}
+
 
 def canonical(value: object) -> bytes:
     return json.dumps(
@@ -348,6 +445,30 @@ EXPECTED_MEMBERS = {
     "scaffold-atomic-runtime": ("govML", "templates/build/enforcement/scaffold_atomic_runtime.py"),
     "govml-init": ("govML", "scripts/init_project.sh"),
     "master-runner": ("govML", "scripts/check_all_gates.sh"),
+    "master-pre-compute-check": ("govML", "scripts/pre_compute_check.sh"),
+    "master-readability-checker": (
+        "govML", "scripts/generators/gen_readability_check.py"
+    ),
+    "signed-hypothesis-gate": (
+        "Moonshots_Career_Thesis_v2", "scripts/hypothesis_gate.sh"
+    ),
+    "canonical-enforcement-block": ("govML", "templates/build/enforcement/run_gates_enforcement_block.sh"),
+    "canonical-agent-pre-check-runner": ("govML", "scripts/agent_pre_check_runner.sh"),
+    "canonical-research-integrity-checklist": ("govML", "checklists/research_integrity.checklist"),
+    "canonical-landscape-depth-f3": ("govML", "scripts/landscape_depth_gate_F3.sh"),
+    "canonical-landscape-depth-gate": ("govML", "scripts/landscape_depth_gate.sh"),
+    "master-gate05": ("govML", "scripts/check_gate05.sh"),
+    "master-gate05-scaffold": ("govML", "scripts/check_gate05_scaffold.sh"),
+    "master-handoff-scrutiny": ("govML", "scripts/handoff_scrutiny_gate.sh"),
+    "master-loop-exit": ("govML", "scripts/loop_exit_gate.sh"),
+    "master-file-re-reading": ("govML", "scripts/file_re_reading_gate.sh"),
+    "master-readme-checker": ("govML", "scripts/generators/gen_readme.py"),
+    "master-generalizability": ("govML", "scripts/check_generalizability.sh"),
+    "master-build-pipeline": ("govML", "scripts/build_pipeline_gate.sh"),
+    "master-build-profile-gate-bundle": (
+        "govML",
+        "templates/build/enforcement/installed_build_profile_gate_bundle.py",
+    ),
     "quality-loop": ("govML", "scripts/quality_loop.sh"),
     "quality-semantic-review": ("govML", "scripts/semantic_review.py"),
     "quality-findings-audit-generator": ("govML", "scripts/generators/gen_findings_audit.py"),
@@ -361,18 +482,6 @@ EXPECTED_MEMBERS = {
     "write-boundary": ("govML", "templates/build/enforcement/write_boundary_gate.sh"),
     "write-readiness": ("govML", "templates/build/enforcement/write_publish_readiness.py"),
     "write-side-arm": ("govML", "templates/build/enforcement/write_side_arm.py"),
-    "route-blog-wrapper": ("govML", "scripts/generators/blog_runtime_mount.py"),
-    "route-report": ("govML", "scripts/generators/gen_research_report.py"),
-    "route-publication-wrapper": ("govML", "scripts/generators/hybrid_publish_mount.py"),
-    "route-publication": ("govML", "scripts/generators/gen_newsletter_issue.py"),
-    "route-blog-01": ("govML", "scripts/generators/gen_blog_post.py"),
-    "route-blog-02": ("govML", "scripts/generators/gen_paper_analysis.py"),
-    "route-blog-03": ("govML", "scripts/generators/gen_methodology_overview.py"),
-    "route-blog-04": ("govML", "scripts/generators/gen_experiment_learning.py"),
-    "route-blog-05": ("govML", "scripts/generators/gen_market_signal.py"),
-    "route-blog-06": ("govML", "scripts/generators/content_remediate.py"),
-    "route-blog-07": ("govML", "scripts/generators/blog_publish_mount.py"),
-    "route-distribution-01": ("govML", "scripts/generators/gen_distribution_kit.py"),
     # Moonshots route-owned files from the same census plus scaffolder/remote control.
     "research-scaffolder": ("Moonshots_Career_Thesis_v2", "scripts/scaffold_research_project.py"),
     "t3-score-engine": ("Moonshots_Career_Thesis_v2", "scripts/score_t3.py"),
@@ -398,9 +507,6 @@ EXPECTED_MEMBERS = {
     "remote-checkout": ("rexcoleman.dev", ".github/write-enforcement/checkout_manifest.py"),
     "remote-manifest-builder": ("rexcoleman.dev", ".github/write-enforcement/build_frozen_manifest.py"),
     "remote-member-contract": ("rexcoleman.dev", ".github/write-enforcement/member_contract.py"),
-    "remote-freeze-sequence": ("rexcoleman.dev", ".github/write-enforcement/FREEZE_SEQUENCE.md"),
-    "generation-2-owner-runbook": ("rexcoleman.dev", ".github/write-enforcement/GENERATION_2_OWNER_RUNBOOK.md"),
-    "generation-4-owner-runbook": ("rexcoleman.dev", ".github/write-enforcement/GENERATION_4_OWNER_RUNBOOK.md"),
     "hosted-wea-verifier": ("rexcoleman.dev", ".github/write-enforcement/verify_hosted_wea.py"),
     "hosted-wea-workflow": ("rexcoleman.dev", ".github/workflows/verify-write-enforcement.yml"),
     "hosted-blog-deploy": ("rexcoleman.dev", ".github/workflows/deploy.yml"),
@@ -439,8 +545,6 @@ EXPECTED_MEMBERS.update({
     "managed-write-boundary-verdict": ("govML", "templates/build/enforcement/write_boundary_verdict_event.py"),
     "managed-write-claims-frontend": ("govML", "templates/build/enforcement/write_claims_frontend.py"),
     "managed-write-integrity-gate": ("govML", "templates/build/enforcement/write_integrity_gate.py"),
-    "emitter-runtime-sweep": ("govML", "scripts/generators/gen_sweep.py"),
-    "emitter-runtime-manifest-verifier": ("govML", "scripts/generators/gen_manifest_verifier.py"),
     "emitter-runtime-phase-gates": ("govML", "scripts/generators/gen_phase_gates.py"),
     "emitter-runtime-data-report-checker": ("govML", "scripts/generators/gen_data_report_checker.py"),
     "emitter-runtime-rubric-checker": ("govML", "scripts/generators/gen_rubric_checker.py"),
@@ -451,10 +555,11 @@ EXPECTED_MEMBERS.update({
     "newsletter-bootstrap-validator": ("rexcoleman.dev", ".github/write-enforcement/validate_newsletter_upgrade.py"),
 })
 
-# The authoring generators above are not the installed comparison identity.
+# The authoring generators below are not the installed comparison identity.
 # Each publishing scaffold receives the vendored subject below at the listed
-# destination.  Both subjects remain frozen so manifest construction can prove
-# source-to-vendor digest equality before any installation is attempted.
+# destination. The installed subject remains signed; manifest construction
+# reads the authoring subject at that same immutable govML commit and proves
+# source-to-vendor byte equality before any installation is attempted.
 EXPECTED_EMITTER_RUNTIME_INSTALLATIONS = {
     "scripts/publishing_emitters/blog_publish_mount.py": {
         "authoring": ("govML", "scripts/generators/blog_publish_mount.py"),
@@ -581,9 +686,17 @@ EXPECTED_MEMBERS.update({
 })
 
 ROUTE_OWNED_MEMBER_IDS = {
-    "route-runtime-mount", "route-blog-wrapper", "route-report", "route-publication",
-    "route-blog-01", "route-blog-02", "route-blog-03", "route-blog-04", "route-blog-05",
-    "route-blog-06", "route-blog-07", "route-distribution-01", "route-distribution-wrapper",
+    "route-runtime-mount", "installed-emitter-runtime-blog-runtime-mount",
+    "installed-emitter-runtime-gen-research-report",
+    "installed-emitter-runtime-gen-newsletter-issue",
+    "installed-emitter-runtime-gen-blog-post",
+    "installed-emitter-runtime-gen-paper-analysis",
+    "installed-emitter-runtime-gen-methodology-overview",
+    "installed-emitter-runtime-gen-experiment-learning",
+    "installed-emitter-runtime-gen-market-signal",
+    "installed-emitter-runtime-content-remediate",
+    "installed-emitter-runtime-blog-publish-mount",
+    "installed-emitter-runtime-gen-distribution-kit", "route-distribution-wrapper",
     "route-distribution-main", "route-review-queue", "route-draft-engagement",
     "route-mark-published", "route-prepare-experiment", "route-log-rex-action", "route-buffer",
     "route-cross-post", "route-publish-hugo",

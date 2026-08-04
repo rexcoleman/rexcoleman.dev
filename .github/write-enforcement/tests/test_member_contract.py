@@ -1,4 +1,5 @@
 import json
+import subprocess
 import sys
 from pathlib import Path
 
@@ -8,14 +9,21 @@ HERE = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(HERE))
 
 from issue_wea import IssuerRefusal, verify_members, verify_trust_roots  # noqa: E402
+import issue_wea as issue_module  # noqa: E402
 from member_contract import (  # noqa: E402
     AUTHORITY_GENERATION,
+    COMPLETE_CHAIN_DEPENDENCIES,
     EXPECTED_MEMBERS,
+    EXPECTED_EMITTER_RUNTIME_INSTALLATIONS,
+    EXTERNAL_FREEZE_PROCEDURE_SUBJECT,
+    EXTERNAL_GENERATION4_OWNER_RUNBOOK_SUBJECT,
+    EXTERNAL_EMITTER_AUTHORING_SUBJECTS,
     FACE_A_MEMBER_IDS,
     FACE_B_MEMBER_IDS,
     FACE_B_ISOLATED_FIXTURE_MEMBER_IDS,
     GENERATION_MANIFEST_NAME,
     ROUTE_OWNED_MEMBER_IDS,
+    SIGNED_COMPLETE_CHAIN_MEMBER_IDS,
     SIGNED_SCAFFOLD_MEMBER_IDS,
     S88_BUNDLE_MEMBER_IDS,
     WRITE_BOUNDARY_POLICY_MEMBERS,
@@ -141,6 +149,219 @@ def test_single_runner_replaces_legacy_copies_with_authority_closure():
     assert not {
         "project-runner-f07", "project-runner-f08", "project-runner-f09"
     } & set(EXPECTED_MEMBERS)
+
+
+def test_signed_bundle_closes_master_chain_direct_and_transitive_files():
+    expected = {
+        "master-pre-compute-check": (
+            "govML", "scripts/pre_compute_check.sh"
+        ),
+        "signed-hypothesis-gate": (
+            "Moonshots_Career_Thesis_v2", "scripts/hypothesis_gate.sh"
+        ),
+        "master-readability-checker": (
+            "govML", "scripts/generators/gen_readability_check.py"
+        ),
+        "emitter-runtime-channel-voice-checker": (
+            "govML", "scripts/generators/gen_channel_voice_check.py"
+        ),
+        "master-gate05": ("govML", "scripts/check_gate05.sh"),
+        "master-gate05-scaffold": ("govML", "scripts/check_gate05_scaffold.sh"),
+        "master-handoff-scrutiny": ("govML", "scripts/handoff_scrutiny_gate.sh"),
+        "master-loop-exit": ("govML", "scripts/loop_exit_gate.sh"),
+        "master-file-re-reading": ("govML", "scripts/file_re_reading_gate.sh"),
+        "master-readme-checker": ("govML", "scripts/generators/gen_readme.py"),
+        "master-generalizability": ("govML", "scripts/check_generalizability.sh"),
+        "master-build-pipeline": ("govML", "scripts/build_pipeline_gate.sh"),
+        "master-build-profile-gate-bundle": (
+            "govML",
+            "templates/build/enforcement/installed_build_profile_gate_bundle.py",
+        ),
+        "canonical-enforcement-block": (
+            "govML",
+            "templates/build/enforcement/run_gates_enforcement_block.sh",
+        ),
+        "canonical-agent-pre-check-runner": (
+            "govML", "scripts/agent_pre_check_runner.sh"
+        ),
+        "canonical-research-integrity-checklist": (
+            "govML", "checklists/research_integrity.checklist"
+        ),
+        "canonical-landscape-depth-f3": (
+            "govML", "scripts/landscape_depth_gate_F3.sh"
+        ),
+        "canonical-landscape-depth-gate": (
+            "govML", "scripts/landscape_depth_gate.sh"
+        ),
+    }
+    assert SIGNED_COMPLETE_CHAIN_MEMBER_IDS == set(expected)
+    assert {
+        member_id: EXPECTED_MEMBERS[member_id]
+        for member_id in SIGNED_COMPLETE_CHAIN_MEMBER_IDS
+    } == expected
+    assert COMPLETE_CHAIN_DEPENDENCIES == {
+        "master-runner": {
+            "master-pre-compute-check",
+            "canonical-enforcement-block",
+            "master-readability-checker",
+            "emitter-runtime-channel-voice-checker",
+            "master-gate05",
+            "master-gate05-scaffold",
+            "master-handoff-scrutiny",
+            "master-loop-exit",
+            "master-file-re-reading",
+            "master-readme-checker",
+            "master-generalizability",
+            "master-build-pipeline",
+            "master-build-profile-gate-bundle",
+        },
+        "master-pre-compute-check": {
+            "signed-hypothesis-gate",
+        },
+        "canonical-enforcement-block": {
+            "canonical-agent-pre-check-runner",
+            "canonical-research-integrity-checklist",
+            "canonical-landscape-depth-f3",
+        },
+        "canonical-landscape-depth-f3": {
+            "canonical-landscape-depth-gate",
+        },
+    }
+    assert set(COMPLETE_CHAIN_DEPENDENCIES) < set(EXPECTED_MEMBERS)
+    assert set().union(*COMPLETE_CHAIN_DEPENDENCIES.values()) == set(expected)
+
+
+@pytest.mark.parametrize("member_id", sorted(SIGNED_COMPLETE_CHAIN_MEMBER_IDS))
+def test_each_complete_chain_dependency_omission_refuses_before_signing(
+        tmp_path, member_id):
+    manifest = complete_manifest()
+    manifest["members"] = [
+        row for row in manifest["members"] if row["member_id"] != member_id
+    ]
+    with pytest.raises(IssuerRefusal) as captured:
+        verify_members(manifest, tmp_path)
+    assert captured.value.reason_code == "BUNDLE_MEMBER_SET_MISMATCH"
+    assert member_id in captured.value.detail
+
+
+@pytest.mark.parametrize("member_id", sorted(SIGNED_COMPLETE_CHAIN_MEMBER_IDS))
+def test_each_complete_chain_dependency_retarget_refuses_before_signing(
+        tmp_path, member_id):
+    manifest = complete_manifest()
+    row = next(
+        item for item in manifest["members"] if item["member_id"] == member_id
+    )
+    row["path"] = "forged/complete-chain-substitute"
+    with pytest.raises(IssuerRefusal) as captured:
+        verify_members(manifest, tmp_path)
+    assert captured.value.reason_code == "BUNDLE_MEMBER_SET_MISMATCH"
+    assert member_id in captured.value.detail
+
+
+def test_r4_authority_tools_remain_signed_runtime_members():
+    expected = {
+        "r4-plan-builder": "write_integrity/attestation/build_r4_plan.py",
+        "r4-matrix-harness": "write_integrity/attestation/run_r4_matrix.py",
+        "r4-harness-common": "write_integrity/attestation/harness_common.py",
+        "r4-actor-probe": "write_integrity/attestation/r4_actor_probe.py",
+        "r4-actor-inventory": "write_integrity/attestation/r4_actor_inventory.json",
+    }
+    assert {
+        member_id: EXPECTED_MEMBERS[member_id][1] for member_id in expected
+    } == expected
+    assert all(EXPECTED_MEMBERS[member_id][0] == "research_enforcement_activation"
+               for member_id in expected)
+    assert "generation-2-owner-runbook" not in EXPECTED_MEMBERS
+    assert "remote-freeze-sequence" not in EXPECTED_MEMBERS
+    assert "generation-4-owner-runbook" not in EXPECTED_MEMBERS
+    assert EXTERNAL_FREEZE_PROCEDURE_SUBJECT == (
+        "rexcoleman.dev", ".github/write-enforcement/FREEZE_SEQUENCE.md"
+    )
+    assert EXTERNAL_GENERATION4_OWNER_RUNBOOK_SUBJECT == (
+        "rexcoleman.dev",
+        ".github/write-enforcement/GENERATION_4_OWNER_RUNBOOK.md",
+    )
+    assert len(EXPECTED_MEMBERS) == 229
+
+
+def test_external_authoring_paths_are_exact_commit_inputs_not_installed_ids():
+    assert len(EXTERNAL_EMITTER_AUTHORING_SUBJECTS) == 14
+    assert not set(EXTERNAL_EMITTER_AUTHORING_SUBJECTS) & set(EXPECTED_MEMBERS)
+    installed_subjects = {
+        tuple(subjects["installed"])
+        for subjects in EXPECTED_EMITTER_RUNTIME_INSTALLATIONS.values()
+    }
+    assert installed_subjects <= set(EXPECTED_MEMBERS.values())
+    assert all(
+        repository == "govML" and path.startswith("scripts/generators/")
+        for repository, path in EXTERNAL_EMITTER_AUTHORING_SUBJECTS.values()
+    )
+
+
+def test_external_owner_documents_have_no_live_code_or_workflow_caller():
+    repository = HERE.parents[1]
+    forbidden = {"FREEZE_SEQUENCE.md", "GENERATION_4_OWNER_RUNBOOK.md"}
+    live_files = [
+        path
+        for root in (repository / ".github/workflows", HERE)
+        for path in root.rglob("*")
+        if path.is_file()
+        and path.suffix in {".py", ".sh", ".yml", ".yaml"}
+        and path.name != "member_contract.py"
+        and "tests" not in path.parts
+    ]
+    hits = {
+        str(path.relative_to(repository)): sorted(
+            name for name in forbidden
+            if name in path.read_text(encoding="utf-8")
+        )
+        for path in live_files
+    }
+    assert not {path: names for path, names in hits.items() if names}
+
+
+@pytest.mark.parametrize("member_id", sorted(SIGNED_COMPLETE_CHAIN_MEMBER_IDS))
+def test_each_complete_chain_member_tampered_bytes_refuses(
+        tmp_path, monkeypatch, member_id):
+    workspace = tmp_path / "workspace"
+    repository_name, relative = EXPECTED_MEMBERS[member_id]
+    repository = workspace / repository_name
+    subject = repository / relative
+    subject.parent.mkdir(parents=True)
+    subject.write_bytes(b"signed canonical block\n")
+    subprocess.run(["git", "-C", str(repository), "init", "-q"], check=True)
+    subprocess.run(
+        ["git", "-C", str(repository), "config", "user.email",
+         "s134-builder@example.invalid"], check=True,
+    )
+    subprocess.run(
+        ["git", "-C", str(repository), "config", "user.name",
+         "s134 Builder ARCH"], check=True,
+    )
+    subprocess.run(["git", "-C", str(repository), "add", "-A"], check=True)
+    subprocess.run(
+        ["git", "-C", str(repository), "commit", "-q", "-m", "fixture"],
+        check=True,
+    )
+    commit = subprocess.run(
+        ["git", "-C", str(repository), "rev-parse", "HEAD"],
+        check=True, capture_output=True, text=True,
+    ).stdout.strip()
+    expected = {member_id: (repository_name, relative)}
+    monkeypatch.setattr(issue_module, "EXPECTED_MEMBERS", expected)
+    manifest = {
+        "required_member_classes": REQUIRED_CLASSES,
+        "members": [{
+            "member_id": member_id,
+            "repository": repository_name,
+            "commit": commit,
+            "path": relative,
+            "sha256": "0" * 64,
+            "byte_length": len(subject.read_bytes()),
+        }],
+    }
+    with pytest.raises(ValueError, match=f"member mismatch: {member_id}"):
+        verify_members(manifest, workspace)
 
 
 def test_signed_scaffold_installer_closes_all_transitive_comparison_inputs():
@@ -269,15 +490,38 @@ def test_generation_4_constants_and_tag_derivation_are_exact():
         generation_tag("a" * 39)
 
 
-def test_generation_4_member_contract_covers_lifetime_reach_and_close_gate():
-    required = {
+def test_generation_4_member_contract_covers_runtime_lifetime_and_close_gate():
+    runtime_required = {
         "wea-lifetime-library",
-        "r4-plan-builder",
-        "r4-matrix-harness",
         "coverage-registry-library",
         "close-accounting-gate",
     }
-    assert required <= set(EXPECTED_MEMBERS)
+    assert runtime_required <= set(EXPECTED_MEMBERS)
+    expected_r4 = {
+        "r4-plan-builder": (
+            "research_enforcement_activation",
+            "write_integrity/attestation/build_r4_plan.py",
+        ),
+        "r4-matrix-harness": (
+            "research_enforcement_activation",
+            "write_integrity/attestation/run_r4_matrix.py",
+        ),
+        "r4-harness-common": (
+            "research_enforcement_activation",
+            "write_integrity/attestation/harness_common.py",
+        ),
+        "r4-actor-probe": (
+            "research_enforcement_activation",
+            "write_integrity/attestation/r4_actor_probe.py",
+        ),
+        "r4-actor-inventory": (
+            "research_enforcement_activation",
+            "write_integrity/attestation/r4_actor_inventory.json",
+        ),
+    }
+    assert {
+        member_id: EXPECTED_MEMBERS[member_id] for member_id in expected_r4
+    } == expected_r4
 
 
 def test_runner_adapter_complete_fixed_canonical_dependency_closure_is_signed():
