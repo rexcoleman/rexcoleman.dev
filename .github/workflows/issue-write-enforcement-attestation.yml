@@ -3,13 +3,26 @@ name: Issue write enforcement attestation
 on:
   workflow_dispatch:
     inputs:
+      mode:
+        description: >-
+          capability_change = owner-approved issuance over a new capability
+          basis (unchanged behaviour, required_reviewers still apply).
+          renew = unattended re-issuance over an IDENTICAL capability basis,
+          dispatched by the renewal scheduler; refuses if anything
+          capability-bearing would move.
+        required: false
+        type: choice
+        default: capability_change
+        options:
+          - capability_change
+          - renew
       predecessor_run_id:
         description: Workflow run containing the exact authenticated WEA being replaced
-        required: true
+        required: false
         type: string
       predecessor_wea_sha256:
         description: SHA-256 of the exact installed predecessor authenticated before dispatch
-        required: true
+        required: false
         type: string
 
 permissions:
@@ -24,8 +37,18 @@ defaults:
   run:
     shell: bash
 
+env:
+  # Authority-bearing modules that are NOT members of the frozen bundle and so
+  # are not covered by issue_wea.py's BUNDLE_MEMBER_BYTES_MISMATCH check.  This
+  # workflow file IS a frozen member (remote-issuer-workflow), so pinning their
+  # digests here places them transitively inside the frozen boundary.  Editing
+  # either module without moving its pin here refuses every run.
+  RENEWAL_CONTRACT_SHA256: 8e4d360fc34b89f912de823a9b530cccf21cb868406e16994e3da011456500de
+  ARTIFACT_CONTRACT_SHA256: a5747846904bf082643ca0f740d1fe3673c7331385e7d9f51424b90e933cbd65
+
 jobs:
   preflight-predecessor:
+    if: inputs.mode != 'renew'
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
@@ -33,6 +56,21 @@ jobs:
         with:
           path: repo
           persist-credentials: false
+      - name: Bind unfrozen authority-bearing modules to this workflow
+        run: |
+          set -euo pipefail
+          test "$(sha256sum repo/.github/write-enforcement/renewal_contract.py | cut -d' ' -f1)" = "$RENEWAL_CONTRACT_SHA256"
+          test "$(sha256sum repo/.github/write-enforcement/artifact_contract.py | cut -d' ' -f1)" = "$ARTIFACT_CONTRACT_SHA256"
+          echo "UNFROZEN_MODULE_PIN_PASS renewal_contract=$RENEWAL_CONTRACT_SHA256 artifact_contract=$ARTIFACT_CONTRACT_SHA256"
+      - name: Refuse an unrecognised dispatch mode
+        env:
+          MODE: ${{ inputs.mode }}
+        run: |
+          set -euo pipefail
+          case "${MODE:-capability_change}" in
+            capability_change) ;;
+            *) echo "REFUSED ISSUANCE_MODE_UNRECOGNISED: $MODE" >&2; exit 3 ;;
+          esac
       - name: Authenticate exact predecessor before protected environment
         env:
           GH_TOKEN: ${{ github.token }}
@@ -113,6 +151,7 @@ jobs:
 
   issue-wea:
     needs: preflight-predecessor
+    if: inputs.mode != 'renew'
     environment: rea-write-enforcement-issuer
     runs-on: ubuntu-24.04
     timeout-minutes: 20
@@ -219,5 +258,338 @@ jobs:
         with:
           name: rea-write-enforcement-attestation-${{ github.run_id }}
           path: issuance/
+          if-no-files-found: error
+          retention-days: 30
+
+  # ---------------------------------------------------------------------
+  # Unattended renewal.
+  #
+  # The authority lives exactly 24 hours.  Every job above declares
+  # rea-write-enforcement-issuer, whose required_reviewers rule is evaluated
+  # PER RUN, so keeping enforcement alive through the jobs above costs a named
+  # human one approval per day, forever.  P-6's subset-proof reads "satisfying
+  # one by a manual out-of-band act does not pass"; a daily approval click is
+  # exactly that, so the jobs below carry the lifetime instead.
+  #
+  # What is removed is the human.  Nothing else: the renewal path authenticates
+  # its predecessor with the same assertions, verifies the same frozen bundle,
+  # proves the same public-only custody, and signs with the same protected key.
+  # It additionally refuses, fail-closed and with a typed reason code, if any
+  # capability-bearing field of the attestation would move -- those keep the
+  # owner-approved path above, unchanged.
+  #
+  # There is no exemption for a named run, commit or actor anywhere below.  The
+  # predecessor is DISCOVERED by a registered rule (the newest successful run
+  # of this workflow that still publishes a downloadable attestation), and an
+  # owner-supplied predecessor pin is refused outright in this mode.
+  # ---------------------------------------------------------------------
+  renew-preflight:
+    if: inputs.mode == 'renew'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    outputs:
+      predecessor_run_id: ${{ steps.discover.outputs.predecessor_run_id }}
+      predecessor_wea_sha256: ${{ steps.discover.outputs.predecessor_wea_sha256 }}
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          path: repo
+          persist-credentials: false
+      - name: Bind unfrozen authority-bearing modules to this workflow
+        run: |
+          set -euo pipefail
+          test "$(sha256sum repo/.github/write-enforcement/renewal_contract.py | cut -d' ' -f1)" = "$RENEWAL_CONTRACT_SHA256"
+          test "$(sha256sum repo/.github/write-enforcement/artifact_contract.py | cut -d' ' -f1)" = "$ARTIFACT_CONTRACT_SHA256"
+          echo "UNFROZEN_MODULE_PIN_PASS renewal_contract=$RENEWAL_CONTRACT_SHA256 artifact_contract=$ARTIFACT_CONTRACT_SHA256"
+      - name: Refuse an owner-supplied predecessor pin in renewal mode
+        env:
+          PREDECESSOR_RUN_ID: ${{ inputs.predecessor_run_id }}
+          PREDECESSOR_WEA_SHA256: ${{ inputs.predecessor_wea_sha256 }}
+        run: |
+          set -euo pipefail
+          if [ -n "${PREDECESSOR_RUN_ID:-}" ] || [ -n "${PREDECESSOR_WEA_SHA256:-}" ]; then
+            echo "REFUSED RENEWAL_OWNER_PIN_REFUSED: renewal derives its predecessor from a registered rule." >&2
+            echo "A hand-chosen predecessor is a manual out-of-band act (P-6).  Use mode=capability_change to pin one." >&2
+            exit 3
+          fi
+      - name: Discover and authenticate the predecessor with no human in the loop
+        id: discover
+        env:
+          GH_TOKEN: ${{ github.token }}
+          THIS_RUN_ID: ${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          gh run list --repo rexcoleman/rexcoleman.dev \
+            --workflow issue-write-enforcement-attestation.yml \
+            --status success --limit 100 \
+            --json databaseId,event,status,conclusion,workflowName > runs.json
+          # The registered rule: the newest COMPLETED SUCCESSFUL run of this
+          # workflow, other than this one.  Run ids are monotonic, so "newest"
+          # cannot be forged backwards.  No run, commit or actor is named.
+          python3 - runs.json "$THIS_RUN_ID" <<'PY' > predecessor_run_id.txt
+          import json, sys
+          runs = json.load(open(sys.argv[1])); this_run = int(sys.argv[2])
+          candidates = [
+              int(row["databaseId"]) for row in runs
+              if row.get("workflowName") == "Issue write enforcement attestation"
+              and row.get("status") == "completed"
+              and row.get("conclusion") == "success"
+              and row.get("event") == "workflow_dispatch"
+              and int(row["databaseId"]) != this_run
+          ]
+          if not candidates:
+              print("REFUSED RENEWAL_NO_PREDECESSOR_RUN: no successful prior run",
+                    file=sys.stderr)
+              raise SystemExit(3)
+          print(max(candidates))
+          PY
+          PREDECESSOR_RUN_ID="$(cat predecessor_run_id.txt)"
+          [[ "$PREDECESSOR_RUN_ID" =~ ^[1-9][0-9]*$ ]]
+          echo "RENEWAL_PREDECESSOR_DISCOVERED run_id=$PREDECESSOR_RUN_ID rule=newest_successful_run"
+          printf 'predecessor_run_id=%s\n' "$PREDECESSOR_RUN_ID" >> "$GITHUB_OUTPUT"
+          # Refusing when the NEWEST run has no downloadable attestation is what
+          # stops a silent rollback onto an older epoch once the newest artifact
+          # ages out of retention.  Falling back to an older run would fork the
+          # chain; this refuses instead.
+          gh api "repos/rexcoleman/rexcoleman.dev/actions/runs/$PREDECESSOR_RUN_ID/artifacts" > predecessor-artifacts.json
+          python3 - "$PREDECESSOR_RUN_ID" predecessor-artifacts.json <<'PY'
+          import json, sys
+          run_id = int(sys.argv[1]); value = json.load(open(sys.argv[2]))
+          name = f"rea-write-enforcement-attestation-{run_id}"
+          rows = [row for row in value["artifacts"] if row["name"] == name]
+          if len(rows) != 1 or rows[0]["expired"] is not False \
+                  or rows[0]["workflow_run"]["id"] != run_id:
+              print("REFUSED RENEWAL_PREDECESSOR_ARTIFACT_UNAVAILABLE: "
+                    f"run={run_id} matches={len(rows)}", file=sys.stderr)
+              raise SystemExit(3)
+          PY
+          gh run view "$PREDECESSOR_RUN_ID" --repo rexcoleman/rexcoleman.dev \
+            --json databaseId,event,workflowName,status,conclusion,url > predecessor-run.json
+          python3 - "$PREDECESSOR_RUN_ID" predecessor-run.json <<'PY'
+          import json, sys
+          run_id = int(sys.argv[1]); value = json.load(open(sys.argv[2]))
+          assert value == {
+              "databaseId": run_id, "event": "workflow_dispatch",
+              "workflowName": "Issue write enforcement attestation",
+              "status": "completed", "conclusion": "success",
+              "url": f"https://github.com/rexcoleman/rexcoleman.dev/actions/runs/{run_id}",
+          }
+          PY
+          mkdir predecessor
+          gh run download "$PREDECESSOR_RUN_ID" --repo rexcoleman/rexcoleman.dev \
+            --name "rea-write-enforcement-attestation-$PREDECESSOR_RUN_ID" \
+            --dir predecessor
+          # Identical to the owner path from here down, except that the digest
+          # is DERIVED from the downloaded bytes instead of being pinned by a
+          # human, and is then required to agree with the packet's own receipt.
+          python3 repo/.github/write-enforcement/artifact_contract.py \
+            --table repo/.github/write-enforcement/artifact_contract_versions.json \
+            check-predecessor --packet predecessor
+          (cd predecessor && sha256sum -c SHA256SUMS)
+          PREDECESSOR_WEA_SHA256="$(sha256sum predecessor/write_enforcement_attestation.json | cut -d' ' -f1)"
+          [[ "$PREDECESSOR_WEA_SHA256" =~ ^[0-9a-f]{64}$ ]]
+          python3 - "$PREDECESSOR_RUN_ID" predecessor "$PREDECESSOR_WEA_SHA256" <<'PY'
+          import base64, hashlib, json, pathlib, sys
+          run_id = int(sys.argv[1]); root = pathlib.Path(sys.argv[2]); pinned = sys.argv[3]
+          raw = (root / "write_enforcement_attestation.json").read_bytes()
+          assert hashlib.sha256(raw).hexdigest() == pinned
+          wea = json.loads(raw); receipt = json.loads((root / "issuance_receipt.json").read_bytes())
+          assert receipt["workflow_run_id"] == run_id
+          assert receipt["workflow_repository"] == "rexcoleman/rexcoleman.dev"
+          assert receipt["event"] == "workflow_dispatch"
+          assert receipt["wea_sha256"] == pinned
+          signature = wea.pop("signature")
+          signed = json.dumps(wea, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode()
+          digest = hashlib.sha256(signed).hexdigest()
+          assert signature["algorithm"] == "ed25519" and signature["signed_digest"] == digest
+          (root / ".signed-digest").write_bytes(bytes.fromhex(digest))
+          (root / ".signature").write_bytes(base64.b64decode(signature["value"], validate=True))
+          PY
+          openssl pkeyutl -verify -pubin -inkey predecessor/trusted_wea_public.pem \
+            -rawin -in predecessor/.signed-digest -sigfile predecessor/.signature
+          rm predecessor/.signed-digest predecessor/.signature
+          printf 'predecessor_wea_sha256=%s\n' "$PREDECESSOR_WEA_SHA256" >> "$GITHUB_OUTPUT"
+          echo "RENEWAL_PREDECESSOR_AUTHENTICATED run_id=$PREDECESSOR_RUN_ID sha256=$PREDECESSOR_WEA_SHA256"
+      - name: Refuse a capability change before the signing key is ever reachable
+        run: |
+          set -euo pipefail
+          python3 repo/.github/write-enforcement/renewal_contract.py precheck \
+            --predecessor predecessor/write_enforcement_attestation.json \
+            --manifest repo/.github/write-enforcement/frozen_bundle_manifest.generation-4.json
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: authenticated-predecessor-${{ github.run_id }}
+          path: predecessor/write_enforcement_attestation.json
+          if-no-files-found: error
+          retention-days: 1
+
+  renew-wea:
+    needs: renew-preflight
+    if: inputs.mode == 'renew'
+    # A SECOND environment, deliberately distinct from
+    # rea-write-enforcement-issuer.  It carries no required_reviewers, because
+    # a per-run human approval is the defect being removed; it carries a
+    # deployment branch policy restricting it to main, so only workflow bytes
+    # that landed through the protected-branch pull request path can ever
+    # reach the signing key.  The capability-change jobs above keep
+    # rea-write-enforcement-issuer and its reviewer rule untouched.
+    environment: rea-write-enforcement-renewal
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Refuse loudly if the renewal signing key is unprovisioned
+        env:
+          WEA_KEY_B64: ${{ secrets.REA_WEA_ED25519_PRIVATE_KEY_B64 }}
+        run: |
+          set -euo pipefail
+          if [ -z "${WEA_KEY_B64:-}" ]; then
+            echo "REFUSED RENEWAL_SIGNING_KEY_UNPROVISIONED: environment" >&2
+            echo "rea-write-enforcement-renewal holds no REA_WEA_ED25519_PRIVATE_KEY_B64." >&2
+            echo "GitHub's secrets API is write-only, so this value cannot be copied out" >&2
+            echo "of rea-write-enforcement-issuer by any automated path.  Provision the" >&2
+            echo "SAME ed25519 private key (base64 of the PEM) into environment" >&2
+            echo "rea-write-enforcement-renewal; verify_trust_roots() accepts no other." >&2
+            exit 3
+          fi
+          echo "RENEWAL_SIGNING_KEY_PRESENT=true"
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          path: repos/rexcoleman.dev
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Preflight hosted toolchain
+        run: |
+          set -euo pipefail
+          for tool in git gh python3 openssl base64 sha256sum grep sed; do
+            command -v "$tool" >/dev/null
+          done
+          git --version
+          gh --version
+          python3 --version
+          openssl version
+          test "$(printf 'dGVzdA==' | base64 --decode)" = test
+          sha256sum --version | sed -n '1p'
+          openssl list -public-key-methods | grep -qi ED25519
+      - name: Bind unfrozen authority-bearing modules to this workflow
+        run: |
+          set -euo pipefail
+          test "$(sha256sum repos/rexcoleman.dev/.github/write-enforcement/renewal_contract.py | cut -d' ' -f1)" = "$RENEWAL_CONTRACT_SHA256"
+          test "$(sha256sum repos/rexcoleman.dev/.github/write-enforcement/artifact_contract.py | cut -d' ' -f1)" = "$ARTIFACT_CONTRACT_SHA256"
+          echo "UNFROZEN_MODULE_PIN_PASS renewal_contract=$RENEWAL_CONTRACT_SHA256 artifact_contract=$ARTIFACT_CONTRACT_SHA256"
+      - name: Checkout frozen repositories
+        env:
+          REA_BUNDLE_READ_TOKEN: ${{ secrets.REA_BUNDLE_READ_TOKEN }}
+        run: python3 repos/rexcoleman.dev/.github/write-enforcement/checkout_manifest.py repos/rexcoleman.dev/.github/write-enforcement/frozen_bundle_manifest.generation-4.json repos
+      - name: Fetch protected ruleset
+        env:
+          GH_TOKEN: ${{ secrets.REA_RULESET_READ_TOKEN }}
+        run: gh api repos/rexcoleman/newsletter/rulesets/19564990 > "$RUNNER_TEMP/ruleset.json"
+      - name: Preflight protected ruleset response
+        run: |
+          set -euo pipefail
+          PYTHONPATH=repos/rexcoleman.dev/.github/write-enforcement python3 - "$RUNNER_TEMP/ruleset.json" <<'PY'
+          import json
+          import sys
+          from pathlib import Path
+          from member_contract import normalize_ruleset
+          normalize_ruleset(json.loads(Path(sys.argv[1]).read_bytes()))
+          PY
+      - name: Materialize protected signing key
+        env:
+          WEA_KEY_B64: ${{ secrets.REA_WEA_ED25519_PRIVATE_KEY_B64 }}
+        run: |
+          set -euo pipefail
+          test -n "$WEA_KEY_B64"
+          umask 077
+          printf '%s' "$WEA_KEY_B64" | base64 --decode > "$RUNNER_TEMP/wea-private.pem"
+      - name: Download authenticated predecessor
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: authenticated-predecessor-${{ github.run_id }}
+          path: predecessor
+      - name: Recompare authenticated predecessor before signing
+        run: |
+          set -euo pipefail
+          test -s predecessor/write_enforcement_attestation.json
+          test "$(sha256sum predecessor/write_enforcement_attestation.json | cut -d' ' -f1)" = "${{ needs.renew-preflight.outputs.predecessor_wea_sha256 }}"
+      - name: Refuse a capability change before the key is materialized into an issuance
+        run: |
+          set -euo pipefail
+          python3 repos/rexcoleman.dev/.github/write-enforcement/renewal_contract.py precheck \
+            --predecessor predecessor/write_enforcement_attestation.json \
+            --manifest repos/rexcoleman.dev/.github/write-enforcement/frozen_bundle_manifest.generation-4.json
+      - name: Verify frozen bundle and issue
+        run: |
+          set -euo pipefail
+          python3 repos/rexcoleman.dev/.github/write-enforcement/issue_wea.py \
+            --manifest repos/rexcoleman.dev/.github/write-enforcement/frozen_bundle_manifest.generation-4.json \
+            --workspace repos --ruleset-json "$RUNNER_TEMP/ruleset.json" \
+            --private-key "$RUNNER_TEMP/wea-private.pem" --output issuance \
+            --predecessor-wea predecessor/write_enforcement_attestation.json \
+            --predecessor-wea-sha256 "${{ needs.renew-preflight.outputs.predecessor_wea_sha256 }}"
+          (cd issuance && sha256sum -c SHA256SUMS)
+      - name: Prove the emitted attestation is a renewal and not a capability change
+        run: |
+          set -euo pipefail
+          # Authoritative gate.  The precheck above compared a prediction; this
+          # compares the bytes that were actually signed, field by field, over
+          # the whole classified universe.  An unclassified field refuses.
+          # Written with a redirect rather than piped through tee: a pipeline
+          # reports the LAST command's status, and a masked exit here would
+          # publish a capability change as a renewal.
+          python3 repos/rexcoleman.dev/.github/write-enforcement/renewal_contract.py classify \
+            --predecessor predecessor/write_enforcement_attestation.json \
+            --candidate issuance/write_enforcement_attestation.json \
+            > renewal-verdict.json
+          cat renewal-verdict.json
+          python3 - renewal-verdict.json <<'PY'
+          import json, sys
+          verdict = json.load(open(sys.argv[1]))
+          assert verdict["verdict"] == "RENEWAL", verdict
+          print(f"RENEWAL_CLASSIFIED epoch={verdict['authority_epoch']} "
+                f"predecessor_epoch={verdict['predecessor_epoch']} "
+                f"capability_basis={verdict['capability_basis_digest']}")
+          PY
+      - name: Verify issued WEA on hosted runner
+        run: |
+          set -euo pipefail
+          python3 repos/rexcoleman.dev/.github/write-enforcement/verify_hosted_wea.py \
+            --issuance issuance --workspace repos \
+            --consumer-id renewal-hosted-self-check \
+            | tee issuer-hosted-wea-report.json
+      - name: Prove published artifact has public custody only
+        run: |
+          set -euo pipefail
+          expected=$'SHA256SUMS\nclaim_policy.json\nclaim_registry.json\nenforcement_bundle_manifest.json\nhybrid_capability_authority.json\nhybrid_capability_provider\nissuance_receipt.json\npredecessor_write_enforcement_attestation.json\nruntime_mount.py\ntrusted_wea_public.pem\nwrite_enforcement_attestation.json'
+          observed="$(find issuance -maxdepth 1 -type f -printf '%f\n' | LC_ALL=C sort)"
+          test "$observed" = "$expected"
+          test "$(python3 repos/rexcoleman.dev/.github/write-enforcement/artifact_contract.py \
+            --table repos/rexcoleman.dev/.github/write-enforcement/artifact_contract_versions.json \
+            current-members --bind-workflow \
+            repos/rexcoleman.dev/.github/workflows/issue-write-enforcement-attestation.yml)" = "$expected"
+          while IFS= read -r name; do
+            test ! issuance/"$name" -ef "$RUNNER_TEMP/wea-private.pem"
+            if cmp -s issuance/"$name" "$RUNNER_TEMP/wea-private.pem"; then
+              echo "private signing key copied into artifact: $name" >&2
+              exit 1
+            fi
+            if grep -aEq -- '-----BEGIN ([A-Z0-9]+ )*PRIVATE KEY-----' issuance/"$name"; then
+              echo "private PEM material present in artifact: $name" >&2
+              exit 1
+            fi
+          done <<< "$observed"
+          test -x issuance/hybrid_capability_provider
+          test -x issuance/runtime_mount.py
+          echo "PUBLIC_ONLY_ARTIFACT_PASS files=11 private_key_copy=absent"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: rea-write-enforcement-attestation-${{ github.run_id }}
+          path: issuance/
+          if-no-files-found: error
+          retention-days: 30
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: rea-renewal-verdict-${{ github.run_id }}
+          path: renewal-verdict.json
           if-no-files-found: error
           retention-days: 30

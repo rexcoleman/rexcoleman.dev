@@ -135,14 +135,71 @@ def test_rea_preflight_allows_ruleset_not_yet_installed():
     )
 
 
+FROZEN_MANIFEST = (
+    Path(__file__).parents[1] / "frozen_bundle_manifest.generation-4.json"
+)
+
+
+def reseal(value):
+    """Recompute manifest_digest so the self-digest check cannot be the refusal.
+
+    Without this, a mutated manifest is refused at the "self-digest differs"
+    check and the member-count contract is never reached -- the test would pass
+    while guarding nothing.
+    """
+    unsigned = {key: item for key, item in value.items() if key != "manifest_digest"}
+    sealed = dict(unsigned)
+    sealed["manifest_digest"] = MODULE.canonical_digest(unsigned)
+    return json.dumps(sealed, sort_keys=True, separators=(",", ":")).encode()
+
+
+def test_current_frozen_manifest_satisfies_the_contract():
+    """Positive control.
+
+    The two refusal tests below are derived from this file by moving the member
+    count by exactly one.  If this ever stopped passing, those derivations would
+    stop being one-member-away from acceptance and would no longer isolate the
+    member-count contract as the cause of refusal.
+    """
+    report = MODULE.manifest_contract(FROZEN_MANIFEST.read_bytes())
+    assert report["member_count"] == MODULE.GENERATION_MEMBER_COUNT
+    assert report["member_contract"] == "EXACT"
+
+
 def test_preconvergence_frozen_manifest_is_refused_after_contract_expansion():
-    raw = (
-        Path(__file__).parents[1]
-        / "frozen_bundle_manifest.generation-4.json"
-    ).read_bytes()
-    assert len(json.loads(raw)["members"]) < MODULE.GENERATION_MEMBER_COUNT
-    with pytest.raises(MODULE.Refusal, match="manifest contract differs"):
+    """A manifest built before an expansion carries one member fewer.
+
+    Expressed as a derivation from the current freeze rather than as a stored
+    file, because the freeze process overwrites any stored generation-4
+    manifest: an assertion against those bytes goes vacuous the moment the
+    contract and the freeze converge, which is exactly how this test died.
+    """
+    value = json.loads(FROZEN_MANIFEST.read_bytes())
+    dropped = value["members"].pop()
+    assert dropped["member_id"] in MODULE.expected_members()
+    assert len(value["members"]) == MODULE.GENERATION_MEMBER_COUNT - 1
+    raw = reseal(value)
+    parsed = json.loads(raw)
+    assert parsed["manifest_digest"] == MODULE.canonical_digest(
+        {key: item for key, item in parsed.items() if key != "manifest_digest"}
+    )
+    with pytest.raises(
+        MODULE.Refusal, match=r"^generation-4 manifest contract differs$"
+    ):
         MODULE.manifest_contract(raw)
+
+
+def test_manifest_carrying_a_member_beyond_the_contract_is_refused():
+    """The other side of the count contract: an unregistered extra member."""
+    value = json.loads(FROZEN_MANIFEST.read_bytes())
+    extra = dict(value["members"][0])
+    extra["member_id"] = "unregistered-extra-member"
+    value["members"].append(extra)
+    assert len(value["members"]) == MODULE.GENERATION_MEMBER_COUNT + 1
+    with pytest.raises(
+        MODULE.Refusal, match=r"^generation-4 manifest contract differs$"
+    ):
+        MODULE.manifest_contract(reseal(value))
 
 
 def test_manifest_contract_refuses_self_consistent_wrong_member():
