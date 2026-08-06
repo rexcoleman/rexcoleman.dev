@@ -29,6 +29,10 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          path: repo
+          persist-credentials: false
       - name: Authenticate exact predecessor before protected environment
         env:
           GH_TOKEN: ${{ github.token }}
@@ -63,9 +67,22 @@ jobs:
           gh run download "$PREDECESSOR_RUN_ID" --repo rexcoleman/rexcoleman.dev \
             --name "rea-write-enforcement-attestation-$PREDECESSOR_RUN_ID" \
             --dir predecessor
-          expected=$'SHA256SUMS\nclaim_policy.json\nclaim_registry.json\nenforcement_bundle_manifest.json\nhybrid_capability_authority.json\nhybrid_capability_provider\nissuance_receipt.json\npredecessor_write_enforcement_attestation.json\nruntime_mount.py\ntrusted_wea_public.pem\nwrite_enforcement_attestation.json'
-          observed="$(find predecessor -maxdepth 1 -type f -printf '%f\n' | LC_ALL=C sort)"
-          test "$observed" = "$expected"
+          # A predecessor is evidence produced under the contract in force at
+          # ITS generation, not this one.  Bind the receipt to the owner-pinned
+          # attestation bytes FIRST, so the generation marker cannot be swapped
+          # independently, then enforce that generation's exact member set.
+          test "$(sha256sum predecessor/write_enforcement_attestation.json | cut -d' ' -f1)" = "$PREDECESSOR_WEA_SHA256"
+          python3 - predecessor "$PREDECESSOR_WEA_SHA256" <<'PY'
+          import hashlib, json, pathlib, sys
+          root = pathlib.Path(sys.argv[1]); pinned = sys.argv[2]
+          raw = (root / "write_enforcement_attestation.json").read_bytes()
+          assert hashlib.sha256(raw).hexdigest() == pinned
+          receipt = json.loads((root / "issuance_receipt.json").read_bytes())
+          assert receipt["wea_sha256"] == pinned
+          PY
+          python3 repo/.github/write-enforcement/artifact_contract.py \
+            --table repo/.github/write-enforcement/artifact_contract_versions.json \
+            check-predecessor --packet predecessor
           (cd predecessor && sha256sum -c SHA256SUMS)
           test "$(sha256sum predecessor/write_enforcement_attestation.json | cut -d' ' -f1)" = "$PREDECESSOR_WEA_SHA256"
           python3 - "$PREDECESSOR_RUN_ID" predecessor <<'PY'
@@ -177,6 +194,13 @@ jobs:
           expected=$'SHA256SUMS\nclaim_policy.json\nclaim_registry.json\nenforcement_bundle_manifest.json\nhybrid_capability_authority.json\nhybrid_capability_provider\nissuance_receipt.json\npredecessor_write_enforcement_attestation.json\nruntime_mount.py\ntrusted_wea_public.pem\nwrite_enforcement_attestation.json'
           observed="$(find issuance -maxdepth 1 -type f -printf '%f\n' | LC_ALL=C sort)"
           test "$observed" = "$expected"
+          # This run's OWN output bar is unchanged: the literal above is still
+          # authoritative.  The table must AGREE with it and must be bound to
+          # the live workflow bytes, so the two representations cannot drift.
+          test "$(python3 repos/rexcoleman.dev/.github/write-enforcement/artifact_contract.py \
+            --table repos/rexcoleman.dev/.github/write-enforcement/artifact_contract_versions.json \
+            current-members --bind-workflow \
+            repos/rexcoleman.dev/.github/workflows/issue-write-enforcement-attestation.yml)" = "$expected"
           while IFS= read -r name; do
             test ! issuance/"$name" -ef "$RUNNER_TEMP/wea-private.pem"
             if cmp -s issuance/"$name" "$RUNNER_TEMP/wea-private.pem"; then
