@@ -1,0 +1,80 @@
+{
+  "schema_version": "rea.write.artifact-contract-versions.v1",
+  "derivation": [
+    "Every version below is DERIVED, not declared.",
+    "The key is issuance_receipt.json:workflow_blob_sha256, the SHA-256 of the",
+    "issuer workflow file that produced the artifact. It is recorded in every",
+    "published receipt back to the earliest run, so no run-id list is needed.",
+    "Versions 1 and 2 were derived by downloading every successful run of",
+    "issue-write-enforcement-attestation.yml (n=8, exhaustive via gh run list)",
+    "and reading the member set each actually published. Version 3 is this",
+    "repository's live issuer workflow; verify_current_binding() re-derives its",
+    "digest from the running file, so this entry cannot drift from the workflow.",
+    "Member sets are monotonic: a version only ever gains members."
+  ],
+  "versions": [
+    {
+      "version": 1,
+      "workflow_blob_sha256": [
+        "43063308680d8beafcde00336d3a8166df087d0b21d9612d90f32ce0e7d3edea"
+      ],
+      "observed_runs": [
+        30049477815,
+        30108602045,
+        30115223596,
+        30116484408,
+        30136397395
+      ],
+      "members": [
+        "SHA256SUMS",
+        "enforcement_bundle_manifest.json",
+        "issuance_receipt.json",
+        "trusted_wea_public.pem",
+        "write_enforcement_attestation.json"
+      ]
+    },
+    {
+      "version": 2,
+      "workflow_blob_sha256": [
+        "e168564a7ba5af6f3b346cdf0bf57fa8a614d9ed0e63fcac3e9ac86223f79661"
+      ],
+      "observed_runs": [
+        30391657293,
+        30584919734,
+        30755518892
+      ],
+      "members": [
+        "SHA256SUMS",
+        "claim_policy.json",
+        "claim_registry.json",
+        "enforcement_bundle_manifest.json",
+        "hybrid_capability_authority.json",
+        "hybrid_capability_provider",
+        "issuance_receipt.json",
+        "runtime_mount.py",
+        "trusted_wea_public.pem",
+        "write_enforcement_attestation.json"
+      ]
+    },
+    {
+      "version": 3,
+      "workflow_blob_sha256": [
+        "189d544b0708b009959489e5ad52d000d1ba099a4334524f9c458fa80531fc22"
+      ],
+      "observed_runs": [],
+      "members": [
+        "SHA256SUMS",
+        "claim_policy.json",
+        "claim_registry.json",
+        "enforcement_bundle_manifest.json",
+        "hybrid_capability_authority.json",
+        "hybrid_capability_provider",
+        "issuance_receipt.json",
+        "predecessor_write_enforcement_attestation.json",
+        "runtime_mount.py",
+        "trusted_wea_public.pem",
+        "write_enforcement_attestation.json"
+      ]
+    }
+  ]
+}
