@@ -1,0 +1,102 @@
+name: Renew write enforcement attestation
+
+# The registered automatic trigger for unattended renewal.
+#
+# This workflow deliberately does NOT issue anything.  It holds no secrets, it
+# declares no environment, and the only privilege it carries is actions:write,
+# which lets it ask the issuer workflow for a renewal.  Every decision about
+# whether that renewal may proceed is made inside
+# .github/workflows/issue-write-enforcement-attestation.yml, which IS a member
+# of the frozen bundle and is byte-compared against that bundle at issuance
+# time.  So a tampered scheduler can change WHEN a renewal is attempted and
+# nothing about WHAT it may issue: mode=renew refuses any capability change,
+# and mode=capability_change still lands in rea-write-enforcement-issuer behind
+# required_reviewers.
+#
+# Why a scheduler that dispatches, rather than a schedule: trigger on the
+# issuer itself: every consumer of the attestation - wea_verifier.py,
+# verify_hosted_wea.py, and govML's write_enforcement_state.py - asserts
+# issuance_receipt.json event == "workflow_dispatch".  A schedule-triggered
+# issuance would write event: "schedule" and be refused by all three, and
+# writing "workflow_dispatch" into a receipt for a scheduled run would be a
+# false statement in the artifact this system exists to make truthful.
+# Dispatching keeps the receipt honest AND keeps every consumer assertion
+# exactly as it is.
+
+on:
+  schedule:
+    # Four attempts inside every 24-hour authority lifetime.  GitHub delays and
+    # occasionally drops scheduled runs under load, so a single daily attempt
+    # would put enforcement one dropped run away from an outage.
+    - cron: '17 */6 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: write
+
+concurrency:
+  group: rea-write-enforcement-renewal-scheduler
+  cancel-in-progress: false
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  dispatch-renewal:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - name: Dispatch an unattended renewal of the issuer workflow
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF" = "refs/heads/main"
+          before="$(gh run list --repo rexcoleman/rexcoleman.dev \
+            --workflow issue-write-enforcement-attestation.yml \
+            --limit 1 --json databaseId --jq '.[0].databaseId // 0')"
+          echo "RENEWAL_DISPATCH_BASELINE newest_before=$before"
+          gh workflow run issue-write-enforcement-attestation.yml \
+            --repo rexcoleman/rexcoleman.dev --ref main -f mode=renew
+          # Prove the dispatch actually created a run.  GitHub suppresses most
+          # GITHUB_TOKEN-originated events to prevent recursion; workflow_dispatch
+          # and repository_dispatch are the documented exceptions.  If that ever
+          # changes, this fails loudly here instead of leaving enforcement to
+          # expire silently.
+          run_id=0
+          for _ in $(seq 1 30); do
+            sleep 10
+            candidate="$(gh run list --repo rexcoleman/rexcoleman.dev \
+              --workflow issue-write-enforcement-attestation.yml \
+              --event workflow_dispatch --limit 1 \
+              --json databaseId --jq '.[0].databaseId // 0')"
+            if [ "$candidate" -gt "$before" ]; then run_id="$candidate"; break; fi
+          done
+          if [ "$run_id" = "0" ]; then
+            echo "REFUSED RENEWAL_DISPATCH_CREATED_NO_RUN: gh workflow run reported" >&2
+            echo "success but no new run appeared within 300s.  Enforcement will" >&2
+            echo "expire unless this is repaired." >&2
+            exit 3
+          fi
+          echo "RENEWAL_RUN_CREATED run_id=$run_id"
+          printf 'RENEWAL_RUN_ID=%s\n' "$run_id" >> "$GITHUB_ENV"
+      - name: Report the renewal outcome on this scheduler run
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          for _ in $(seq 1 60); do
+            state="$(gh run view "$RENEWAL_RUN_ID" --repo rexcoleman/rexcoleman.dev \
+              --json status,conclusion --jq '.status + ":" + (.conclusion // "")')"
+            case "$state" in
+              completed:*) break ;;
+            esac
+            sleep 15
+          done
+          echo "RENEWAL_RUN_STATE run_id=$RENEWAL_RUN_ID state=$state"
+          # A renewal that refused is not a scheduler success.  Surfacing it here
+          # is what makes an unattended failure visible before the authority
+          # expires, rather than after a scaffold refuses.
+          test "$state" = "completed:success"

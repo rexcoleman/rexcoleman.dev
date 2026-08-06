@@ -68,12 +68,21 @@ def test_current_generation_is_bound_to_the_live_issuer_workflow():
 
 
 def test_workflow_output_literal_matches_the_current_generation():
-    """The output bar at the publish step is still the full current set."""
+    """The output bar at every publish step is still the full current set.
+
+    There are two issuance paths -- the owner-approved capability-change job and
+    the unattended renewal job -- and each proves public-only custody against
+    its own hardcoded literal.  Every literal must be the SAME set and must be
+    the current generation: a renewal path publishing a different set would be
+    a capability change smuggled past the classifier.
+    """
     literals = re.findall(r"expected=\$'([^']*)'", WORKFLOW.read_text())
-    assert len(literals) == 1, "the output check is the only hardcoded set"
-    observed = tuple(sorted(literals[0].split("\\n")))
-    assert observed == MODULE.current_members(TABLE)
-    assert "predecessor_write_enforcement_attestation.json" in observed
+    assert len(literals) == 2, "one output bar per issuance path"
+    assert len(set(literals)) == 1, "the issuance paths declare divergent sets"
+    for literal in literals:
+        observed = tuple(sorted(literal.split("\\n")))
+        assert observed == MODULE.current_members(TABLE)
+        assert "predecessor_write_enforcement_attestation.json" in observed
 
 
 @pytest.mark.parametrize("version,marker", [(1, GEN1), (2, GEN2)])
