@@ -1,0 +1,164 @@
+name: Provision renewal signing key
+
+# The REGISTERED transition that makes the renewal guard's precondition
+# reachable.
+#
+# `issue-write-enforcement-attestation.yml` job `renew-wea` declares
+# environment rea-write-enforcement-renewal and refuses at its first step
+# unless that environment holds REA_WEA_ED25519_PRIVATE_KEY_B64.  That guard is
+# correct, it fails closed, and nothing here weakens, bypasses, or edits it.
+# What was missing was any registered way to SATISFY it: the signing key had
+# only ever reached rea-write-enforcement-issuer by a manual out-of-band act,
+# and P-6's subset proof explicitly states that a manual out-of-band act does
+# not discharge a precondition.  This workflow is the registered way.
+#
+# Why this is the change that matters: rea-write-enforcement-issuer carries
+# required_reviewers, rea-write-enforcement-renewal does not.  While the
+# signing key exists only in the issuer environment, every 24-hour renewal must
+# transit a human approval, forever.  Once the key is in the renewal
+# environment, renewals run unattended and the reviewer gate stays exactly
+# where it belongs -- on capability change.
+#
+# WHO CAN INVOKE IT, AND WHY THAT IS SAFE.  This workflow moves a signing key,
+# so its trigger path is the whole security argument:
+#
+#   * workflow_dispatch ONLY.  No schedule, no push, no pull_request, no
+#     issue_comment, no repository_dispatch.  Nothing an outside contributor
+#     can cause fires it.
+#   * The job that touches the key declares `environment:
+#     rea-write-enforcement-issuer`, whose protection rule is
+#     required_reviewers: [rexcoleman].  The job does not start until Rex
+#     approves that specific run.  This is the ONE issuance approval named in
+#     the binding ruling.
+#   * That environment carries NO deployment branch policy, so the ref
+#     restriction is enforced in-job: both jobs refuse unless GITHUB_REF is
+#     refs/heads/main.  main is protected, so the bytes that run here can only
+#     have landed through the pull-request path.
+#   * The key value is read into an env var, passed to `gh` on stdin, and never
+#     appears in argv, a file, a step output, or a log line.  The tool redacts
+#     the value from every byte of child-process output it prints, so a
+#     compromised child cannot launder it into the run log.
+#
+# This workflow is deliberately NOT a member of the frozen bundle.  It issues
+# nothing and signs nothing; it only moves an existing secret between two
+# environments of one repository.  Its trust rests on protected main plus the
+# environment reviewer, which is the same pair that protects every other
+# owner-approved action in this repository.
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: >-
+          dry-run = prove the source key is readable and the PAT is scoped to
+          write the target environment, and write NOTHING.  copy = perform the
+          registered copy and verify the target secret by name.
+        required: false
+        type: choice
+        default: dry-run
+        options:
+          - dry-run
+          - copy
+
+permissions:
+  contents: read
+
+concurrency:
+  # Deliberately distinct from the issuer workflow's `rea-write-enforcement-issuer`
+  # group so provisioning never queues behind, or ahead of, a live renewal.
+  group: rea-write-enforcement-renewal-key-provision
+  cancel-in-progress: false
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  preflight:
+    # Holds no secrets and declares no environment.  Everything that can be
+    # checked without touching the key is checked here, so a bad request is
+    # refused before Rex is ever asked to approve anything.
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+          fetch-depth: 1
+      - name: Refuse any ref other than protected main
+        run: |
+          set -euo pipefail
+          if [ "$GITHUB_REF" != "refs/heads/main" ]; then
+            echo "REFUSED PROVISION_REF_NOT_MAIN: $GITHUB_REF" >&2
+            echo "This workflow moves a signing key.  Only bytes that landed on" >&2
+            echo "protected main through the pull request path may run it." >&2
+            exit 3
+          fi
+          echo "PROVISION_REF_PASS ref=$GITHUB_REF"
+      - name: Preflight hosted toolchain
+        run: |
+          set -euo pipefail
+          for tool in git gh python3 openssl base64; do
+            command -v "$tool" >/dev/null
+          done
+          gh --version
+          python3 --version
+          openssl version
+          openssl list -public-key-methods | grep -qi ED25519
+          python3 -c 'import yaml' || python3 -m pip install --quiet pyyaml
+      - name: Enforce the written credential custody rule
+        run: |
+          set -euo pipefail
+          python3 .github/write-enforcement/credential_custody.py check \
+            --allow-declared-open
+
+  copy-signing-key:
+    needs: preflight
+    # The source environment.  Declaring it is what makes
+    # REA_WEA_ED25519_PRIVATE_KEY_B64 and REA_SECRETS_WRITE_PAT readable at
+    # all, and it is what puts Rex's single approval in front of this job.
+    environment: rea-write-enforcement-issuer
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Refuse any ref other than protected main
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF" = "refs/heads/main"
+          echo "PROVISION_REF_PASS ref=$GITHUB_REF"
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+          fetch-depth: 1
+      - name: Preflight hosted toolchain
+        run: |
+          set -euo pipefail
+          for tool in gh python3 openssl base64; do
+            command -v "$tool" >/dev/null
+          done
+          openssl list -public-key-methods | grep -qi ED25519
+      - name: Copy the signing key into the renewal environment
+        env:
+          # Read from rea-write-enforcement-issuer, which holds both.  The
+          # value reaches the tool through the environment and leaves it only
+          # on gh's stdin.
+          REA_WEA_ED25519_PRIVATE_KEY_B64: ${{ secrets.REA_WEA_ED25519_PRIVATE_KEY_B64 }}
+          GH_TOKEN: ${{ secrets.REA_SECRETS_WRITE_PAT }}
+          MODE: ${{ inputs.mode }}
+        run: |
+          set -euo pipefail
+          python3 .github/write-enforcement/provision_renewal_key.py \
+            --mode "${MODE:-dry-run}" \
+            --repository rexcoleman/rexcoleman.dev \
+            --source-environment rea-write-enforcement-issuer \
+            --target-environment rea-write-enforcement-renewal \
+            --secret-name REA_WEA_ED25519_PRIVATE_KEY_B64
+      - name: Restate what the renewal guard will now see
+        if: ${{ inputs.mode == 'copy' }}
+        env:
+          GH_TOKEN: ${{ secrets.REA_SECRETS_WRITE_PAT }}
+        run: |
+          set -euo pipefail
+          gh api repos/rexcoleman/rexcoleman.dev/environments/rea-write-enforcement-renewal/secrets \
+            --jq '.secrets[].name' | sort
+          echo "The renew-wea guard refuses unless REA_WEA_ED25519_PRIVATE_KEY_B64 appears above."
