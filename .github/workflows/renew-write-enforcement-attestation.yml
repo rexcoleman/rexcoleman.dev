@@ -48,6 +48,68 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 25
     steps:
+      - name: Resolve the generation tag the current authority was issued from
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          # verify_hosted_wea.py's REF_PREFIX refuses any issuer run whose own
+          # workflow_ref does not start with refs/tags/rea-wea-generation-<N>-.
+          # Dispatching this renewal on --ref main can therefore never pass the
+          # issuer's own hosted self-check: it is not an intermittent failure,
+          # it is structurally impossible.  This step resolves the immutable
+          # tag ref the CURRENTLY ENFORCED authority was actually issued from,
+          # so the renewal reuses that same ref instead of main.
+          #
+          # A generation is not one tag: repeated manual attempts leave many
+          # rea-wea-generation-<N>-<hex> tags behind for the same N (generation
+          # 4 alone carries 7 as of 2026-08-07).  "Exactly one tag exists" is
+          # therefore not a usable disambiguator.  What IS well-defined and
+          # forge-proof -- the same registered-rule idiom the issuer workflow
+          # already uses one job over to discover its predecessor WEA, because
+          # GitHub run ids are monotonic and never tie -- is: the ref of the
+          # newest completed:success workflow_dispatch run of the issuer
+          # workflow, restricted to runs whose ref actually has the required
+          # tag shape.  That is the ref the currently-enforced authority came
+          # from, chosen with no human in the loop and no guessing.
+          gh run list --repo rexcoleman/rexcoleman.dev \
+            --workflow issue-write-enforcement-attestation.yml \
+            --status success --event workflow_dispatch --limit 100 \
+            --json databaseId,headBranch > successful-issuer-runs.json
+          python3 - successful-issuer-runs.json <<'PY' > generation-ref.txt
+          import json
+          import re
+          import sys
+
+          rows = json.load(open(sys.argv[1]))
+          shape = re.compile(r"^rea-wea-generation-[0-9]+-[0-9a-f]{12}$")
+          candidates = [row for row in rows if shape.match(row.get("headBranch") or "")]
+          if not candidates:
+              print(
+                  "REFUSED RENEWAL_NO_GENERATION_TAG_ISSUED: no successful "
+                  "workflow_dispatch run of the issuer workflow has ever run "
+                  "on a rea-wea-generation-<N>-<hex> tag.  Refusing rather "
+                  "than falling back to main.",
+                  file=sys.stderr,
+              )
+              raise SystemExit(3)
+          newest_id = max(row["databaseId"] for row in candidates)
+          tied = [row for row in candidates if row["databaseId"] == newest_id]
+          if len(tied) != 1:
+              print(
+                  "REFUSED RENEWAL_GENERATION_TAG_AMBIGUOUS: "
+                  f"{len(tied)} successful runs tied for newest at id "
+                  f"{newest_id}; refusing rather than guessing which ref is "
+                  "current.",
+                  file=sys.stderr,
+              )
+              raise SystemExit(3)
+          print(tied[0]["headBranch"])
+          PY
+          generation_ref="$(cat generation-ref.txt)"
+          [[ "$generation_ref" =~ ^rea-wea-generation-[0-9]+-[0-9a-f]{12}$ ]]
+          echo "RENEWAL_GENERATION_REF_RESOLVED ref=$generation_ref"
+          printf 'RENEWAL_GENERATION_REF=%s\n' "$generation_ref" >> "$GITHUB_ENV"
       - name: Dispatch an unattended renewal of the issuer workflow
         env:
           GH_TOKEN: ${{ github.token }}
@@ -59,7 +121,7 @@ jobs:
             --limit 1 --json databaseId --jq '.[0].databaseId // 0')"
           echo "RENEWAL_DISPATCH_BASELINE newest_before=$before"
           gh workflow run issue-write-enforcement-attestation.yml \
-            --repo rexcoleman/rexcoleman.dev --ref main -f mode=renew
+            --repo rexcoleman/rexcoleman.dev --ref "$RENEWAL_GENERATION_REF" -f mode=renew
           # Prove the dispatch actually created a run.  GitHub suppresses most
           # GITHUB_TOKEN-originated events to prevent recursion; workflow_dispatch
           # and repository_dispatch are the documented exceptions.  If that ever
