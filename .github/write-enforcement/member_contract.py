@@ -358,6 +358,11 @@ EXPECTED_MEMBERS = {
     "wea-schema": ("research_enforcement_activation", "write_integrity/foundation/schemas/write_enforcement_attestation.schema.json"),
     "profile-registry": ("research_enforcement_activation", "write_integrity/foundation/publishing_capability_profiles.json"),
     "consumer-inventory": ("research_enforcement_activation", "write_integrity/attestation/consumer_inventory.json"),
+    "write-side-ac-runner": ("research_enforcement_activation", "tests/write_integrity/run_ac_suite.sh"),
+    "write-side-ac-suite": ("research_enforcement_activation", "tests/write_integrity/run_real_prose_ac.py"),
+    "write-side-ac-verification-source": ("research_enforcement_activation", "tests/write_integrity/fixtures/s150_ac_sources/VERIFICATION.md"),
+    "write-side-ac-findings-source": ("research_enforcement_activation", "tests/write_integrity/fixtures/s150_ac_sources/FINDINGS.md"),
+    "write-side-ac-provenance-manifest": ("research_enforcement_activation", "tests/write_integrity/fixtures/s150_ac_sources/provenance_manifest.json"),
     "route-inventory": ("research_enforcement_activation", "write_integrity/foundation/route_inventory.json"),
     "surface-gate-common": ("research_enforcement_activation", "write_integrity/gates/surface_gate.py"),
     "surface-gate-report": ("research_enforcement_activation", "write_integrity/gates/report_gate.py"),
@@ -787,8 +792,8 @@ STAGED_NONPRODUCTION_ADDITIONAL_MEMBERS = {
 def staged_nonproduction_members():
     """Return the frozen staging contract without production trust roots.
 
-    Staging is an explicit 236-member superset with one dedicated committed
-    fixture key.  The production 235-member contract and both production
+    Staging is an explicit 241-member superset with one dedicated committed
+    fixture key.  The production 240-member contract and both production
     trust roots remain present and unchanged.
     """
     members = dict(EXPECTED_MEMBERS)

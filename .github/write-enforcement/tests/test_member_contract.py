@@ -172,8 +172,8 @@ def test_contract_contains_exact_accepted_22_route_owned_files():
 
 
 def test_contract_covers_complete_s88_face_a_and_face_b_bundle_sets():
-    assert len(EXPECTED_MEMBERS) == 235
-    assert len(set(EXPECTED_MEMBERS.values())) == 235
+    assert len(EXPECTED_MEMBERS) == 240
+    assert len(set(EXPECTED_MEMBERS.values())) == 240
     assert len(FACE_A_MEMBER_IDS) == 11
     assert len(FACE_B_MEMBER_IDS) == 9
     assert FACE_A_MEMBER_IDS < set(EXPECTED_MEMBERS)
@@ -346,7 +346,7 @@ def test_r4_authority_tools_remain_signed_runtime_members():
         "rexcoleman.dev",
         ".github/write-enforcement/GENERATION_4_OWNER_RUNBOOK.md",
     )
-    assert len(EXPECTED_MEMBERS) == 235
+    assert len(EXPECTED_MEMBERS) == 240
 
 
 def test_external_authoring_paths_are_exact_commit_inputs_not_installed_ids():
@@ -501,7 +501,7 @@ def test_signed_scaffold_installer_closes_all_transitive_comparison_inputs():
         for member_id in SIGNED_SCAFFOLD_MEMBER_IDS
     } == expected
     assert len(SIGNED_SCAFFOLD_MEMBER_IDS) == 40
-    assert len(EXPECTED_MEMBERS) - len(SIGNED_SCAFFOLD_MEMBER_IDS) == 195
+    assert len(EXPECTED_MEMBERS) - len(SIGNED_SCAFFOLD_MEMBER_IDS) == 200
     assert "scaffold_installer" in REQUIRED_CLASSES
 
 
