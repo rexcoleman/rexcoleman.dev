@@ -1,0 +1,21 @@
+============================= test session starts ==============================
+platform linux -- Python 3.13.11, pytest-9.0.2, pluggy-1.5.0 -- /home/azureuser/miniconda3/bin/python3
+cachedir: .pytest_cache
+hypothesis profile 'default'
+rootdir: /tmp/rea_s149_band3.rhMwCP/site
+plugins: hypothesis-6.153.1, langsmith-0.7.23, cov-7.1.0, anyio-4.12.1
+collecting ... collected 11 items
+
+.github/write-enforcement/tests/test_s131_convergence.py::test_exact_five_candidate_roots_close_installed_runtime_population PASSED [  9%]
+.github/write-enforcement/tests/test_build_frozen_manifest.py::test_builder_reads_clean_committed_head_bytes PASSED [ 18%]
+.github/write-enforcement/tests/test_build_frozen_manifest.py::test_builder_refuses_post_commit_bound_member_mutation PASSED [ 27%]
+.github/write-enforcement/tests/test_independent_review.py::test_current_frozen_manifest_satisfies_the_contract PASSED [ 36%]
+.github/write-enforcement/tests/test_independent_review.py::test_preconvergence_frozen_manifest_is_refused_after_contract_expansion PASSED [ 45%]
+.github/write-enforcement/tests/test_independent_review.py::test_manifest_carrying_a_member_beyond_the_contract_is_refused PASSED [ 54%]
+.github/write-enforcement/tests/test_generation2_bundle.py::test_issuer_refuses_workflow_byte_drift_before_signing PASSED [ 63%]
+.github/write-enforcement/tests/test_verify_hosted_wea.py::test_hosted_verifier_refuses_carried_member_copy_drift[claim_registry.json-claim-registry] PASSED [ 72%]
+.github/write-enforcement/tests/test_verify_hosted_wea.py::test_hosted_verifier_refuses_carried_member_copy_drift[claim_policy.json-claim-policy] PASSED [ 81%]
+.github/write-enforcement/tests/test_verify_hosted_wea.py::test_hosted_verifier_refuses_carried_member_copy_drift[hybrid_capability_provider-hybrid-capability-provider] PASSED [ 90%]
+.github/write-enforcement/tests/test_verify_hosted_wea.py::test_hosted_verifier_refuses_carried_member_copy_drift[runtime_mount.py-route-runtime-mount] PASSED [100%]
+
+============================== 11 passed in 9.10s ==============================
