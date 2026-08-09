@@ -500,6 +500,14 @@ EXPECTED_MEMBERS = {
     "write-side-arm-recorder": ("govML", "templates/build/enforcement/record_write_side_validation.py"),
     # Moonshots route-owned files from the same census plus scaffolder/remote control.
     "research-scaffolder": ("Moonshots_Career_Thesis_v2", "scripts/scaffold_research_project.py"),
+    "research-type-registration-validator": (
+        "Moonshots_Career_Thesis_v2",
+        "scripts/validate_research_type_registration.py",
+    ),
+    "research-type-stage-owner-grid": (
+        "Moonshots_Career_Thesis_v2",
+        ".claude/references/research_type_stage_artifact_owner_grid.json",
+    ),
     "t3-score-engine": ("Moonshots_Career_Thesis_v2", "scripts/score_t3.py"),
     "route-distribution-wrapper": ("Moonshots_Career_Thesis_v2", "scripts/write_integrity_mount.py"),
     "route-distribution-main": ("Moonshots_Career_Thesis_v2", "scripts/distribute.py"),
@@ -792,8 +800,8 @@ STAGED_NONPRODUCTION_ADDITIONAL_MEMBERS = {
 def staged_nonproduction_members():
     """Return the frozen staging contract without production trust roots.
 
-    Staging is an explicit 241-member superset with one dedicated committed
-    fixture key.  The production 240-member contract and both production
+    Staging is an explicit 243-member superset with one dedicated committed
+    fixture key.  The production 242-member contract and both production
     trust roots remain present and unchanged.
     """
     members = dict(EXPECTED_MEMBERS)
