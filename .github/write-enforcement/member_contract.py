@@ -166,7 +166,7 @@ EXTERNAL_GENERATION4_OWNER_RUNBOOK_SUBJECT = (
 
 # These generator sources are compared byte-for-byte with the signed installed
 # copies at the same immutable govML commit.  Their installed identities remain
-# in the 232-member contract; a second member row for the authoring pathname is
+# in the production contract; a second member row for the authoring pathname is
 # redundant and would displace runtime gates from the fixed population.
 EXTERNAL_EMITTER_AUTHORING_SUBJECTS = {
     "route-blog-wrapper": ("govML", "scripts/generators/blog_runtime_mount.py"),
@@ -357,6 +357,7 @@ EXPECTED_MEMBERS = {
     "subject-schema": ("research_enforcement_activation", "write_integrity/foundation/schemas/exact_subject_tuple.schema.json"),
     "wea-schema": ("research_enforcement_activation", "write_integrity/foundation/schemas/write_enforcement_attestation.schema.json"),
     "profile-registry": ("research_enforcement_activation", "write_integrity/foundation/publishing_capability_profiles.json"),
+    "consumer-inventory": ("research_enforcement_activation", "write_integrity/attestation/consumer_inventory.json"),
     "route-inventory": ("research_enforcement_activation", "write_integrity/foundation/route_inventory.json"),
     "surface-gate-common": ("research_enforcement_activation", "write_integrity/gates/surface_gate.py"),
     "surface-gate-report": ("research_enforcement_activation", "write_integrity/gates/report_gate.py"),
@@ -491,6 +492,7 @@ EXPECTED_MEMBERS = {
     "write-boundary": ("govML", "templates/build/enforcement/write_boundary_gate.sh"),
     "write-readiness": ("govML", "templates/build/enforcement/write_publish_readiness.py"),
     "write-side-arm": ("govML", "templates/build/enforcement/write_side_arm.py"),
+    "write-side-arm-recorder": ("govML", "templates/build/enforcement/record_write_side_validation.py"),
     # Moonshots route-owned files from the same census plus scaffolder/remote control.
     "research-scaffolder": ("Moonshots_Career_Thesis_v2", "scripts/scaffold_research_project.py"),
     "t3-score-engine": ("Moonshots_Career_Thesis_v2", "scripts/score_t3.py"),
@@ -507,6 +509,7 @@ EXPECTED_MEMBERS = {
     # Shipping remote check and its second pinned key copy.
     "newsletter-caller-workflow": ("newsletter", ".github/workflows/newsletter-integrity.yml"),
     "newsletter-remote-validator": ("newsletter", ".github/integrity/newsletter/validate_newsletter_commit.py"),
+    "newsletter-control-manifest": ("newsletter", ".github/integrity/newsletter/control-manifest.json"),
     "newsletter-trusted-public-key": ("newsletter", ".github/integrity/wea/trusted_wea_public.pem"),
     # rex route-owned files and protected issuer/hosted authority.
     "route-cross-post": ("rexcoleman.dev", "cross-post.py"),
@@ -784,8 +787,8 @@ STAGED_NONPRODUCTION_ADDITIONAL_MEMBERS = {
 def staged_nonproduction_members():
     """Return the frozen staging contract without production trust roots.
 
-    Staging is an explicit 233-member superset with one dedicated committed
-    fixture key.  The production 232-member contract and both production
+    Staging is an explicit 236-member superset with one dedicated committed
+    fixture key.  The production 235-member contract and both production
     trust roots remain present and unchanged.
     """
     members = dict(EXPECTED_MEMBERS)
