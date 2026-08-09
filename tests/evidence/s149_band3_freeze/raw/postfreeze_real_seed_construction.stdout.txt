@@ -1,0 +1,68 @@
+
+--- fixture: under_build.json (expect exit 1) ---
+Construction-Completeness Gate [planted_under_build_mirrors_ioc_spike_forecast_KB3]: FAIL
+  [PASS] seed_authority_provenance: PASS
+  [FAIL] completeness_sources: FAIL
+  [PASS] completeness_grain: PASS
+  [PASS] construction_member_schema: PASS
+  [PASS] completeness_baselines: PASS
+  [PASS] anti_proxy_operational_definitions: PASS
+  [PASS] composed_probe_library_liveness: PASS
+  -> exit 1; distinguished=True
+
+--- fixture: data_loaded_proxy.json (expect exit 1) ---
+Construction-Completeness Gate [data_loaded_presence_emission_proxy_P4_P8]: FAIL
+  [PASS] seed_authority_provenance: PASS
+  [PASS] completeness_sources: PASS
+  [PASS] completeness_grain: PASS
+  [PASS] construction_member_schema: PASS
+  [PASS] completeness_baselines: PASS
+  [FAIL] anti_proxy_operational_definitions: FAIL
+  [PASS] composed_probe_library_liveness: PASS
+  -> exit 1; distinguished=True
+
+--- fixture: genuine_complete.json (expect exit 0) ---
+Construction-Completeness Gate [genuine_complete_construction]: PASS
+  [PASS] seed_authority_provenance: PASS
+  [PASS] completeness_sources: PASS
+  [PASS] completeness_grain: PASS
+  [PASS] construction_member_schema: PASS
+  [PASS] completeness_baselines: PASS
+  [PASS] anti_proxy_operational_definitions: PASS
+  [PASS] composed_probe_library_liveness: PASS
+  -> exit 0; distinguished=True
+Construction-Completeness Gate [genuine_complete_construction]: FAIL
+  [PASS] seed_authority_provenance: PASS
+  [FAIL] completeness_sources: FAIL
+  [PASS] completeness_grain: PASS
+  [FAIL] construction_member_schema: FAIL
+  [FAIL] completeness_baselines: FAIL
+  [PASS] anti_proxy_operational_definitions: PASS
+  [PASS] composed_probe_library_liveness: PASS
+
+--- fixture: malformed construction rows (expect exit 1) ---
+  -> exit 1; distinguished=True
+Construction-Completeness Gate [genuine_complete_construction]: FAIL
+  [FAIL] seed_authority_provenance: FAIL
+  [PASS] completeness_sources: PASS
+  [PASS] completeness_grain: PASS
+  [PASS] construction_member_schema: PASS
+  [PASS] completeness_baselines: PASS
+  [PASS] anti_proxy_operational_definitions: PASS
+  [PASS] composed_probe_library_liveness: PASS
+
+--- fixture: self-declared seed forge (expect exit 1) ---
+  -> exit 1; distinguished=True
+Construction-Completeness Gate [genuine_complete_construction]: FAIL
+  [PASS] seed_authority_provenance: PASS
+  [FAIL] completeness_sources: FAIL
+  [PASS] completeness_grain: PASS
+  [PASS] construction_member_schema: PASS
+  [PASS] completeness_baselines: PASS
+  [PASS] anti_proxy_operational_definitions: PASS
+  [PASS] composed_probe_library_liveness: PASS
+
+--- fixture: gutted named surface 'composite_quality_block_A1' (19-byte no-op, expect exit 1) ---
+  -> exit 1; distinguished=True
+
+self-test: all_distinguished=True
