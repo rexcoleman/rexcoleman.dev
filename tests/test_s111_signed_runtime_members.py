@@ -41,8 +41,8 @@ REQUIRED_CLASSES = set(member_contract.REQUIRED_MEMBER_CLASSES)
 def test_generation4_contract_registers_all_runtime_consumers_exactly_once():
     production = member_contract.EXPECTED_MEMBERS
     staged = member_contract.staged_nonproduction_members()
-    assert len(production) == 229
-    assert len(staged) == 230
+    assert len(production) == 232
+    assert len(staged) == 233
     assert set(staged) - set(production) == {
         "staged-nonproduction-trusted-public-key"
     }
