@@ -22,7 +22,7 @@ Status: COMPLETE for the bounded Band 3 deliverable. The five signed-bundle repo
 | Honest and refusal polarities | measured | `raw/postfreeze_focused_polarities.stdout.txt`, 11/11; `raw/postfreeze_real_seed_construction.stdout.txt`, true exit 0 with genuine-complete exit 0, under-build exit 1, and 19-byte gutted named surface exit 1 |
 | Full freeze/issuer suite | measured | `raw/postfreeze_full_wea_tests.stdout.txt`, 315/315, true exit 0 |
 | Remote reachability after landing | measured | `raw/postfreeze_remote/*`, all five exact SHAs observed at exit 0 |
-| Freeze strict ancestor of later evidence | measured after the first evidence commit | `raw/strict_ancestry_to_evidence.txt` is added by the follow-up evidence commit |
+| Freeze strict ancestor of later evidence | measured | `raw/strict_ancestry_to_evidence.txt`; both ancestry and inequality returned true exit 0 for first evidence commit `1a73ffe47fa0a8b63a4219cecf7b930b1cb7eb4d` |
 | Issue, tag, install, arm | not-established, deliberately out of Band 3 | prohibited by dispatch; no action taken |
 
 ## Exact selected population

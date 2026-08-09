@@ -1,4 +1,4 @@
-773655e24fcb077fd3eae76fc20efb8106b71333fdc55781911cbf5c89b8bbaa  ./BAND3_EXECUTOR_REPORT.md
+05348824bd9d471dc84e7d03b1235999c041d26d422029330ac4cb0fc3632d4f  ./BAND3_EXECUTOR_REPORT.md
 35897d94fef48e327e0267009f11c4d3c815b60fb727ace691830e38bb61be30  ./raw/ancestry/govml.56b2c192.txt
 6da42b35a41276dd56cf2d1935d2025037b1d54455edd0af8082a7c073848f5d  ./raw/ancestry/govml.bd5091ca.txt
 4b3ddfb4b7e1136e6d157abede5c426d92edce47c800a131a0e9f2a36fd8d191  ./raw/ancestry/govml.cc7e37c.txt
@@ -115,3 +115,4 @@ e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  ./raw/site_ful
 0f1324b04a6acac781c32499f1028ee2abc371fff53a9616ac03bd4253204edf  ./raw/site_full_wea_tests_prebuild.stdout.txt
 b0cb9bc7ff41c548825a2ea29a6bee4707c17278f8e157ce312bff3693b93ab8  ./raw/site_postmerge_fetch.stderr.txt
 e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  ./raw/site_postmerge_fetch.stdout.txt
+00572f743d2bd09f9dd3f9bdc26c6f9796f26d010a750da6823a1a96fe68d733  ./raw/strict_ancestry_to_evidence.txt
