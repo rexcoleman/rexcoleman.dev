@@ -23,6 +23,7 @@ from member_contract import (  # noqa: E402
     FACE_B_ISOLATED_FIXTURE_MEMBER_IDS,
     GENERATION_MANIFEST_NAME,
     ROUTE_OWNED_MEMBER_IDS,
+    ROW_COMPLETE_PACKAGE_MEMBER_IDS,
     SIGNED_COMPLETE_CHAIN_MEMBER_IDS,
     SIGNED_SCAFFOLD_MEMBER_IDS,
     S88_BUNDLE_MEMBER_IDS,
@@ -41,6 +42,17 @@ REQUIRED_CLASSES = [
     "remote_workflow", "remote_ruleset", "claim_policy", "profile_registry",
     "trusted_public_key",
 ]
+EXPECTED_ROW_COMPLETE_PACKAGE = {
+    "row-complete-full-receipts": (
+        "govML", "templates/build/enforcement/row_complete/full-receipts.json"
+    ),
+    "row-complete-ledger": (
+        "govML", "templates/build/enforcement/row_complete/ledger.json"
+    ),
+    "row-complete-ancestry-attestation": (
+        "govML", "templates/build/enforcement/row_complete/ancestry-attestation.json"
+    ),
+}
 
 
 def complete_manifest():
@@ -86,6 +98,59 @@ def test_extra_member_refuses_before_signing(tmp_path):
     assert "caller-added" in captured.value.detail
 
 
+def test_row_complete_package_is_exact_closed_signed_scaffold_set():
+    assert ROW_COMPLETE_PACKAGE_MEMBER_IDS == set(EXPECTED_ROW_COMPLETE_PACKAGE)
+    assert {
+        member_id: EXPECTED_MEMBERS[member_id]
+        for member_id in ROW_COMPLETE_PACKAGE_MEMBER_IDS
+    } == EXPECTED_ROW_COMPLETE_PACKAGE
+    assert ROW_COMPLETE_PACKAGE_MEMBER_IDS < SIGNED_SCAFFOLD_MEMBER_IDS
+
+
+@pytest.mark.parametrize("member_id", sorted(ROW_COMPLETE_PACKAGE_MEMBER_IDS))
+def test_each_row_complete_member_omission_refuses_before_signing(
+        tmp_path, member_id):
+    manifest = complete_manifest()
+    manifest["members"] = [
+        row for row in manifest["members"] if row["member_id"] != member_id
+    ]
+    with pytest.raises(IssuerRefusal) as captured:
+        verify_members(manifest, tmp_path)
+    assert captured.value.reason_code == "BUNDLE_MEMBER_SET_MISMATCH"
+    assert member_id in captured.value.detail
+
+
+@pytest.mark.parametrize("member_id", sorted(ROW_COMPLETE_PACKAGE_MEMBER_IDS))
+def test_each_row_complete_member_wrong_provenance_refuses_before_signing(
+        tmp_path, member_id):
+    manifest = complete_manifest()
+    row = next(
+        item for item in manifest["members"] if item["member_id"] == member_id
+    )
+    row["repository"] = "research_enforcement_activation"
+    row["path"] = "write_integrity/row_complete/forged.json"
+    with pytest.raises(IssuerRefusal) as captured:
+        verify_members(manifest, tmp_path)
+    assert captured.value.reason_code == "BUNDLE_MEMBER_SET_MISMATCH"
+    assert member_id in captured.value.detail
+
+
+def test_extra_row_complete_like_member_refuses_before_signing(tmp_path):
+    manifest = complete_manifest()
+    manifest["members"].append({
+        "member_id": "row-complete-shadow-ledger",
+        "repository": "govML",
+        "path": "templates/build/enforcement/row_complete/shadow-ledger.json",
+        "commit": "a" * 40,
+        "sha256": "b" * 64,
+        "byte_length": 1,
+    })
+    with pytest.raises(IssuerRefusal) as captured:
+        verify_members(manifest, tmp_path)
+    assert captured.value.reason_code == "BUNDLE_MEMBER_SET_MISMATCH"
+    assert "row-complete-shadow-ledger" in captured.value.detail
+
+
 @pytest.mark.parametrize("member_id", sorted(S88_BUNDLE_MEMBER_IDS))
 def test_each_s88_bundle_member_omission_refuses_before_signing(
         tmp_path, member_id):
@@ -107,8 +172,8 @@ def test_contract_contains_exact_accepted_22_route_owned_files():
 
 
 def test_contract_covers_complete_s88_face_a_and_face_b_bundle_sets():
-    assert len(EXPECTED_MEMBERS) == 229
-    assert len(set(EXPECTED_MEMBERS.values())) == 229
+    assert len(EXPECTED_MEMBERS) == 232
+    assert len(set(EXPECTED_MEMBERS.values())) == 232
     assert len(FACE_A_MEMBER_IDS) == 11
     assert len(FACE_B_MEMBER_IDS) == 9
     assert FACE_A_MEMBER_IDS < set(EXPECTED_MEMBERS)
@@ -281,7 +346,7 @@ def test_r4_authority_tools_remain_signed_runtime_members():
         "rexcoleman.dev",
         ".github/write-enforcement/GENERATION_4_OWNER_RUNBOOK.md",
     )
-    assert len(EXPECTED_MEMBERS) == 229
+    assert len(EXPECTED_MEMBERS) == 232
 
 
 def test_external_authoring_paths_are_exact_commit_inputs_not_installed_ids():
@@ -406,6 +471,7 @@ def test_signed_scaffold_installer_closes_all_transitive_comparison_inputs():
             "govML",
             "templates/build/enforcement/hybrid_install_manifest.json",
         ),
+        **EXPECTED_ROW_COMPLETE_PACKAGE,
         **{
             member_id: (
                 "govML", f"templates/build/enforcement/hybrid_core/{path}"
@@ -434,7 +500,7 @@ def test_signed_scaffold_installer_closes_all_transitive_comparison_inputs():
         member_id: EXPECTED_MEMBERS[member_id]
         for member_id in SIGNED_SCAFFOLD_MEMBER_IDS
     } == expected
-    assert len(SIGNED_SCAFFOLD_MEMBER_IDS) == 37
+    assert len(SIGNED_SCAFFOLD_MEMBER_IDS) == 40
     assert len(EXPECTED_MEMBERS) - len(SIGNED_SCAFFOLD_MEMBER_IDS) == 192
     assert "scaffold_installer" in REQUIRED_CLASSES
 

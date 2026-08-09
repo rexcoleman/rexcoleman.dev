@@ -44,6 +44,11 @@ WRITE_BOUNDARY_CANONICAL_ACTOR_COUNT = 29
 WRITE_BOUNDARY_SEAM_COUNT = 10
 WRITE_BOUNDARY_ROW_COUNT = 44
 WRITE_BOUNDARY_ALIASES = {"RPT-01A": "RPT-01"}
+ROW_COMPLETE_PACKAGE_MEMBER_IDS = frozenset({
+    "row-complete-full-receipts",
+    "row-complete-ledger",
+    "row-complete-ancestry-attestation",
+})
 SIGNED_SCAFFOLD_MEMBER_IDS = frozenset({
     "scaffold-hybrid-route-consumer",
     "scaffold-hybrid-install-manifest",
@@ -69,6 +74,7 @@ SIGNED_SCAFFOLD_MEMBER_IDS = frozenset({
     "scaffold-hybrid-core-corpus-planted",
     "scaffold-hybrid-core-protected-receive",
     "scaffold-hybrid-core-row-complete-verifier",
+    *ROW_COMPLETE_PACKAGE_MEMBER_IDS,
     "scaffold-hybrid-core-row-registry",
     "scaffold-hybrid-core-ledger-schema",
     "scaffold-hybrid-core-parent-admission-schema",
@@ -160,7 +166,7 @@ EXTERNAL_GENERATION4_OWNER_RUNBOOK_SUBJECT = (
 
 # These generator sources are compared byte-for-byte with the signed installed
 # copies at the same immutable govML commit.  Their installed identities remain
-# in the 229-member contract; a second member row for the authoring pathname is
+# in the 232-member contract; a second member row for the authoring pathname is
 # redundant and would displace runtime gates from the fixed population.
 EXTERNAL_EMITTER_AUTHORING_SUBJECTS = {
     "route-blog-wrapper": ("govML", "scripts/generators/blog_runtime_mount.py"),
@@ -428,6 +434,9 @@ EXPECTED_MEMBERS = {
     "scaffold-hybrid-core-corpus-planted": ("govML", "templates/build/enforcement/hybrid_core/write_integrity/write_boundary/corpus/planted.jsonl"),
     "scaffold-hybrid-core-protected-receive": ("govML", "templates/build/enforcement/hybrid_core/write_integrity/write_boundary/protected_receive.py"),
     "scaffold-hybrid-core-row-complete-verifier": ("govML", "templates/build/enforcement/hybrid_core/write_integrity/write_boundary/row_complete_verifier.py"),
+    "row-complete-full-receipts": ("govML", "templates/build/enforcement/row_complete/full-receipts.json"),
+    "row-complete-ledger": ("govML", "templates/build/enforcement/row_complete/ledger.json"),
+    "row-complete-ancestry-attestation": ("govML", "templates/build/enforcement/row_complete/ancestry-attestation.json"),
     "scaffold-hybrid-core-row-registry": ("govML", "templates/build/enforcement/hybrid_core/write_integrity/write_boundary/row_registry.json"),
     "scaffold-hybrid-core-ledger-schema": ("govML", "templates/build/enforcement/hybrid_core/write_integrity/write_boundary/schemas/ledger.schema.json"),
     "scaffold-hybrid-core-parent-admission-schema": ("govML", "templates/build/enforcement/hybrid_core/write_integrity/write_boundary/schemas/parent_admission.schema.json"),
@@ -775,8 +784,8 @@ STAGED_NONPRODUCTION_ADDITIONAL_MEMBERS = {
 def staged_nonproduction_members():
     """Return the frozen staging contract without production trust roots.
 
-    Staging is an explicit 230-member superset with one dedicated committed
-    fixture key.  The production 229-member contract and both production
+    Staging is an explicit 233-member superset with one dedicated committed
+    fixture key.  The production 232-member contract and both production
     trust roots remain present and unchanged.
     """
     members = dict(EXPECTED_MEMBERS)

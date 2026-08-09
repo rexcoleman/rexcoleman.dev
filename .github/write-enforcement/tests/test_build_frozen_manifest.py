@@ -85,7 +85,7 @@ def test_full_frozen_population_opens_at_selected_authoritative_commits(tmp_path
     roots, commits = full_population_repositories(tmp_path)
     loaded = builder.open_frozen_population(roots, commits)
     assert set(loaded) == set(builder.EXPECTED_MEMBERS)
-    assert len(loaded) == len(builder.EXPECTED_MEMBERS) == 229
+    assert len(loaded) == len(builder.EXPECTED_MEMBERS) == 232
     for member_id, raw in loaded.items():
         assert raw == f"{member_id}\n".encode()
 
@@ -118,6 +118,23 @@ def test_builder_refuses_post_commit_bound_member_mutation(tmp_path):
     (root / "member.txt").write_bytes(b"post-commit mutation\n")
     with pytest.raises(ValueError, match="dirty bound member"):
         builder.committed_member_bytes(root, commit, "member.txt")
+
+
+@pytest.mark.parametrize(
+    "member_id",
+    [
+        "row-complete-full-receipts",
+        "row-complete-ledger",
+        "row-complete-ancestry-attestation",
+    ],
+)
+def test_row_complete_member_working_tree_mutation_refuses(
+        tmp_path, member_id):
+    roots, commits = full_population_repositories(tmp_path)
+    repository, relative = builder.EXPECTED_MEMBERS[member_id]
+    (roots[repository] / relative).write_bytes(b"planted row-complete mutation\n")
+    with pytest.raises(ValueError, match="dirty bound member"):
+        builder.open_frozen_population(roots, commits)
 
 
 def test_manifest_build_is_byte_identical_across_three_runs(
