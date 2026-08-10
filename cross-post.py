@@ -11,6 +11,8 @@ Output:
     cross-posts/<slug>_reddit.md     (Reddit markdown, no images, link at top)
 """
 
+from __future__ import annotations
+
 import argparse
 import re
 import sys

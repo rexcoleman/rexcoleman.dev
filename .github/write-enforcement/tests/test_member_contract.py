@@ -10,10 +10,12 @@ sys.path.insert(0, str(HERE))
 
 from issue_wea import IssuerRefusal, verify_members, verify_trust_roots  # noqa: E402
 import issue_wea as issue_module  # noqa: E402
+import build_frozen_manifest as build_module  # noqa: E402
 from member_contract import (  # noqa: E402
     AUTHORITY_GENERATION,
     COMPLETE_CHAIN_DEPENDENCIES,
     EXPECTED_MEMBERS,
+    EXACT_MEMBER_BYTE_ALIASES,
     EXPECTED_EMITTER_RUNTIME_INSTALLATIONS,
     EXTERNAL_FREEZE_PROCEDURE_SUBJECT,
     EXTERNAL_GENERATION4_OWNER_RUNBOOK_SUBJECT,
@@ -42,6 +44,29 @@ REQUIRED_CLASSES = [
     "remote_workflow", "remote_ruleset", "claim_policy", "profile_registry",
     "trusted_public_key",
 ]
+
+
+def test_production_provisioner_has_distinct_equal_byte_authoring_subject():
+    pair = (
+        "production-request-provisioner",
+        "scaffold-hybrid-core-provisioning-prp",
+    )
+    assert EXACT_MEMBER_BYTE_ALIASES == (pair,)
+    assert EXPECTED_MEMBERS[pair[0]] == (
+        "govML",
+        "templates/build/enforcement/signed_authoring/production_request_provisioner.py",
+    )
+    assert EXPECTED_MEMBERS[pair[0]] != EXPECTED_MEMBERS[pair[1]]
+    honest = {pair[0]: b"exact-prp", pair[1]: b"exact-prp"}
+    build_module.validate_exact_member_byte_aliases(honest)
+    planted = dict(honest)
+    planted[pair[0]] = b"drifted-prp"
+    with pytest.raises(ValueError, match="exact member byte alias divergence"):
+        build_module.validate_exact_member_byte_aliases(planted)
+    collapsed = dict(EXPECTED_MEMBERS)
+    collapsed[pair[0]] = collapsed[pair[1]]
+    with pytest.raises(ValueError, match="collapse onto one subject"):
+        build_module.validate_exact_member_byte_aliases(honest, collapsed)
 
 
 def test_member_contract_imports_on_supported_controller_pythons(tmp_path):

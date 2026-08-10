@@ -26,6 +26,7 @@ import member_contract
 from member_contract import (
     AUTHORITY_GENERATION,
     EXPECTED_MEMBERS,
+    EXACT_MEMBER_BYTE_ALIASES,
     REQUIRED_MEMBER_CLASSES,
     RULESET_ID,
     STAGED_NONPRODUCTION_MANIFEST_SCHEMA,
@@ -133,6 +134,12 @@ def verify_members(
         if len(raw) != row["byte_length"] or digest(raw) != row["sha256"]:
             raise ValueError(f"member mismatch: {row['member_id']}")
         loaded[row["member_id"]] = raw
+    for authoring_id, runtime_id in EXACT_MEMBER_BYTE_ALIASES:
+        if loaded.get(authoring_id) != loaded.get(runtime_id):
+            raise IssuerRefusal(
+                "BUNDLE_MEMBER_BYTES_MISMATCH",
+                f"exact_alias:{authoring_id}:{runtime_id}",
+            )
     return loaded
 
 

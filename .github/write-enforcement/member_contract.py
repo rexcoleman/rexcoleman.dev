@@ -390,7 +390,7 @@ EXPECTED_MEMBERS = {
     "runner-adapter": ("research_enforcement_activation", "write_integrity/runners/runner_adapter.py"),
     # Accepted s88 Face A production request provisioner and its closed inputs.
     "production-package-init": ("research_enforcement_activation", "write_integrity/provisioning/__init__.py"),
-    "production-request-provisioner": ("research_enforcement_activation", "write_integrity/provisioning/prp.py"),
+    "production-request-provisioner": ("govML", "templates/build/enforcement/signed_authoring/production_request_provisioner.py"),
     "production-boundary": ("research_enforcement_activation", "write_integrity/provisioning/boundary.py"),
     "production-fixed-adapter": ("research_enforcement_activation", "write_integrity/provisioning/fixed_adapter.py"),
     "production-request-cli": ("research_enforcement_activation", "write_integrity/provisioning/production_request.py"),
@@ -584,6 +584,14 @@ EXPECTED_MEMBERS.update({
     "newsletter-bootstrap-capability": ("newsletter", ".github/integrity/newsletter/bootstrap-capability.json"),
     "newsletter-bootstrap-validator": ("rexcoleman.dev", ".github/write-enforcement/validate_newsletter_upgrade.py"),
 })
+
+# Separate immutable authoring subjects may target the same installed runtime
+# locus only when the frozen bytes are identical.  Keep distinct member IDs and
+# distinct (repository, path) subjects; equality is checked by both builder and
+# issuer before any authority is created.
+EXACT_MEMBER_BYTE_ALIASES = (
+    ("production-request-provisioner", "scaffold-hybrid-core-provisioning-prp"),
+)
 
 # The authoring generators below are not the installed comparison identity.
 # Each publishing scaffold receives the vendored subject below at the listed
