@@ -562,6 +562,7 @@ EXPECTED_MEMBERS.update({
     "managed-known-good-profile": ("govML", "templates/build/enforcement/known_good_mev_profile.json"),
     "managed-enforcement-inventory": ("govML", "templates/build/enforcement/managed_enforcement_inventory.py"),
     "managed-inventory-bootstrap": ("govML", "templates/build/enforcement/managed_inventory_bootstrap.py"),
+    "managed-invocation-identity": ("govML", "templates/build/enforcement/invocation_identity.py"),
     "managed-warmup-index-recorder": ("govML", "templates/build/enforcement/record_warmup_index_read.py"),
     "managed-research-workflow": ("govML", "templates/build/enforcement/research_integrity.yml"),
     "managed-research-pre-commit": ("govML", "templates/build/enforcement/research_integrity_pre_commit.sh"),
@@ -800,8 +801,8 @@ STAGED_NONPRODUCTION_ADDITIONAL_MEMBERS = {
 def staged_nonproduction_members():
     """Return the frozen staging contract without production trust roots.
 
-    Staging is an explicit 243-member superset with one dedicated committed
-    fixture key.  The production 242-member contract and both production
+    Staging is an explicit 244-member superset with one dedicated committed
+    fixture key.  The production 243-member contract and both production
     trust roots remain present and unchanged.
     """
     members = dict(EXPECTED_MEMBERS)

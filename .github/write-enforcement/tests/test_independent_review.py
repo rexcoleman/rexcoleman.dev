@@ -153,15 +153,31 @@ def reseal(value):
     return json.dumps(sealed, sort_keys=True, separators=(",", ":")).encode()
 
 
-def test_current_frozen_manifest_satisfies_the_contract():
-    """Positive control.
+def next_contract_manifest():
+    value = {
+        "schema_version": "rea.write.enforcement-bundle-manifest.v1",
+        "authority_generation": 4,
+        "ruleset_id": 19564990,
+        "normalized_ruleset_sha256": "c" * 64,
+        "required_member_classes": sorted(MODULE.REQUIRED_MEMBER_CLASSES),
+        "members": [
+            {"member_id": member_id, "repository": repository, "commit": "a" * 40,
+             "path": path, "sha256": "b" * 64, "byte_length": 1}
+            for member_id, (repository, path) in MODULE.expected_members().items()
+        ],
+    }
+    return json.loads(reseal(value))
 
-    The two refusal tests below are derived from this file by moving the member
-    count by exactly one.  If this ever stopped passing, those derivations would
-    stop being one-member-away from acceptance and would no longer isolate the
-    member-count contract as the cause of refusal.
-    """
-    report = MODULE.manifest_contract(FROZEN_MANIFEST.read_bytes())
+
+def test_current_preconvergence_freeze_is_refused_after_contract_expansion():
+    value=json.loads(FROZEN_MANIFEST.read_bytes())
+    assert len(value["members"]) == MODULE.GENERATION_MEMBER_COUNT - 1
+    with pytest.raises(MODULE.Refusal,match="generation-4 manifest contract differs"):
+        MODULE.manifest_contract(FROZEN_MANIFEST.read_bytes())
+
+
+def test_next_contract_manifest_is_an_exact_positive_control():
+    report=MODULE.manifest_contract(reseal(next_contract_manifest()))
     assert report["member_count"] == MODULE.GENERATION_MEMBER_COUNT
     assert report["member_contract"] == "EXACT"
 
@@ -174,7 +190,7 @@ def test_preconvergence_frozen_manifest_is_refused_after_contract_expansion():
     manifest: an assertion against those bytes goes vacuous the moment the
     contract and the freeze converge, which is exactly how this test died.
     """
-    value = json.loads(FROZEN_MANIFEST.read_bytes())
+    value = next_contract_manifest()
     dropped = value["members"].pop()
     assert dropped["member_id"] in MODULE.expected_members()
     assert len(value["members"]) == MODULE.GENERATION_MEMBER_COUNT - 1
@@ -191,7 +207,7 @@ def test_preconvergence_frozen_manifest_is_refused_after_contract_expansion():
 
 def test_manifest_carrying_a_member_beyond_the_contract_is_refused():
     """The other side of the count contract: an unregistered extra member."""
-    value = json.loads(FROZEN_MANIFEST.read_bytes())
+    value = next_contract_manifest()
     extra = dict(value["members"][0])
     extra["member_id"] = "unregistered-extra-member"
     value["members"].append(extra)
