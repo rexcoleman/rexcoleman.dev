@@ -2,17 +2,154 @@ import argparse
 import base64
 import importlib.util
 import json
+import inspect
+import os
 import subprocess
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import pytest
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+from cryptography.hazmat.primitives.asymmetric.rsa import generate_private_key
 
 
 TARGET = Path(__file__).resolve().parents[1] / "verify_hosted_wea.py"
 SPEC = importlib.util.spec_from_file_location("verify_hosted_wea", TARGET)
 MODULE = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(MODULE)
+
+
+def test_hosted_signature_verification_is_in_process_and_fail_closed(
+        tmp_path, monkeypatch):
+    private = Ed25519PrivateKey.generate()
+    other = Ed25519PrivateKey.generate()
+    public = tmp_path / "public.pem"
+    public.write_bytes(private.public_key().public_bytes(
+        serialization.Encoding.PEM,
+        serialization.PublicFormat.SubjectPublicKeyInfo,
+    ))
+    signed_digest = MODULE.digest(b"hosted-verifier-crypto-subject")
+    signature = base64.b64encode(
+        private.sign(bytes.fromhex(signed_digest))
+    ).decode("ascii")
+
+    def subprocess_forbidden(*_args, **_kwargs):
+        raise AssertionError("signature verification invoked a subprocess")
+
+    monkeypatch.setattr(MODULE.subprocess, "run", subprocess_forbidden)
+    MODULE.verify_signature(public, signed_digest, signature)
+
+    for label, key_path, value in (
+        ("tampered", public, base64.b64encode(b"x" * 64).decode("ascii")),
+        (
+            "wrong-key",
+            tmp_path / "wrong.pem",
+            signature,
+        ),
+        (
+            "short-signature",
+            public,
+            base64.b64encode(b"x" * 63).decode("ascii"),
+        ),
+    ):
+        if label == "wrong-key":
+            key_path.write_bytes(other.public_key().public_bytes(
+                serialization.Encoding.PEM,
+                serialization.PublicFormat.SubjectPublicKeyInfo,
+            ))
+        with pytest.raises(ValueError, match="signature"):
+            MODULE.verify_signature(key_path, signed_digest, value)
+
+    unsupported = tmp_path / "unsupported.pem"
+    unsupported.write_bytes(
+        generate_private_key(public_exponent=65537, key_size=2048)
+        .public_key()
+        .public_bytes(
+            serialization.Encoding.PEM,
+            serialization.PublicFormat.SubjectPublicKeyInfo,
+        )
+    )
+    with pytest.raises(ValueError, match="signature"):
+        MODULE.verify_signature(unsupported, signed_digest, signature)
+    assert "pkeyutl" not in inspect.getsource(MODULE.verify_signature)
+
+
+def test_hosted_workflow_preflights_python_ed25519_before_packet_use():
+    workflow = (
+        Path(__file__).resolve().parents[2] / "workflows/verify-write-enforcement.yml"
+    ).read_text(encoding="utf-8")
+    preflight = workflow.index("name: Preflight hosted toolchain")
+    obtain = workflow.index("name: Obtain remote-issued WEA")
+    verify = workflow.index("name: Verify and report exact WEA tuple")
+    assert preflight < obtain < verify
+    assert "PYTHON_ED25519_BACKEND_READY" in workflow[preflight:obtain]
+    assert "Ed25519PrivateKey" in workflow[preflight:obtain]
+    assert "pkeyutl" not in workflow
+    assert "openssl list" not in workflow
+
+
+def test_fixed_system_python_hosted_verifier_crypto_backend(tmp_path):
+    script = r'''
+import base64, hashlib, importlib.util, pathlib, sys
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+from cryptography.hazmat.primitives.asymmetric.rsa import generate_private_key
+
+module_path = pathlib.Path(sys.argv[1])
+root = pathlib.Path(sys.argv[2])
+sys.path.insert(0, str(module_path.parent))
+spec = importlib.util.spec_from_file_location("fixed_hosted", module_path)
+module = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(module)
+private = Ed25519PrivateKey.generate()
+other = Ed25519PrivateKey.generate()
+public = root / "public.pem"
+public.write_bytes(private.public_key().public_bytes(
+    serialization.Encoding.PEM,
+    serialization.PublicFormat.SubjectPublicKeyInfo,
+))
+subject = hashlib.sha256(b"SYSTEM_PYTHON_HOSTED_CRYPTO").hexdigest()
+signature = base64.b64encode(private.sign(bytes.fromhex(subject))).decode("ascii")
+module.verify_signature(public, subject, signature)
+wrong = root / "wrong.pem"
+wrong.write_bytes(other.public_key().public_bytes(
+    serialization.Encoding.PEM,
+    serialization.PublicFormat.SubjectPublicKeyInfo,
+))
+unsupported = root / "unsupported.pem"
+unsupported.write_bytes(generate_private_key(public_exponent=65537, key_size=2048)
+    .public_key().public_bytes(
+        serialization.Encoding.PEM,
+        serialization.PublicFormat.SubjectPublicKeyInfo,
+    ))
+for key, value in (
+    (public, base64.b64encode(b"x" * 64).decode("ascii")),
+    (wrong, signature),
+    (unsupported, signature),
+):
+    try:
+        module.verify_signature(key, subject, value)
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("planted signature/key was admitted")
+print("SYSTEM_PYTHON_HOSTED_CRYPTO_PASS")
+'''
+    environment = dict(os.environ)
+    environment["PATH"] = "/usr/bin:/bin"
+    environment["PYTHONDONTWRITEBYTECODE"] = "1"
+    completed = subprocess.run(
+        ["/usr/bin/python3", "-B", "-c", script, str(TARGET), str(tmp_path)],
+        cwd=TARGET.parents[2],
+        env=environment,
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        check=False,
+    )
+    assert completed.returncode == 0, completed.stderr
+    assert completed.stdout.strip() == "SYSTEM_PYTHON_HOSTED_CRYPTO_PASS"
 
 
 def args(tmp_path):

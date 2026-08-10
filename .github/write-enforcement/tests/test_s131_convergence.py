@@ -153,7 +153,9 @@ def test_predecessor_preflight_is_before_owner_environment_and_digest_bound():
     assert "predecessor_wea_sha256" in workflow
     assert "PREDECESSOR_RUN_IDENTITY" not in workflow  # checks are executable, not a claim label
     assert "sha256sum predecessor/write_enforcement_attestation.json" in workflow
-    assert "openssl pkeyutl -verify" in workflow
+    assert "public.verify(value, bytes.fromhex(digest))" in workflow
+    assert "openssl" not in workflow
+    assert "pkeyutl" not in workflow
     backend_marker = "PYTHON_ED25519_BACKEND_READY"
     renew_preflight = workflow.index("  renew-preflight:")
     renew_issue = workflow.index("  renew-wea:")
