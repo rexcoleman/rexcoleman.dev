@@ -13,6 +13,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from cryptography.exceptions import InvalidSignature, UnsupportedAlgorithm
+from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 
@@ -134,7 +135,9 @@ def verify_signature(public: Path, signed_digest: str, signature_b64: str) -> No
     if len(signature) != 64:
         raise ValueError("signature length")
     try:
-        verifier = serialization.load_pem_public_key(public.read_bytes())
+        verifier = serialization.load_pem_public_key(
+            public.read_bytes(), backend=default_backend()
+        )
         if not isinstance(verifier, Ed25519PublicKey):
             raise ValueError("public key is not Ed25519")
         verifier.verify(signature, bytes.fromhex(signed_digest))

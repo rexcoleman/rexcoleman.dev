@@ -51,6 +51,7 @@ jobs:
           python3 --version
           sha256sum --version | sed -n '1p'
           python3 - <<'PY'
+          from cryptography.hazmat.backends import default_backend
           from cryptography.hazmat.primitives import serialization
           from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
           key = Ed25519PrivateKey.generate()
@@ -61,7 +62,7 @@ jobs:
               serialization.Encoding.PEM,
               serialization.PublicFormat.SubjectPublicKeyInfo,
           )
-          assert serialization.load_pem_public_key(encoded)
+          assert serialization.load_pem_public_key(encoded, backend=default_backend())
           print("PYTHON_ED25519_BACKEND_READY")
           PY
       - name: Obtain remote-issued WEA and frozen members

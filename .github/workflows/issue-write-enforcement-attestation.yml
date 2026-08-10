@@ -60,6 +60,7 @@ jobs:
         run: |
           set -euo pipefail
           python3 - <<'PY'
+          from cryptography.hazmat.backends import default_backend
           from cryptography.hazmat.primitives import serialization
           from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
           key = Ed25519PrivateKey.generate()
@@ -70,6 +71,7 @@ jobs:
                   serialization.NoEncryption(),
               ),
               password=None,
+              backend=default_backend(),
           ).public_key()
           print("PYTHON_ED25519_BACKEND_READY")
           PY
@@ -142,6 +144,7 @@ jobs:
           test "$(sha256sum predecessor/write_enforcement_attestation.json | cut -d' ' -f1)" = "$PREDECESSOR_WEA_SHA256"
           python3 - "$PREDECESSOR_RUN_ID" predecessor <<'PY'
           import base64, hashlib, json, pathlib, sys
+          from cryptography.hazmat.backends import default_backend
           from cryptography.hazmat.primitives import serialization
           from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
           run_id = int(sys.argv[1]); root = pathlib.Path(sys.argv[2])
@@ -155,7 +158,9 @@ jobs:
           signed = json.dumps(wea, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode()
           digest = hashlib.sha256(signed).hexdigest()
           assert signature["algorithm"] == "ed25519" and signature["signed_digest"] == digest
-          public = serialization.load_pem_public_key((root / "trusted_wea_public.pem").read_bytes())
+          public = serialization.load_pem_public_key(
+              (root / "trusted_wea_public.pem").read_bytes(), backend=default_backend()
+          )
           assert isinstance(public, Ed25519PublicKey)
           value = base64.b64decode(signature["value"], validate=True)
           assert len(value) == 64
@@ -190,6 +195,7 @@ jobs:
           gh --version
           python3 --version
           python3 - <<'PY'
+          from cryptography.hazmat.backends import default_backend
           from cryptography.hazmat.primitives import serialization
           from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
           key = Ed25519PrivateKey.generate()
@@ -200,6 +206,7 @@ jobs:
                   serialization.NoEncryption(),
               ),
               password=None,
+              backend=default_backend(),
           ).public_key()
           print("PYTHON_ED25519_BACKEND_READY")
           PY
@@ -330,6 +337,7 @@ jobs:
         run: |
           set -euo pipefail
           python3 - <<'PY'
+          from cryptography.hazmat.backends import default_backend
           from cryptography.hazmat.primitives import serialization
           from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
           key = Ed25519PrivateKey.generate()
@@ -340,6 +348,7 @@ jobs:
                   serialization.NoEncryption(),
               ),
               password=None,
+              backend=default_backend(),
           ).public_key()
           print("PYTHON_ED25519_BACKEND_READY")
           PY
@@ -438,6 +447,7 @@ jobs:
           [[ "$PREDECESSOR_WEA_SHA256" =~ ^[0-9a-f]{64}$ ]]
           python3 - "$PREDECESSOR_RUN_ID" predecessor "$PREDECESSOR_WEA_SHA256" <<'PY'
           import base64, hashlib, json, pathlib, sys
+          from cryptography.hazmat.backends import default_backend
           from cryptography.hazmat.primitives import serialization
           from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
           run_id = int(sys.argv[1]); root = pathlib.Path(sys.argv[2]); pinned = sys.argv[3]
@@ -452,7 +462,9 @@ jobs:
           signed = json.dumps(wea, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode()
           digest = hashlib.sha256(signed).hexdigest()
           assert signature["algorithm"] == "ed25519" and signature["signed_digest"] == digest
-          public = serialization.load_pem_public_key((root / "trusted_wea_public.pem").read_bytes())
+          public = serialization.load_pem_public_key(
+              (root / "trusted_wea_public.pem").read_bytes(), backend=default_backend()
+          )
           assert isinstance(public, Ed25519PublicKey)
           value = base64.b64decode(signature["value"], validate=True)
           assert len(value) == 64
@@ -517,6 +529,7 @@ jobs:
           gh --version
           python3 --version
           python3 - <<'PY'
+          from cryptography.hazmat.backends import default_backend
           from cryptography.hazmat.primitives import serialization
           from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
           key = Ed25519PrivateKey.generate()
@@ -527,6 +540,7 @@ jobs:
                   serialization.NoEncryption(),
               ),
               password=None,
+              backend=default_backend(),
           ).public_key()
           print("PYTHON_ED25519_BACKEND_READY")
           PY

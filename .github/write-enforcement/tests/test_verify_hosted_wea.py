@@ -92,6 +92,7 @@ def test_hosted_workflow_preflights_python_ed25519_before_packet_use():
 def test_fixed_system_python_hosted_verifier_crypto_backend(tmp_path):
     script = r'''
 import base64, hashlib, importlib.util, pathlib, sys
+from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 from cryptography.hazmat.primitives.asymmetric.rsa import generate_private_key
@@ -118,8 +119,9 @@ wrong.write_bytes(other.public_key().public_bytes(
     serialization.PublicFormat.SubjectPublicKeyInfo,
 ))
 unsupported = root / "unsupported.pem"
-unsupported.write_bytes(generate_private_key(public_exponent=65537, key_size=2048)
-    .public_key().public_bytes(
+unsupported.write_bytes(generate_private_key(
+        public_exponent=65537, key_size=2048, backend=default_backend()
+    ).public_key().public_bytes(
         serialization.Encoding.PEM,
         serialization.PublicFormat.SubjectPublicKeyInfo,
     ))
@@ -137,8 +139,13 @@ for key, value in (
 print("SYSTEM_PYTHON_HOSTED_CRYPTO_PASS")
 '''
     environment = dict(os.environ)
+    isolated_home = tmp_path / "isolated-home"
+    isolated_home.mkdir()
+    environment["HOME"] = str(isolated_home)
     environment["PATH"] = "/usr/bin:/bin"
     environment["PYTHONDONTWRITEBYTECODE"] = "1"
+    environment["PYTHONNOUSERSITE"] = "1"
+    environment.pop("PYTHONPATH", None)
     completed = subprocess.run(
         ["/usr/bin/python3", "-B", "-c", script, str(TARGET), str(tmp_path)],
         cwd=TARGET.parents[2],
@@ -150,6 +157,21 @@ print("SYSTEM_PYTHON_HOSTED_CRYPTO_PASS")
     )
     assert completed.returncode == 0, completed.stderr
     assert completed.stdout.strip() == "SYSTEM_PYTHON_HOSTED_CRYPTO_PASS"
+    provenance = subprocess.run(
+        [
+            "/usr/bin/python3", "-B", "-c",
+            "import cryptography; print(cryptography.__file__)",
+        ],
+        env=environment,
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        check=False,
+    )
+    assert provenance.returncode == 0, provenance.stderr
+    assert "/usr/lib/python3/dist-packages/cryptography" in provenance.stdout
+    assert "/home/azureuser/.local" not in provenance.stdout
+    assert "miniconda" not in provenance.stdout
 
 
 def args(tmp_path):
