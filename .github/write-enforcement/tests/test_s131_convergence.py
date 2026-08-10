@@ -8,6 +8,8 @@ import sys
 from pathlib import Path
 
 import pytest
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
 TOOLS = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(TOOLS))
@@ -35,14 +37,26 @@ def test_member_population_is_complete_and_two_method_count():
 def test_authenticated_immediate_predecessor_derives_epoch(tmp_path, monkeypatch):
     issue = load("issue_wea")
     private = tmp_path / "private.pem"; public = tmp_path / "public.pem"
-    subprocess.run(["openssl", "genpkey", "-algorithm", "ED25519", "-out", private], check=True)
-    subprocess.run(["openssl", "pkey", "-in", private, "-pubout", "-out", public], check=True)
+    private_key = Ed25519PrivateKey.generate()
+    private.write_bytes(private_key.private_bytes(
+        serialization.Encoding.PEM,
+        serialization.PrivateFormat.PKCS8,
+        serialization.NoEncryption(),
+    ))
+    public.write_bytes(issue.public_bytes(private_key))
+    assert issue.public_bytes(issue.load_private_key(private)) == public.read_bytes()
     payload = {
         "schema_version": "rea.write.wea.live.v2", "purpose": "LIVE_ENFORCEMENT",
         "state": "ENFORCING", "authority_epoch": 8,
         "issuer": issue.ISSUER,
     }
-    monkeypatch.setattr(issue, "openssl", lambda args: subprocess.run(["openssl", *args], check=True, capture_output=True))
+    monkeypatch.setattr(
+        issue.subprocess,
+        "run",
+        lambda *args, **kwargs: (_ for _ in ()).throw(
+            AssertionError("crypto path invoked a subprocess")
+        ),
+    )
     signed = issue.sign_payload(payload, private)
     predecessor = tmp_path / "predecessor.json"
     predecessor.write_bytes(issue.canonical(signed) + b"\n")
@@ -56,6 +70,63 @@ def test_authenticated_immediate_predecessor_derives_epoch(tmp_path, monkeypatch
         assert exc.reason_code == "PREDECESSOR_WEA_INVALID"
     else:
         raise AssertionError("tampered predecessor accepted")
+
+    predecessor.write_bytes(issue.canonical(signed) + b"\n")
+    wrong = Ed25519PrivateKey.generate()
+    public.write_bytes(issue.public_bytes(wrong))
+    with pytest.raises(issue.IssuerRefusal) as caught:
+        issue.authenticated_predecessor(predecessor, public)
+    assert caught.value.reason_code == "PREDECESSOR_WEA_INVALID"
+
+
+def test_system_python_fixed_path_uses_python_ed25519_backend(tmp_path):
+    code = r'''
+import json
+from pathlib import Path
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+import issue_wea as issue
+root = Path(__import__("sys").argv[1])
+key = Ed25519PrivateKey.generate()
+private = root / "private.pem"
+public = root / "public.pem"
+private.write_bytes(key.private_bytes(
+    serialization.Encoding.PEM,
+    serialization.PrivateFormat.PKCS8,
+    serialization.NoEncryption(),
+))
+public.write_bytes(issue.public_bytes(key))
+payload = {
+    "schema_version": "rea.write.wea.live.v2",
+    "purpose": "LIVE_ENFORCEMENT",
+    "state": "ENFORCING",
+    "authority_epoch": 8,
+    "issuer": issue.ISSUER,
+}
+issue.subprocess.run = lambda *a, **k: (_ for _ in ()).throw(
+    AssertionError("crypto path invoked a subprocess")
+)
+signed = issue.sign_payload(payload, private)
+predecessor = root / "predecessor.json"
+predecessor.write_bytes(issue.canonical(signed) + b"\n")
+raw, verified = issue.authenticated_predecessor(predecessor, public)
+assert json.loads(raw)["authority_epoch"] == verified["authority_epoch"] == 8
+print("SYSTEM_PYTHON_ED25519_PASS")
+'''
+    env = {
+        "PATH": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+        "PYTHONPATH": str(TOOLS),
+        "PYTHONDONTWRITEBYTECODE": "1",
+    }
+    result = subprocess.run(
+        ["/usr/bin/python3", "-B", "-c", code, str(tmp_path)],
+        env=env,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    assert result.returncode == 0, (result.stdout, result.stderr)
+    assert result.stdout.strip() == "SYSTEM_PYTHON_ED25519_PASS"
 
 
 def test_remote_reachability_exact_sha_and_unreachable(monkeypatch):
@@ -83,8 +154,19 @@ def test_predecessor_preflight_is_before_owner_environment_and_digest_bound():
     assert "PREDECESSOR_RUN_IDENTITY" not in workflow  # checks are executable, not a claim label
     assert "sha256sum predecessor/write_enforcement_attestation.json" in workflow
     assert "openssl pkeyutl -verify" in workflow
+    backend_marker = "PYTHON_ED25519_BACKEND_READY"
+    renew_preflight = workflow.index("  renew-preflight:")
+    renew_issue = workflow.index("  renew-wea:")
+    assert workflow.count(backend_marker) == 4
+    assert backend_marker in workflow[preflight:issue]
+    assert backend_marker in workflow[issue:renew_preflight]
+    assert backend_marker in workflow[renew_preflight:renew_issue]
+    assert backend_marker in workflow[renew_issue:]
+    assert workflow.index(backend_marker, preflight, issue) < environment
     assert "expired_fixture" not in workflow
     issuer = (TOOLS / "issue_wea.py").read_text()
+    assert '"openssl"' not in issuer
+    assert "pkeyutl" not in issuer
     assert "dispatch_digest_mismatch" in issuer
     assert "expired_fixture" not in issuer
 

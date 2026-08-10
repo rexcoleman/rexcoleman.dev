@@ -56,6 +56,23 @@ jobs:
         with:
           path: repo
           persist-credentials: false
+      - name: Preflight Python Ed25519 backend
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from cryptography.hazmat.primitives import serialization
+          from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+          key = Ed25519PrivateKey.generate()
+          assert serialization.load_pem_private_key(
+              key.private_bytes(
+                  serialization.Encoding.PEM,
+                  serialization.PrivateFormat.PKCS8,
+                  serialization.NoEncryption(),
+              ),
+              password=None,
+          ).public_key()
+          print("PYTHON_ED25519_BACKEND_READY")
+          PY
       - name: Bind unfrozen authority-bearing modules to this workflow
         run: |
           set -euo pipefail
@@ -171,6 +188,20 @@ jobs:
           gh --version
           python3 --version
           openssl version
+          python3 - <<'PY'
+          from cryptography.hazmat.primitives import serialization
+          from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+          key = Ed25519PrivateKey.generate()
+          assert serialization.load_pem_private_key(
+              key.private_bytes(
+                  serialization.Encoding.PEM,
+                  serialization.PrivateFormat.PKCS8,
+                  serialization.NoEncryption(),
+              ),
+              password=None,
+          ).public_key()
+          print("PYTHON_ED25519_BACKEND_READY")
+          PY
           test "$(printf 'dGVzdA==' | base64 --decode)" = test
           sha256sum --version | sed -n '1p'
           openssl list -public-key-methods | grep -qi ED25519
@@ -295,6 +326,23 @@ jobs:
         with:
           path: repo
           persist-credentials: false
+      - name: Preflight Python Ed25519 backend
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from cryptography.hazmat.primitives import serialization
+          from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+          key = Ed25519PrivateKey.generate()
+          assert serialization.load_pem_private_key(
+              key.private_bytes(
+                  serialization.Encoding.PEM,
+                  serialization.PrivateFormat.PKCS8,
+                  serialization.NoEncryption(),
+              ),
+              password=None,
+          ).public_key()
+          print("PYTHON_ED25519_BACKEND_READY")
+          PY
       - name: Bind unfrozen authority-bearing modules to this workflow
         run: |
           set -euo pipefail
@@ -467,6 +515,20 @@ jobs:
           gh --version
           python3 --version
           openssl version
+          python3 - <<'PY'
+          from cryptography.hazmat.primitives import serialization
+          from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+          key = Ed25519PrivateKey.generate()
+          assert serialization.load_pem_private_key(
+              key.private_bytes(
+                  serialization.Encoding.PEM,
+                  serialization.PrivateFormat.PKCS8,
+                  serialization.NoEncryption(),
+              ),
+              password=None,
+          ).public_key()
+          print("PYTHON_ED25519_BACKEND_READY")
+          PY
           test "$(printf 'dGVzdA==' | base64 --decode)" = test
           sha256sum --version | sed -n '1p'
           openssl list -public-key-methods | grep -qi ED25519
