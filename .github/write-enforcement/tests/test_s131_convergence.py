@@ -1,13 +1,16 @@
+import ast
 import hashlib
 import importlib.util
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
 from pathlib import Path
 
 import pytest
+import yaml
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
@@ -22,6 +25,51 @@ def load(name):
 
 
 builder = load("build_frozen_manifest")
+
+
+def test_signed_workflow_pem_loads_bind_explicit_default_backend():
+    observed = 0
+    for workflow in (
+        TOOLS.parent / "workflows/issue-write-enforcement-attestation.yml",
+        TOOLS.parent / "workflows/verify-write-enforcement.yml",
+    ):
+        document = yaml.safe_load(workflow.read_text(encoding="utf-8"))
+        for job in document["jobs"].values():
+            for step in job.get("steps", []):
+                script = step.get("run")
+                if not isinstance(script, str) or "load_pem_" not in script:
+                    continue
+                blocks = re.findall(
+                    r"python3[^\n]*<<'PY'\n(.*?)\nPY(?:\n|$)",
+                    script,
+                    flags=re.DOTALL,
+                )
+                assert blocks, workflow
+                for block in blocks:
+                    tree = ast.parse(block, filename=str(workflow))
+                    calls = [
+                        node
+                        for node in ast.walk(tree)
+                        if isinstance(node, ast.Call)
+                        and isinstance(node.func, ast.Attribute)
+                        and node.func.attr in {
+                            "load_pem_private_key", "load_pem_public_key"
+                        }
+                    ]
+                    observed += len(calls)
+                    for call in calls:
+                        backend = next(
+                            (
+                                keyword.value
+                                for keyword in call.keywords
+                                if keyword.arg == "backend"
+                            ),
+                            None,
+                        )
+                        assert isinstance(backend, ast.Call), workflow
+                        assert isinstance(backend.func, ast.Name), workflow
+                        assert backend.func.id == "default_backend", workflow
+    assert observed == 7
 
 
 def test_member_population_is_complete_and_two_method_count():
@@ -81,12 +129,19 @@ def test_authenticated_immediate_predecessor_derives_epoch(tmp_path, monkeypatch
 
 def test_system_python_fixed_path_uses_python_ed25519_backend(tmp_path):
     code = r'''
+import importlib.util
 import json
 from pathlib import Path
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
-import issue_wea as issue
-root = Path(__import__("sys").argv[1])
+import cryptography
+import sys
+module_path = Path(sys.argv[1])
+root = Path(sys.argv[2])
+sys.path.insert(0, str(module_path.parent))
+spec = importlib.util.spec_from_file_location("fixed_issue_wea", module_path)
+issue = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(issue)
 key = Ed25519PrivateKey.generate()
 private = root / "private.pem"
 public = root / "public.pem"
@@ -112,21 +167,32 @@ predecessor.write_bytes(issue.canonical(signed) + b"\n")
 raw, verified = issue.authenticated_predecessor(predecessor, public)
 assert json.loads(raw)["authority_epoch"] == verified["authority_epoch"] == 8
 print("SYSTEM_PYTHON_ED25519_PASS")
+print(cryptography.__file__)
 '''
+    isolated_home = tmp_path / "isolated-home"
+    isolated_home.mkdir()
     env = {
-        "PATH": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
-        "PYTHONPATH": str(TOOLS),
+        "HOME": str(isolated_home),
+        "PATH": "/usr/bin:/bin",
         "PYTHONDONTWRITEBYTECODE": "1",
+        "PYTHONNOUSERSITE": "1",
     }
     result = subprocess.run(
-        ["/usr/bin/python3", "-B", "-c", code, str(tmp_path)],
+        [
+            "/usr/bin/python3", "-B", "-c", code,
+            str(TOOLS / "issue_wea.py"), str(tmp_path),
+        ],
         env=env,
         text=True,
         capture_output=True,
         check=False,
     )
     assert result.returncode == 0, (result.stdout, result.stderr)
-    assert result.stdout.strip() == "SYSTEM_PYTHON_ED25519_PASS"
+    lines = result.stdout.strip().splitlines()
+    assert lines[0] == "SYSTEM_PYTHON_ED25519_PASS"
+    assert "/usr/lib/python3/dist-packages/cryptography" in lines[1]
+    assert "/home/azureuser/.local" not in lines[1]
+    assert "miniconda" not in lines[1]
 
 
 def test_remote_reachability_exact_sha_and_unreachable(monkeypatch):

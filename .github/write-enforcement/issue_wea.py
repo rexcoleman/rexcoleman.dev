@@ -15,6 +15,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from cryptography.exceptions import InvalidSignature, UnsupportedAlgorithm
+from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric.ed25519 import (
     Ed25519PrivateKey,
@@ -138,7 +139,7 @@ def verify_members(
 def load_private_key(path: Path) -> Ed25519PrivateKey:
     try:
         key = serialization.load_pem_private_key(
-            path.read_bytes(), password=None
+            path.read_bytes(), password=None, backend=default_backend()
         )
     except (OSError, TypeError, ValueError, UnsupportedAlgorithm) as exc:
         raise ValueError("private key") from exc
@@ -149,7 +150,9 @@ def load_private_key(path: Path) -> Ed25519PrivateKey:
 
 def load_public_key(path: Path) -> Ed25519PublicKey:
     try:
-        key = serialization.load_pem_public_key(path.read_bytes())
+        key = serialization.load_pem_public_key(
+            path.read_bytes(), backend=default_backend()
+        )
     except (OSError, TypeError, ValueError, UnsupportedAlgorithm) as exc:
         raise ValueError("public key") from exc
     if not isinstance(key, Ed25519PublicKey):
