@@ -11,6 +11,7 @@ sys.path.insert(0, str(HERE))
 from issue_wea import IssuerRefusal, verify_members, verify_trust_roots  # noqa: E402
 import issue_wea as issue_module  # noqa: E402
 import build_frozen_manifest as build_module  # noqa: E402
+import member_contract as contract_module  # noqa: E402
 from member_contract import (  # noqa: E402
     AUTHORITY_GENERATION,
     COMPLETE_CHAIN_DEPENDENCIES,
@@ -24,6 +25,7 @@ from member_contract import (  # noqa: E402
     FACE_B_MEMBER_IDS,
     FACE_B_ISOLATED_FIXTURE_MEMBER_IDS,
     GENERATION_MANIFEST_NAME,
+    MANAGED_LIVE_MEMBER_ALIASES,
     ROUTE_OWNED_MEMBER_IDS,
     ROW_COMPLETE_PACKAGE_MEMBER_IDS,
     SIGNED_COMPLETE_CHAIN_MEMBER_IDS,
@@ -33,6 +35,7 @@ from member_contract import (  # noqa: E402
     derive_write_boundary_route_surface_bindings,
     generation_tag,
     normalize_ruleset,
+    validate_managed_live_member_aliases,
     write_boundary_policy_digest,
 )
 
@@ -51,7 +54,8 @@ def test_production_provisioner_has_distinct_equal_byte_authoring_subject():
         "production-request-provisioner",
         "scaffold-hybrid-core-provisioning-prp",
     )
-    assert EXACT_MEMBER_BYTE_ALIASES == (pair,)
+    assert pair in EXACT_MEMBER_BYTE_ALIASES
+    assert len(EXACT_MEMBER_BYTE_ALIASES) == 16
     assert EXPECTED_MEMBERS[pair[0]] == (
         "govML",
         "templates/build/enforcement/signed_authoring/production_request_provisioner.py",
@@ -67,6 +71,113 @@ def test_production_provisioner_has_distinct_equal_byte_authoring_subject():
     collapsed[pair[0]] = collapsed[pair[1]]
     with pytest.raises(ValueError, match="collapse onto one subject"):
         build_module.validate_exact_member_byte_aliases(honest, collapsed)
+
+
+def managed_alias_fixture():
+    contract = {
+        member_id: EXPECTED_MEMBERS[member_id]
+        for row in MANAGED_LIVE_MEMBER_ALIASES
+        for member_id in row[:2]
+    }
+    contract["managed-enforcement-inventory"] = (
+        "govML", "templates/build/enforcement/managed_enforcement_inventory.py"
+    )
+    contract["scaffold-hybrid-install-manifest"] = (
+        "govML", "templates/build/enforcement/hybrid_install_manifest.json"
+    )
+    runner = next(
+        row for row in MANAGED_LIVE_MEMBER_ALIASES
+        if row[2] == "write_integrity/runners/runner_adapter.py"
+    )
+    core_rows = [
+        {"path": target, "sha256": "0" * 64}
+        for _authoring, _runtime, target, *_modes in MANAGED_LIVE_MEMBER_ALIASES
+        if target != runner[2]
+    ]
+    inventory = b"""
+COMMON = {}
+BUILD_ONLY = {}
+PROFILE_CONTRACT = {'research-build': {'research_type': 'build', 'surfaces': (), 'runner': 'project_run_gates.sh'}}
+SIGNED_BASE = {'write_integrity/runners/runner_adapter.py': ('govML', 'templates/build/enforcement/runner_adapter_launcher.py')}
+EMITTER_RUNTIME_SURFACE_CLOSURES = {}
+"""
+    hybrid = json.dumps({
+        "core_members": core_rows,
+        "report_members": [],
+        "row_complete_members": [],
+    }).encode()
+    loaded = {
+        member_id: f"equal:{target}".encode()
+        for authoring, runtime, target, *_modes in MANAGED_LIVE_MEMBER_ALIASES
+        for member_id in (authoring, runtime)
+    }
+    loaded["managed-enforcement-inventory"] = inventory
+    loaded["scaffold-hybrid-install-manifest"] = hybrid
+    modes = {
+        member_id: mode
+        for authoring, runtime, _target, authoring_mode, runtime_mode, _installed
+        in MANAGED_LIVE_MEMBER_ALIASES
+        for member_id, mode in (
+            (authoring, authoring_mode), (runtime, runtime_mode)
+        )
+    }
+    modes["managed-enforcement-inventory"] = "100644"
+    modes["scaffold-hybrid-install-manifest"] = "100644"
+    return loaded, modes, contract
+
+
+def test_managed_live_alias_table_is_exact_closed_population():
+    loaded, modes, contract = managed_alias_fixture()
+    validate_managed_live_member_aliases(loaded, modes, contract)
+    assert len(MANAGED_LIVE_MEMBER_ALIASES) == 15
+    transforms = [
+        row for row in MANAGED_LIVE_MEMBER_ALIASES
+        if row[4] == "100644" and row[5] == 0o755
+    ]
+    assert transforms == [
+        (
+            "runner-adapter", "runner-adapter-launcher",
+            "write_integrity/runners/runner_adapter.py",
+            "100755", "100644", 0o755,
+        )
+    ]
+
+
+@pytest.mark.parametrize(
+    "plant,reason",
+    (
+        ("omission", "alias count"),
+        ("extra", "runtime target mismatch"),
+        ("divergence", "alias divergence"),
+        ("authoring-mode", "authoring mode"),
+        ("runtime-mode", "runtime mode"),
+        ("installed-mode", "installed mode"),
+        ("live-target", "runtime target mismatch"),
+    ),
+)
+def test_managed_live_alias_population_plants_refuse(monkeypatch, plant, reason):
+    loaded, modes, contract = managed_alias_fixture()
+    table = list(MANAGED_LIVE_MEMBER_ALIASES)
+    authoring, runtime, target, authoring_mode, runtime_mode, installed = table[0]
+    if plant == "omission":
+        table.pop(0)
+    elif plant == "extra":
+        table[0] = (authoring, runtime, "write_integrity/forged.py", authoring_mode, runtime_mode, installed)
+    elif plant == "divergence":
+        loaded[authoring] = b"planted divergence"
+    elif plant == "authoring-mode":
+        modes[authoring] = "100755"
+    elif plant == "runtime-mode":
+        modes[runtime] = "100755"
+    elif plant == "installed-mode":
+        table[0] = (authoring, runtime, target, authoring_mode, runtime_mode, 0o755)
+    elif plant == "live-target":
+        loaded["scaffold-hybrid-install-manifest"] = json.dumps({
+            "core_members": [], "report_members": [], "row_complete_members": []
+        }).encode()
+    monkeypatch.setattr(contract_module, "MANAGED_LIVE_MEMBER_ALIASES", tuple(table))
+    with pytest.raises(ValueError, match=reason):
+        validate_managed_live_member_aliases(loaded, modes, contract)
 
 
 def test_member_contract_imports_on_supported_controller_pythons(tmp_path):

@@ -169,10 +169,12 @@ def next_contract_manifest():
     return json.loads(reseal(value))
 
 
-def test_current_preconvergence_freeze_is_refused_after_contract_expansion():
+def test_current_preconvergence_freeze_is_refused_after_subject_migration():
     value=json.loads(FROZEN_MANIFEST.read_bytes())
-    assert len(value["members"]) == MODULE.GENERATION_MEMBER_COUNT - 1
-    with pytest.raises(MODULE.Refusal,match="generation-4 manifest contract differs"):
+    assert len(value["members"]) == MODULE.GENERATION_MEMBER_COUNT
+    with pytest.raises(
+        MODULE.Refusal, match="generation-4 manifest member contract differs"
+    ):
         MODULE.manifest_contract(FROZEN_MANIFEST.read_bytes())
 
 

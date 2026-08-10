@@ -10,7 +10,11 @@ HERE = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(HERE))
 
 import build_frozen_manifest as builder  # noqa: E402
-from member_contract import GENERATION_MANIFEST_NAME  # noqa: E402
+from member_contract import (  # noqa: E402
+    EXACT_MEMBER_BYTE_ALIASES,
+    GENERATION_MANIFEST_NAME,
+    MANAGED_LIVE_MEMBER_ALIASES,
+)
 
 
 def git(root: Path, *args: str) -> str:
@@ -40,6 +44,32 @@ def full_population_repositories(
     roots = {}
     commits = {}
     grouped = builder.group_member_contract(builder.EXPECTED_MEMBERS)
+    aliases = {
+        member_id: f"exact-alias:{authoring_id}:{runtime_id}\n".encode()
+        for authoring_id, runtime_id in EXACT_MEMBER_BYTE_ALIASES
+        for member_id in (authoring_id, runtime_id)
+    }
+    core_rows = [
+        {"path": target, "sha256": "0" * 64}
+        for _authoring, _runtime, target, *_modes in MANAGED_LIVE_MEMBER_ALIASES
+        if target != "write_integrity/runners/runner_adapter.py"
+    ]
+    inventory = b"""
+COMMON = {}
+BUILD_ONLY = {}
+PROFILE_CONTRACT = {'research-build': {'research_type': 'build', 'surfaces': (), 'runner': 'project_run_gates.sh'}}
+SIGNED_BASE = {'write_integrity/runners/runner_adapter.py': ('govML', 'templates/build/enforcement/runner_adapter_launcher.py')}
+EMITTER_RUNTIME_SURFACE_CLOSURES = {}
+"""
+    hybrid = json.dumps({
+        "core_members": core_rows,
+        "report_members": [],
+        "row_complete_members": [],
+    }).encode()
+    special = {
+        "managed-enforcement-inventory": inventory,
+        "scaffold-hybrid-install-manifest": hybrid,
+    }
     for repository, members in grouped.items():
         root = tmp_path / repository
         root.mkdir()
@@ -49,7 +79,11 @@ def full_population_repositories(
         for member_id, relative in members:
             path = root / relative
             path.parent.mkdir(parents=True, exist_ok=True)
-            path.write_bytes(f"{member_id}\n".encode())
+            path.write_bytes(special.get(
+                member_id, aliases.get(member_id, f"{member_id}\n".encode())
+            ))
+            if member_id == "runner-adapter":
+                path.chmod(0o755)
         git(root, "add", ".")
         git(root, "commit", "-q", "-m", "complete frozen population")
         roots[repository] = root
@@ -86,8 +120,15 @@ def test_full_frozen_population_opens_at_selected_authoritative_commits(tmp_path
     loaded = builder.open_frozen_population(roots, commits)
     assert set(loaded) == set(builder.EXPECTED_MEMBERS)
     assert len(loaded) == len(builder.EXPECTED_MEMBERS) == 244
+    aliased = {member_id for pair in EXACT_MEMBER_BYTE_ALIASES for member_id in pair}
+    special = {
+        "managed-enforcement-inventory", "scaffold-hybrid-install-manifest"
+    }
     for member_id, raw in loaded.items():
-        assert raw == f"{member_id}\n".encode()
+        if member_id not in aliased | special:
+            assert raw == f"{member_id}\n".encode()
+    for authoring_id, runtime_id in EXACT_MEMBER_BYTE_ALIASES:
+        assert loaded[authoring_id] == loaded[runtime_id]
 
 
 def test_full_population_refuses_wrong_member_mapping(tmp_path):
