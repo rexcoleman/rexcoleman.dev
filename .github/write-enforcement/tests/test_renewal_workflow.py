@@ -116,7 +116,7 @@ def test_renewal_keeps_every_verification_the_owner_path_performs():
     for assertion in (
         "sha256sum -c SHA256SUMS",
         "check-predecessor --packet predecessor",
-        "openssl pkeyutl -verify -pubin",
+        "public.verify(value, bytes.fromhex(digest))",
         'receipt["event"] == "workflow_dispatch"',
         "checkout_manifest.py",
         "normalize_ruleset",

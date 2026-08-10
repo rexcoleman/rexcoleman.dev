@@ -142,6 +142,8 @@ jobs:
           test "$(sha256sum predecessor/write_enforcement_attestation.json | cut -d' ' -f1)" = "$PREDECESSOR_WEA_SHA256"
           python3 - "$PREDECESSOR_RUN_ID" predecessor <<'PY'
           import base64, hashlib, json, pathlib, sys
+          from cryptography.hazmat.primitives import serialization
+          from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
           run_id = int(sys.argv[1]); root = pathlib.Path(sys.argv[2])
           raw = (root / "write_enforcement_attestation.json").read_bytes()
           wea = json.loads(raw); receipt = json.loads((root / "issuance_receipt.json").read_bytes())
@@ -153,12 +155,12 @@ jobs:
           signed = json.dumps(wea, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode()
           digest = hashlib.sha256(signed).hexdigest()
           assert signature["algorithm"] == "ed25519" and signature["signed_digest"] == digest
-          (root / ".signed-digest").write_bytes(bytes.fromhex(digest))
-          (root / ".signature").write_bytes(base64.b64decode(signature["value"], validate=True))
+          public = serialization.load_pem_public_key((root / "trusted_wea_public.pem").read_bytes())
+          assert isinstance(public, Ed25519PublicKey)
+          value = base64.b64decode(signature["value"], validate=True)
+          assert len(value) == 64
+          public.verify(value, bytes.fromhex(digest))
           PY
-          openssl pkeyutl -verify -pubin -inkey predecessor/trusted_wea_public.pem \
-            -rawin -in predecessor/.signed-digest -sigfile predecessor/.signature
-          rm predecessor/.signed-digest predecessor/.signature
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: authenticated-predecessor-${{ github.run_id }}
@@ -181,13 +183,12 @@ jobs:
       - name: Preflight hosted toolchain
         run: |
           set -euo pipefail
-          for tool in git gh python3 openssl base64 sha256sum grep sed; do
+          for tool in git gh python3 base64 sha256sum grep sed; do
             command -v "$tool" >/dev/null
           done
           git --version
           gh --version
           python3 --version
-          openssl version
           python3 - <<'PY'
           from cryptography.hazmat.primitives import serialization
           from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
@@ -204,7 +205,6 @@ jobs:
           PY
           test "$(printf 'dGVzdA==' | base64 --decode)" = test
           sha256sum --version | sed -n '1p'
-          openssl list -public-key-methods | grep -qi ED25519
       - name: Checkout frozen repositories
         env:
           REA_BUNDLE_READ_TOKEN: ${{ secrets.REA_BUNDLE_READ_TOKEN }}
@@ -438,6 +438,8 @@ jobs:
           [[ "$PREDECESSOR_WEA_SHA256" =~ ^[0-9a-f]{64}$ ]]
           python3 - "$PREDECESSOR_RUN_ID" predecessor "$PREDECESSOR_WEA_SHA256" <<'PY'
           import base64, hashlib, json, pathlib, sys
+          from cryptography.hazmat.primitives import serialization
+          from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
           run_id = int(sys.argv[1]); root = pathlib.Path(sys.argv[2]); pinned = sys.argv[3]
           raw = (root / "write_enforcement_attestation.json").read_bytes()
           assert hashlib.sha256(raw).hexdigest() == pinned
@@ -450,12 +452,12 @@ jobs:
           signed = json.dumps(wea, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode()
           digest = hashlib.sha256(signed).hexdigest()
           assert signature["algorithm"] == "ed25519" and signature["signed_digest"] == digest
-          (root / ".signed-digest").write_bytes(bytes.fromhex(digest))
-          (root / ".signature").write_bytes(base64.b64decode(signature["value"], validate=True))
+          public = serialization.load_pem_public_key((root / "trusted_wea_public.pem").read_bytes())
+          assert isinstance(public, Ed25519PublicKey)
+          value = base64.b64decode(signature["value"], validate=True)
+          assert len(value) == 64
+          public.verify(value, bytes.fromhex(digest))
           PY
-          openssl pkeyutl -verify -pubin -inkey predecessor/trusted_wea_public.pem \
-            -rawin -in predecessor/.signed-digest -sigfile predecessor/.signature
-          rm predecessor/.signed-digest predecessor/.signature
           printf 'predecessor_wea_sha256=%s\n' "$PREDECESSOR_WEA_SHA256" >> "$GITHUB_OUTPUT"
           echo "RENEWAL_PREDECESSOR_AUTHENTICATED run_id=$PREDECESSOR_RUN_ID sha256=$PREDECESSOR_WEA_SHA256"
       - name: Refuse a capability change before the signing key is ever reachable
@@ -508,13 +510,12 @@ jobs:
       - name: Preflight hosted toolchain
         run: |
           set -euo pipefail
-          for tool in git gh python3 openssl base64 sha256sum grep sed; do
+          for tool in git gh python3 base64 sha256sum grep sed; do
             command -v "$tool" >/dev/null
           done
           git --version
           gh --version
           python3 --version
-          openssl version
           python3 - <<'PY'
           from cryptography.hazmat.primitives import serialization
           from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
@@ -531,7 +532,6 @@ jobs:
           PY
           test "$(printf 'dGVzdA==' | base64 --decode)" = test
           sha256sum --version | sed -n '1p'
-          openssl list -public-key-methods | grep -qi ED25519
       - name: Bind unfrozen authority-bearing modules to this workflow
         run: |
           set -euo pipefail

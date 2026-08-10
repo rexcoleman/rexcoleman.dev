@@ -9,9 +9,12 @@ import hashlib
 import json
 import re
 import subprocess
-import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
+
+from cryptography.exceptions import InvalidSignature, UnsupportedAlgorithm
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 
 from member_contract import (
     AUTHORITY_GENERATION,
@@ -130,14 +133,19 @@ def verify_signature(public: Path, signed_digest: str, signature_b64: str) -> No
     signature = base64.b64decode(signature_b64, validate=True)
     if len(signature) != 64:
         raise ValueError("signature length")
-    with tempfile.TemporaryDirectory() as raw:
-        root = Path(raw)
-        (root / "digest").write_bytes(bytes.fromhex(signed_digest))
-        (root / "signature").write_bytes(signature)
-        subprocess.run([
-            "openssl", "pkeyutl", "-verify", "-pubin", "-inkey", str(public),
-            "-rawin", "-in", str(root / "digest"), "-sigfile", str(root / "signature"),
-        ], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    try:
+        verifier = serialization.load_pem_public_key(public.read_bytes())
+        if not isinstance(verifier, Ed25519PublicKey):
+            raise ValueError("public key is not Ed25519")
+        verifier.verify(signature, bytes.fromhex(signed_digest))
+    except (
+        InvalidSignature,
+        UnsupportedAlgorithm,
+        OSError,
+        TypeError,
+        ValueError,
+    ) as exc:
+        raise ValueError("signature verification") from exc
 
 
 def verify_envelope(public: Path, envelope: dict, label: str) -> dict:
@@ -156,7 +164,7 @@ def verify_envelope(public: Path, envelope: dict, label: str) -> dict:
         raise HostedWEARefusal("WEA_CORRUPT", f"{label}_signature_shape")
     try:
         verify_signature(public, signed_digest, signature.get("value", ""))
-    except (ValueError, subprocess.CalledProcessError):
+    except ValueError:
         raise HostedWEARefusal("WEA_CORRUPT", f"{label}_signature") from None
     return payload
 
@@ -381,7 +389,7 @@ def verify(args: argparse.Namespace) -> dict:
         raise HostedWEARefusal("WEA_CORRUPT", "signature_shape")
     try:
         verify_signature(public, signed_digest, signature.get("value", ""))
-    except (ValueError, subprocess.CalledProcessError) as exc:
+    except ValueError as exc:
         raise HostedWEARefusal("WEA_CORRUPT", f"signature:{type(exc).__name__}") from None
     predecessor_signature = predecessor.get("signature")
     predecessor_unsigned = {
@@ -406,7 +414,7 @@ def verify(args: argparse.Namespace) -> dict:
             public, predecessor_signed_digest,
             predecessor_signature.get("value", ""),
         )
-    except (ValueError, subprocess.CalledProcessError):
+    except ValueError:
         raise HostedWEARefusal("WEA_PREDECESSOR_INVALID", "signature") from None
     now = datetime.now(timezone.utc)
     issued = datetime.fromisoformat(wea["issued_at"].replace("Z", "+00:00"))

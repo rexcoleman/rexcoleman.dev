@@ -43,15 +43,27 @@ jobs:
       - name: Preflight hosted toolchain
         run: |
           set -euo pipefail
-          for tool in git gh python3 openssl sha256sum grep sed; do
+          for tool in git gh python3 sha256sum sed; do
             command -v "$tool" >/dev/null
           done
           git --version
           gh --version
           python3 --version
-          openssl version
           sha256sum --version | sed -n '1p'
-          openssl list -public-key-methods | grep -qi ED25519
+          python3 - <<'PY'
+          from cryptography.hazmat.primitives import serialization
+          from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+          key = Ed25519PrivateKey.generate()
+          public = key.public_key()
+          signature = key.sign(b"hosted-wea-backend-preflight")
+          public.verify(signature, b"hosted-wea-backend-preflight")
+          encoded = public.public_bytes(
+              serialization.Encoding.PEM,
+              serialization.PublicFormat.SubjectPublicKeyInfo,
+          )
+          assert serialization.load_pem_public_key(encoded)
+          print("PYTHON_ED25519_BACKEND_READY")
+          PY
       - name: Obtain remote-issued WEA and frozen members
         env:
           GH_TOKEN: ${{ secrets.REA_WEA_READ_TOKEN }}
