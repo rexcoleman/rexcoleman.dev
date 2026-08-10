@@ -42,6 +42,48 @@ REQUIRED_CLASSES = [
     "remote_workflow", "remote_ruleset", "claim_policy", "profile_registry",
     "trusted_public_key",
 ]
+
+
+def test_member_contract_imports_on_supported_controller_pythons(tmp_path):
+    command = (
+        "import member_contract as m; "
+        "assert len(m.EXPECTED_MEMBERS) == 243; "
+        "assert m.write_boundary_policy_digest"
+    )
+    for interpreter in (Path("/usr/bin/python3"), Path(sys.executable)):
+        result = subprocess.run(
+            [str(interpreter), "-B", "-c", command],
+            cwd=HERE,
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        assert result.returncode == 0, (
+            interpreter,
+            result.stdout,
+            result.stderr,
+        )
+
+    planted = tmp_path / "member_contract.py"
+    source = (HERE / "member_contract.py").read_text(encoding="utf-8")
+    planted.write_text(
+        source.replace("from __future__ import annotations\n", "", 1),
+        encoding="utf-8",
+    )
+    regression = subprocess.run(
+        [
+            "/usr/bin/python3",
+            "-B",
+            "-c",
+            "import member_contract",
+        ],
+        cwd=tmp_path,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    assert regression.returncode != 0
+    assert "type' object is not subscriptable" in regression.stderr
 EXPECTED_ROW_COMPLETE_PACKAGE = {
     "row-complete-full-receipts": (
         "govML", "templates/build/enforcement/row_complete/full-receipts.json"
