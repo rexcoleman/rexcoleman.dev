@@ -75,15 +75,23 @@ jobs:
           gh run list --repo rexcoleman/rexcoleman.dev \
             --workflow issue-write-enforcement-attestation.yml \
             --status success --event workflow_dispatch --limit 100 \
-            --json databaseId,headBranch > successful-issuer-runs.json
+            --json databaseId,headBranch,headSha > successful-issuer-runs.json
           python3 - successful-issuer-runs.json <<'PY' > generation-ref.txt
           import json
           import re
           import sys
 
           rows = json.load(open(sys.argv[1]))
-          shape = re.compile(r"^rea-wea-generation-[0-9]+-[0-9a-f]{12}$")
-          candidates = [row for row in rows if shape.match(row.get("headBranch") or "")]
+          canonical = re.compile(r"^rea-wea-generation-[0-9]+-[0-9a-f]{12}$")
+          historical = {"rea-wea-generation-4-bdbaa8d0756"}
+          candidates = [
+              row for row in rows
+              if (
+                  canonical.fullmatch(row.get("headBranch") or "")
+                  or (row.get("headBranch") or "") in historical
+              )
+              and re.fullmatch(r"[0-9a-f]{40}", row.get("headSha") or "")
+          ]
           if not candidates:
               print(
                   "REFUSED RENEWAL_NO_GENERATION_TAG_ISSUED: no successful "
@@ -105,11 +113,57 @@ jobs:
               )
               raise SystemExit(3)
           print(tied[0]["headBranch"])
+          print(tied[0]["headSha"])
+          print(tied[0]["databaseId"])
           PY
-          generation_ref="$(cat generation-ref.txt)"
-          [[ "$generation_ref" =~ ^rea-wea-generation-[0-9]+-[0-9a-f]{12}$ ]]
-          echo "RENEWAL_GENERATION_REF_RESOLVED ref=$generation_ref"
+          test "$(wc -l < generation-ref.txt)" = 3
+          generation_ref="$(sed -n '1p' generation-ref.txt)"
+          generation_head_sha="$(sed -n '2p' generation-ref.txt)"
+          generation_run_id="$(sed -n '3p' generation-ref.txt)"
+          if [[ ! "$generation_ref" =~ ^rea-wea-generation-[0-9]+-[0-9a-f]{12}$ ]] && \
+             [ "$generation_ref" != "rea-wea-generation-4-bdbaa8d0756" ]; then
+            echo "REFUSED RENEWAL_GENERATION_TAG_SHAPE_REFUSED: $generation_ref" >&2
+            exit 3
+          fi
+          [[ "$generation_head_sha" =~ ^[0-9a-f]{40}$ ]]
+          [[ "$generation_run_id" =~ ^[0-9]+$ ]]
+
+          # Re-resolve the live remote ref after selecting the authenticated
+          # successful run.  An annotated tag's ref points to a tag object, so
+          # peel exactly one tag object and require its target to be a commit.
+          # A missing, retargeted, nested, or non-commit tag refuses before any
+          # workflow dispatch.
+          if ! gh api \
+            "repos/rexcoleman/rexcoleman.dev/git/ref/tags/$generation_ref" \
+            > generation-tag-ref.json; then
+            echo "REFUSED RENEWAL_GENERATION_TAG_MISSING: ref=$generation_ref" >&2
+            exit 3
+          fi
+          tag_type="$(python3 -c 'import json; print(json.load(open("generation-tag-ref.json"))["object"]["type"])')"
+          tag_object_sha="$(python3 -c 'import json; print(json.load(open("generation-tag-ref.json"))["object"]["sha"])')"
+          case "$tag_type" in
+            commit)
+              tag_target_sha="$tag_object_sha"
+              ;;
+            tag)
+              gh api "repos/rexcoleman/rexcoleman.dev/git/tags/$tag_object_sha" \
+                > generation-annotated-tag.json
+              peeled_type="$(python3 -c 'import json; print(json.load(open("generation-annotated-tag.json"))["object"]["type"])')"
+              test "$peeled_type" = commit
+              tag_target_sha="$(python3 -c 'import json; print(json.load(open("generation-annotated-tag.json"))["object"]["sha"])')"
+              ;;
+            *)
+              echo "REFUSED RENEWAL_GENERATION_TAG_OBJECT_REFUSED: type=$tag_type" >&2
+              exit 3
+              ;;
+          esac
+          if [ "$tag_target_sha" != "$generation_head_sha" ]; then
+            echo "REFUSED RENEWAL_GENERATION_TAG_RETARGETED: ref=$generation_ref run_id=$generation_run_id run_head=$generation_head_sha tag_target=$tag_target_sha" >&2
+            exit 3
+          fi
+          echo "RENEWAL_GENERATION_REF_RESOLVED ref=$generation_ref run_id=$generation_run_id head_sha=$generation_head_sha"
           printf 'RENEWAL_GENERATION_REF=%s\n' "$generation_ref" >> "$GITHUB_ENV"
+          printf 'RENEWAL_GENERATION_HEAD_SHA=%s\n' "$generation_head_sha" >> "$GITHUB_ENV"
       - name: Dispatch an unattended renewal of the issuer workflow
         env:
           GH_TOKEN: ${{ github.token }}
@@ -130,11 +184,19 @@ jobs:
           run_id=0
           for _ in $(seq 1 30); do
             sleep 10
-            candidate="$(gh run list --repo rexcoleman/rexcoleman.dev \
+            gh run list --repo rexcoleman/rexcoleman.dev \
               --workflow issue-write-enforcement-attestation.yml \
               --event workflow_dispatch --limit 1 \
-              --json databaseId --jq '.[0].databaseId // 0')"
-            if [ "$candidate" -gt "$before" ]; then run_id="$candidate"; break; fi
+              --json databaseId,headBranch,headSha > renewal-candidate.json
+            candidate="$(python3 -c 'import json; rows=json.load(open("renewal-candidate.json")); print(rows[0]["databaseId"] if rows else 0)')"
+            candidate_ref="$(python3 -c 'import json; rows=json.load(open("renewal-candidate.json")); print(rows[0]["headBranch"] if rows else "")')"
+            candidate_sha="$(python3 -c 'import json; rows=json.load(open("renewal-candidate.json")); print(rows[0]["headSha"] if rows else "")')"
+            if [ "$candidate" -gt "$before" ] && \
+               [ "$candidate_ref" = "$RENEWAL_GENERATION_REF" ] && \
+               [ "$candidate_sha" = "$RENEWAL_GENERATION_HEAD_SHA" ]; then
+              run_id="$candidate"
+              break
+            fi
           done
           if [ "$run_id" = "0" ]; then
             echo "REFUSED RENEWAL_DISPATCH_CREATED_NO_RUN: gh workflow run reported" >&2
