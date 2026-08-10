@@ -10,10 +10,14 @@ is asserted here.
 
 import hashlib
 import importlib.util
+import json
+import os
 import re
+import subprocess
 import sys
 from pathlib import Path
 
+import pytest
 import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -72,6 +76,60 @@ def executable_lines(path):
         line for line in path.read_text().splitlines()
         if not line.lstrip().startswith("#")
     )
+
+
+def run_scheduler_resolver(tmp_path, rows, target_sha, *, annotated=False, missing=False):
+    """Execute the workflow's literal resolver against a closed fake GH API."""
+    tmp_path.mkdir(parents=True, exist_ok=True)
+    fake = tmp_path / "gh"
+    fake.write_text(
+        """#!/usr/bin/python3
+import json
+import os
+import sys
+
+args = sys.argv[1:]
+if args[:2] == ["run", "list"]:
+    print(os.environ["FAKE_ISSUER_RUNS"])
+    raise SystemExit(0)
+if args and args[0] == "api" and "/git/ref/tags/" in args[1]:
+    if os.environ.get("FAKE_TAG_MISSING") == "1":
+        raise SystemExit(4)
+    if os.environ.get("FAKE_TAG_ANNOTATED") == "1":
+        print(json.dumps({"object": {"type": "tag", "sha": "b" * 40}}))
+    else:
+        print(json.dumps({"object": {"type": "commit", "sha": os.environ["FAKE_TAG_TARGET"]}}))
+    raise SystemExit(0)
+if args and args[0] == "api" and "/git/tags/" in args[1]:
+    print(json.dumps({"object": {"type": "commit", "sha": os.environ["FAKE_TAG_TARGET"]}}))
+    raise SystemExit(0)
+raise SystemExit(9)
+"""
+    )
+    fake.chmod(0o755)
+    env_file = tmp_path / "github-env"
+    env = dict(os.environ)
+    env.update(
+        {
+            "PATH": str(tmp_path) + os.pathsep + env["PATH"],
+            "GH_TOKEN": "fixture-token",
+            "GITHUB_ENV": str(env_file),
+            "FAKE_ISSUER_RUNS": json.dumps(rows),
+            "FAKE_TAG_TARGET": target_sha,
+            "FAKE_TAG_ANNOTATED": "1" if annotated else "0",
+            "FAKE_TAG_MISSING": "1" if missing else "0",
+        }
+    )
+    resolver = scheduler()["jobs"]["dispatch-renewal"]["steps"][0]["run"]
+    result = subprocess.run(
+        ["/bin/bash", "-c", resolver],
+        cwd=tmp_path,
+        env=env,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    return result, env_file.read_text() if env_file.exists() else ""
 
 
 # ---------------------------------------------------------------------------
@@ -217,6 +275,107 @@ def test_scheduler_can_only_ask_for_a_renewal():
     assert "-f mode=renew" in text
     assert "capability_change" not in text
     assert "RENEWAL_DISPATCH_CREATED_NO_RUN" in text
+
+
+@pytest.mark.parametrize(
+    ("generation_ref", "annotated"),
+    [
+        ("rea-wea-generation-4-bdbaa8d0756", True),
+        ("rea-wea-generation-4-0123456789ab", False),
+    ],
+)
+def test_scheduler_accepts_closed_historical_and_canonical_refs(
+    tmp_path, generation_ref, annotated
+):
+    head_sha = "a" * 40
+    result, exported = run_scheduler_resolver(
+        tmp_path,
+        [{"databaseId": 31320298078, "headBranch": generation_ref, "headSha": head_sha}],
+        head_sha,
+        annotated=annotated,
+    )
+    assert result.returncode == 0, result.stderr
+    assert f"RENEWAL_GENERATION_REF={generation_ref}\n" in exported
+    assert f"RENEWAL_GENERATION_HEAD_SHA={head_sha}\n" in exported
+    assert f"ref={generation_ref} run_id=31320298078 head_sha={head_sha}" in result.stdout
+
+
+@pytest.mark.parametrize(
+    "generation_ref",
+    [
+        "rea-wea-generation-4-0123456789",  # 10 hex
+        "rea-wea-generation-4-0123456789abc",  # 13 hex
+        "rea-wea-generation-4-BDBAA8D0756",  # malformed case
+        "rea-wea-generation-5-bdbaa8d0756",  # exception is exact, not a width rule
+    ],
+)
+def test_scheduler_refuses_unregistered_or_malformed_refs(tmp_path, generation_ref):
+    head_sha = "a" * 40
+    result, exported = run_scheduler_resolver(
+        tmp_path,
+        [{"databaseId": 31320298078, "headBranch": generation_ref, "headSha": head_sha}],
+        head_sha,
+    )
+    assert result.returncode == 3
+    assert "RENEWAL_NO_GENERATION_TAG_ISSUED" in result.stderr
+    assert exported == ""
+
+
+def test_scheduler_refuses_missing_or_retargeted_live_tag(tmp_path):
+    generation_ref = "rea-wea-generation-4-bdbaa8d0756"
+    head_sha = "a" * 40
+    rows = [{"databaseId": 31320298078, "headBranch": generation_ref, "headSha": head_sha}]
+
+    missing, exported = run_scheduler_resolver(
+        tmp_path / "missing", rows, head_sha, annotated=True, missing=True
+    )
+    assert missing.returncode == 3
+    assert "RENEWAL_GENERATION_TAG_MISSING" in missing.stderr
+    assert exported == ""
+
+    retargeted, exported = run_scheduler_resolver(
+        tmp_path / "retargeted", rows, "c" * 40, annotated=True
+    )
+    assert retargeted.returncode == 3
+    assert "RENEWAL_GENERATION_TAG_RETARGETED" in retargeted.stderr
+    assert exported == ""
+
+
+def test_scheduler_uses_unique_newest_authenticated_run(tmp_path):
+    older_sha = "1" * 40
+    newest_sha = "2" * 40
+    rows = [
+        {
+            "databaseId": 100,
+            "headBranch": "rea-wea-generation-4-0123456789ab",
+            "headSha": older_sha,
+        },
+        {
+            "databaseId": 200,
+            "headBranch": "rea-wea-generation-4-bdbaa8d0756",
+            "headSha": newest_sha,
+        },
+    ]
+    result, exported = run_scheduler_resolver(
+        tmp_path, rows, newest_sha, annotated=True
+    )
+    assert result.returncode == 0, result.stderr
+    assert "RENEWAL_GENERATION_REF=rea-wea-generation-4-bdbaa8d0756\n" in exported
+    assert f"RENEWAL_GENERATION_HEAD_SHA={newest_sha}\n" in exported
+
+    tied = [dict(row, databaseId=200) for row in rows]
+    refused, _ = run_scheduler_resolver(
+        tmp_path / "tied", tied, newest_sha, annotated=True
+    )
+    assert refused.returncode == 3
+    assert "RENEWAL_GENERATION_TAG_AMBIGUOUS" in refused.stderr
+
+
+def test_scheduler_dispatch_candidate_is_bound_to_selected_ref_and_sha():
+    body = raw_job(SCHEDULER, "dispatch-renewal")
+    assert "--json databaseId,headBranch,headSha" in body
+    assert '[ "$candidate_ref" = "$RENEWAL_GENERATION_REF" ]' in body
+    assert '[ "$candidate_sha" = "$RENEWAL_GENERATION_HEAD_SHA" ]' in body
 
 
 def test_issuer_exposes_exactly_two_modes():
