@@ -28,6 +28,7 @@ from member_contract import (
     grouped_members,
     normalize_ruleset,
     staged_nonproduction_members,
+    validate_managed_live_member_aliases,
 )
 
 MEMBERS = grouped_members()
@@ -74,6 +75,22 @@ def committed_member_bytes(root: Path, commit: str, path: str) -> bytes:
     return committed.stdout
 
 
+def committed_member_mode(root: Path, commit: str, path: str) -> str:
+    result = subprocess.run(
+        ["git", "-C", str(root), "ls-tree", commit, "--", path],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    rows = [row for row in result.stdout.splitlines() if row]
+    if result.returncode or len(rows) != 1:
+        raise ValueError(f"member mode unavailable: {root.name}:{path}")
+    match = re.fullmatch(r"(100644|100755) blob [0-9a-f]{40}\t(.+)", rows[0])
+    if match is None or match.group(2) != path:
+        raise ValueError(f"member mode invalid: {root.name}:{path}")
+    return match.group(1)
+
+
 def open_frozen_population(
     roots: dict[str, Path],
     commits: dict[str, str],
@@ -93,6 +110,7 @@ def open_frozen_population(
             f"commits_extra={sorted(commit_names - repositories)}"
         )
     loaded = {}
+    source_modes = {}
     for member_id, (repository, path) in sorted(contract.items()):
         commit = commits[repository]
         if not isinstance(commit, str) or re.fullmatch(r"[0-9a-f]{40}", commit) is None:
@@ -103,6 +121,9 @@ def open_frozen_population(
             loaded[member_id] = committed_member_bytes(
                 roots[repository], commit, path
             )
+            source_modes[member_id] = committed_member_mode(
+                roots[repository], commit, path
+            )
         except ValueError as exc:
             raise ValueError(
                 "frozen population member unavailable:"
@@ -111,6 +132,7 @@ def open_frozen_population(
     if set(loaded) != set(contract):
         raise ValueError("frozen population member set incomplete")
     validate_exact_member_byte_aliases(loaded, contract)
+    validate_managed_live_member_aliases(loaded, source_modes, contract)
     return loaded
 
 
@@ -119,7 +141,10 @@ def validate_exact_member_byte_aliases(
 ) -> None:
     expected = contract or EXPECTED_MEMBERS
     for authoring_id, runtime_id in EXACT_MEMBER_BYTE_ALIASES:
-        if authoring_id not in expected or runtime_id not in expected:
+        present = {authoring_id, runtime_id} & set(expected)
+        if not present:
+            continue
+        if present != {authoring_id, runtime_id}:
             raise ValueError("exact member byte alias absent from contract")
         if expected[authoring_id] == expected[runtime_id]:
             raise ValueError("exact member byte aliases collapse onto one subject")

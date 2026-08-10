@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import ast
 import hashlib
 import json
 import re
@@ -31,7 +32,7 @@ REQUIRED_MEMBER_CLASSES = (
 )
 
 WRITE_BOUNDARY_POLICY_MEMBERS = (
-    ("write-boundary-engine", "write_integrity/write_boundary/boundary_engine.py"),
+    ("write-boundary-engine", "templates/build/enforcement/signed_authoring/write_boundary_engine.py"),
     ("write-boundary-trusted-admission", "write_integrity/write_boundary/trusted_admission.py"),
     ("write-boundary-row-registry", "write_integrity/write_boundary/row_registry.json"),
     ("write-boundary-seam-registry", "write_integrity/write_boundary/seam_registry.json"),
@@ -376,7 +377,7 @@ EXPECTED_MEMBERS = {
     "atomic-consumer": ("research_enforcement_activation", "write_integrity/consumer/atomic_consumer.py"),
     "hybrid-capability-provider": ("research_enforcement_activation", "write_integrity/hybrid/capability_provider.py"),
     "route-runtime-mount": ("research_enforcement_activation", "write_integrity/mounts/runtime_mount.py"),
-    "write-boundary-engine": ("research_enforcement_activation", "write_integrity/write_boundary/boundary_engine.py"),
+    "write-boundary-engine": ("govML", "templates/build/enforcement/signed_authoring/write_boundary_engine.py"),
     "write-boundary-trusted-admission": ("research_enforcement_activation", "write_integrity/write_boundary/trusted_admission.py"),
     "write-boundary-row-registry": ("research_enforcement_activation", "write_integrity/write_boundary/row_registry.json"),
     "write-boundary-seam-registry": ("research_enforcement_activation", "write_integrity/write_boundary/seam_registry.json"),
@@ -591,7 +592,237 @@ EXPECTED_MEMBERS.update({
 # issuer before any authority is created.
 EXACT_MEMBER_BYTE_ALIASES = (
     ("production-request-provisioner", "scaffold-hybrid-core-provisioning-prp"),
+    ("atomic-consumer", "scaffold-hybrid-core-atomic-consumer"),
+    ("route-runtime-mount", "scaffold-hybrid-core-runtime-mount"),
+    ("production-package-init", "scaffold-hybrid-core-provisioning-package-init"),
+    ("production-boundary", "scaffold-hybrid-core-provisioning-boundary"),
+    ("production-fixed-adapter", "scaffold-hybrid-core-provisioning-fixed-adapter"),
+    ("runner-adapter", "runner-adapter-launcher"),
+    ("write-boundary-engine", "scaffold-hybrid-core-write-boundary-engine"),
+    ("write-boundary-row-registry", "scaffold-hybrid-core-row-registry"),
+    ("write-boundary-ledger-schema", "scaffold-hybrid-core-ledger-schema"),
+    ("write-boundary-parent-admission-schema", "scaffold-hybrid-core-parent-admission-schema"),
+    ("write-boundary-receipt-schema", "scaffold-hybrid-core-receipt-schema"),
+    ("write-boundary-request-schema", "scaffold-hybrid-core-request-schema"),
+    ("write-boundary-seam-registry", "scaffold-hybrid-core-seam-registry"),
+    ("write-boundary-transform-registry", "scaffold-hybrid-core-transform-registry"),
+    ("write-boundary-trusted-admission", "scaffold-hybrid-core-trusted-admission"),
 )
+
+# Closed authoring/runtime aliases for every signed member whose immutable
+# authoring identity names a govML-installer-owned live target.  Source modes
+# are Git tree modes.  The installed mode is the actual successor-installed
+# live mode.  Runner adapter is the sole explicit source-to-live mode
+# transform; every other row remains 100644 -> 0644.
+MANAGED_LIVE_MEMBER_ALIASES = (
+    ("atomic-consumer", "scaffold-hybrid-core-atomic-consumer", "write_integrity/consumer/atomic_consumer.py", "100644", "100644", 0o644),
+    ("route-runtime-mount", "scaffold-hybrid-core-runtime-mount", "write_integrity/mounts/runtime_mount.py", "100644", "100644", 0o644),
+    ("production-package-init", "scaffold-hybrid-core-provisioning-package-init", "write_integrity/provisioning/__init__.py", "100644", "100644", 0o644),
+    ("production-boundary", "scaffold-hybrid-core-provisioning-boundary", "write_integrity/provisioning/boundary.py", "100644", "100644", 0o644),
+    ("production-fixed-adapter", "scaffold-hybrid-core-provisioning-fixed-adapter", "write_integrity/provisioning/fixed_adapter.py", "100644", "100644", 0o644),
+    ("runner-adapter", "runner-adapter-launcher", "write_integrity/runners/runner_adapter.py", "100755", "100644", 0o755),
+    ("write-boundary-engine", "scaffold-hybrid-core-write-boundary-engine", "write_integrity/write_boundary/boundary_engine.py", "100644", "100644", 0o644),
+    ("write-boundary-row-registry", "scaffold-hybrid-core-row-registry", "write_integrity/write_boundary/row_registry.json", "100644", "100644", 0o644),
+    ("write-boundary-ledger-schema", "scaffold-hybrid-core-ledger-schema", "write_integrity/write_boundary/schemas/ledger.schema.json", "100644", "100644", 0o644),
+    ("write-boundary-parent-admission-schema", "scaffold-hybrid-core-parent-admission-schema", "write_integrity/write_boundary/schemas/parent_admission.schema.json", "100644", "100644", 0o644),
+    ("write-boundary-receipt-schema", "scaffold-hybrid-core-receipt-schema", "write_integrity/write_boundary/schemas/receipt.schema.json", "100644", "100644", 0o644),
+    ("write-boundary-request-schema", "scaffold-hybrid-core-request-schema", "write_integrity/write_boundary/schemas/request.schema.json", "100644", "100644", 0o644),
+    ("write-boundary-seam-registry", "scaffold-hybrid-core-seam-registry", "write_integrity/write_boundary/seam_registry.json", "100644", "100644", 0o644),
+    ("write-boundary-transform-registry", "scaffold-hybrid-core-transform-registry", "write_integrity/write_boundary/transform_registry.json", "100644", "100644", 0o644),
+    ("write-boundary-trusted-admission", "scaffold-hybrid-core-trusted-admission", "write_integrity/write_boundary/trusted_admission.py", "100644", "100644", 0o644),
+)
+
+
+def _literal_assignment(source: bytes, name: str):
+    """Read one closed literal assignment without executing candidate code."""
+    try:
+        tree = ast.parse(source.decode("utf-8"))
+    except (UnicodeError, SyntaxError) as exc:
+        raise ValueError(f"managed inventory source invalid:{name}") from exc
+    matches = []
+    for node in tree.body:
+        if not isinstance(node, ast.Assign) or len(node.targets) != 1:
+            continue
+        target = node.targets[0]
+        if isinstance(target, ast.Name) and target.id == name:
+            value = node.value
+            class FrozenSetNormalizer(ast.NodeTransformer):
+                def visit_Call(self, call):  # noqa: N802 - ast visitor API
+                    if (
+                        isinstance(call.func, ast.Name)
+                        and call.func.id == "frozenset"
+                        and len(call.args) == 1
+                        and not call.keywords
+                    ):
+                        return self.visit(call.args[0])
+                    return self.generic_visit(call)
+
+            value = FrozenSetNormalizer().visit(value)
+            try:
+                matches.append(ast.literal_eval(value))
+            except (ValueError, TypeError) as exc:
+                raise ValueError(
+                    f"managed inventory assignment nonliteral:{name}"
+                ) from exc
+    if len(matches) != 1:
+        raise ValueError(f"managed inventory assignment population:{name}")
+    return matches[0]
+
+
+def derive_research_build_managed_contract(
+    inventory_source: bytes, hybrid_manifest_source: bytes
+) -> dict[str, tuple[str, str]]:
+    """Derive the exact installer-owned research-build live population."""
+    common = _literal_assignment(inventory_source, "COMMON")
+    build_only = _literal_assignment(inventory_source, "BUILD_ONLY")
+    profile_contract = _literal_assignment(inventory_source, "PROFILE_CONTRACT")
+    signed_base = _literal_assignment(inventory_source, "SIGNED_BASE")
+    emitter_closures = _literal_assignment(
+        inventory_source, "EMITTER_RUNTIME_SURFACE_CLOSURES"
+    )
+    if not all(isinstance(value, dict) for value in (
+        common, build_only, profile_contract, signed_base, emitter_closures
+    )):
+        raise ValueError("managed inventory literal shape")
+    profile = profile_contract.get("research-build")
+    if not isinstance(profile, dict) or set(profile) != {
+        "research_type", "surfaces", "runner"
+    }:
+        raise ValueError("managed research-build profile shape")
+    contract = dict(signed_base)
+    for destination, source in {**common, **build_only}.items():
+        contract[destination] = (
+            "govML", f"templates/build/enforcement/{source}"
+        )
+    contract["scripts/run_gates.sh"] = (
+        "govML", f"templates/build/enforcement/{profile['runner']}"
+    )
+    try:
+        hybrid = json.loads(hybrid_manifest_source)
+    except (UnicodeError, json.JSONDecodeError) as exc:
+        raise ValueError("hybrid install manifest invalid") from exc
+    if not isinstance(hybrid, dict):
+        raise ValueError("hybrid install manifest shape")
+    contract["write_integrity/govml/hybrid_install_manifest.json"] = (
+        "govML", "templates/build/enforcement/hybrid_install_manifest.json"
+    )
+    contract["scripts/hybrid_route_consumer.py"] = (
+        "govML", "templates/build/enforcement/hybrid_route_consumer.py"
+    )
+    for row in hybrid.get("core_members", []):
+        if not isinstance(row, dict) or set(row) != {"path", "sha256"}:
+            raise ValueError("hybrid core member shape")
+        relative = row["path"]
+        contract[relative] = (
+            "govML", f"templates/build/enforcement/hybrid_core/{relative}"
+        )
+    for section in ("report_members", "row_complete_members"):
+        for row in hybrid.get(section, []):
+            if not isinstance(row, dict):
+                raise ValueError(f"hybrid {section} member shape")
+            destination = row.get("installed_path")
+            source = row.get("source_path")
+            if not isinstance(destination, str) or not isinstance(source, str):
+                raise ValueError(f"hybrid {section} member path")
+            contract[destination] = ("govML", source)
+    emitter_names = set()
+    for surface in profile["surfaces"]:
+        closure = emitter_closures.get(surface)
+        if not isinstance(closure, (set, frozenset)):
+            raise ValueError("managed emitter closure shape")
+        emitter_names.update(closure)
+    for name in sorted(emitter_names):
+        contract[f"scripts/publishing_emitters/{name}"] = (
+            "govML", f"templates/build/enforcement/{name}"
+        )
+    if len(contract) != len(set(contract)):
+        raise ValueError("duplicate managed destination")
+    return contract
+
+
+def validate_managed_live_member_aliases(
+    loaded: dict[str, bytes],
+    source_modes: dict[str, str],
+    contract: dict[str, tuple[str, str]],
+) -> None:
+    """Close every authoring alias over the authenticated managed contract."""
+    required_ids = {
+        member_id
+        for row in MANAGED_LIVE_MEMBER_ALIASES
+        for member_id in row[:2]
+    } | {
+        "managed-enforcement-inventory", "scaffold-hybrid-install-manifest"
+    }
+    present = required_ids & set(contract)
+    if not present:
+        return
+    if present != required_ids:
+        raise ValueError("managed live alias contract incomplete")
+    inventory = loaded.get("managed-enforcement-inventory")
+    hybrid = loaded.get("scaffold-hybrid-install-manifest")
+    if not isinstance(inventory, bytes) or not isinstance(hybrid, bytes):
+        raise ValueError("managed alias source unavailable")
+    managed = derive_research_build_managed_contract(inventory, hybrid)
+    source_to_ids = {}
+    for member_id, subject in contract.items():
+        source_to_ids.setdefault(subject, []).append(member_id)
+    table = MANAGED_LIVE_MEMBER_ALIASES
+    if len(table) != 15:
+        raise ValueError("managed live alias count")
+    if len({row[0] for row in table}) != len(table):
+        raise ValueError("managed live authoring id duplicate")
+    if len({row[1] for row in table}) != len(table):
+        raise ValueError("managed live runtime id duplicate")
+    if len({row[2] for row in table}) != len(table):
+        raise ValueError("managed live target duplicate")
+    table_overlap = set()
+    for (
+        authoring_id, runtime_id, target, authoring_mode, runtime_mode,
+        installed_mode,
+    ) in table:
+        if authoring_id not in contract or runtime_id not in contract:
+            raise ValueError("managed live alias absent from contract")
+        if contract[authoring_id] == contract[runtime_id]:
+            raise ValueError("managed live aliases collapse onto one subject")
+        if managed.get(target) != contract[runtime_id]:
+            raise ValueError(f"managed live runtime target mismatch:{target}")
+        if loaded.get(authoring_id) != loaded.get(runtime_id):
+            raise ValueError(
+                f"managed live alias divergence:{authoring_id}:{runtime_id}"
+            )
+        if source_modes.get(authoring_id) != authoring_mode:
+            raise ValueError(f"managed live authoring mode:{authoring_id}")
+        if source_modes.get(runtime_id) != runtime_mode:
+            raise ValueError(f"managed live runtime mode:{runtime_id}")
+        expected_installed_mode = 0o755 if target == (
+            "write_integrity/runners/runner_adapter.py"
+        ) else 0o644
+        if installed_mode != expected_installed_mode:
+            raise ValueError(f"managed live installed mode:{target}")
+        authoring_subject = contract[authoring_id]
+        if authoring_subject == ("research_enforcement_activation", target):
+            table_overlap.add((authoring_id, runtime_id, target))
+        elif not (
+            authoring_subject[0] == "govML"
+            and authoring_subject[1].startswith(
+                "templates/build/enforcement/signed_authoring/"
+            )
+        ):
+            raise ValueError(f"managed live authoring subject:{authoring_id}")
+    actual_overlap = set()
+    for authoring_id, (repository, path) in contract.items():
+        if repository != "research_enforcement_activation" or path not in managed:
+            continue
+        runtime_ids = source_to_ids.get(managed[path], [])
+        if len(runtime_ids) != 1:
+            raise ValueError(f"managed live runtime identity population:{path}")
+        actual_overlap.add((authoring_id, runtime_ids[0], path))
+    if actual_overlap != table_overlap:
+        raise ValueError(
+            "managed live alias population mismatch:"
+            f"missing={sorted(actual_overlap - table_overlap)}:"
+            f"extra={sorted(table_overlap - actual_overlap)}"
+        )
 
 # The authoring generators below are not the installed comparison identity.
 # Each publishing scaffold receives the vendored subject below at the listed

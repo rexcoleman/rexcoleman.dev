@@ -38,6 +38,7 @@ from member_contract import (
     derive_write_boundary_route_surface_bindings,
     normalize_ruleset,
     staged_nonproduction_members,
+    validate_managed_live_member_aliases,
     write_boundary_policy_digest,
 )
 
@@ -76,6 +77,23 @@ def committed_bytes(root: Path, commit: str, path: str) -> bytes:
     if result.returncode:
         raise ValueError(f"member unavailable: {root.name}:{path}")
     return result.stdout
+
+
+def committed_mode(root: Path, commit: str, path: str) -> str:
+    result = subprocess.run(
+        ["git", "-C", str(root), "ls-tree", commit, "--", path],
+        check=False,
+        capture_output=True,
+        text=True,
+        timeout=30,
+    )
+    rows = [row for row in result.stdout.splitlines() if row]
+    if result.returncode or len(rows) != 1:
+        raise ValueError(f"member mode unavailable: {root.name}:{path}")
+    match = re.fullmatch(r"(100644|100755) blob [0-9a-f]{40}\t(.+)", rows[0])
+    if match is None or match.group(2) != path:
+        raise ValueError(f"member mode invalid: {root.name}:{path}")
+    return match.group(1)
 
 
 def load_manifest(path: Path, *, staged_nonproduction: bool = False) -> dict:
@@ -125,6 +143,7 @@ def verify_members(
         raise IssuerRefusal("BUNDLE_MEMBER_SET_MISMATCH",
                             f"missing={missing};extra={extra};changed={changed}")
     loaded: dict[str, bytes] = {}
+    source_modes: dict[str, str] = {}
     for row in manifest["members"]:
         if not isinstance(row, dict) or set(row) != {
             "member_id", "repository", "commit", "path", "sha256", "byte_length"
@@ -134,12 +153,25 @@ def verify_members(
         if len(raw) != row["byte_length"] or digest(raw) != row["sha256"]:
             raise ValueError(f"member mismatch: {row['member_id']}")
         loaded[row["member_id"]] = raw
+        source_modes[row["member_id"]] = committed_mode(
+            workspace / REPOSITORIES[row["repository"]],
+            row["commit"],
+            row["path"],
+        )
     for authoring_id, runtime_id in EXACT_MEMBER_BYTE_ALIASES:
         if loaded.get(authoring_id) != loaded.get(runtime_id):
             raise IssuerRefusal(
                 "BUNDLE_MEMBER_BYTES_MISMATCH",
                 f"exact_alias:{authoring_id}:{runtime_id}",
             )
+    try:
+        validate_managed_live_member_aliases(
+            loaded, source_modes, expected_members
+        )
+    except ValueError as exc:
+        raise IssuerRefusal(
+            "BUNDLE_MEMBER_BYTES_MISMATCH", f"managed_live_alias:{exc}"
+        ) from None
     return loaded
 
 

@@ -41,8 +41,8 @@ REQUIRED_CLASSES = set(member_contract.REQUIRED_MEMBER_CLASSES)
 def test_generation4_contract_registers_all_runtime_consumers_exactly_once():
     production = member_contract.EXPECTED_MEMBERS
     staged = member_contract.staged_nonproduction_members()
-    assert len(production) == 232
-    assert len(staged) == 233
+    assert len(production) == 244
+    assert len(staged) == 245
     assert set(staged) - set(production) == {
         "staged-nonproduction-trusted-public-key"
     }
@@ -60,12 +60,22 @@ def test_generation4_contract_registers_all_runtime_consumers_exactly_once():
 
 def test_successor_contract_registers_exact_nine_write_boundary_policy_members():
     assert len(member_contract.WRITE_BOUNDARY_POLICY_MEMBERS) == 9
-    assert {
+    observed = {
         member_id: member_contract.EXPECTED_MEMBERS[member_id]
         for member_id, _path in member_contract.WRITE_BOUNDARY_POLICY_MEMBERS
+    }
+    assert observed["write-boundary-engine"] == (
+        "govML",
+        "templates/build/enforcement/signed_authoring/write_boundary_engine.py",
+    )
+    assert {
+        member_id: subject
+        for member_id, subject in observed.items()
+        if member_id != "write-boundary-engine"
     } == {
         member_id: ("research_enforcement_activation", path)
         for member_id, path in member_contract.WRITE_BOUNDARY_POLICY_MEMBERS
+        if member_id != "write-boundary-engine"
     }
 
 
