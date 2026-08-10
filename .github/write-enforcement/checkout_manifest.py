@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """Checkout the one commit per repository bound by the WEA manifest."""
 
+from __future__ import annotations
+
 import json
 import os
 import subprocess

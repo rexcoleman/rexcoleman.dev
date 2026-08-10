@@ -63,6 +63,12 @@ def digest(raw: bytes) -> str:
     return hashlib.sha256(raw).hexdigest()
 
 
+def remove_suffix(value: str, suffix: str) -> str:
+    if suffix and value.endswith(suffix):
+        return value[:-len(suffix)]
+    return value
+
+
 def git(root: Path, *args: str) -> str:
     try:
         return subprocess.run(
@@ -267,7 +273,7 @@ def main() -> int:
         actual_origin = git(target, "remote", "get-url", "origin")
         allowed_origins = {
             manifest["repository_origin"],
-            manifest["repository_origin"].removesuffix(".git"),
+            remove_suffix(manifest["repository_origin"], ".git"),
         }
         if actual_origin not in allowed_origins:
             refuse("TARGET_CHECKOUT_INVALID", "origin")

@@ -18,6 +18,7 @@ from member_contract import (
     AUTHORITY_GENERATION,
     EXPECTED_EMITTER_RUNTIME_INSTALLATIONS,
     EXPECTED_MEMBERS,
+    EXACT_MEMBER_BYTE_ALIASES,
     GENERATION_MANIFEST_NAME,
     REQUIRED_MEMBER_CLASSES,
     RULESET_ID,
@@ -109,7 +110,23 @@ def open_frozen_population(
             ) from None
     if set(loaded) != set(contract):
         raise ValueError("frozen population member set incomplete")
+    validate_exact_member_byte_aliases(loaded, contract)
     return loaded
+
+
+def validate_exact_member_byte_aliases(
+    loaded: dict[str, bytes], contract=None
+) -> None:
+    expected = contract or EXPECTED_MEMBERS
+    for authoring_id, runtime_id in EXACT_MEMBER_BYTE_ALIASES:
+        if authoring_id not in expected or runtime_id not in expected:
+            raise ValueError("exact member byte alias absent from contract")
+        if expected[authoring_id] == expected[runtime_id]:
+            raise ValueError("exact member byte aliases collapse onto one subject")
+        if loaded.get(authoring_id) != loaded.get(runtime_id):
+            raise ValueError(
+                f"exact member byte alias divergence:{authoring_id}:{runtime_id}"
+            )
 
 
 def authoritative_repository_slug(repository: str, expected_members=None) -> str:
