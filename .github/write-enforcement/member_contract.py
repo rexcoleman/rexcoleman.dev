@@ -1,5 +1,7 @@
 """Immutable generation-4 member and ruleset contract required before signing."""
 
+from __future__ import annotations
+
 import hashlib
 import json
 import re
