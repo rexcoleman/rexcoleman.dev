@@ -74,10 +74,10 @@ def test_signed_workflow_pem_loads_bind_explicit_default_backend():
 
 def test_member_population_is_complete_and_two_method_count():
     contract = load("member_contract")
-    assert len(contract.EXPECTED_MEMBERS) == 243
-    assert len(set(contract.EXPECTED_MEMBERS.values())) == 243
+    assert len(contract.EXPECTED_MEMBERS) == 244
+    assert len(set(contract.EXPECTED_MEMBERS.values())) == 244
     independent = load("independent_review")
-    independent.GENERATION_MEMBER_COUNT = 243
+    independent.GENERATION_MEMBER_COUNT = 244
     independently_parsed = independent.expected_members()
     assert independently_parsed == contract.EXPECTED_MEMBERS
 
@@ -350,7 +350,7 @@ def test_exact_five_candidate_roots_close_installed_runtime_population(
     honest = tmp_path / "honest" / contract.GENERATION_MANIFEST_NAME
     honest.parent.mkdir()
     assert _run_five_root_builder(monkeypatch, roots, ruleset, honest) == 0
-    assert len(json.loads(honest.read_bytes())["members"]) == 243
+    assert len(json.loads(honest.read_bytes())["members"]) == 244
 
     destination, subjects = next(iter(
         contract.EXPECTED_EMITTER_RUNTIME_INSTALLATIONS.items()

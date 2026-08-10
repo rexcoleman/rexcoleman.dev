@@ -47,7 +47,7 @@ REQUIRED_CLASSES = [
 def test_member_contract_imports_on_supported_controller_pythons(tmp_path):
     command = (
         "import member_contract as m; "
-        "assert len(m.EXPECTED_MEMBERS) == 243; "
+        "assert len(m.EXPECTED_MEMBERS) == 244; "
         "assert m.write_boundary_policy_digest"
     )
     for interpreter in (Path("/usr/bin/python3"), Path(sys.executable)):
@@ -238,8 +238,8 @@ def test_research_scaffolder_registration_closure_is_signed():
 
 
 def test_contract_covers_complete_s88_face_a_and_face_b_bundle_sets():
-    assert len(EXPECTED_MEMBERS) == 243
-    assert len(set(EXPECTED_MEMBERS.values())) == 243
+    assert len(EXPECTED_MEMBERS) == 244
+    assert len(set(EXPECTED_MEMBERS.values())) == 244
     assert len(FACE_A_MEMBER_IDS) == 11
     assert len(FACE_B_MEMBER_IDS) == 9
     assert FACE_A_MEMBER_IDS < set(EXPECTED_MEMBERS)
@@ -412,7 +412,7 @@ def test_r4_authority_tools_remain_signed_runtime_members():
         "rexcoleman.dev",
         ".github/write-enforcement/GENERATION_4_OWNER_RUNBOOK.md",
     )
-    assert len(EXPECTED_MEMBERS) == 243
+    assert len(EXPECTED_MEMBERS) == 244
 
 
 def test_external_authoring_paths_are_exact_commit_inputs_not_installed_ids():
@@ -499,8 +499,9 @@ def test_signed_scaffold_installer_closes_all_transitive_comparison_inputs():
     core = {
         "scaffold-hybrid-core-atomic-consumer": "write_integrity/consumer/atomic_consumer.py",
         "scaffold-hybrid-core-package-init": "write_integrity/hybrid/__init__.py",
-        "scaffold-hybrid-core-durable-spend": "write_integrity/hybrid/durable_spend.py",
-        "scaffold-hybrid-core-protocol": "write_integrity/hybrid/protocol.py",
+            "scaffold-hybrid-core-durable-spend": "write_integrity/hybrid/durable_spend.py",
+            "scaffold-hybrid-core-jsonschema-compat": "write_integrity/jsonschema_compat.py",
+            "scaffold-hybrid-core-protocol": "write_integrity/hybrid/protocol.py",
         "scaffold-hybrid-core-authorized-mapping-schema": "write_integrity/hybrid/schemas/authorized_mapping.schema.json",
         "scaffold-hybrid-core-external-evidence-receipt-schema": "write_integrity/hybrid/schemas/external_evidence_receipt.schema.json",
         "scaffold-hybrid-core-claim-lineage-schema": "write_integrity/hybrid/schemas/hybrid_claim_lineage.schema.json",
@@ -566,7 +567,7 @@ def test_signed_scaffold_installer_closes_all_transitive_comparison_inputs():
         member_id: EXPECTED_MEMBERS[member_id]
         for member_id in SIGNED_SCAFFOLD_MEMBER_IDS
     } == expected
-    assert len(SIGNED_SCAFFOLD_MEMBER_IDS) == 40
+    assert len(SIGNED_SCAFFOLD_MEMBER_IDS) == 41
     assert len(EXPECTED_MEMBERS) - len(SIGNED_SCAFFOLD_MEMBER_IDS) == 203
     assert "scaffold_installer" in REQUIRED_CLASSES
 

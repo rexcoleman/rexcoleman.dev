@@ -57,6 +57,7 @@ SIGNED_SCAFFOLD_MEMBER_IDS = frozenset({
     "scaffold-hybrid-core-atomic-consumer",
     "scaffold-hybrid-core-package-init",
     "scaffold-hybrid-core-durable-spend",
+    "scaffold-hybrid-core-jsonschema-compat",
     "scaffold-hybrid-core-protocol",
     "scaffold-hybrid-core-authorized-mapping-schema",
     "scaffold-hybrid-core-external-evidence-receipt-schema",
@@ -423,6 +424,7 @@ EXPECTED_MEMBERS = {
     "scaffold-hybrid-core-atomic-consumer": ("govML", "templates/build/enforcement/hybrid_core/write_integrity/consumer/atomic_consumer.py"),
     "scaffold-hybrid-core-package-init": ("govML", "templates/build/enforcement/hybrid_core/write_integrity/hybrid/__init__.py"),
     "scaffold-hybrid-core-durable-spend": ("govML", "templates/build/enforcement/hybrid_core/write_integrity/hybrid/durable_spend.py"),
+    "scaffold-hybrid-core-jsonschema-compat": ("govML", "templates/build/enforcement/hybrid_core/write_integrity/jsonschema_compat.py"),
     "scaffold-hybrid-core-protocol": ("govML", "templates/build/enforcement/hybrid_core/write_integrity/hybrid/protocol.py"),
     "scaffold-hybrid-core-authorized-mapping-schema": ("govML", "templates/build/enforcement/hybrid_core/write_integrity/hybrid/schemas/authorized_mapping.schema.json"),
     "scaffold-hybrid-core-external-evidence-receipt-schema": ("govML", "templates/build/enforcement/hybrid_core/write_integrity/hybrid/schemas/external_evidence_receipt.schema.json"),
@@ -803,8 +805,8 @@ STAGED_NONPRODUCTION_ADDITIONAL_MEMBERS = {
 def staged_nonproduction_members():
     """Return the frozen staging contract without production trust roots.
 
-    Staging is an explicit 244-member superset with one dedicated committed
-    fixture key.  The production 243-member contract and both production
+    Staging is an explicit 245-member superset with one dedicated committed
+    fixture key.  The production 244-member contract and both production
     trust roots remain present and unchanged.
     """
     members = dict(EXPECTED_MEMBERS)
