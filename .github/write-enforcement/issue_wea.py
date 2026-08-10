@@ -11,9 +11,15 @@ import json
 import os
 import re
 import subprocess
-import tempfile
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+
+from cryptography.exceptions import InvalidSignature, UnsupportedAlgorithm
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric.ed25519 import (
+    Ed25519PrivateKey,
+    Ed25519PublicKey,
+)
 
 import member_contract
 from member_contract import (
@@ -129,10 +135,33 @@ def verify_members(
     return loaded
 
 
-def openssl(args: list[str]) -> None:
-    result = subprocess.run(["openssl", *args], check=False, capture_output=True, timeout=15)
-    if result.returncode:
-        raise ValueError("openssl operation")
+def load_private_key(path: Path) -> Ed25519PrivateKey:
+    try:
+        key = serialization.load_pem_private_key(
+            path.read_bytes(), password=None
+        )
+    except (OSError, TypeError, ValueError, UnsupportedAlgorithm) as exc:
+        raise ValueError("private key") from exc
+    if not isinstance(key, Ed25519PrivateKey):
+        raise ValueError("private key algorithm")
+    return key
+
+
+def load_public_key(path: Path) -> Ed25519PublicKey:
+    try:
+        key = serialization.load_pem_public_key(path.read_bytes())
+    except (OSError, TypeError, ValueError, UnsupportedAlgorithm) as exc:
+        raise ValueError("public key") from exc
+    if not isinstance(key, Ed25519PublicKey):
+        raise ValueError("public key algorithm")
+    return key
+
+
+def public_bytes(private_key: Ed25519PrivateKey) -> bytes:
+    return private_key.public_key().public_bytes(
+        encoding=serialization.Encoding.PEM,
+        format=serialization.PublicFormat.SubjectPublicKeyInfo,
+    )
 
 
 def verify_trust_roots(
@@ -161,17 +190,15 @@ def issuance_times(now: datetime) -> tuple[datetime, datetime]:
 
 def sign_payload(payload: dict, private_key: Path) -> dict:
     signed_digest = digest(canonical(payload))
-    digest_path, signature_path = private_key.parent / "unsigned.digest", private_key.parent / "wea.sig"
-    digest_path.write_bytes(bytes.fromhex(signed_digest))
-    openssl(["pkeyutl", "-sign", "-rawin", "-inkey", str(private_key),
-             "-in", str(digest_path), "-out", str(signature_path)])
+    signature = load_private_key(private_key).sign(
+        bytes.fromhex(signed_digest)
+    )
     signed = dict(payload)
     signed["signature"] = {
         "algorithm": "ed25519",
         "signed_digest": signed_digest,
-        "value": base64.b64encode(signature_path.read_bytes()).decode(),
+        "value": base64.b64encode(signature).decode(),
     }
-    digest_path.unlink(); signature_path.unlink()
     return signed
 
 
@@ -217,18 +244,10 @@ def authenticated_predecessor(
         signature_raw = base64.b64decode(signature.get("value", ""), validate=True)
         if len(signature_raw) != 64:
             raise ValueError("signature_length")
-        with tempfile.TemporaryDirectory() as temporary:
-            root = Path(temporary)
-            (root / "digest").write_bytes(bytes.fromhex(signed_digest))
-            (root / "signature").write_bytes(signature_raw)
-            result = subprocess.run(
-                ["openssl", "pkeyutl", "-verify", "-pubin", "-inkey", str(public_key),
-                 "-rawin", "-in", str(root / "digest"), "-sigfile", str(root / "signature")],
-                check=False, capture_output=True, timeout=15,
-            )
-            if result.returncode:
-                raise ValueError("signature")
-    except (ValueError, binascii.Error):
+        load_public_key(public_key).verify(
+            signature_raw, bytes.fromhex(signed_digest)
+        )
+    except (InvalidSignature, ValueError, binascii.Error):
         raise IssuerRefusal("PREDECESSOR_WEA_INVALID", "signature") from None
     return raw, payload
 
@@ -281,8 +300,9 @@ def main() -> int:
     scope = [row["profile_id"] for row in registry["profiles"] if row.get("publishes") is True]
     args.output.mkdir(parents=True, exist_ok=True)
     public_path = args.output / "trusted_wea_public.pem"
-    openssl(["pkey", "-in", str(args.private_key), "-pubout", "-out", str(public_path)])
-    public = public_path.read_bytes()
+    private_key = load_private_key(args.private_key)
+    public = public_bytes(private_key)
+    public_path.write_bytes(public)
     verify_trust_roots(
         loaded, public, staged_nonproduction=args.staged_nonproduction
     )
