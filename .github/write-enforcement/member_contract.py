@@ -32,7 +32,7 @@ REQUIRED_MEMBER_CLASSES = (
 )
 
 WRITE_BOUNDARY_POLICY_MEMBERS = (
-    ("write-boundary-engine", "templates/build/enforcement/signed_authoring/write_boundary_engine.py"),
+    ("write-boundary-engine", "write_integrity/write_boundary/boundary_engine.py"),
     ("write-boundary-trusted-admission", "write_integrity/write_boundary/trusted_admission.py"),
     ("write-boundary-row-registry", "write_integrity/write_boundary/row_registry.json"),
     ("write-boundary-seam-registry", "write_integrity/write_boundary/seam_registry.json"),

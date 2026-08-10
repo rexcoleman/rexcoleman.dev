@@ -77,6 +77,9 @@ def test_successor_contract_registers_exact_nine_write_boundary_policy_members()
         for member_id, path in member_contract.WRITE_BOUNDARY_POLICY_MEMBERS
         if member_id != "write-boundary-engine"
     }
+    assert dict(member_contract.WRITE_BOUNDARY_POLICY_MEMBERS)[
+        "write-boundary-engine"
+    ] == "write_integrity/write_boundary/boundary_engine.py"
 
 
 def test_issuer_refuses_manifest_missing_signed_runtime_consumers(tmp_path):
