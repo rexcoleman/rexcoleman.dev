@@ -58,6 +58,66 @@ def test_generation4_contract_registers_all_runtime_consumers_exactly_once():
     assert len(set(staged.values())) == len(staged)
 
 
+def test_ci_materializer_is_successor_only_and_generation4_stays_exact():
+    production = member_contract.EXPECTED_MEMBERS
+    successor = member_contract.successor_members()
+    added = member_contract.SUCCESSOR_ADDITIONAL_MEMBERS
+    assert len(production) == 244
+    assert len(successor) == 245
+    assert set(successor) - set(production) == {"ci-enforcement-materializer"}
+    assert added == {
+        "ci-enforcement-materializer": (
+            "govML",
+            "templates/build/enforcement/ci_materialize_enforcement.py",
+        )
+    }
+    assert successor["ci-enforcement-materializer"] == added[
+        "ci-enforcement-materializer"
+    ]
+    assert len(set(successor.values())) == len(successor)
+
+
+def test_manifest_marker_selects_one_closed_contract_without_subset_fallback():
+    old = {
+        "members": [
+            {"member_id": member_id}
+            for member_id in member_contract.EXPECTED_MEMBERS
+        ]
+    }
+    successor = {
+        "members": [
+            {"member_id": member_id}
+            for member_id in member_contract.successor_members()
+        ]
+    }
+    planted_partial = {
+        "members": [{"member_id": "ci-enforcement-materializer"}]
+    }
+    assert member_contract.production_members_for_manifest(old) == (
+        member_contract.EXPECTED_MEMBERS
+    )
+    assert member_contract.production_members_for_manifest(successor) == (
+        member_contract.successor_members()
+    )
+    # Presence of the marker selects the complete successor set.  It does not
+    # make a one-row or subset manifest acceptable to the issuer.
+    assert member_contract.production_members_for_manifest(planted_partial) == (
+        member_contract.successor_members()
+    )
+    with pytest.raises(issue_wea.IssuerRefusal, match="BUNDLE_MEMBER_SET_MISMATCH"):
+        issue_wea.verify_members(
+            {
+                "required_member_classes": sorted(REQUIRED_CLASSES),
+                "members": [{
+                    "member_id": "ci-enforcement-materializer",
+                    "repository": "govML",
+                    "path": "templates/build/enforcement/ci_materialize_enforcement.py",
+                }],
+            },
+            Path("/tmp/unused-successor-contract-negative"),
+        )
+
+
 def test_successor_contract_registers_exact_nine_write_boundary_policy_members():
     assert len(member_contract.WRITE_BOUNDARY_POLICY_MEMBERS) == 9
     observed = {

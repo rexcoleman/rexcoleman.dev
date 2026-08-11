@@ -38,6 +38,7 @@ from member_contract import (
     derive_write_boundary_route_surface_bindings,
     normalize_ruleset,
     staged_nonproduction_members,
+    production_members_for_manifest,
     validate_managed_live_member_aliases,
     write_boundary_policy_digest,
 )
@@ -129,7 +130,7 @@ def verify_members(
     expected_members = (
         staged_nonproduction_members()
         if staged_nonproduction
-        else EXPECTED_MEMBERS
+        else production_members_for_manifest(manifest, EXPECTED_MEMBERS)
     )
     observed = {}
     for row in manifest["members"]:

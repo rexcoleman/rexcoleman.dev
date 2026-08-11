@@ -28,6 +28,7 @@ from member_contract import (
     STAGED_NONPRODUCTION_WEA_SCHEMA,
     derive_write_boundary_route_surface_bindings,
     staged_nonproduction_members,
+    production_members_for_manifest,
     write_boundary_policy_digest,
 )
 
@@ -266,6 +267,8 @@ def verify(args: argparse.Namespace) -> dict:
         args.issuance / "predecessor_write_enforcement_attestation.json"
     )
     manifest_raw, manifest = load(args.issuance / "enforcement_bundle_manifest.json")
+    if not staged_nonproduction:
+        expected_members = production_members_for_manifest(manifest, EXPECTED_MEMBERS)
     _, receipt = load(args.issuance / "issuance_receipt.json")
     public = args.issuance / "trusted_wea_public.pem"
     public_raw = public.read_bytes()

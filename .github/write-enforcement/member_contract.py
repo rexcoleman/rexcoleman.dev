@@ -586,6 +586,44 @@ EXPECTED_MEMBERS.update({
     "newsletter-bootstrap-validator": ("rexcoleman.dev", ".github/write-enforcement/validate_newsletter_upgrade.py"),
 })
 
+# Successor-only closed extension.  Generation 4's 244-member contract remains
+# byte-for-byte auditable through EXPECTED_MEMBERS and independent_review.py.
+# A capability-change freeze opts into this one-member extension explicitly;
+# the issuer/verifier select between the two exact sets from the manifest's
+# presence of this named transition member, never by subset acceptance.
+SUCCESSOR_ADDITIONAL_MEMBERS = {
+    "ci-enforcement-materializer": (
+        "govML",
+        "templates/build/enforcement/ci_materialize_enforcement.py",
+    ),
+}
+
+
+def successor_members():
+    value = dict(EXPECTED_MEMBERS)
+    overlap = set(value) & set(SUCCESSOR_ADDITIONAL_MEMBERS)
+    if overlap:
+        raise ValueError("successor member id collision: %s" % sorted(overlap))
+    value.update(SUCCESSOR_ADDITIONAL_MEMBERS)
+    if len(set(value.values())) != len(value):
+        raise ValueError("successor member subject collision")
+    return value
+
+
+def production_members_for_manifest(manifest, baseline=None):
+    """Select one of two closed production sets; never accept a subset."""
+    rows = manifest.get("members") if isinstance(manifest, dict) else None
+    observed = {
+        row.get("member_id") for row in rows or []
+        if isinstance(row, dict) and isinstance(row.get("member_id"), str)
+    }
+    base = EXPECTED_MEMBERS if baseline is None else baseline
+    successor = dict(base)
+    successor.update(SUCCESSOR_ADDITIONAL_MEMBERS)
+    marker = set(SUCCESSOR_ADDITIONAL_MEMBERS)
+    expected = successor if observed & marker else base
+    return expected
+
 # Separate immutable authoring subjects may target the same installed runtime
 # locus only when the frozen bytes are identical.  Keep distinct member IDs and
 # distinct (repository, path) subjects; equality is checked by both builder and
