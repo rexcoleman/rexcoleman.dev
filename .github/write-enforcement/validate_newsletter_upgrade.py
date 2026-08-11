@@ -13,7 +13,7 @@ from pathlib import Path
 
 
 CHECKOUT_PIN = "11bd71901bbe5b1630ceea73d27597364c9af683"
-TARGET_AUTHORITY_PIN = "179b7d30a5904fbc2cde9e3bee0bfe3771114feb"
+TARGET_AUTHORITY_PIN = "71c7835246171126ab657fba28fad649172c345d"
 LEGACY_WORKFLOW = Path(".github/workflows/newsletter-integrity.yml")
 UPGRADE_WORKFLOW = Path(".github/workflows/newsletter-upgrade-integrity.yml")
 CAPABILITY = Path(".github/integrity/newsletter/bootstrap-capability.json")
