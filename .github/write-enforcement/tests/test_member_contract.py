@@ -902,9 +902,20 @@ def boundary_registry_fixture():
 def test_write_boundary_policy_is_exact_nine_verified_member_closure():
     assert len(WRITE_BOUNDARY_POLICY_MEMBERS) == 9
     assert dict(WRITE_BOUNDARY_POLICY_MEMBERS) == {
-        member_id: EXPECTED_MEMBERS[member_id][1]
-        for member_id, _relative in WRITE_BOUNDARY_POLICY_MEMBERS
+        "write-boundary-engine": "write_integrity/write_boundary/boundary_engine.py",
+        "write-boundary-trusted-admission": "write_integrity/write_boundary/trusted_admission.py",
+        "write-boundary-row-registry": "write_integrity/write_boundary/row_registry.json",
+        "write-boundary-seam-registry": "write_integrity/write_boundary/seam_registry.json",
+        "write-boundary-transform-registry": "write_integrity/write_boundary/transform_registry.json",
+        "write-boundary-request-schema": "write_integrity/write_boundary/schemas/request.schema.json",
+        "write-boundary-parent-admission-schema": "write_integrity/write_boundary/schemas/parent_admission.schema.json",
+        "write-boundary-receipt-schema": "write_integrity/write_boundary/schemas/receipt.schema.json",
+        "write-boundary-ledger-schema": "write_integrity/write_boundary/schemas/ledger.schema.json",
     }
+    assert EXPECTED_MEMBERS["write-boundary-engine"] == (
+        "govML",
+        "templates/build/enforcement/signed_authoring/write_boundary_engine.py",
+    )
     loaded = {
         member_id: f"verified-commit-bytes:{member_id}".encode()
         for member_id, _relative in WRITE_BOUNDARY_POLICY_MEMBERS

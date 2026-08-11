@@ -169,13 +169,20 @@ def next_contract_manifest():
     return json.loads(reseal(value))
 
 
-def test_current_preconvergence_freeze_is_refused_after_subject_migration():
+def test_current_freeze_remains_exact_after_logical_policy_key_repair():
+    """Logical policy keys do not mutate immutable member subjects.
+
+    The boundary-engine subject migration was already present in this freeze.
+    This repair changes only the logical digest key in member_contract, while
+    EXPECTED_MEMBERS continues to bind the same govML repository/path subject.
+    The successor freeze must repin the changed member-contract bytes, but the
+    current manifest's member identity contract remains exact.
+    """
     value=json.loads(FROZEN_MANIFEST.read_bytes())
     assert len(value["members"]) == MODULE.GENERATION_MEMBER_COUNT
-    with pytest.raises(
-        MODULE.Refusal, match="generation-4 manifest member contract differs"
-    ):
-        MODULE.manifest_contract(FROZEN_MANIFEST.read_bytes())
+    report = MODULE.manifest_contract(FROZEN_MANIFEST.read_bytes())
+    assert report["member_count"] == MODULE.GENERATION_MEMBER_COUNT
+    assert report["member_contract"] == "EXACT"
 
 
 def test_next_contract_manifest_is_an_exact_positive_control():
