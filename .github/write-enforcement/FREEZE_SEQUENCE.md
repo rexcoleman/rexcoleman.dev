@@ -54,3 +54,23 @@ the issuance epoch. Caller-supplied predecessor digests and static generation
 fixtures are refused. Any later workflow/member byte change requires explicit
 new authority and a new manifest frozen before measurement. A mutable branch
 name is never issuance provenance.
+
+## Generation 5 successor
+
+Generation 4 is now historical and immutable. Generation 5 adds the signed CI
+enforcement materializer and uses the same two-commit construction without
+rewriting the generation-4 manifest:
+
+1. Commit and push all generation-5 implementation bytes, including the issuer
+   workflow pin to `frozen_bundle_manifest.generation-5.json`.
+2. From exact clean, remotely reachable heads of all five repositories, invoke
+   `build_frozen_manifest.py` with `--successor-ci-materialization` and output
+   `.github/write-enforcement/frozen_bundle_manifest.generation-5.json`. The
+   builder must emit generation 5 with exactly 245 members.
+3. Commit only that new manifest in a later rexcoleman.dev commit. Derive the
+   annotated tag as `rea-wea-generation-5-` plus the first 12 lowercase hex
+   characters of the manifest-only commit.
+4. After independent exact-head review, create the protected annotated tag and
+   dispatch the issuer at that tag with the authenticated installed generation-4
+   predecessor run and WEA digest. Required environment approval remains the
+   owner gate; all other construction and verification is executor-owned.

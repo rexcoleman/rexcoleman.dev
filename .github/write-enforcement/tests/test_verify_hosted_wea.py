@@ -221,9 +221,13 @@ def _git(root, *args):
 
 def artifact_relative_packet(tmp_path, monkeypatch, changed_member_id):
     workspace = tmp_path / "workspace"
+    active_members = MODULE.production_members_for_manifest(
+        {"authority_generation": MODULE.AUTHORITY_GENERATION},
+        MODULE.EXPECTED_MEMBERS,
+    )
     member_bytes = {
         member_id: f"signed:{member_id}\n".encode()
-        for member_id in MODULE.EXPECTED_MEMBERS
+        for member_id in active_members
     }
     public = b"fixture-public-key-bytes\n"
     member_bytes["trusted-public-key"] = public
@@ -238,14 +242,14 @@ def artifact_relative_packet(tmp_path, monkeypatch, changed_member_id):
     member_bytes["claim-policy"] = b'{"policy":"signed-object"}\n'
 
     roots = {}
-    for repository in sorted({pair[0] for pair in MODULE.EXPECTED_MEMBERS.values()}):
+    for repository in sorted({pair[0] for pair in active_members.values()}):
         root = workspace / repository
         root.mkdir(parents=True)
         _git(root, "init", "-q")
         _git(root, "config", "user.name", "hosted verifier fixture")
         _git(root, "config", "user.email", "fixture@example.invalid")
         roots[repository] = root
-    for member_id, (repository, relative) in MODULE.EXPECTED_MEMBERS.items():
+    for member_id, (repository, relative) in active_members.items():
         target = roots[repository] / relative
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_bytes(member_bytes[member_id])
@@ -256,7 +260,7 @@ def artifact_relative_packet(tmp_path, monkeypatch, changed_member_id):
         commits[repository] = _git(root, "rev-parse", "HEAD")
 
     members = []
-    for member_id, (repository, relative) in MODULE.EXPECTED_MEMBERS.items():
+    for member_id, (repository, relative) in active_members.items():
         raw = member_bytes[member_id]
         members.append({
             "member_id": member_id,
@@ -331,7 +335,7 @@ def artifact_relative_packet(tmp_path, monkeypatch, changed_member_id):
         "issuer": MODULE.ISSUER,
         "workflow_repository": "rexcoleman/rexcoleman.dev",
         "event": "workflow_dispatch",
-        "workflow_ref": "refs/tags/rea-wea-generation-4-fixture",
+        "workflow_ref": "refs/tags/rea-wea-generation-5-fixture",
         "workflow_sha": "2" * 40,
         "workflow_run_id": 123,
         "wea_sha256": MODULE.digest(payloads["write_enforcement_attestation.json"]),

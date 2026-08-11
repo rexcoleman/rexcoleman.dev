@@ -33,7 +33,7 @@ on:
         required: true
         type: string
       expected_manifest_sha256:
-        description: Required exact generation-4 manifest SHA-256 for rexcoleman.dev
+        description: Required exact generation-5 manifest SHA-256 for rexcoleman.dev
         required: false
         default: ""
         type: string

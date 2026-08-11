@@ -79,18 +79,21 @@ def test_ci_materializer_is_successor_only_and_generation4_stays_exact():
 
 def test_manifest_marker_selects_one_closed_contract_without_subset_fallback():
     old = {
+        "authority_generation": member_contract.HISTORICAL_AUTHORITY_GENERATION,
         "members": [
             {"member_id": member_id}
             for member_id in member_contract.EXPECTED_MEMBERS
         ]
     }
     successor = {
+        "authority_generation": member_contract.AUTHORITY_GENERATION,
         "members": [
             {"member_id": member_id}
             for member_id in member_contract.successor_members()
         ]
     }
     planted_partial = {
+        "authority_generation": member_contract.AUTHORITY_GENERATION,
         "members": [{"member_id": "ci-enforcement-materializer"}]
     }
     assert member_contract.production_members_for_manifest(old) == (
@@ -107,6 +110,7 @@ def test_manifest_marker_selects_one_closed_contract_without_subset_fallback():
     with pytest.raises(issue_wea.IssuerRefusal, match="BUNDLE_MEMBER_SET_MISMATCH"):
         issue_wea.verify_members(
             {
+                "authority_generation": member_contract.AUTHORITY_GENERATION,
                 "required_member_classes": sorted(REQUIRED_CLASSES),
                 "members": [{
                     "member_id": "ci-enforcement-materializer",

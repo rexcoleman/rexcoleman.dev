@@ -156,7 +156,7 @@ def reseal(value):
 def next_contract_manifest():
     value = {
         "schema_version": "rea.write.enforcement-bundle-manifest.v1",
-        "authority_generation": 4,
+        "authority_generation": MODULE.AUTHORITY_GENERATION,
         "ruleset_id": 19564990,
         "normalized_ruleset_sha256": "c" * 64,
         "required_member_classes": sorted(MODULE.REQUIRED_MEMBER_CLASSES),
@@ -179,10 +179,11 @@ def test_current_freeze_remains_exact_after_logical_policy_key_repair():
     current manifest's member identity contract remains exact.
     """
     value=json.loads(FROZEN_MANIFEST.read_bytes())
-    assert len(value["members"]) == MODULE.GENERATION_MEMBER_COUNT
-    report = MODULE.manifest_contract(FROZEN_MANIFEST.read_bytes())
-    assert report["member_count"] == MODULE.GENERATION_MEMBER_COUNT
-    assert report["member_contract"] == "EXACT"
+    assert value["authority_generation"] == 4
+    assert len(value["members"]) == 244
+    assert "ci-enforcement-materializer" not in {
+        row["member_id"] for row in value["members"]
+    }
 
 
 def test_next_contract_manifest_is_an_exact_positive_control():
@@ -209,7 +210,7 @@ def test_preconvergence_frozen_manifest_is_refused_after_contract_expansion():
         {key: item for key, item in parsed.items() if key != "manifest_digest"}
     )
     with pytest.raises(
-        MODULE.Refusal, match=r"^generation-4 manifest contract differs$"
+        MODULE.Refusal, match=r"^generation-5 manifest contract differs$"
     ):
         MODULE.manifest_contract(raw)
 
@@ -222,7 +223,7 @@ def test_manifest_carrying_a_member_beyond_the_contract_is_refused():
     value["members"].append(extra)
     assert len(value["members"]) == MODULE.GENERATION_MEMBER_COUNT + 1
     with pytest.raises(
-        MODULE.Refusal, match=r"^generation-4 manifest contract differs$"
+        MODULE.Refusal, match=r"^generation-5 manifest contract differs$"
     ):
         MODULE.manifest_contract(reseal(value))
 
@@ -230,7 +231,7 @@ def test_manifest_carrying_a_member_beyond_the_contract_is_refused():
 def test_manifest_contract_refuses_self_consistent_wrong_member():
     value = {
         "schema_version": "rea.write.enforcement-bundle-manifest.v1",
-        "authority_generation": 4,
+        "authority_generation": MODULE.AUTHORITY_GENERATION,
         "ruleset_id": 19564990,
         "normalized_ruleset_sha256": "c" * 64,
         "required_member_classes": sorted(MODULE.REQUIRED_MEMBER_CLASSES),
