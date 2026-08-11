@@ -133,7 +133,7 @@ def test_content_extra_workflow_and_bound_control_tampering_refuse(
 @pytest.mark.parametrize("needle,replacement,reason", [
     ("pull_request_target:", "pull_request:", "LEGACY_EVENT_NOT_PULL_REQUEST_TARGET_ONLY"),
     ("contents: read", "contents: write", "WORKFLOW_WRITE_PERMISSION"),
-    ("@179b7d30a5904fbc2cde9e3bee0bfe3771114feb", "@main", "LEGACY_REUSABLE_WORKFLOW_PIN"),
+    (f"@{validator.TARGET_AUTHORITY_PIN}", "@main", "LEGACY_REUSABLE_WORKFLOW_PIN"),
     ("    uses: rexcoleman/", "    steps:\n      - run: true\n    uses: rexcoleman/", "LEGACY_CANDIDATE_EXECUTION"),
 ])
 def test_legacy_control_semantic_attacks_refuse(
@@ -147,6 +147,15 @@ def test_legacy_control_semantic_attacks_refuse(
 def test_superseded_generation_three_authority_pin_refuses():
     with pytest.raises(validator.Refusal, match="LEGACY_REUSABLE_WORKFLOW_PIN"):
         validator.validate_legacy_workflow(LEGACY_WORKFLOW)
+
+
+def test_superseded_ten_artifact_control_pin_refuses():
+    obsolete = TARGET_WORKFLOW.replace(
+        validator.TARGET_AUTHORITY_PIN,
+        "179b7d30a5904fbc2cde9e3bee0bfe3771114feb",
+    )
+    with pytest.raises(validator.Refusal, match="LEGACY_REUSABLE_WORKFLOW_PIN"):
+        validator.validate_legacy_workflow(obsolete)
 
 
 def test_wrong_repository_and_checkout_identity_refuse(tmp_path):
