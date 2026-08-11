@@ -28,6 +28,7 @@ from member_contract import (
     grouped_members,
     normalize_ruleset,
     staged_nonproduction_members,
+    successor_members,
     validate_managed_live_member_aliases,
 )
 
@@ -333,14 +334,17 @@ def main() -> int:
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--ruleset-json", type=Path, required=True)
     parser.add_argument("--staged-nonproduction", action="store_true")
+    parser.add_argument("--successor-ci-materialization", action="store_true")
     for name in MEMBERS:
         slug = name.lower().replace("_", "-").replace(".", "-")
         parser.add_argument("--root-" + slug, dest="root_" + name.lower().replace(".", "_"),
                             type=Path, required=True)
     args = parser.parse_args()
+    if args.staged_nonproduction and args.successor_ci_materialization:
+        raise ValueError("staged and successor contracts are mutually exclusive")
     expected_members = (
-        staged_nonproduction_members()
-        if args.staged_nonproduction
+        staged_nonproduction_members() if args.staged_nonproduction
+        else successor_members() if args.successor_ci_materialization
         else EXPECTED_MEMBERS
     )
     synthetic_contract = (
