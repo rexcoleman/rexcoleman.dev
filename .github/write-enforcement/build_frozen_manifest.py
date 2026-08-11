@@ -20,6 +20,8 @@ from member_contract import (
     EXPECTED_MEMBERS,
     EXACT_MEMBER_BYTE_ALIASES,
     GENERATION_MANIFEST_NAME,
+    HISTORICAL_AUTHORITY_GENERATION,
+    HISTORICAL_GENERATION_MANIFEST_NAME,
     REQUIRED_MEMBER_CLASSES,
     RULESET_ID,
     PACKAGED_BUILD_PROFILE_GATE_SOURCES,
@@ -361,10 +363,19 @@ def main() -> int:
         }
     else:
         members = group_member_contract(expected_members)
-    if args.output.name != GENERATION_MANIFEST_NAME:
+    active_contract = args.successor_ci_materialization
+    authority_generation = (
+        AUTHORITY_GENERATION if active_contract
+        else HISTORICAL_AUTHORITY_GENERATION
+    )
+    manifest_name = (
+        GENERATION_MANIFEST_NAME if active_contract
+        else HISTORICAL_GENERATION_MANIFEST_NAME
+    )
+    if args.output.name != manifest_name:
         raise ValueError(
-            f"generation-{AUTHORITY_GENERATION} manifest path must end in "
-            f"{GENERATION_MANIFEST_NAME}"
+            f"generation-{authority_generation} manifest path must end in "
+            f"{manifest_name}"
         )
     roots = {name: getattr(args, "root_" + name.lower().replace(".", "_")) for name in members}
     commits = {repository: head(root) for repository, root in roots.items()}
@@ -401,7 +412,7 @@ def main() -> int:
             if args.staged_nonproduction
             else "rea.write.enforcement-bundle-manifest.v1"
         ),
-        "authority_generation": AUTHORITY_GENERATION,
+        "authority_generation": authority_generation,
         "ruleset_id": RULESET_ID,
         "normalized_ruleset_sha256": sha(canonical(normalized)),
         "required_member_classes": list(REQUIRED_MEMBER_CLASSES),

@@ -21,10 +21,11 @@ ALLOWED_REPOSITORIES = {
     "rexcoleman/rexcoleman.dev": "main",
 }
 SITE_RULESET_ID = 19768000
-SITE_MANIFEST = ".github/write-enforcement/frozen_bundle_manifest.generation-4.json"
+SITE_MANIFEST = ".github/write-enforcement/frozen_bundle_manifest.generation-5.json"
 POLICY = "rea-option-a-posthoc-exact-head-v2"
 MEMBER_CONTRACT = Path(__file__).with_name("member_contract.py")
-GENERATION_MEMBER_COUNT = 244
+AUTHORITY_GENERATION = 5
+GENERATION_MEMBER_COUNT = 245
 REQUIRED_MEMBER_CLASSES = {
     "boundary_gate",
     "resolver",
@@ -118,6 +119,7 @@ def content_bytes(token: str, repo: str, path: str, ref: str) -> bytes:
 def expected_members() -> dict[str, tuple[str, str]]:
     source = MEMBER_CONTRACT.read_text()
     value: dict[str, tuple[str, str]] = {}
+    successor: dict[str, tuple[str, str]] = {}
     for node in ast.parse(source).body:
         if (
             isinstance(node, ast.Assign)
@@ -126,6 +128,13 @@ def expected_members() -> dict[str, tuple[str, str]]:
             and node.targets[0].id == "EXPECTED_MEMBERS"
         ):
             value = ast.literal_eval(node.value)
+        elif (
+            isinstance(node, ast.Assign)
+            and len(node.targets) == 1
+            and isinstance(node.targets[0], ast.Name)
+            and node.targets[0].id == "SUCCESSOR_ADDITIONAL_MEMBERS"
+        ):
+            successor = ast.literal_eval(node.value)
         elif (
             isinstance(node, ast.Expr)
             and isinstance(node.value, ast.Call)
@@ -137,6 +146,9 @@ def expected_members() -> dict[str, tuple[str, str]]:
             and not node.value.keywords
         ):
             value.update(ast.literal_eval(node.value.args[0]))
+    if set(value) & set(successor):
+        raise Refusal("trusted successor member contract collides with generation 4")
+    value.update(successor)
     if not isinstance(value, dict) or len(value) != GENERATION_MEMBER_COUNT:
         raise Refusal(
             "trusted member contract does not contain exactly "
@@ -149,7 +161,7 @@ def manifest_contract(raw: bytes) -> dict:
     try:
         value = json.loads(raw)
     except (UnicodeDecodeError, json.JSONDecodeError) as exc:
-        raise Refusal(f"generation-4 manifest is not JSON: {type(exc).__name__}") from exc
+        raise Refusal(f"generation-5 manifest is not JSON: {type(exc).__name__}") from exc
     expected_keys = {
         "schema_version",
         "authority_generation",
@@ -160,14 +172,14 @@ def manifest_contract(raw: bytes) -> dict:
         "manifest_digest",
     }
     if not isinstance(value, dict) or set(value) != expected_keys:
-        raise Refusal("generation-4 manifest has a non-canonical top-level shape")
+        raise Refusal("generation-5 manifest has a non-canonical top-level shape")
     unsigned = dict(value)
     claimed = unsigned.pop("manifest_digest")
     if claimed != canonical_digest(unsigned):
-        raise Refusal("generation-4 manifest self-digest differs")
+        raise Refusal("generation-5 manifest self-digest differs")
     if (
         value["schema_version"] != "rea.write.enforcement-bundle-manifest.v1"
-        or value["authority_generation"] != 4
+        or value["authority_generation"] != AUTHORITY_GENERATION
         or value["ruleset_id"] != 19564990
         or set(value["required_member_classes"]) != REQUIRED_MEMBER_CLASSES
         or re.fullmatch(r"[0-9a-f]{64}", value["normalized_ruleset_sha256"])
@@ -175,7 +187,7 @@ def manifest_contract(raw: bytes) -> dict:
         or not isinstance(value["members"], list)
         or len(value["members"]) != GENERATION_MEMBER_COUNT
     ):
-        raise Refusal("generation-4 manifest contract differs")
+        raise Refusal("generation-5 manifest contract differs")
     observed: dict[str, tuple[str, str]] = {}
     for row in value["members"]:
         if (
@@ -196,10 +208,10 @@ def manifest_contract(raw: bytes) -> dict:
             or not isinstance(row["byte_length"], int)
             or row["byte_length"] <= 0
         ):
-            raise Refusal("generation-4 manifest member shape differs")
+            raise Refusal("generation-5 manifest member shape differs")
         observed[row["member_id"]] = (row["repository"], row["path"])
     if observed != expected_members():
-        raise Refusal("generation-4 manifest member contract differs")
+        raise Refusal("generation-5 manifest member contract differs")
     return {
         "manifest_sha256": hashlib.sha256(raw).hexdigest(),
         "manifest_digest": claimed,
@@ -322,11 +334,11 @@ def assert_policy(state: dict, args: argparse.Namespace) -> None:
         raise Refusal("pull-request file-set digest does not match predeclared digest")
     if args.repository == "rexcoleman/rexcoleman.dev":
         if [item["filename"] for item in state["files"]] != [SITE_MANIFEST]:
-            raise Refusal("site review is not a one-file generation-4 manifest change")
+            raise Refusal("site review is not a one-file generation-5 manifest change")
         if not args.expected_manifest_sha256:
             raise Refusal("site review requires expected manifest SHA-256")
         if state["manifest"]["manifest_sha256"] != args.expected_manifest_sha256:
-            raise Refusal("generation-4 manifest bytes do not match predeclared digest")
+            raise Refusal("generation-5 manifest bytes do not match predeclared digest")
         if state["ruleset"]["status"] != "ACTIVE":
             raise Refusal("site review ruleset is not active")
         if state["ruleset"].get("bypass_actors") not in ([], None):

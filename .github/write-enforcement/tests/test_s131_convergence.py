@@ -76,10 +76,11 @@ def test_member_population_is_complete_and_two_method_count():
     contract = load("member_contract")
     assert len(contract.EXPECTED_MEMBERS) == 244
     assert len(set(contract.EXPECTED_MEMBERS.values())) == 244
+    successor = contract.successor_members()
+    assert len(successor) == 245
     independent = load("independent_review")
-    independent.GENERATION_MEMBER_COUNT = 244
     independently_parsed = independent.expected_members()
-    assert independently_parsed == contract.EXPECTED_MEMBERS
+    assert independently_parsed == successor
 
 
 def test_authenticated_immediate_predecessor_derives_epoch(tmp_path, monkeypatch):

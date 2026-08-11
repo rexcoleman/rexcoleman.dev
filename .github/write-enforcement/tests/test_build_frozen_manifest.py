@@ -196,12 +196,14 @@ def test_manifest_build_is_byte_identical_across_three_runs(
             "build_frozen_manifest.py",
             "--output", str(output),
             "--ruleset-json", str(ruleset_path),
+            "--successor-ci-materialization",
             "--root-fixture", str(root),
         ])
         assert builder.main() == 0
         outputs.append(output.read_bytes())
     assert outputs[0] == outputs[1] == outputs[2]
     manifest = json.loads(outputs[0])
+    assert manifest["authority_generation"] == 5
     assert manifest["members"] == [{
         "member_id": "fixture-member",
         "repository": "fixture",
@@ -230,6 +232,47 @@ def test_builder_refuses_wrong_generation_3_output_name(
     ])
     with pytest.raises(ValueError, match="manifest path must end"):
         builder.main()
+
+
+def test_successor_flag_refuses_historical_manifest_name(monkeypatch, tmp_path):
+    root, _commit = fixture_repository(tmp_path)
+    ruleset_path = tmp_path / "ruleset.json"
+    ruleset(ruleset_path)
+    monkeypatch.setattr(
+        builder,
+        "MEMBERS",
+        {"fixture": (("fixture-member", "member.txt"),)},
+    )
+    monkeypatch.setattr(sys, "argv", [
+        "build_frozen_manifest.py",
+        "--output", str(tmp_path / builder.HISTORICAL_GENERATION_MANIFEST_NAME),
+        "--ruleset-json", str(ruleset_path),
+        "--successor-ci-materialization",
+        "--root-fixture", str(root),
+    ])
+    with pytest.raises(ValueError, match="generation-5 manifest path"):
+        builder.main()
+
+
+def test_historical_build_remains_generation4_and_cannot_overwrite_successor(
+        monkeypatch, tmp_path):
+    root, _commit = fixture_repository(tmp_path)
+    ruleset_path = tmp_path / "ruleset.json"
+    ruleset(ruleset_path)
+    monkeypatch.setattr(
+        builder,
+        "MEMBERS",
+        {"fixture": (("fixture-member", "member.txt"),)},
+    )
+    output = tmp_path / builder.HISTORICAL_GENERATION_MANIFEST_NAME
+    monkeypatch.setattr(sys, "argv", [
+        "build_frozen_manifest.py",
+        "--output", str(output),
+        "--ruleset-json", str(ruleset_path),
+        "--root-fixture", str(root),
+    ])
+    assert builder.main() == 0
+    assert json.loads(output.read_bytes())["authority_generation"] == 4
 
 
 @pytest.mark.parametrize("logical,slug", [

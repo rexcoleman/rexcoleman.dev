@@ -52,7 +52,7 @@ def test_manifest_loader_accepts_exact_current_generation_only(tmp_path):
     value["manifest_digest"] = issue_wea.digest(issue_wea.canonical(unsigned))
     path = tmp_path / GENERATION_MANIFEST_NAME
     path.write_bytes(issue_wea.canonical(value))
-    assert issue_wea.load_manifest(path)["authority_generation"] == 4
+    assert issue_wea.load_manifest(path)["authority_generation"] == 5
     value["authority_generation"] = 2
     unsigned = {key: item for key, item in value.items() if key != "manifest_digest"}
     value["manifest_digest"] = issue_wea.digest(issue_wea.canonical(unsigned))

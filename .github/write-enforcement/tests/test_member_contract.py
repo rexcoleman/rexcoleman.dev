@@ -25,6 +25,8 @@ from member_contract import (  # noqa: E402
     FACE_B_MEMBER_IDS,
     FACE_B_ISOLATED_FIXTURE_MEMBER_IDS,
     GENERATION_MANIFEST_NAME,
+    HISTORICAL_AUTHORITY_GENERATION,
+    HISTORICAL_GENERATION_MANIFEST_NAME,
     MANAGED_LIVE_MEMBER_ALIASES,
     ROUTE_OWNED_MEMBER_IDS,
     ROW_COMPLETE_PACKAGE_MEMBER_IDS,
@@ -750,11 +752,15 @@ def test_divergent_pinned_public_key_copy_refuses():
     assert captured.value.reason_code == "TRUST_ROOT_COPY_MISMATCH"
 
 
-def test_generation_4_constants_and_tag_derivation_are_exact():
+def test_generation_5_constants_and_tag_derivation_are_exact():
     commit = "a" * 40
-    assert AUTHORITY_GENERATION == 4
-    assert GENERATION_MANIFEST_NAME == "frozen_bundle_manifest.generation-4.json"
-    assert generation_tag(commit) == "rea-wea-generation-4-" + "a" * 12
+    assert HISTORICAL_AUTHORITY_GENERATION == 4
+    assert HISTORICAL_GENERATION_MANIFEST_NAME == (
+        "frozen_bundle_manifest.generation-4.json"
+    )
+    assert AUTHORITY_GENERATION == 5
+    assert GENERATION_MANIFEST_NAME == "frozen_bundle_manifest.generation-5.json"
+    assert generation_tag(commit) == "rea-wea-generation-5-" + "a" * 12
     with pytest.raises(ValueError):
         generation_tag("a" * 39)
 

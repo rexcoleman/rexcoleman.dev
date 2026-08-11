@@ -1,4 +1,4 @@
-"""Immutable generation-4 member and ruleset contract required before signing."""
+"""Immutable active and historical member contracts required before signing."""
 
 from __future__ import annotations
 
@@ -8,8 +8,10 @@ import json
 import re
 
 
-AUTHORITY_GENERATION = 4
-GENERATION_MANIFEST_NAME = "frozen_bundle_manifest.generation-4.json"
+HISTORICAL_AUTHORITY_GENERATION = 4
+HISTORICAL_GENERATION_MANIFEST_NAME = "frozen_bundle_manifest.generation-4.json"
+AUTHORITY_GENERATION = 5
+GENERATION_MANIFEST_NAME = "frozen_bundle_manifest.generation-5.json"
 RULESET_ID = 19564990
 RULESET_FIELDS = (
     "name", "target", "enforcement", "conditions", "rules", "bypass_actors",
@@ -312,7 +314,7 @@ def derive_write_boundary_route_surface_bindings(
 
 
 def generation_tag(commit: str) -> str:
-    """Derive the one generation-4 tag name from the later manifest commit."""
+    """Derive the active-generation tag name from the later manifest commit."""
     if re.fullmatch(r"[0-9a-f]{40}", commit) is None:
         raise ValueError("generation tag commit")
     return f"rea-wea-generation-{AUTHORITY_GENERATION}-{commit[:12]}"
@@ -611,7 +613,7 @@ def successor_members():
 
 
 def production_members_for_manifest(manifest, baseline=None):
-    """Select one of two closed production sets; never accept a subset."""
+    """Select the exact closed set for one known generation; never a subset."""
     rows = manifest.get("members") if isinstance(manifest, dict) else None
     observed = {
         row.get("member_id") for row in rows or []
@@ -620,9 +622,19 @@ def production_members_for_manifest(manifest, baseline=None):
     base = EXPECTED_MEMBERS if baseline is None else baseline
     successor = dict(base)
     successor.update(SUCCESSOR_ADDITIONAL_MEMBERS)
-    marker = set(SUCCESSOR_ADDITIONAL_MEMBERS)
-    expected = successor if observed & marker else base
-    return expected
+    generation = manifest.get("authority_generation") if isinstance(manifest, dict) else None
+    if generation is None and baseline is not None:
+        # Unit-level byte/membership checks historically pass a reduced explicit
+        # contract without the outer manifest loader. Production entrypoints
+        # validate the generation before reaching this selector.
+        return successor if observed & set(SUCCESSOR_ADDITIONAL_MEMBERS) else base
+    if generation == HISTORICAL_AUTHORITY_GENERATION:
+        if observed & set(SUCCESSOR_ADDITIONAL_MEMBERS):
+            raise ValueError("generation-4 manifest contains successor members")
+        return base
+    if generation == AUTHORITY_GENERATION:
+        return successor
+    raise ValueError("manifest authority generation is not registered")
 
 # Separate immutable authoring subjects may target the same installed runtime
 # locus only when the frozen bytes are identical.  Keep distinct member IDs and
