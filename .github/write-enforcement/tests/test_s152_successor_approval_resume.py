@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import base64
+import datetime as dt
 import hashlib
 import importlib.util
 import io
@@ -232,6 +233,21 @@ def test_public_key_drift_refuses_before_secret_write(monkeypatch):
     else:
         raise AssertionError("key drift admitted")
     assert writes == []
+
+
+def test_secret_put_empty_json_response_is_accepted(monkeypatch):
+    key = {"key_id": "1", "key_b64": "a", "key_sha256": "b" * 64}
+    monkeypatch.setattr(tool, "downstream_public_key", lambda: key)
+    calls = []
+    def fake_api(path, method="GET", body=None):
+        calls.append((path, method, body))
+        if method == "PUT":
+            return {}
+        return {"name": tool.SECRET_NAME, "updated_at": dt.datetime.now(
+            dt.timezone.utc).isoformat()}
+    monkeypatch.setattr(tool, "api", fake_api)
+    tool.submit_ciphertext({"ciphertext_b64": "x"}, key)
+    assert calls[0][1] == "PUT"
 
 
 def test_sealed_packet_rejects_ciphertext_identity(monkeypatch, tmp_path):

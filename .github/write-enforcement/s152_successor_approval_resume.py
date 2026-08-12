@@ -526,7 +526,7 @@ def submit_ciphertext(packet, key):
             "encrypted_value": packet["ciphertext_b64"], "key_id": key["key_id"],
         },
     )
-    if value is not None:
+    if value not in (None, {}):
         raise Refusal("DOWNSTREAM_SECRET_WRITE_RESPONSE_REFUSED")
     observed = api("repos/%s/actions/secrets/%s" % (
         TARGET_REPOSITORY, SECRET_NAME,
