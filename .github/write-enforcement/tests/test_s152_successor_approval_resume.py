@@ -308,6 +308,61 @@ def test_coach_resume_uses_preserved_seal_and_stops_at_owner_gate(monkeypatch):
     assert calls == ["submit", "dispatch", "wait"]
 
 
+def test_capability_approval_is_exact_run_only(monkeypatch):
+    ready(monkeypatch)
+    calls = []
+    monkeypatch.setattr(tool, "run_state", lambda run: {
+        "status": "waiting", "conclusion": "", "headSha": tool.MANIFEST_HEAD,
+        "headBranch": tool.ISSUER_TAG,
+    })
+    monkeypatch.setattr(tool, "pending_environment", lambda run: tool.CAPABILITY_ENVIRONMENT_ID)
+    monkeypatch.setattr(tool, "capability_job", lambda: {
+        "status": "waiting", "conclusion": None,
+    })
+    monkeypatch.setattr(tool, "predecessor_snapshot", lambda: {
+        "run_id": tool.CAPABILITY_PREDECESSOR_RUN_ID,
+        "wea_sha256": tool.CAPABILITY_PREDECESSOR_WEA_SHA256,
+    })
+    monkeypatch.setattr(tool, "preserved_packet_identity", lambda: calls.append(("packet", tool.PRESERVED_SEAL_RUN_ID)))
+    monkeypatch.setattr(tool, "approve", lambda run, purpose: calls.append(("approve", run)))
+    monkeypatch.setattr(tool, "wait_success", lambda run, *_args: {
+        "headBranch": tool.ISSUER_TAG,
+    })
+    job_calls = iter([
+        {"status": "waiting", "conclusion": None},
+        {"status": "completed", "conclusion": "success"},
+    ])
+    monkeypatch.setattr(tool, "capability_job", lambda: next(job_calls))
+    monkeypatch.setattr(tool, "verify_artifact", lambda run: calls.append(("artifact", run)))
+    assert tool.approve_capability_run() == 0
+    assert calls == [("packet", tool.PRESERVED_SEAL_RUN_ID),
+                     ("approve", tool.CAPABILITY_RUN_ID),
+                     ("artifact", tool.CAPABILITY_RUN_ID)]
+
+
+def test_capability_preflight_refuses_predecessor_drift(monkeypatch):
+    ready(monkeypatch)
+    monkeypatch.setattr(tool, "run_state", lambda _run: {
+        "status": "waiting", "conclusion": "", "headSha": tool.MANIFEST_HEAD,
+        "headBranch": tool.ISSUER_TAG,
+    })
+    monkeypatch.setattr(tool, "pending_environment", lambda _run: tool.CAPABILITY_ENVIRONMENT_ID)
+    monkeypatch.setattr(tool, "capability_job", lambda: {
+        "status": "waiting", "conclusion": None,
+    })
+    monkeypatch.setattr(tool, "predecessor_snapshot", lambda: {
+        "run_id": tool.CAPABILITY_PREDECESSOR_RUN_ID + 1,
+        "wea_sha256": tool.CAPABILITY_PREDECESSOR_WEA_SHA256,
+    })
+    monkeypatch.setattr(tool, "preserved_packet_identity", lambda: None)
+    try:
+        tool.preflight_capability_run()
+    except tool.Refusal as exc:
+        assert str(exc) == "CAPABILITY_OWNER_GATE_REFUSED"
+    else:
+        raise AssertionError("drifted predecessor admitted")
+
+
 class _Temporary:
     def __init__(self, path):
         self.path = path
@@ -325,6 +380,18 @@ def test_direct_helper_refuses(monkeypatch):
         assert str(exc) == "CHECKED_WRAPPER_REQUIRED"
     else:
         raise AssertionError("direct helper admitted")
+
+
+def test_withdrawn_v3_marker_refuses(monkeypatch):
+    monkeypatch.setenv("REA_S152_CHECKED_WRAPPER", "rea-s152-sealed-successor-approval-v3")
+    monkeypatch.setattr(tool.socket, "gethostname", lambda: tool.HOST)
+    monkeypatch.setattr(tool.os, "geteuid", lambda: 1000)
+    try:
+        tool.runtime_ready()
+    except tool.Refusal as exc:
+        assert str(exc) == "CHECKED_WRAPPER_REQUIRED"
+    else:
+        raise AssertionError("withdrawn v3 marker admitted")
 
 
 def test_pending_environment_requires_exact_approvable_gate(monkeypatch):
