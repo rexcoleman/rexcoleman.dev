@@ -37,10 +37,9 @@ def test_v8_one_nibble_subject_mismatch_refuses():
         tool.BASE.validate_review_subject(planted)
 
 
-def test_v8_wrapper_is_checked_and_v7_is_tombstoned():
+def test_v8_wrapper_is_tombstoned_and_v7_remains_tombstoned():
     wrapper = WRAPPER.read_text(encoding="ascii")
-    assert "OWNER_TTY_REQUIRED" in wrapper
-    assert "CANONICAL_COMMIT_NOT_PUBLISHED" in wrapper
-    assert "BASE_DIGEST_MISMATCH" in wrapper
+    assert "WITHDRAWN_PREFLIGHT_IDENTITY_MISMATCH" in wrapper
+    assert "exit 2" in wrapper
     assert "SAFE_TO_PASTE_BACK=true secret_bytes_printed=false" in wrapper
     assert "WITHDRAWN_CONSUMED_SUCCESS" in V7_WRAPPER.read_text(encoding="ascii")
