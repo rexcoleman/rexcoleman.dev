@@ -198,3 +198,4 @@ def test_checked_wrapper_self_anchors_and_invokes_only_new_helper():
     assert "CANONICAL_COMMIT_NOT_PUBLISHED" in value
     assert "s152_public_retry_approval.py" in value
     assert "s152_successor_approval_resume.py" not in value
+    assert '--preflight) exec /usr/bin/python3 "$HELPER" --preflight' in value
