@@ -1,7 +1,10 @@
 from __future__ import annotations
 
+import base64
+import hashlib
 import importlib.util
 import io
+import json
 from pathlib import Path
 
 
@@ -249,6 +252,20 @@ def test_sealed_packet_rejects_ciphertext_identity(monkeypatch, tmp_path):
         assert str(exc) == "SEALED_PACKET_REFUSED"
     else:
         raise AssertionError("ciphertext substitution admitted")
+
+
+def test_immutable_manifest_ignores_stale_worktree_path(monkeypatch, tmp_path):
+    stale = tmp_path / "frozen_bundle_manifest.generation-5.json"
+    stale.write_text('{"manifest_digest":"9881"}', encoding="utf-8")
+    exact = {"authority_generation": 5, "manifest_digest": tool.MANIFEST_DIGEST,
+             "members": [{}] * 247}
+    raw = json.dumps(exact, separators=(",", ":")).encode()
+    monkeypatch.setattr(tool, "MANIFEST_FILE_SHA256", hashlib.sha256(raw).hexdigest())
+    monkeypatch.setattr(tool, "api", lambda *_args, **_kwargs: {
+        "content": base64.b64encode(raw).decode("ascii"),
+    })
+    assert tool.immutable_manifest_bytes() == raw
+    assert tool.immutable_manifest_bytes() != stale.read_bytes()
 
 
 class _Temporary:
