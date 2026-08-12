@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import base64
 import hashlib
 import importlib.util
 import json
@@ -78,6 +79,25 @@ def test_packet_validation_binds_exact_public_set_receipt_and_predecessor(tmp_pa
         raise AssertionError("extra packet member accepted")
 
 
+def test_contents_api_line_wrapped_base64_is_strictly_decoded(monkeypatch):
+    raw = b"public pointer bytes\n"
+    encoded = base64.b64encode(raw).decode("ascii")
+    wrapped = encoded[:8] + "\n" + encoded[8:16] + "\r\n" + encoded[16:]
+    monkeypatch.setattr(tool, "gh_api", lambda *_args, **_kwargs: {
+        "type": "file", "path": tool.POINTER, "content": wrapped,
+    })
+    assert tool.content_bytes(tool.POINTER, "a" * 40) == raw
+    monkeypatch.setattr(tool, "gh_api", lambda *_args, **_kwargs: {
+        "type": "file", "path": tool.POINTER, "content": encoded + "!",
+    })
+    try:
+        tool.content_bytes(tool.POINTER, "a" * 40)
+    except tool.Refusal as exc:
+        assert str(exc) == "PUBLIC_CONTENT_MALFORMED path=%s" % tool.POINTER
+    else:
+        raise AssertionError("invalid base64 alphabet admitted")
+
+
 def test_genesis_publish_is_unique_path_pointer_and_nonforced_ref(tmp_path, monkeypatch):
     root, predecessor_sha = packet(tmp_path)
     objects = {}
@@ -111,6 +131,7 @@ def test_genesis_publish_is_unique_path_pointer_and_nonforced_ref(tmp_path, monk
         raise AssertionError(path)
 
     monkeypatch.setattr(tool, "gh_api", fake_api)
+    monkeypatch.setattr(tool, "successful_packet_tags", lambda rows: [])
     pointer_holder = {}
 
     def fake_content(path, commit):
@@ -153,7 +174,7 @@ def test_existing_branch_requires_monotonic_run_and_exact_predecessor(tmp_path, 
     }
     prior["files"]["write_enforcement_attestation.json"] = "e" * 64
     monkeypatch.setattr(tool, "packet_tags", lambda: [(77, head)])
-    monkeypatch.setattr(tool, "read_prior", lambda _head: prior)
+    monkeypatch.setattr(tool, "successful_packet_tags", lambda _rows: [(77, head, prior)])
     monkeypatch.setattr(tool, "gh_api", lambda *_a, **_k: (_ for _ in ()).throw(
         AssertionError("API reached after chain mismatch")
     ))
@@ -163,6 +184,51 @@ def test_existing_branch_requires_monotonic_run_and_exact_predecessor(tmp_path, 
         assert "PUBLIC_PREDECESSOR_CHAIN_REFUSED" in str(exc)
     else:
         raise AssertionError("wrong predecessor chain accepted")
+
+
+def test_failed_public_packet_tag_is_not_a_successor_predecessor(monkeypatch):
+    prior = {
+        "workflow_run_id": 77,
+        "workflow_sha": "a" * 40,
+        "workflow_ref": "refs/tags/rea-wea-generation-5-fixture",
+    }
+    monkeypatch.setattr(tool, "read_prior", lambda _commit: prior)
+    monkeypatch.setattr(tool, "gh_api", lambda path, **_kwargs: {
+        "id": 77, "event": "workflow_dispatch", "status": "completed",
+        "conclusion": "failure", "head_sha": "a" * 40,
+        "head_branch": "rea-wea-generation-5-fixture",
+    } if "/actions/runs/77" in path else (_ for _ in ()).throw(
+        AssertionError(path)
+    ))
+    assert tool.successful_packet_tags([(77, "b" * 40)]) == []
+
+
+def test_successful_public_packet_requires_exact_artifact(monkeypatch):
+    prior = {
+        "workflow_run_id": 77,
+        "workflow_sha": "a" * 40,
+        "workflow_ref": "refs/tags/rea-wea-generation-5-fixture",
+    }
+    monkeypatch.setattr(tool, "read_prior", lambda _commit: prior)
+
+    def fake_api(path, **_kwargs):
+        if path.endswith("/actions/runs/77"):
+            return {
+                "id": 77, "event": "workflow_dispatch", "status": "completed",
+                "conclusion": "success", "head_sha": "a" * 40,
+                "head_branch": "rea-wea-generation-5-fixture",
+            }
+        if path.endswith("/actions/runs/77/artifacts"):
+            return {"artifacts": []}
+        raise AssertionError(path)
+
+    monkeypatch.setattr(tool, "gh_api", fake_api)
+    try:
+        tool.successful_packet_tags([(77, "b" * 40)])
+    except tool.Refusal as exc:
+        assert str(exc) == "PUBLIC_PREDECESSOR_ARTIFACT_REFUSED"
+    else:
+        raise AssertionError("successful prior without artifact admitted")
 
 
 def test_main_absent_job_token_refuses_before_api(tmp_path, monkeypatch, capsys):

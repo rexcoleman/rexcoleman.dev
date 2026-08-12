@@ -90,7 +90,11 @@ def content_bytes(path: str, commit: str) -> bytes:
     try:
         if value.get("type") != "file" or value.get("path") != path:
             raise ValueError("identity")
-        return base64.b64decode(value["content"].encode("ascii"), validate=True)
+        encoded = value["content"].encode("ascii")
+        # GitHub's Contents API line-wraps base64. Remove only ASCII
+        # whitespace, then retain strict alphabet/padding validation.
+        compact = b"".join(encoded.split())
+        return base64.b64decode(compact, validate=True)
     except (AttributeError, KeyError, TypeError, ValueError):
         raise Refusal("PUBLIC_CONTENT_MALFORMED path=%s" % path) from None
 
@@ -176,6 +180,48 @@ def packet_tags():
     return rows
 
 
+def successful_packet_tags(rows):
+    successful = []
+    terminal_failures = {
+        "action_required", "cancelled", "failure", "skipped", "stale",
+        "startup_failure", "timed_out",
+    }
+    for run_id, commit in rows:
+        prior = read_prior(commit)
+        if prior.get("workflow_run_id") != run_id:
+            raise Refusal("PUBLIC_TAG_POINTER_IDENTITY_REFUSED")
+        value = gh_api("repos/%s/actions/runs/%s" % (REPOSITORY, run_id))
+        if (
+            not isinstance(value, dict)
+            or value.get("id") != run_id
+            or value.get("event") != "workflow_dispatch"
+            or value.get("head_sha") != prior.get("workflow_sha")
+            or value.get("head_branch")
+            != prior.get("workflow_ref", "")[len("refs/tags/"):]
+        ):
+            raise Refusal("PUBLIC_PREDECESSOR_RUN_IDENTITY_REFUSED")
+        if value.get("status") != "completed":
+            raise Refusal("PUBLIC_PREDECESSOR_RUN_PENDING")
+        conclusion = value.get("conclusion")
+        if conclusion == "success":
+            artifacts = gh_api(
+                "repos/%s/actions/runs/%s/artifacts" % (REPOSITORY, run_id)
+            )
+            expected = "rea-write-enforcement-attestation-%s" % run_id
+            matches = [
+                row for row in artifacts.get("artifacts", [])
+                if isinstance(row, dict) and row.get("name") == expected
+                and row.get("expired") is False
+                and row.get("workflow_run", {}).get("id") == run_id
+            ] if isinstance(artifacts, dict) else []
+            if len(matches) != 1:
+                raise Refusal("PUBLIC_PREDECESSOR_ARTIFACT_REFUSED")
+            successful.append((run_id, commit, prior))
+        elif conclusion not in terminal_failures:
+            raise Refusal("PUBLIC_PREDECESSOR_RUN_CONCLUSION_REFUSED")
+    return successful
+
+
 def blob(raw: bytes) -> str:
     value = gh_api(
         "repos/%s/git/blobs" % REPOSITORY,
@@ -197,9 +243,11 @@ def publish(args) -> str:
     rows = packet_tags()
     if any(run_id == args.run_id for run_id, _commit in rows):
         raise Refusal("PUBLIC_RUN_ALREADY_PUBLISHED")
-    if rows:
-        prior_run, prior_commit = max(rows, key=lambda row: row[0])
-        prior = read_prior(prior_commit)
+    successful_rows = successful_packet_tags(rows)
+    if successful_rows:
+        prior_run, _prior_commit, prior = max(
+            successful_rows, key=lambda row: row[0]
+        )
         if args.run_id <= prior["workflow_run_id"]:
             raise Refusal("PUBLIC_RUN_NOT_MONOTONIC")
         if files["predecessor_write_enforcement_attestation.json"] \
