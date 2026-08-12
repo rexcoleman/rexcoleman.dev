@@ -77,7 +77,7 @@ def test_member_population_is_complete_and_two_method_count():
     assert len(contract.EXPECTED_MEMBERS) == 244
     assert len(set(contract.EXPECTED_MEMBERS.values())) == 244
     successor = contract.successor_members()
-    assert len(successor) == 246
+    assert len(successor) == 247
     independent = load("independent_review")
     independently_parsed = independent.expected_members()
     assert independently_parsed == successor

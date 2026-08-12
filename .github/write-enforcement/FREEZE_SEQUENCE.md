@@ -66,7 +66,7 @@ rewriting the generation-4 manifest:
 2. From exact clean, remotely reachable heads of all five repositories, invoke
    `build_frozen_manifest.py` with `--successor-ci-materialization` and output
    `.github/write-enforcement/frozen_bundle_manifest.generation-5.json`. The
-   builder must emit generation 5 with exactly 246 members.
+   builder must emit generation 5 with exactly 247 members.
 3. Commit only that new manifest in a later rexcoleman.dev commit. Derive the
    annotated tag as `rea-wea-generation-5-` plus the first 12 lowercase hex
    characters of the manifest-only commit.

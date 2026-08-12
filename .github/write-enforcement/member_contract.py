@@ -602,6 +602,10 @@ SUCCESSOR_ADDITIONAL_MEMBERS = {
         "rexcoleman.dev",
         ".github/write-enforcement/provision_downstream_bundle_secret.py",
     ),
+    "public-attestation-publisher": (
+        "rexcoleman.dev",
+        ".github/write-enforcement/publish_public_attestation.py",
+    ),
 }
 
 

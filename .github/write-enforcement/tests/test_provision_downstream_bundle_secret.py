@@ -2,9 +2,7 @@ from __future__ import annotations
 
 import datetime as dt
 import importlib.util
-import io
 import json
-import zipfile
 from pathlib import Path
 
 
@@ -29,37 +27,13 @@ def frozen_manifest(tmp_path):
     return path, commits
 
 
-def artifact(run_id):
-    buffer = io.BytesIO()
-    with zipfile.ZipFile(buffer, "w") as packet:
-        packet.writestr("SHA256SUMS", "fixture\n")
-        packet.writestr("enforcement_bundle_manifest.json", "{}\n")
-        packet.writestr("write_enforcement_attestation.json", "{}\n")
-        packet.writestr("issuance_receipt.json", json.dumps({
-            "workflow_run_id": run_id,
-        }))
-    return buffer.getvalue()
-
-
-def successful_api(commits, run_id, calls):
-    archive = artifact(run_id)
-
+def successful_api(commits, calls):
     def fake(token, path, raw=False):
         calls.append((token, path, raw))
         if "/git/commits/" in path:
             commit = path.rsplit("/", 1)[1]
             assert commit in commits.values()
             return {"sha": commit, "tree": {"sha": "a" * 40}}
-        if path.endswith("/actions/runs/%s/artifacts" % run_id):
-            return {"artifacts": [{
-                "id": 9,
-                "name": "rea-write-enforcement-attestation-%s" % run_id,
-                "expired": False,
-                "workflow_run": {"id": run_id},
-            }]}
-        if path.endswith("/actions/artifacts/9/zip"):
-            assert raw
-            return archive
         raise AssertionError("unexpected API path %s" % path)
 
     return fake
@@ -71,7 +45,7 @@ def test_validates_all_reads_before_stdin_write_and_postcheck(tmp_path, monkeypa
     gh_calls = []
     source = "planted-source-secret"
     writer = "planted-writer-secret"
-    monkeypatch.setattr(tool, "api", successful_api(commits, 7, calls))
+    monkeypatch.setattr(tool, "api", successful_api(commits, calls))
 
     def fake_gh(argv, token, stdin_value="", source_secret=""):
         gh_calls.append((list(argv), token, stdin_value, source_secret, len(calls)))
@@ -84,52 +58,32 @@ def test_validates_all_reads_before_stdin_write_and_postcheck(tmp_path, monkeypa
 
     monkeypatch.setattr(tool, "run_gh", fake_gh)
     rc = tool.main(
-        ["--manifest", str(manifest), "--predecessor-run-id", "7"],
+        ["--manifest", str(manifest)],
         {tool.SOURCE_ENV: source, tool.WRITE_ENV: writer},
     )
     assert rc == 0
     assert len([path for _token, path, _raw in calls if "/git/commits/" in path]) == 5
-    assert all(path.startswith("/repos/%s/actions/" % tool.ISSUER)
-               for _token, path, _raw in calls if "/actions/" in path)
+    assert all("/actions/" not in path for _token, path, _raw in calls)
     assert gh_calls[0][2] == source
     assert gh_calls[0][1] == writer
-    assert gh_calls[0][4] == 7
+    assert gh_calls[0][4] == 5
     output = capsys.readouterr().out
     assert source not in output and writer not in output
     assert "post_name_check=pass" in output
 
 
-def test_actions_refusal_prevents_write(tmp_path, monkeypatch):
-    manifest, commits = frozen_manifest(tmp_path)
-    writes = []
-
-    def reads(token, path, raw=False):
-        if "/git/commits/" in path:
-            commit = path.rsplit("/", 1)[1]
-            return {"sha": commit, "tree": {"sha": "a" * 40}}
-        raise tool.Refusal(tool.ACTIONS_READ_REFUSED, "planted")
-
-    monkeypatch.setattr(tool, "api", reads)
-    monkeypatch.setattr(tool, "run_gh", lambda *a, **k: writes.append(a))
-    assert tool.main(
-        ["--manifest", str(manifest), "--predecessor-run-id", "7"],
-        {tool.SOURCE_ENV: "source", tool.WRITE_ENV: "writer"},
-    ) == 3
-    assert writes == []
-
-
-def test_git_refusal_prevents_actions_and_write(tmp_path, monkeypatch):
+def test_git_refusal_prevents_write(tmp_path, monkeypatch):
     manifest, _commits = frozen_manifest(tmp_path)
     writes = []
     monkeypatch.setattr(
         tool, "api",
         lambda *_a, **_k: (_ for _ in ()).throw(
-            tool.Refusal(tool.ACTIONS_READ_REFUSED, "status=403")
+            tool.Refusal(tool.GIT_READ_REFUSED, "status=403")
         ),
     )
     monkeypatch.setattr(tool, "run_gh", lambda *a, **k: writes.append(a))
     assert tool.main(
-        ["--manifest", str(manifest), "--predecessor-run-id", "7"],
+        ["--manifest", str(manifest)],
         {tool.SOURCE_ENV: "source", tool.WRITE_ENV: "writer"},
     ) == 3
     assert writes == []
@@ -139,7 +93,7 @@ def test_absent_or_identical_credentials_refuse_before_reads(tmp_path, monkeypat
     manifest, _commits = frozen_manifest(tmp_path)
     reads = []
     monkeypatch.setattr(tool, "api", lambda *a, **k: reads.append(a))
-    argv = ["--manifest", str(manifest), "--predecessor-run-id", "7"]
+    argv = ["--manifest", str(manifest)]
     assert tool.main(argv, {}) == 3
     assert tool.main(argv, {tool.SOURCE_ENV: "source"}) == 3
     assert tool.main(argv, {tool.SOURCE_ENV: "same", tool.WRITE_ENV: "same"}) == 3
@@ -150,7 +104,7 @@ def test_postcheck_failure_is_typed_and_secret_safe(tmp_path, monkeypatch, capsy
     manifest, commits = frozen_manifest(tmp_path)
     source = "never-print-source"
     writer = "never-print-writer"
-    monkeypatch.setattr(tool, "api", successful_api(commits, 7, []))
+    monkeypatch.setattr(tool, "api", successful_api(commits, []))
 
     def fake_gh(argv, token, stdin_value="", source_secret=""):
         if argv[1:3] == ["secret", "set"]:
@@ -159,7 +113,7 @@ def test_postcheck_failure_is_typed_and_secret_safe(tmp_path, monkeypatch, capsy
 
     monkeypatch.setattr(tool, "run_gh", fake_gh)
     assert tool.main(
-        ["--manifest", str(manifest), "--predecessor-run-id", "7"],
+        ["--manifest", str(manifest)],
         {tool.SOURCE_ENV: source, tool.WRITE_ENV: writer},
     ) == 3
     output = capsys.readouterr()
