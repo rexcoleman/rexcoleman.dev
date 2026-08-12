@@ -213,9 +213,15 @@ def test_remote_reachability_exact_sha_and_unreachable(monkeypatch):
 def test_predecessor_preflight_is_before_owner_environment_and_digest_bound():
     workflow = (TOOLS.parent / "workflows/issue-write-enforcement-attestation.yml").read_text()
     preflight = workflow.index("preflight-predecessor:")
+    seal = workflow.index("  seal-downstream:")
+    seal_environment = workflow.index(
+        "environment: rea-write-enforcement-issuer", seal
+    )
     issue = workflow.index("issue-wea:")
-    environment = workflow.index("environment: rea-write-enforcement-issuer")
-    assert preflight < issue < environment
+    issue_environment = workflow.index(
+        "environment: rea-write-enforcement-issuer", issue
+    )
+    assert preflight < seal < seal_environment < issue < issue_environment
     assert "needs: preflight-predecessor" in workflow
     assert "predecessor_wea_sha256" in workflow
     assert "PREDECESSOR_RUN_IDENTITY" not in workflow  # checks are executable, not a claim label
@@ -231,7 +237,8 @@ def test_predecessor_preflight_is_before_owner_environment_and_digest_bound():
     assert backend_marker in workflow[issue:renew_preflight]
     assert backend_marker in workflow[renew_preflight:renew_issue]
     assert backend_marker in workflow[renew_issue:]
-    assert workflow.index(backend_marker, preflight, issue) < environment
+    assert workflow.index(backend_marker, preflight, seal) < seal_environment
+    assert issue_environment < workflow.index(backend_marker, issue, renew_preflight)
     assert "expired_fixture" not in workflow
     issuer = (TOOLS / "issue_wea.py").read_text()
     assert '"openssl"' not in issuer

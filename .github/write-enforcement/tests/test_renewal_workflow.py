@@ -140,13 +140,18 @@ raise SystemExit(9)
 def test_capability_change_still_runs_behind_required_reviewers():
     jobs = issuer()["jobs"]
     assert jobs["issue-wea"]["environment"] == PROTECTED_ENVIRONMENT
-    assert jobs["issue-wea"]["needs"] == "preflight-predecessor"
+    assert jobs["issue-wea"]["needs"] == [
+        "preflight-predecessor", "preflight-sealed-transfer",
+    ]
+    assert jobs["seal-downstream"]["environment"] == PROTECTED_ENVIRONMENT
 
 
 def test_capability_change_jobs_are_skipped_in_renewal_mode():
     jobs = issuer()["jobs"]
-    for name in ("preflight-predecessor", "issue-wea"):
-        assert jobs[name]["if"] == "inputs.mode != 'renew'"
+    assert jobs["preflight-predecessor"]["if"] == "inputs.mode != 'renew'"
+    assert jobs["issue-wea"]["if"] == "inputs.mode == 'capability_change'"
+    assert jobs["preflight-sealed-transfer"]["if"] == "inputs.mode == 'capability_change'"
+    assert jobs["seal-downstream"]["if"] == "inputs.mode == 'seal_downstream'"
 
 
 def test_renewal_jobs_only_run_in_renewal_mode():
@@ -378,10 +383,11 @@ def test_scheduler_dispatch_candidate_is_bound_to_selected_ref_and_sha():
     assert '[ "$candidate_sha" = "$RENEWAL_GENERATION_HEAD_SHA" ]' in body
 
 
-def test_issuer_exposes_exactly_two_modes():
+def test_issuer_exposes_exactly_three_closed_modes():
     on = triggers(issuer())
     assert on["workflow_dispatch"]["inputs"]["mode"]["options"] == [
         "capability_change",
+        "seal_downstream",
         "renew",
     ]
     assert (

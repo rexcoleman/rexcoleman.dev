@@ -96,17 +96,23 @@ walkthrough ever asks you to, that walkthrough is wrong.
 
 ### Protected downstream bundle-token handoff
 
-Generation-5 capability-change issuance also uses the already-provisioned
-`REA_SECRETS_WRITE_PAT`; it does not ask the owner to mint or paste another
-bundle token. After the exact issuer deployment is approved,
-`provision_downstream_bundle_secret.py` reads both existing environment secrets
-inside `rea-write-enforcement-issuer`. It first proves the bundle token can
-read an exact signed Git commit in each of the five frozen repositories. Only
-then does it pass the Contents-only bundle token on stdin to the downstream REA
-secret write, and it refuses unless the target name and this run's update are
-observed. The signed public packet is published separately under an immutable
-protected Git tag by the issuer's job-scoped token, so the bundle token needs
-no Actions permission. The owner sees and handles neither credential value.
+Generation-5 capability-change issuance does not use `REA_SECRETS_WRITE_PAT`
+for downstream REA. That PAT is intentionally scoped to rexcoleman.dev, so it
+cannot and must not be broadened merely to copy a Contents token.
+
+The registered transition reads REA's repository Actions-secret public key
+locally with the owner's existing GitHub session. The protected issuer first
+proves `REA_BUNDLE_READ_TOKEN` can read an exact signed Git commit in each of
+the five frozen repositories. It then uses libsodium sealed-box encryption to
+produce a one-day artifact containing ciphertext, exact key identity, public
+key hash, manifest identity, and workflow identity. It emits no plaintext or
+token digest. The local checked transition downloads and verifies those exact
+bytes, rechecks that REA's public key has not rotated, and submits only
+`encrypted_value` plus `key_id` to REA's secret API. A second exact issuer
+dispatch re-authenticates the sealed artifact before signing. The signed public
+packet still travels separately over the issuer's append-only Contents surface,
+so the bundle token needs no cross-repository Actions permission. Neither the
+owner nor the local process receives plaintext token bytes.
 
 ## Running the checker
 
