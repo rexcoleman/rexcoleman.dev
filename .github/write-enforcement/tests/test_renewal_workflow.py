@@ -149,9 +149,32 @@ def test_capability_change_still_runs_behind_required_reviewers():
 def test_capability_change_jobs_are_skipped_in_renewal_mode():
     jobs = issuer()["jobs"]
     assert jobs["preflight-predecessor"]["if"] == "inputs.mode != 'renew'"
-    assert jobs["issue-wea"]["if"] == "inputs.mode == 'capability_change'"
-    assert jobs["preflight-sealed-transfer"]["if"] == "inputs.mode == 'capability_change'"
+    assert jobs["issue-wea"]["if"] == (
+        "inputs.mode == 'capability_change' || inputs.mode == 'public_retry'"
+    )
+    assert jobs["preflight-sealed-transfer"]["if"] == (
+        "inputs.mode == 'capability_change' || inputs.mode == 'public_retry'"
+    )
     assert jobs["seal-downstream"]["if"] == "inputs.mode == 'seal_downstream'"
+
+
+def test_public_retry_is_protected_and_structurally_has_no_seal_or_secret_write():
+    jobs = issuer()["jobs"]
+    assert jobs["issue-wea"]["environment"] == PROTECTED_ENVIRONMENT
+    preflight = jobs["preflight-sealed-transfer"]["steps"]
+    refusal = [row for row in preflight
+               if row.get("name") == "Refuse seal inputs and mutation in public retry mode"]
+    assert len(refusal) == 1
+    assert refusal[0]["if"] == "inputs.mode == 'public_retry'"
+    assert all("test -z" in refusal[0]["run"] and name in refusal[0]["run"]
+               for name in ("TRANSFER_RUN_ID", "KEY_ID", "PUBLIC_KEY_SHA256",
+                            "CIPHERTEXT_SHA256"))
+    raw = raw_job(ISSUER, "issue-wea")
+    assert "Publish authenticated packet to append-only Contents surface" in raw
+    assert "secrets/REA_BUNDLE_READ_TOKEN" not in raw
+    assert "encrypted_value" not in raw
+    seal = raw_job(ISSUER, "seal-downstream")
+    assert "inputs.mode == 'seal_downstream'" in seal
 
 
 def test_renewal_jobs_only_run_in_renewal_mode():
@@ -383,10 +406,11 @@ def test_scheduler_dispatch_candidate_is_bound_to_selected_ref_and_sha():
     assert '[ "$candidate_sha" = "$RENEWAL_GENERATION_HEAD_SHA" ]' in body
 
 
-def test_issuer_exposes_exactly_three_closed_modes():
+def test_issuer_exposes_exactly_four_closed_modes():
     on = triggers(issuer())
     assert on["workflow_dispatch"]["inputs"]["mode"]["options"] == [
         "capability_change",
+        "public_retry",
         "seal_downstream",
         "renew",
     ]

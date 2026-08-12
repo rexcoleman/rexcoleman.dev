@@ -7,6 +7,9 @@ on:
         description: >-
           capability_change = owner-approved issuance over a new capability
           basis (unchanged behaviour, required_reviewers still apply).
+          public_retry = owner-approved re-issuance after a post-artifact
+          public-packet publication failure; refuses all seal inputs and never
+          mutates the already-installed downstream secret.
           renew = unattended re-issuance over an IDENTICAL capability basis,
           dispatched by the renewal scheduler; refuses if anything
           capability-bearing would move.
@@ -15,6 +18,7 @@ on:
         default: capability_change
         options:
           - capability_change
+          - public_retry
           - seal_downstream
           - renew
       predecessor_run_id:
@@ -108,7 +112,7 @@ jobs:
         run: |
           set -euo pipefail
           case "${MODE:-capability_change}" in
-            capability_change|seal_downstream) ;;
+            capability_change|public_retry|seal_downstream) ;;
             *) echo "REFUSED ISSUANCE_MODE_UNRECOGNISED: $MODE" >&2; exit 3 ;;
           esac
       - name: Authenticate exact predecessor before protected environment
@@ -230,7 +234,7 @@ jobs:
           retention-days: 1
 
   preflight-sealed-transfer:
-    if: inputs.mode == 'capability_change'
+    if: inputs.mode == 'capability_change' || inputs.mode == 'public_retry'
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
@@ -238,7 +242,22 @@ jobs:
         with:
           path: repo
           persist-credentials: false
+      - name: Refuse seal inputs and mutation in public retry mode
+        if: inputs.mode == 'public_retry'
+        env:
+          TRANSFER_RUN_ID: ${{ inputs.sealed_transfer_run_id }}
+          KEY_ID: ${{ inputs.downstream_key_id }}
+          PUBLIC_KEY_SHA256: ${{ inputs.downstream_public_key_sha256 }}
+          CIPHERTEXT_SHA256: ${{ inputs.sealed_ciphertext_sha256 }}
+        run: |
+          set -euo pipefail
+          test -z "$TRANSFER_RUN_ID"
+          test -z "$KEY_ID"
+          test -z "$PUBLIC_KEY_SHA256"
+          test -z "$CIPHERTEXT_SHA256"
+          echo "PUBLIC_RETRY_NO_SEAL_PASS mutation=false secret_write=false"
       - name: Authenticate exact sealed-transfer run and packet
+        if: inputs.mode == 'capability_change'
         env:
           GH_TOKEN: ${{ github.token }}
           TRANSFER_RUN_ID: ${{ inputs.sealed_transfer_run_id }}
@@ -286,6 +305,7 @@ jobs:
             --ciphertext-sha256 "$CIPHERTEXT_SHA256" --run-id "$TRANSFER_RUN_ID" \
             --workflow-ref "$GITHUB_REF" --workflow-sha "$GITHUB_SHA"
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: inputs.mode == 'capability_change'
         with:
           name: authenticated-sealed-bundle-${{ github.run_id }}
           path: sealed/sealed-transfer.json
@@ -294,7 +314,7 @@ jobs:
 
   issue-wea:
     needs: [preflight-predecessor, preflight-sealed-transfer]
-    if: inputs.mode == 'capability_change'
+    if: inputs.mode == 'capability_change' || inputs.mode == 'public_retry'
     permissions:
       contents: write
       actions: read
@@ -335,11 +355,13 @@ jobs:
           test "$(printf 'dGVzdA==' | base64 --decode)" = test
           sha256sum --version | sed -n '1p'
       - name: Download and reverify authenticated sealed transfer before signing
+        if: inputs.mode == 'capability_change'
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           name: authenticated-sealed-bundle-${{ github.run_id }}
           path: sealed
       - name: Bind submitted ciphertext to exact protected transfer
+        if: inputs.mode == 'capability_change'
         env:
           TRANSFER_RUN_ID: ${{ inputs.sealed_transfer_run_id }}
           KEY_ID: ${{ inputs.downstream_key_id }}
