@@ -69,14 +69,17 @@ jobs:
           # already uses one job over to discover its predecessor WEA, because
           # GitHub run ids are monotonic and never tie -- is: the ref of the
           # newest completed:success workflow_dispatch run of the issuer
-          # workflow, restricted to runs whose ref actually has the required
-          # tag shape.  That is the ref the currently-enforced authority came
-          # from, chosen with no human in the loop and no guessing.
+          # workflow which also has exactly one live, identity-bound
+          # rea-write-enforcement-attestation-<run-id> artifact, restricted to
+          # runs whose ref actually has the required tag shape.  A successful
+          # seal_downstream run has the same workflow and tag shape but never
+          # has that artifact; it is not an issued, consumer-installable
+          # authority and must not become the renewal ref.
           gh run list --repo rexcoleman/rexcoleman.dev \
             --workflow issue-write-enforcement-attestation.yml \
             --status success --event workflow_dispatch --limit 100 \
             --json databaseId,headBranch,headSha > successful-issuer-runs.json
-          python3 - successful-issuer-runs.json <<'PY' > generation-ref.txt
+          python3 - successful-issuer-runs.json <<'PY' > generation-candidates.tsv
           import json
           import re
           import sys
@@ -101,8 +104,72 @@ jobs:
                   file=sys.stderr,
               )
               raise SystemExit(3)
-          newest_id = max(row["databaseId"] for row in candidates)
-          tied = [row for row in candidates if row["databaseId"] == newest_id]
+          for row in candidates:
+              print(row["databaseId"], row["headBranch"], row["headSha"], sep="\t")
+          PY
+          : > issuance-candidates.jsonl
+          while IFS=$'\t' read -r candidate_id candidate_ref candidate_sha; do
+            if ! gh api \
+              "repos/rexcoleman/rexcoleman.dev/actions/runs/$candidate_id/artifacts?per_page=100" \
+              > "artifacts-$candidate_id.json"; then
+              echo "REFUSED RENEWAL_ARTIFACT_QUERY_REFUSED: run_id=$candidate_id" >&2
+              exit 3
+            fi
+            python3 - "$candidate_id" "$candidate_ref" "$candidate_sha" \
+              "artifacts-$candidate_id.json" <<'PY' >> issuance-candidates.jsonl
+          import json
+          import sys
+
+          run_id = int(sys.argv[1])
+          ref = sys.argv[2]
+          sha = sys.argv[3]
+          value = json.load(open(sys.argv[4]))
+          rows = value.get("artifacts") if isinstance(value, dict) else None
+          total = value.get("total_count") if isinstance(value, dict) else None
+          if (not isinstance(rows, list) or not isinstance(total, int)
+                  or isinstance(total, bool) or total != len(rows) or total > 100):
+              print(
+                  f"REFUSED RENEWAL_ARTIFACT_RESPONSE_REFUSED: run_id={run_id}",
+                  file=sys.stderr,
+              )
+              raise SystemExit(3)
+          expected = f"rea-write-enforcement-attestation-{run_id}"
+          named = [row for row in rows if isinstance(row, dict)
+                   and row.get("name") == expected]
+          if not named:
+              raise SystemExit(0)
+          valid = [
+              row for row in named
+              if row.get("expired") is False
+              and row.get("workflow_run", {}).get("id") == run_id
+              and row.get("workflow_run", {}).get("head_branch") == ref
+              and row.get("workflow_run", {}).get("head_sha") == sha
+          ]
+          if len(named) != 1 or len(valid) != 1:
+              print(
+                  f"REFUSED RENEWAL_ISSUANCE_ARTIFACT_IDENTITY_REFUSED: run_id={run_id}",
+                  file=sys.stderr,
+              )
+              raise SystemExit(3)
+          print(json.dumps({"databaseId": run_id, "headBranch": ref,
+                            "headSha": sha}, sort_keys=True, separators=(",", ":")))
+          PY
+          done < generation-candidates.tsv
+          python3 - issuance-candidates.jsonl <<'PY' > generation-ref.txt
+          import json
+          import sys
+
+          rows = [json.loads(line) for line in open(sys.argv[1]) if line.strip()]
+          if not rows:
+              print(
+                  "REFUSED RENEWAL_NO_ISSUED_AUTHORITY: no successful tagged "
+                  "issuer run has one live identity-bound WEA artifact; "
+                  "refusing rather than selecting a non-issuance mode.",
+                  file=sys.stderr,
+              )
+              raise SystemExit(3)
+          newest_id = max(row["databaseId"] for row in rows)
+          tied = [row for row in rows if row["databaseId"] == newest_id]
           if len(tied) != 1:
               print(
                   "REFUSED RENEWAL_GENERATION_TAG_AMBIGUOUS: "
