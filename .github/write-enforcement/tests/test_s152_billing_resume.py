@@ -43,6 +43,16 @@ def test_first_run_presents_exact_billing_gate_without_remote_mutation(
     assert mutations == [] and tool.STATE.is_file()
 
 
+def test_preflight_proves_exact_gate_without_local_or_remote_mutation(
+        monkeypatch, tmp_path, capsys):
+    ready(monkeypatch, tmp_path)
+    assert tool.preflight() == 0
+    output = capsys.readouterr().out
+    assert "billing_failure=exact" in output
+    assert "state_mutation=false remote_mutation=false" in output
+    assert not tool.STATE.exists()
+
+
 def test_second_run_reruns_exact_failures_then_merges(monkeypatch, tmp_path, capsys):
     ready(monkeypatch, tmp_path)
     tool.write_presented_state()

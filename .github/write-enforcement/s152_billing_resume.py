@@ -11,6 +11,7 @@ identity, non-billing failure, failed retry, or malformed state refuses.
 
 from __future__ import annotations
 
+import argparse
 import json
 import os
 import socket
@@ -172,14 +173,32 @@ def merge_pr():
         raise Refusal("GOVML_PR_MERGE_POSTCHECK_REFUSED")
 
 
-def run():
+def runtime_ready():
     if os.environ.get("REA_S152_CHECKED_WRAPPER") != MARKER:
         raise Refusal("CHECKED_WRAPPER_REQUIRED")
     if socket.gethostname().split(".", 1)[0] != HOST:
         raise Refusal("HOST_REFUSED")
     if os.geteuid() == 0 or not sys.stdin.isatty():
         raise Refusal("OWNER_RUNTIME_REFUSED")
-    value = exact_pr()
+    return exact_pr()
+
+
+def preflight():
+    value = runtime_ready()
+    if value.get("merged") is True:
+        raise Refusal("GOVML_PR_ALREADY_MERGED")
+    for run_id in RUN_IDS:
+        billing_annotation(run_id)
+    print(
+        "PREFLIGHT_PASS host=gios-dev govml_pr=92 head=%s billing_failure=exact "
+        "state_mutation=false remote_mutation=false" % HEAD_SHA
+    )
+    print("SAFE_TO_PASTE_BACK=true secret_bytes_printed=false")
+    return 0
+
+
+def run():
+    value = runtime_ready()
     if value.get("merged") is True:
         print("BILLING_RECOVERY_PASS govml_pr=92 already_merged=true")
         print("SAFE_TO_PASTE_BACK=true secret_bytes_printed=false")
@@ -202,9 +221,12 @@ def run():
     return 0
 
 
-def main():
+def main(argv=None):
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--preflight", action="store_true")
+    args = parser.parse_args(argv)
     try:
-        return run()
+        return preflight() if args.preflight else run()
     except Refusal as exc:
         print("REFUSE(S152_BILLING_RESUME): %s" % exc, file=sys.stderr)
         print("SAFE_TO_PASTE_BACK=true secret_bytes_printed=false", file=sys.stderr)
