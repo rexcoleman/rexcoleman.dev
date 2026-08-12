@@ -3,10 +3,12 @@
 
 This program runs only in the owner-approved ``rea-write-enforcement-issuer``
 job.  It proves the existing environment ``REA_BUNDLE_READ_TOKEN`` can read an
-exact Git commit in each of the five frozen repositories and can read/download
-the exact predecessor issuer artifact.  Only after every read succeeds does it
-use ``REA_SECRETS_WRITE_PAT`` to set ``REA_BUNDLE_READ_TOKEN`` in the downstream
-REA repository.  Secret values travel only in process memory, child-process
+exact Git commit in each of the five frozen repositories.  Only after every
+read succeeds does it use ``REA_SECRETS_WRITE_PAT`` to set the same
+Contents-only token as ``REA_BUNDLE_READ_TOKEN`` in the downstream REA
+repository.  The signed authority packet travels separately over the issuer's
+append-only public Git surface, so this token needs no cross-repository Actions
+permission.  Secret values travel only in process memory, child-process
 environment, or stdin; they are never argv elements, files, or output.
 
 Every refusal is typed and exits 3.  A failed validation cannot degrade into a
@@ -23,8 +25,6 @@ import subprocess
 import sys
 import urllib.error
 import urllib.request
-import zipfile
-from io import BytesIO
 from pathlib import Path
 from typing import Dict
 
@@ -34,7 +34,6 @@ SOURCE_TOKEN_ABSENT = "SOURCE_TOKEN_ABSENT"
 WRITE_TOKEN_ABSENT = "WRITE_TOKEN_ABSENT"
 MANIFEST_REFUSED = "MANIFEST_REFUSED"
 GIT_READ_REFUSED = "GIT_READ_REFUSED"
-ACTIONS_READ_REFUSED = "ACTIONS_READ_REFUSED"
 SECRET_WRITE_REFUSED = "SECRET_WRITE_REFUSED"
 SECRET_POSTCHECK_REFUSED = "SECRET_POSTCHECK_REFUSED"
 
@@ -42,8 +41,6 @@ SOURCE_ENV = "REA_BUNDLE_READ_TOKEN"
 WRITE_ENV = "REA_SECRETS_WRITE_PAT"
 TARGET_REPOSITORY = "rexcoleman/research_enforcement_activation"
 SECRET_NAME = "REA_BUNDLE_READ_TOKEN"
-ISSUER = "rexcoleman/rexcoleman.dev"
-WORKFLOW_NAME = "Issue write enforcement attestation"
 LOGICAL_REPOSITORIES = {
     "research_enforcement_activation": "rexcoleman/research_enforcement_activation",
     "govML": "rexcoleman/govML",
@@ -83,13 +80,13 @@ def api(token: str, path: str, *, raw: bool = False):
             body = response.read()
     except (urllib.error.HTTPError, urllib.error.URLError, TimeoutError) as exc:
         status = getattr(exc, "code", type(exc).__name__)
-        raise Refusal(ACTIONS_READ_REFUSED, "status=%s path=%s" % (status, path)) from None
+        raise Refusal(GIT_READ_REFUSED, "status=%s path=%s" % (status, path)) from None
     if raw:
         return body
     try:
         return json.loads(body.decode("utf-8"))
     except (UnicodeDecodeError, ValueError):
-        raise Refusal(ACTIONS_READ_REFUSED, "malformed_json path=%s" % path) from None
+        raise Refusal(GIT_READ_REFUSED, "malformed_json path=%s" % path) from None
 
 
 def manifest_commits(path: Path) -> Dict[str, str]:
@@ -117,7 +114,7 @@ def manifest_commits(path: Path) -> Dict[str, str]:
     return commits
 
 
-def validate_source_reads(token: str, commits: Dict[str, str], predecessor_run_id: int) -> None:
+def validate_source_reads(token: str, commits: Dict[str, str]) -> None:
     for logical, repository in LOGICAL_REPOSITORIES.items():
         commit = commits[logical]
         try:
@@ -132,41 +129,6 @@ def validate_source_reads(token: str, commits: Dict[str, str], predecessor_run_i
         ):
             raise Refusal(GIT_READ_REFUSED, "repository=%s identity" % repository)
 
-    artifacts = api(
-        token,
-        "/repos/%s/actions/runs/%s/artifacts" % (ISSUER, predecessor_run_id),
-    )
-    expected = "rea-write-enforcement-attestation-%s" % predecessor_run_id
-    matches = [
-        row for row in artifacts.get("artifacts", [])
-        if isinstance(row, dict) and row.get("name") == expected
-    ] if isinstance(artifacts, dict) else []
-    if (
-        len(matches) != 1
-        or matches[0].get("expired") is not False
-        or matches[0].get("workflow_run", {}).get("id") != predecessor_run_id
-        or not isinstance(matches[0].get("id"), int)
-    ):
-        raise Refusal(ACTIONS_READ_REFUSED, "artifact_identity run=%s" % predecessor_run_id)
-    archive = api(
-        token,
-        "/repos/%s/actions/artifacts/%s/zip" % (ISSUER, matches[0]["id"]),
-        raw=True,
-    )
-    try:
-        with zipfile.ZipFile(BytesIO(archive)) as packet:
-            names = set(packet.namelist())
-            receipt = json.loads(packet.read("issuance_receipt.json").decode("utf-8"))
-    except (KeyError, OSError, UnicodeDecodeError, ValueError, zipfile.BadZipFile):
-        raise Refusal(ACTIONS_READ_REFUSED, "artifact_archive run=%s" % predecessor_run_id) from None
-    required = {
-        "SHA256SUMS",
-        "enforcement_bundle_manifest.json",
-        "issuance_receipt.json",
-        "write_enforcement_attestation.json",
-    }
-    if not required <= names or receipt.get("workflow_run_id") != predecessor_run_id:
-        raise Refusal(ACTIONS_READ_REFUSED, "artifact_contract run=%s" % predecessor_run_id)
 
 
 def run_gh(argv, *, token: str, stdin_value: str = "", source_secret: str = ""):
@@ -230,10 +192,10 @@ def transition(args, environ) -> int:
     if bundle_token == write_token:
         raise Refusal(WRITE_TOKEN_ABSENT, "source_and_write_tokens_must_be_distinct")
     commits = manifest_commits(Path(args.manifest))
-    validate_source_reads(bundle_token, commits, args.predecessor_run_id)
+    validate_source_reads(bundle_token, commits)
     print(
-        "PROTECTED_BUNDLE_READ_VALIDATED repositories=5 actions_repository=%s "
-        "predecessor_run=%s" % (ISSUER, args.predecessor_run_id)
+        "PROTECTED_BUNDLE_CONTENTS_READ_VALIDATED repositories=5 "
+        "actions_permission_required=false"
     )
     copy_and_verify(bundle_token, write_token, args.gh)
     print(
@@ -247,7 +209,6 @@ def transition(args, environ) -> int:
 def parser() -> argparse.ArgumentParser:
     value = argparse.ArgumentParser(description=__doc__)
     value.add_argument("--manifest", required=True)
-    value.add_argument("--predecessor-run-id", required=True, type=int)
     value.add_argument("--gh", default="gh")
     return value
 

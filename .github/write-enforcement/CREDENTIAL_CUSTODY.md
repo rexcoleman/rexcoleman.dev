@@ -101,11 +101,12 @@ Generation-5 capability-change issuance also uses the already-provisioned
 bundle token. After the exact issuer deployment is approved,
 `provision_downstream_bundle_secret.py` reads both existing environment secrets
 inside `rea-write-enforcement-issuer`. It first proves the bundle token can
-read an exact signed Git commit in each of the five frozen repositories and
-can download the exact predecessor artifact from rexcoleman.dev Actions. Only
-then does it pass the bundle token on stdin to the downstream REA secret write,
-and it refuses unless the target name and this run's update are observed. The
-owner sees and handles neither credential value.
+read an exact signed Git commit in each of the five frozen repositories. Only
+then does it pass the Contents-only bundle token on stdin to the downstream REA
+secret write, and it refuses unless the target name and this run's update are
+observed. The signed public packet is published separately under an immutable
+protected Git tag by the issuer's job-scoped token, so the bundle token needs
+no Actions permission. The owner sees and handles neither credential value.
 
 ## Running the checker
 
