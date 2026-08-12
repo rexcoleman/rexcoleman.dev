@@ -28,7 +28,6 @@ REVIEW_WORKFLOW_SHA = "8ef44d4314ca621ae340591727a3cd62b24bd2ef"
 MANIFEST_PR = 76
 MANIFEST_HEAD = "d97fd5520ec3f38a7cd13f1b9899a76ff83c14d8"
 MANIFEST_PATH = ".github/write-enforcement/frozen_bundle_manifest.generation-5.json"
-MANIFEST_FILE = Path("/data/tmp/rexdev_s152_successor_review") / MANIFEST_PATH
 MANIFEST_FILE_SHA256 = "185263455c5f88687df3b057b3e1d6d3ca02a3a445c78c8629e648257bc835cf"
 MANIFEST_DIGEST = "61b14636f83daaf080cc8db1cda412b2aa762fb3b5ba0b9f8f4b96e3ce9ae612"
 ISSUER_TAG = "rea-wea-generation-5-d97fd5520ec3"
@@ -191,6 +190,26 @@ def verify_manifest_pr(require_open=True):
         or ids.count("public-attestation-publisher") != 1
     ):
         raise Refusal("MANIFEST_CONTRACT_REFUSED")
+    return raw
+
+
+def immutable_manifest_bytes():
+    content = api("repos/%s/contents/%s?ref=%s" % (
+        REPOSITORY, MANIFEST_PATH, MANIFEST_HEAD,
+    ))
+    try:
+        raw = base64.b64decode(
+            content["content"].encode("ascii").replace(b"\n", b""), validate=True,
+        )
+        value = json.loads(raw.decode("utf-8"))
+    except (AttributeError, KeyError, TypeError, UnicodeDecodeError, ValueError):
+        raise Refusal("IMMUTABLE_MANIFEST_BYTES_REFUSED") from None
+    if (hashlib.sha256(raw).hexdigest() != MANIFEST_FILE_SHA256
+            or value.get("manifest_digest") != MANIFEST_DIGEST
+            or value.get("authority_generation") != 5
+            or len(value.get("members", [])) != 247):
+        raise Refusal("IMMUTABLE_MANIFEST_IDENTITY_REFUSED")
+    return raw
 
 
 def merge_manifest_pr():
@@ -472,15 +491,21 @@ def sealed_packet(run_id, key):
         ciphertext_sha = value.get("ciphertext_sha256")
         if not lower_hex(ciphertext_sha, 64):
             raise Refusal("SEALED_PACKET_REFUSED")
-        command([
-            "/usr/bin/python3", str(TRANSFER_TOOL), "verify",
-            "--packet", str(path), "--manifest", str(MANIFEST_FILE),
-            "--key-id", key["key_id"],
-            "--public-key-sha256", key["key_sha256"],
-            "--ciphertext-sha256", ciphertext_sha,
-            "--run-id", str(run_id), "--workflow-ref", "refs/tags/%s" % ISSUER_TAG,
-            "--workflow-sha", MANIFEST_HEAD,
-        ])
+        manifest = root / "immutable-generation-5-manifest.json"
+        manifest.write_bytes(immutable_manifest_bytes())
+        try:
+            command([
+                "/usr/bin/python3", str(TRANSFER_TOOL), "verify",
+                "--packet", str(path), "--manifest", str(manifest),
+                "--key-id", key["key_id"],
+                "--public-key-sha256", key["key_sha256"],
+                "--ciphertext-sha256", ciphertext_sha,
+                "--run-id", str(run_id),
+                "--workflow-ref", "refs/tags/%s" % ISSUER_TAG,
+                "--workflow-sha", MANIFEST_HEAD,
+            ])
+        finally:
+            manifest.unlink(missing_ok=True)
         return value
 
 
