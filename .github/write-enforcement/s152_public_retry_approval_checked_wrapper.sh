@@ -15,7 +15,7 @@ refuse() {
 [ "$0" = "$DEPLOYED_WRAPPER" ] || refuse WRAPPER_PATH_MISMATCH
 [ "$(hostname -s)" = gios-dev ] || refuse HOST_REFUSED
 [ "$(id -u)" -ne 0 ] || refuse ROOT_EXECUTION_REFUSED
-[ "$#" -eq 0 ] || refuse ARGUMENT_REFUSED
+[ "$#" -le 1 ] || refuse ARGUMENT_REFUSED
 [ -t 0 ] && [ -t 1 ] && [ -t 2 ] || refuse OWNER_TTY_REQUIRED
 for path in "$CANONICAL_WRAPPER" "$CANONICAL_HELPER" "$DEPLOYED_WRAPPER" "$HELPER"; do
   [ -f "$path" ] && [ ! -L "$path" ] || refuse NONREGULAR_PACKAGE_MEMBER
@@ -29,5 +29,11 @@ git -C "$CANONICAL_ROOT" diff --quiet HEAD -- \
 git -C "$CANONICAL_ROOT" merge-base --is-ancestor HEAD origin/main \
   || refuse CANONICAL_COMMIT_NOT_PUBLISHED
 export REA_S152_CHECKED_WRAPPER=rea-s152-public-retry-approval-v5
-/usr/bin/python3 "$HELPER" --preflight
-exec /usr/bin/python3 "$HELPER"
+case "${1-}" in
+  --preflight) exec /usr/bin/python3 "$HELPER" --preflight ;;
+  "")
+    /usr/bin/python3 "$HELPER" --preflight
+    exec /usr/bin/python3 "$HELPER"
+    ;;
+  *) refuse ARGUMENT_REFUSED ;;
+esac
