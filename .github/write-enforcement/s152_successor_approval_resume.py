@@ -31,6 +31,7 @@ MANIFEST_PATH = ".github/write-enforcement/frozen_bundle_manifest.generation-5.j
 MANIFEST_FILE_SHA256 = "185263455c5f88687df3b057b3e1d6d3ca02a3a445c78c8629e648257bc835cf"
 MANIFEST_DIGEST = "61b14636f83daaf080cc8db1cda412b2aa762fb3b5ba0b9f8f4b96e3ce9ae612"
 ISSUER_TAG = "rea-wea-generation-5-d97fd5520ec3"
+PRESERVED_SEAL_RUN_ID = 31598988338
 TARGET_REPOSITORY = "rexcoleman/research_enforcement_activation"
 SECRET_NAME = "REA_BUNDLE_READ_TOKEN"
 TRANSFER_TOOL = Path(__file__).with_name("provision_downstream_bundle_secret.py")
@@ -94,6 +95,12 @@ def runtime_ready():
         sys.stdin.isatty() and sys.stdout.isatty() and sys.stderr.isatty()
     ):
         raise Refusal("OWNER_RUNTIME_REFUSED")
+    command(["gh", "auth", "status", "--hostname", "github.com"])
+
+
+def coach_runtime_ready():
+    if socket.gethostname().split(".", 1)[0] != HOST or os.geteuid() == 0:
+        raise Refusal("COACH_RUNTIME_REFUSED")
     command(["gh", "auth", "status", "--hostname", "github.com"])
 
 
@@ -632,11 +639,50 @@ def run():
     return 0
 
 
+def coach_resume_sealed():
+    """Resume after the completed protected seal, stopping at issuer approval."""
+    coach_runtime_ready()
+    predecessor = predecessor_snapshot()
+    verify_manifest_pr(require_open=False)
+    review = run_state(REVIEW_RUN_ID)
+    if (review.get("status") != "completed" or review.get("conclusion") != "success"
+            or review.get("headSha") != REVIEW_WORKFLOW_SHA
+            or review.get("headBranch") != "main"):
+        raise Refusal("REVIEW_STATE_REFUSED")
+    verify_issuer_tag()
+    sealed = run_state(PRESERVED_SEAL_RUN_ID)
+    if (sealed.get("status") != "completed" or sealed.get("conclusion") != "success"
+            or sealed.get("headSha") != MANIFEST_HEAD
+            or sealed.get("headBranch") != ISSUER_TAG):
+        raise Refusal("PRESERVED_SEAL_RUN_REFUSED")
+    key = downstream_public_key()
+    packet = sealed_packet(PRESERVED_SEAL_RUN_ID, key)
+    submit_ciphertext(packet, key)
+    current = predecessor_snapshot()
+    if current != predecessor:
+        raise Refusal("PREDECESSOR_DRIFT_REFUSED")
+    issuer_run = dispatch_workflow(current, "capability_change", {
+        "downstream_key_id": key["key_id"],
+        "downstream_public_key_sha256": key["key_sha256"],
+        "sealed_transfer_run_id": PRESERVED_SEAL_RUN_ID,
+        "sealed_ciphertext_sha256": packet["ciphertext_sha256"],
+    })
+    wait_owner_gate(issuer_run)
+    print("S152_SEALED_COACH_RESUME_PASS seal_run=%s issuer_run=%s "
+          "downstream_secret_postcheck=pass owner_approval=pending "
+          "secret_bytes_printed=false" % (PRESERVED_SEAL_RUN_ID, issuer_run))
+    print("SAFE_TO_PASTE_BACK=true secret_bytes_printed=false")
+    return 0
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--preflight", action="store_true")
+    parser.add_argument("--coach-resume-sealed", action="store_true")
     args = parser.parse_args(argv)
     try:
+        if args.coach_resume_sealed:
+            return coach_resume_sealed()
         return preflight() if args.preflight else run()
     except Refusal as exc:
         print("REFUSE(S152_SUCCESSOR_APPROVAL): %s" % exc, file=sys.stderr)

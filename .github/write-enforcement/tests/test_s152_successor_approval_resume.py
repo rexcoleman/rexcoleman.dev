@@ -268,6 +268,30 @@ def test_immutable_manifest_ignores_stale_worktree_path(monkeypatch, tmp_path):
     assert tool.immutable_manifest_bytes() != stale.read_bytes()
 
 
+def test_coach_resume_uses_preserved_seal_and_stops_at_owner_gate(monkeypatch):
+    monkeypatch.setattr(tool, "coach_runtime_ready", lambda: None)
+    predecessor = {"run_id": 12, "wea_sha256": "a" * 64}
+    monkeypatch.setattr(tool, "predecessor_snapshot", lambda: predecessor)
+    monkeypatch.setattr(tool, "verify_manifest_pr", lambda **kwargs: None)
+    monkeypatch.setattr(tool, "verify_issuer_tag", lambda: None)
+    monkeypatch.setattr(tool, "run_state", lambda run: {
+        "status": "completed", "conclusion": "success",
+        "headSha": tool.REVIEW_WORKFLOW_SHA if run == tool.REVIEW_RUN_ID else tool.MANIFEST_HEAD,
+        "headBranch": "main" if run == tool.REVIEW_RUN_ID else tool.ISSUER_TAG,
+    })
+    key = {"key_id": "1", "key_b64": "x", "key_sha256": "b" * 64}
+    packet = {"ciphertext_b64": "e", "ciphertext_sha256": "c" * 64}
+    monkeypatch.setattr(tool, "downstream_public_key", lambda: key)
+    monkeypatch.setattr(tool, "sealed_packet", lambda run, observed: packet)
+    calls = []
+    monkeypatch.setattr(tool, "submit_ciphertext", lambda *_args: calls.append("submit"))
+    monkeypatch.setattr(tool, "dispatch_workflow", lambda *_args: calls.append("dispatch") or 99)
+    monkeypatch.setattr(tool, "wait_owner_gate", lambda run: calls.append("wait"))
+    monkeypatch.setattr(tool, "approve", lambda *_args: calls.append("approve"))
+    assert tool.coach_resume_sealed() == 0
+    assert calls == ["submit", "dispatch", "wait"]
+
+
 class _Temporary:
     def __init__(self, path):
         self.path = path
