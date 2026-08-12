@@ -58,18 +58,30 @@ def test_generation4_contract_registers_all_runtime_consumers_exactly_once():
     assert len(set(staged.values())) == len(staged)
 
 
-def test_ci_materializer_is_successor_only_and_generation4_stays_exact():
+def test_successor_additions_are_closed_and_generation4_stays_exact():
     production = member_contract.EXPECTED_MEMBERS
     successor = member_contract.successor_members()
     added = member_contract.SUCCESSOR_ADDITIONAL_MEMBERS
     assert len(production) == 244
-    assert len(successor) == 245
-    assert set(successor) - set(production) == {"ci-enforcement-materializer"}
+    assert len(successor) == 247
+    assert set(successor) - set(production) == {
+        "ci-enforcement-materializer",
+        "protected-downstream-bundle-secret-transition",
+        "public-attestation-publisher",
+    }
     assert added == {
         "ci-enforcement-materializer": (
             "govML",
             "templates/build/enforcement/ci_materialize_enforcement.py",
-        )
+        ),
+        "protected-downstream-bundle-secret-transition": (
+            "rexcoleman.dev",
+            ".github/write-enforcement/provision_downstream_bundle_secret.py",
+        ),
+        "public-attestation-publisher": (
+            "rexcoleman.dev",
+            ".github/write-enforcement/publish_public_attestation.py",
+        ),
     }
     assert successor["ci-enforcement-materializer"] == added[
         "ci-enforcement-materializer"
