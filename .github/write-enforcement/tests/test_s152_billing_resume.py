@@ -90,6 +90,8 @@ def test_direct_or_wrong_host_refuses_before_github(monkeypatch):
 
 def test_non_billing_annotation_refuses(monkeypatch):
     values = iter([
+        {"id": tool.RUN_IDS[0], "head_sha": tool.HEAD_SHA, "event": "push",
+         "status": "completed", "conclusion": "failure", "run_attempt": 1},
         {"jobs": [{"id": 7, "name": tool.REQUIRED_CHECK,
                    "conclusion": "failure", "steps": []}]},
         [{"message": "ordinary code failure"}],
@@ -101,3 +103,27 @@ def test_non_billing_annotation_refuses(monkeypatch):
         assert "NON_BILLING_CHECK_FAILURE" in str(exc)
     else:
         raise AssertionError("ordinary failure treated as billing")
+
+
+def test_check_state_requires_both_exact_reruns_success(monkeypatch):
+    values = iter([
+        {"id": tool.RUN_IDS[0], "head_sha": tool.HEAD_SHA, "event": "push",
+         "status": "completed", "conclusion": "success", "run_attempt": 2},
+        {"id": tool.RUN_IDS[1], "head_sha": tool.HEAD_SHA,
+         "event": "pull_request", "status": "completed",
+         "conclusion": "failure", "run_attempt": 2},
+    ])
+    monkeypatch.setattr(tool, "api", lambda _path: next(values))
+    assert tool.check_state() is False
+
+
+def test_check_state_accepts_both_exact_reruns_success(monkeypatch):
+    values = iter([
+        {"id": tool.RUN_IDS[0], "head_sha": tool.HEAD_SHA, "event": "push",
+         "status": "completed", "conclusion": "success", "run_attempt": 2},
+        {"id": tool.RUN_IDS[1], "head_sha": tool.HEAD_SHA,
+         "event": "pull_request", "status": "completed",
+         "conclusion": "success", "run_attempt": 2},
+    ])
+    monkeypatch.setattr(tool, "api", lambda _path: next(values))
+    assert tool.check_state() is True
