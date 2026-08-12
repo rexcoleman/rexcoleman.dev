@@ -78,7 +78,10 @@ def executable_lines(path):
     )
 
 
-def run_scheduler_resolver(tmp_path, rows, target_sha, *, annotated=False, missing=False):
+def run_scheduler_resolver(
+    tmp_path, rows, target_sha, *, annotated=False, missing=False,
+    issuance_run_ids=None, invalid_artifact_run_ids=(),
+):
     """Execute the workflow's literal resolver against a closed fake GH API."""
     tmp_path.mkdir(parents=True, exist_ok=True)
     fake = tmp_path / "gh"
@@ -91,6 +94,26 @@ import sys
 args = sys.argv[1:]
 if args[:2] == ["run", "list"]:
     print(os.environ["FAKE_ISSUER_RUNS"])
+    raise SystemExit(0)
+if args and args[0] == "api" and "/actions/runs/" in args[1] and "/artifacts" in args[1]:
+    run_id = int(args[1].split("/actions/runs/", 1)[1].split("/", 1)[0])
+    runs = {row["databaseId"]: row for row in json.loads(os.environ["FAKE_ISSUER_RUNS"])}
+    row = runs[run_id]
+    if run_id not in json.loads(os.environ["FAKE_ISSUANCE_RUN_IDS"]):
+        print(json.dumps({"total_count": 0, "artifacts": []}))
+        raise SystemExit(0)
+    artifact = {
+        "name": "rea-write-enforcement-attestation-%s" % run_id,
+        "expired": False,
+        "workflow_run": {
+            "id": run_id,
+            "head_branch": row["headBranch"],
+            "head_sha": row["headSha"],
+        },
+    }
+    if run_id in json.loads(os.environ["FAKE_INVALID_ARTIFACT_RUN_IDS"]):
+        artifact["workflow_run"]["head_sha"] = "f" * 40
+    print(json.dumps({"total_count": 1, "artifacts": [artifact]}))
     raise SystemExit(0)
 if args and args[0] == "api" and "/git/ref/tags/" in args[1]:
     if os.environ.get("FAKE_TAG_MISSING") == "1":
@@ -118,6 +141,13 @@ raise SystemExit(9)
             "FAKE_TAG_TARGET": target_sha,
             "FAKE_TAG_ANNOTATED": "1" if annotated else "0",
             "FAKE_TAG_MISSING": "1" if missing else "0",
+            "FAKE_ISSUANCE_RUN_IDS": json.dumps(
+                [row["databaseId"] for row in rows]
+                if issuance_run_ids is None else issuance_run_ids
+            ),
+            "FAKE_INVALID_ARTIFACT_RUN_IDS": json.dumps(
+                list(invalid_artifact_run_ids)
+            ),
         }
     )
     resolver = scheduler()["jobs"]["dispatch-renewal"]["steps"][0]["run"]
@@ -391,12 +421,66 @@ def test_scheduler_uses_unique_newest_authenticated_run(tmp_path):
     assert "RENEWAL_GENERATION_REF=rea-wea-generation-4-bdbaa8d0756\n" in exported
     assert f"RENEWAL_GENERATION_HEAD_SHA={newest_sha}\n" in exported
 
-    tied = [dict(row, databaseId=200) for row in rows]
+    tied = [rows[1], dict(rows[1])]
     refused, _ = run_scheduler_resolver(
         tmp_path / "tied", tied, newest_sha, annotated=True
     )
     assert refused.returncode == 3
     assert "RENEWAL_GENERATION_TAG_AMBIGUOUS" in refused.stderr
+
+
+def test_scheduler_excludes_newer_successful_seal_without_wea_artifact(tmp_path):
+    issued_sha = "1" * 40
+    seal_sha = "2" * 40
+    rows = [
+        {
+            "databaseId": 100,
+            "headBranch": "rea-wea-generation-4-0123456789ab",
+            "headSha": issued_sha,
+        },
+        {
+            "databaseId": 200,
+            "headBranch": "rea-wea-generation-5-abcdef012345",
+            "headSha": seal_sha,
+        },
+    ]
+    result, exported = run_scheduler_resolver(
+        tmp_path, rows, issued_sha, issuance_run_ids=[100]
+    )
+    assert result.returncode == 0, result.stderr
+    assert "RENEWAL_GENERATION_REF=rea-wea-generation-4-0123456789ab\n" in exported
+    assert "run_id=100" in result.stdout
+    assert "run_id=200" not in result.stdout
+
+
+def test_scheduler_refuses_when_no_successful_run_has_wea_artifact(tmp_path):
+    head_sha = "2" * 40
+    result, exported = run_scheduler_resolver(
+        tmp_path,
+        [{"databaseId": 200,
+          "headBranch": "rea-wea-generation-5-abcdef012345",
+          "headSha": head_sha}],
+        head_sha,
+        issuance_run_ids=[],
+    )
+    assert result.returncode == 3
+    assert "RENEWAL_NO_ISSUED_AUTHORITY" in result.stderr
+    assert exported == ""
+
+
+def test_scheduler_refuses_mismatched_named_wea_artifact(tmp_path):
+    head_sha = "2" * 40
+    result, exported = run_scheduler_resolver(
+        tmp_path,
+        [{"databaseId": 200,
+          "headBranch": "rea-wea-generation-5-abcdef012345",
+          "headSha": head_sha}],
+        head_sha,
+        invalid_artifact_run_ids=[200],
+    )
+    assert result.returncode == 3
+    assert "RENEWAL_ISSUANCE_ARTIFACT_IDENTITY_REFUSED" in result.stderr
+    assert exported == ""
 
 
 def test_scheduler_dispatch_candidate_is_bound_to_selected_ref_and_sha():
