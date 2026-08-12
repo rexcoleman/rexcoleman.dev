@@ -590,13 +590,17 @@ EXPECTED_MEMBERS.update({
 
 # Successor-only closed extension.  Generation 4's 244-member contract remains
 # byte-for-byte auditable through EXPECTED_MEMBERS and independent_review.py.
-# A capability-change freeze opts into this one-member extension explicitly;
+# A capability-change freeze opts into this closed extension explicitly;
 # the issuer/verifier select between the two exact sets from the manifest's
 # presence of this named transition member, never by subset acceptance.
 SUCCESSOR_ADDITIONAL_MEMBERS = {
     "ci-enforcement-materializer": (
         "govML",
         "templates/build/enforcement/ci_materialize_enforcement.py",
+    ),
+    "protected-downstream-bundle-secret-transition": (
+        "rexcoleman.dev",
+        ".github/write-enforcement/provision_downstream_bundle_secret.py",
     ),
 }
 
