@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import importlib.util
 from pathlib import Path
+import subprocess
 
 import pytest
 
@@ -34,12 +35,17 @@ def test_v9_full_sha_suffix_mismatch_refuses():
         tool.BASE.validate_review_subject(planted)
 
 
-def test_v9_wrapper_checks_transitive_chain_and_v8_is_tombstoned():
+def test_consumed_v9_wrapper_and_v8_are_structural_tombstones():
     wrapper = WRAPPER.read_text(encoding="ascii")
-    assert "OWNER_TTY_REQUIRED" in wrapper
-    assert "CANONICAL_COMMIT_NOT_PUBLISHED" in wrapper
-    assert "V8_DIGEST_MISMATCH" in wrapper
+    assert "CONSUMED_WITHDRAWN" in wrapper
     assert "SAFE_TO_PASTE_BACK=true secret_bytes_printed=false" in wrapper
+    assert "exit 2" in wrapper
+    result = subprocess.run(
+        ["bash", str(WRAPPER)], capture_output=True, text=True, check=False,
+    )
+    assert result.returncode == 2
+    assert "CONSUMED_WITHDRAWN" in result.stderr
+    assert "SAFE_TO_PASTE_BACK=true secret_bytes_printed=false" in result.stderr
     tombstone = V8_WRAPPER.read_text(encoding="ascii")
     assert "WITHDRAWN_PREFLIGHT_IDENTITY_MISMATCH" in tombstone
     assert "exit 2" in tombstone
