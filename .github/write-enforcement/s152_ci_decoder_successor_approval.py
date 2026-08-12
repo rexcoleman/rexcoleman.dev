@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""One checked owner arc for the sealed-free s152 successor publication retry."""
+"""One checked owner arc for the s152 wrapped-Contents successor authority."""
 
 from __future__ import annotations
 
@@ -18,25 +18,25 @@ from pathlib import Path
 
 
 HOST = "gios-dev"
-MARKER = "rea-s152-public-retry-approval-v5"
+MARKER = "rea-s152-ci-decoder-successor-approval-v6"
 REPOSITORY = "rexcoleman/rexcoleman.dev"
 TARGET_REPOSITORY = "rexcoleman/research_enforcement_activation"
 ENVIRONMENT = "rea-write-enforcement-issuer"
 WORKFLOW = "issue-write-enforcement-attestation.yml"
-REVIEW_RUN_ID = 31604361900
-REVIEW_JOB_ID = 94139404692
-REVIEW_WORKFLOW_SHA = "87e6f1f95b6d67fd4491d652bfbab97d611d6536"
-MANIFEST_PR = 88
-MANIFEST_HEAD = "fb97ae2f01a6a13b20209747923be41a057502c6"
+REVIEW_RUN_ID = 31607877005
+REVIEW_JOB_ID = 94151417045
+REVIEW_WORKFLOW_SHA = "99acf5fc109fb9f832b4ae293fb9f2f4a5d239c9"
+MANIFEST_PR = 91
+MANIFEST_HEAD = "eececdc14b8ce911f0c8e03609795ce4ca218661"
 MANIFEST_PATH = ".github/write-enforcement/frozen_bundle_manifest.generation-5.json"
-MANIFEST_FILE_SHA256 = "a45405e8a8ce555624a7bbbd77aff036232ea19d9167568bedd693a2c10c4d43"
-MANIFEST_DIGEST = "3240b02963c5fef93c7c268a6ffce7323fb7468b0f6d13a42e177b8bee8e4893"
-ISSUER_TAG = "rea-wea-generation-5-fb97ae2f01a6"
+MANIFEST_FILE_SHA256 = "3b4ddd8e41f88ccede4659da538fbdd079bd2d7b23c680145ef607309acd3a18"
+MANIFEST_DIGEST = "0421877cd2128a16a1e838ae89a3858471861d1fce847f5bc383cf5a61611490"
+ISSUER_TAG = "rea-wea-generation-5-eececdc14b8c"
 SECRET_NAME = "REA_BUNDLE_READ_TOKEN"
 INSTALLED = Path("/home/azureuser/.local/state/rea_enforcement/remote_wea")
 SIGNED_ROOTS = Path("/home/azureuser/.local/state/rea_enforcement/signed_member_roots")
-GENERATION4_TAG_PREFIX = "refs/tags/rea-wea-generation-4-"
-GENERATION4_MEMBER_COUNT = 244
+PREDECESSOR_TAG_PREFIX = "refs/tags/rea-wea-generation-5-"
+PREDECESSOR_MEMBER_COUNT = 247
 MANIFEST_SCHEMA = "rea.write.enforcement-bundle-manifest.v1"
 RECEIPT_SCHEMA = "rea.write.remote-issuance-receipt.v1"
 ISSUER_URL = (
@@ -251,9 +251,9 @@ def regular_bytes(path):
     return raw
 
 
-def verify_generation4_tag(receipt):
+def verify_predecessor_tag(receipt):
     workflow_ref = receipt.get("workflow_ref")
-    if not isinstance(workflow_ref, str) or not workflow_ref.startswith(GENERATION4_TAG_PREFIX):
+    if not isinstance(workflow_ref, str) or not workflow_ref.startswith(PREDECESSOR_TAG_PREFIX):
         raise Refusal("PREDECESSOR_TAG_REFUSED")
     ref = api("repos/%s/git/ref/tags/%s" % (REPOSITORY, workflow_ref[10:]))
     if peel_tag(ref) != receipt.get("workflow_sha"):
@@ -283,9 +283,11 @@ def predecessor_snapshot():
             and row.get("member_id") == "verify-only-resolver"] \
         if isinstance(members, list) else []
     if (manifest.get("schema_version") != MANIFEST_SCHEMA
-            or manifest.get("authority_generation") != 4
-            or not lower_hex(digest, 64) or len(ids) != GENERATION4_MEMBER_COUNT
-            or len(set(ids)) != GENERATION4_MEMBER_COUNT or len(rows) != 1):
+            or manifest.get("authority_generation") != 5
+            or not lower_hex(digest, 64) or len(ids) != PREDECESSOR_MEMBER_COUNT
+            or len(set(ids)) != PREDECESSOR_MEMBER_COUNT
+            or ids.count("ci-enforcement-materializer") != 1
+            or ids.count("public-attestation-publisher") != 1 or len(rows) != 1):
         raise Refusal("PREDECESSOR_MANIFEST_REFUSED")
     unsigned = dict(manifest)
     unsigned.pop("manifest_digest", None)
@@ -312,7 +314,7 @@ def predecessor_snapshot():
     run_id = receipt.get("workflow_run_id")
     epoch = status.get("authority_epoch")
     if (status.get("verdict") != "PASS" or status.get("state") != "ENFORCING"
-            or status.get("authority_generation") != 4
+            or status.get("authority_generation") != 5
             or status.get("predecessor_verified") is not True
             or status.get("state_digest") != wea_digest
             or status.get("enforcement_bundle_manifest_digest") != digest
@@ -332,7 +334,7 @@ def predecessor_snapshot():
             or remote.get("headSha") != receipt["workflow_sha"]
             or remote.get("headBranch") != receipt["workflow_ref"][10:]):
         raise Refusal("PREDECESSOR_RUN_REFUSED")
-    verify_generation4_tag(receipt)
+    verify_predecessor_tag(receipt)
     if initial != {name: regular_bytes(path) for name, path in paths.items()}:
         raise Refusal("PREDECESSOR_FILES_DRIFT")
     return {"run_id": run_id, "wea_sha256": wea_digest, "epoch": epoch,
@@ -475,7 +477,7 @@ def preflight():
     review_boundary()
     predecessor = predecessor_snapshot()
     secret_metadata()
-    print("S152_PUBLIC_RETRY_PREFLIGHT_PASS review_run=%s manifest_pr=%s "
+    print("S152_CI_DECODER_SUCCESSOR_PREFLIGHT_PASS review_run=%s manifest_pr=%s "
           "manifest_digest=%s predecessor_run=%s predecessor_epoch=%s "
           "mode=public_retry seal_phase=false secret_mutation=false" % (
               REVIEW_RUN_ID, MANIFEST_PR, MANIFEST_DIGEST,
@@ -490,7 +492,7 @@ def run():
     verify_manifest_pr(require_open=True)
     predecessor_snapshot()
     review_boundary()
-    approve(REVIEW_RUN_ID, "exact renewal-safe public retry successor review")
+    approve(REVIEW_RUN_ID, "exact wrapped-Contents successor review")
     review = wait_success(REVIEW_RUN_ID, REVIEW_WORKFLOW_SHA, 120, "REVIEW")
     if review.get("headBranch") != "main":
         raise Refusal("REVIEW_WORKFLOW_REF_REFUSED")
@@ -505,7 +507,7 @@ def run():
     wait_owner_gate(issuer_run)
     if predecessor_snapshot() != predecessor:
         raise Refusal("PREDECESSOR_DRIFT_BEFORE_ISSUER_APPROVAL")
-    approve(issuer_run, "sealed-free public retry successor issuance")
+    approve(issuer_run, "wrapped-Contents successor issuance")
     issued = wait_success(issuer_run, MANIFEST_HEAD, 240, "ISSUER")
     if issued.get("headBranch") != ISSUER_TAG:
         raise Refusal("ISSUER_TAG_REFUSED")
@@ -514,7 +516,7 @@ def run():
     verify_public_packet(issuer_run)
     if secret_metadata() != secret_before:
         raise Refusal("DOWNSTREAM_SECRET_MUTATION_REFUSED")
-    print("S152_PUBLIC_RETRY_PASS review_run=%s manifest_pr=%s tag=%s "
+    print("S152_CI_DECODER_SUCCESSOR_PASS review_run=%s manifest_pr=%s tag=%s "
           "issuer_run=%s artifact=verified public_packet=verified "
           "seal_phase=false secret_mutation=false" % (
               REVIEW_RUN_ID, MANIFEST_PR, ISSUER_TAG, issuer_run,
@@ -530,11 +532,11 @@ def main(argv=None):
     try:
         return preflight() if args.preflight else run()
     except Refusal as exc:
-        print("REFUSE(S152_PUBLIC_RETRY_APPROVAL): %s" % exc, file=sys.stderr)
+        print("REFUSE(S152_CI_DECODER_SUCCESSOR_APPROVAL): %s" % exc, file=sys.stderr)
         print("SAFE_TO_PASTE_BACK=true secret_bytes_printed=false", file=sys.stderr)
         return 2
     except Exception as exc:
-        print("REFUSE(S152_PUBLIC_RETRY_APPROVAL): UNEXPECTED_%s" % type(exc).__name__,
+        print("REFUSE(S152_CI_DECODER_SUCCESSOR_APPROVAL): UNEXPECTED_%s" % type(exc).__name__,
               file=sys.stderr)
         print("SAFE_TO_PASTE_BACK=true secret_bytes_printed=false", file=sys.stderr)
         return 2
