@@ -18,20 +18,21 @@ from pathlib import Path
 
 
 HOST = "gios-dev"
-MARKER = "rea-s152-ci-decoder-successor-approval-v6"
+MARKER = "rea-s152-ci-decoder-successor-approval-v7"
 REPOSITORY = "rexcoleman/rexcoleman.dev"
 TARGET_REPOSITORY = "rexcoleman/research_enforcement_activation"
 ENVIRONMENT = "rea-write-enforcement-issuer"
 WORKFLOW = "issue-write-enforcement-attestation.yml"
-REVIEW_RUN_ID = 31607877005
-REVIEW_JOB_ID = 94151417045
-REVIEW_WORKFLOW_SHA = "99acf5fc109fb9f832b4ae293fb9f2f4a5d239c9"
+REVIEW_RUN_ID = 31609334732
+REVIEW_JOB_ID = 94156347244
+REVIEW_WORKFLOW_SHA = "f59bc94e22b3fb63f27ad2eafe20195464e01414"
 MANIFEST_PR = 91
 MANIFEST_HEAD = "eececdc14b8ce911f0c8e03609795ce4ca218661"
 MANIFEST_PATH = ".github/write-enforcement/frozen_bundle_manifest.generation-5.json"
 MANIFEST_FILE_SHA256 = "3b4ddd8e41f88ccede4659da538fbdd079bd2d7b23c680145ef607309acd3a18"
 MANIFEST_DIGEST = "0421877cd2128a16a1e838ae89a3858471861d1fce847f5bc383cf5a61611490"
 ISSUER_TAG = "rea-wea-generation-5-eececdc14b8c"
+REVIEW_EXPECTED_HEAD = MANIFEST_HEAD
 SECRET_NAME = "REA_BUNDLE_READ_TOKEN"
 INSTALLED = Path("/home/azureuser/.local/state/rea_enforcement/remote_wea")
 SIGNED_ROOTS = Path("/home/azureuser/.local/state/rea_enforcement/signed_member_roots")
@@ -107,6 +108,12 @@ def runtime_ready():
 def lower_hex(value, length):
     return (isinstance(value, str) and len(value) == length
             and all(char in "0123456789abcdef" for char in value))
+
+
+def validate_review_subject(expected_head):
+    """Refuse a dispatch/input subject that differs by even one nibble."""
+    if expected_head != MANIFEST_HEAD:
+        raise Refusal("REVIEW_EXPECTED_HEAD_MISMATCH")
 
 
 def run_state(run_id):
@@ -453,6 +460,7 @@ def verify_public_packet(run_id):
 
 
 def review_boundary():
+    validate_review_subject(REVIEW_EXPECTED_HEAD)
     value = run_state(REVIEW_RUN_ID)
     environment_id = pending_environment(REVIEW_RUN_ID)
     jobs = api("repos/%s/actions/runs/%s/jobs?per_page=100" % (
