@@ -298,14 +298,12 @@ def test_one_nibble_review_head_mismatch_refuses():
         raise AssertionError("one-nibble review subject mismatch admitted")
 
 
-def test_new_checked_wrapper_self_anchors_and_invokes_only_new_helper():
+def test_consumed_v7_wrapper_is_tombstoned():
     value = (ROOT / "s152_ci_decoder_successor_approval_v7_checked_wrapper.sh").read_text()
-    assert "cmp -s \"$DEPLOYED_WRAPPER\" \"$CANONICAL_WRAPPER\"" in value
-    assert "cmp -s \"$HELPER\" \"$CANONICAL_HELPER\"" in value
-    assert "CANONICAL_COMMIT_NOT_PUBLISHED" in value
-    assert "s152_ci_decoder_successor_approval_v7.py" in value
-    assert "s152_public_retry_approval.py" not in value
-    assert '--preflight) exec /usr/bin/python3 "$HELPER" --preflight' in value
+    assert "WITHDRAWN_CONSUMED_SUCCESS" in value
+    assert "SAFE_TO_PASTE_BACK=true secret_bytes_printed=false" in value
+    assert "exit 2" in value
+    assert "/usr/bin/python3" not in value
 
 
 def test_consumed_v5_wrapper_is_tombstoned():
