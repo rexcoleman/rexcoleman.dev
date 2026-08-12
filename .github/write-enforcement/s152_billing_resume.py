@@ -27,6 +27,10 @@ REPOSITORY = "rexcoleman/govML"
 PR_NUMBER = 92
 HEAD_SHA = "cb165ab643cca3a6759058e48bdeb6afdae1146c"
 RUN_IDS = (31556353513, 31556363206)
+RUN_EVENTS = {
+    31556353513: "push",
+    31556363206: "pull_request",
+}
 REQUIRED_CHECK = "artifact-integrity-exact-commit"
 BILLING_MESSAGE = (
     "The job was not started because recent account payments have failed or "
@@ -76,6 +80,16 @@ def exact_pr():
 
 
 def billing_annotation(run_id):
+    run = api("repos/%s/actions/runs/%s" % (REPOSITORY, run_id))
+    if (
+        run.get("id") != run_id
+        or run.get("head_sha") != HEAD_SHA
+        or run.get("event") != RUN_EVENTS.get(run_id)
+        or run.get("status") != "completed"
+        or run.get("conclusion") != "failure"
+        or run.get("run_attempt") != 1
+    ):
+        raise Refusal("BILLING_RUN_METADATA_REFUSED run=%s" % run_id)
     value = api("repos/%s/actions/runs/%s/jobs" % (REPOSITORY, run_id))
     jobs = value.get("jobs") if isinstance(value, dict) else None
     if not isinstance(jobs, list) or len(jobs) != 1:
@@ -145,12 +159,18 @@ def read_state():
 
 
 def check_state():
-    value = api("repos/%s/commits/%s/check-runs" % (REPOSITORY, HEAD_SHA))
-    rows = value.get("check_runs") if isinstance(value, dict) else None
-    matches = [row for row in rows or [] if row.get("name") == REQUIRED_CHECK]
-    successes = [row for row in matches if row.get("status") == "completed"
-                 and row.get("conclusion") == "success"]
-    return len(successes) == 1
+    for run_id in RUN_IDS:
+        run = api("repos/%s/actions/runs/%s" % (REPOSITORY, run_id))
+        if (
+            run.get("id") != run_id
+            or run.get("head_sha") != HEAD_SHA
+            or run.get("event") != RUN_EVENTS[run_id]
+            or run.get("run_attempt", 0) < 2
+            or run.get("status") != "completed"
+            or run.get("conclusion") != "success"
+        ):
+            return False
+    return True
 
 
 def rerun_and_wait():
