@@ -15,6 +15,7 @@ on:
         default: capability_change
         options:
           - capability_change
+          - seal_downstream
           - renew
       predecessor_run_id:
         description: Workflow run containing the exact authenticated WEA being replaced
@@ -22,6 +23,26 @@ on:
         type: string
       predecessor_wea_sha256:
         description: SHA-256 of the exact installed predecessor authenticated before dispatch
+        required: false
+        type: string
+      downstream_key_id:
+        description: Exact REA Actions-secret public-key identifier read locally
+        required: false
+        type: string
+      downstream_public_key_b64:
+        description: Public REA Actions-secret Curve25519 key (never a credential)
+        required: false
+        type: string
+      downstream_public_key_sha256:
+        description: SHA-256 of decoded downstream public-key bytes
+        required: false
+        type: string
+      sealed_transfer_run_id:
+        description: Successful exact seal_downstream run carrying ciphertext only
+        required: false
+        type: string
+      sealed_ciphertext_sha256:
+        description: SHA-256 of exact ciphertext submitted locally to REA
         required: false
         type: string
 
@@ -87,7 +108,7 @@ jobs:
         run: |
           set -euo pipefail
           case "${MODE:-capability_change}" in
-            capability_change) ;;
+            capability_change|seal_downstream) ;;
             *) echo "REFUSED ISSUANCE_MODE_UNRECOGNISED: $MODE" >&2; exit 3 ;;
           esac
       - name: Authenticate exact predecessor before protected environment
@@ -173,9 +194,107 @@ jobs:
           if-no-files-found: error
           retention-days: 1
 
-  issue-wea:
+  seal-downstream:
     needs: preflight-predecessor
-    if: inputs.mode != 'renew'
+    if: inputs.mode == 'seal_downstream'
+    permissions:
+      contents: read
+      actions: read
+    environment: rea-write-enforcement-issuer
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          path: repo
+          persist-credentials: false
+      - name: Seal protected bundle token to exact downstream public key
+        env:
+          REA_BUNDLE_READ_TOKEN: ${{ secrets.REA_BUNDLE_READ_TOKEN }}
+          DOWNSTREAM_KEY_ID: ${{ inputs.downstream_key_id }}
+          DOWNSTREAM_PUBLIC_KEY_B64: ${{ inputs.downstream_public_key_b64 }}
+          DOWNSTREAM_PUBLIC_KEY_SHA256: ${{ inputs.downstream_public_key_sha256 }}
+        run: |
+          set -euo pipefail
+          python3 repo/.github/write-enforcement/provision_downstream_bundle_secret.py seal \
+            --manifest repo/.github/write-enforcement/frozen_bundle_manifest.generation-5.json \
+            --key-id "$DOWNSTREAM_KEY_ID" \
+            --public-key-b64 "$DOWNSTREAM_PUBLIC_KEY_B64" \
+            --public-key-sha256 "$DOWNSTREAM_PUBLIC_KEY_SHA256" \
+            --output sealed-transfer.json
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: rea-downstream-sealed-secret-${{ github.run_id }}
+          path: sealed-transfer.json
+          if-no-files-found: error
+          retention-days: 1
+
+  preflight-sealed-transfer:
+    if: inputs.mode == 'capability_change'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          path: repo
+          persist-credentials: false
+      - name: Authenticate exact sealed-transfer run and packet
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TRANSFER_RUN_ID: ${{ inputs.sealed_transfer_run_id }}
+          KEY_ID: ${{ inputs.downstream_key_id }}
+          PUBLIC_KEY_SHA256: ${{ inputs.downstream_public_key_sha256 }}
+          CIPHERTEXT_SHA256: ${{ inputs.sealed_ciphertext_sha256 }}
+        run: |
+          set -euo pipefail
+          [[ "$TRANSFER_RUN_ID" =~ ^[1-9][0-9]*$ ]]
+          [[ "$KEY_ID" =~ ^[0-9]+$ ]]
+          [[ "$PUBLIC_KEY_SHA256" =~ ^[0-9a-f]{64}$ ]]
+          [[ "$CIPHERTEXT_SHA256" =~ ^[0-9a-f]{64}$ ]]
+          gh run view "$TRANSFER_RUN_ID" --repo rexcoleman/rexcoleman.dev \
+            --json databaseId,event,workflowName,headBranch,headSha,status,conclusion,url \
+            > sealed-run.json
+          python3 - "$TRANSFER_RUN_ID" "${GITHUB_REF#refs/tags/}" "$GITHUB_SHA" sealed-run.json <<'PY'
+          import json, sys
+          run_id = int(sys.argv[1]); tag = sys.argv[2]; sha = sys.argv[3]
+          value = json.load(open(sys.argv[4]))
+          assert value == {
+              "databaseId": run_id, "event": "workflow_dispatch",
+              "workflowName": "Issue write enforcement attestation",
+              "headBranch": tag, "headSha": sha, "status": "completed",
+              "conclusion": "success",
+              "url": f"https://github.com/rexcoleman/rexcoleman.dev/actions/runs/{run_id}",
+          }
+          PY
+          gh api "repos/rexcoleman/rexcoleman.dev/actions/runs/$TRANSFER_RUN_ID/artifacts" \
+            > sealed-artifacts.json
+          python3 - "$TRANSFER_RUN_ID" sealed-artifacts.json <<'PY'
+          import json, sys
+          run_id = int(sys.argv[1]); value = json.load(open(sys.argv[2]))
+          expected = f"rea-downstream-sealed-secret-{run_id}"
+          rows = [row for row in value["artifacts"] if row["name"] == expected]
+          assert len(rows) == 1 and rows[0]["expired"] is False
+          assert rows[0]["workflow_run"]["id"] == run_id
+          PY
+          mkdir sealed
+          gh run download "$TRANSFER_RUN_ID" --repo rexcoleman/rexcoleman.dev \
+            --name "rea-downstream-sealed-secret-$TRANSFER_RUN_ID" --dir sealed
+          python3 repo/.github/write-enforcement/provision_downstream_bundle_secret.py verify \
+            --packet sealed/sealed-transfer.json \
+            --manifest repo/.github/write-enforcement/frozen_bundle_manifest.generation-5.json \
+            --key-id "$KEY_ID" --public-key-sha256 "$PUBLIC_KEY_SHA256" \
+            --ciphertext-sha256 "$CIPHERTEXT_SHA256" --run-id "$TRANSFER_RUN_ID" \
+            --workflow-ref "$GITHUB_REF" --workflow-sha "$GITHUB_SHA"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: authenticated-sealed-bundle-${{ github.run_id }}
+          path: sealed/sealed-transfer.json
+          if-no-files-found: error
+          retention-days: 1
+
+  issue-wea:
+    needs: [preflight-predecessor, preflight-sealed-transfer]
+    if: inputs.mode == 'capability_change'
     permissions:
       contents: write
       actions: read
@@ -215,13 +334,25 @@ jobs:
           PY
           test "$(printf 'dGVzdA==' | base64 --decode)" = test
           sha256sum --version | sed -n '1p'
-      - name: Validate protected bundle token and provision downstream CI
+      - name: Download and reverify authenticated sealed transfer before signing
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: authenticated-sealed-bundle-${{ github.run_id }}
+          path: sealed
+      - name: Bind submitted ciphertext to exact protected transfer
         env:
-          REA_BUNDLE_READ_TOKEN: ${{ secrets.REA_BUNDLE_READ_TOKEN }}
-          REA_SECRETS_WRITE_PAT: ${{ secrets.REA_SECRETS_WRITE_PAT }}
+          TRANSFER_RUN_ID: ${{ inputs.sealed_transfer_run_id }}
+          KEY_ID: ${{ inputs.downstream_key_id }}
+          PUBLIC_KEY_SHA256: ${{ inputs.downstream_public_key_sha256 }}
+          CIPHERTEXT_SHA256: ${{ inputs.sealed_ciphertext_sha256 }}
         run: |
-          python3 repos/rexcoleman.dev/.github/write-enforcement/provision_downstream_bundle_secret.py \
-            --manifest repos/rexcoleman.dev/.github/write-enforcement/frozen_bundle_manifest.generation-5.json
+          set -euo pipefail
+          python3 repos/rexcoleman.dev/.github/write-enforcement/provision_downstream_bundle_secret.py verify \
+            --packet sealed/sealed-transfer.json \
+            --manifest repos/rexcoleman.dev/.github/write-enforcement/frozen_bundle_manifest.generation-5.json \
+            --key-id "$KEY_ID" --public-key-sha256 "$PUBLIC_KEY_SHA256" \
+            --ciphertext-sha256 "$CIPHERTEXT_SHA256" --run-id "$TRANSFER_RUN_ID" \
+            --workflow-ref "$GITHUB_REF" --workflow-sha "$GITHUB_SHA"
       - name: Checkout frozen repositories
         env:
           REA_BUNDLE_READ_TOKEN: ${{ secrets.REA_BUNDLE_READ_TOKEN }}
