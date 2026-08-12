@@ -94,6 +94,19 @@ It performs the same permission probe and stops before the write.
 You never see, generate, paste, or hold the key value at any point. If any
 walkthrough ever asks you to, that walkthrough is wrong.
 
+### Protected downstream bundle-token handoff
+
+Generation-5 capability-change issuance also uses the already-provisioned
+`REA_SECRETS_WRITE_PAT`; it does not ask the owner to mint or paste another
+bundle token. After the exact issuer deployment is approved,
+`provision_downstream_bundle_secret.py` reads both existing environment secrets
+inside `rea-write-enforcement-issuer`. It first proves the bundle token can
+read an exact signed Git commit in each of the five frozen repositories and
+can download the exact predecessor artifact from rexcoleman.dev Actions. Only
+then does it pass the bundle token on stdin to the downstream REA secret write,
+and it refuses unless the target name and this run's update are observed. The
+owner sees and handles neither credential value.
+
 ## Running the checker
 
 ```

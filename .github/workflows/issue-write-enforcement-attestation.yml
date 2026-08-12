@@ -212,6 +212,14 @@ jobs:
           PY
           test "$(printf 'dGVzdA==' | base64 --decode)" = test
           sha256sum --version | sed -n '1p'
+      - name: Validate protected bundle token and provision downstream CI
+        env:
+          REA_BUNDLE_READ_TOKEN: ${{ secrets.REA_BUNDLE_READ_TOKEN }}
+          REA_SECRETS_WRITE_PAT: ${{ secrets.REA_SECRETS_WRITE_PAT }}
+        run: |
+          python3 repos/rexcoleman.dev/.github/write-enforcement/provision_downstream_bundle_secret.py \
+            --manifest repos/rexcoleman.dev/.github/write-enforcement/frozen_bundle_manifest.generation-5.json \
+            --predecessor-run-id "${{ inputs.predecessor_run_id }}"
       - name: Checkout frozen repositories
         env:
           REA_BUNDLE_READ_TOKEN: ${{ secrets.REA_BUNDLE_READ_TOKEN }}
