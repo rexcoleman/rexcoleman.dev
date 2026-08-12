@@ -9,6 +9,7 @@ import hashlib
 import json
 import os
 import socket
+import stat
 import subprocess
 import sys
 import time
@@ -16,7 +17,7 @@ from pathlib import Path
 
 
 HOST = "gios-dev"
-MARKER = "rea-s152-public-successor-approval-v1"
+MARKER = "rea-s152-public-successor-dynamic-approval-v2"
 REPOSITORY = "rexcoleman/rexcoleman.dev"
 ENVIRONMENT = "rea-write-enforcement-issuer"
 WORKFLOW = "issue-write-enforcement-attestation.yml"
@@ -28,18 +29,28 @@ MANIFEST_PATH = ".github/write-enforcement/frozen_bundle_manifest.generation-5.j
 MANIFEST_FILE_SHA256 = "821a0fb63b568383727858bd617922df14ff8f01e8e5b20c11befa844b80493a"
 MANIFEST_DIGEST = "9881c3dbab40d1c7f01e4ed609a5765d836883875a20cda970339364468f6d3c"
 ISSUER_TAG = "rea-wea-generation-5-bbb565d6349c"
-PREDECESSOR_RUN_ID = 31537532308
 INSTALLED = Path("/home/azureuser/.local/state/rea_enforcement/remote_wea")
+SIGNED_ROOTS = Path(
+    "/home/azureuser/.local/state/rea_enforcement/signed_member_roots"
+)
+GENERATION4_TAG_PREFIX = "refs/tags/rea-wea-generation-4-"
+GENERATION4_MEMBER_COUNT = 244
+MANIFEST_SCHEMA = "rea.write.enforcement-bundle-manifest.v1"
+RECEIPT_SCHEMA = "rea.write.remote-issuance-receipt.v1"
+ISSUER_URL = (
+    "https://github.com/rexcoleman/rexcoleman.dev/actions/workflows/"
+    "issue-write-enforcement-attestation.yml"
+)
 
 
 class Refusal(RuntimeError):
     pass
 
 
-def command(argv, stdin_value=None):
+def command(argv, stdin_value=None, env=None):
     completed = subprocess.run(
         argv, input=stdin_value, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-        text=True, check=False,
+        text=True, check=False, env=env,
     )
     if completed.returncode:
         raise Refusal("COMMAND_REFUSED exit=%s subject=%s" % (
@@ -214,23 +225,175 @@ def create_tag():
         raise Refusal("GENERATION_TAG_POSTCHECK_REFUSED")
 
 
-def predecessor_digest():
-    wea = INSTALLED / "write_enforcement_attestation.json"
-    receipt = INSTALLED / "issuance_receipt.json"
-    if not wea.is_file() or wea.is_symlink() or not receipt.is_file() or receipt.is_symlink():
-        raise Refusal("PREDECESSOR_FILES_REFUSED")
-    raw = wea.read_bytes()
+def verify_issuer_tag():
+    path = "repos/%s/git/ref/tags/%s" % (REPOSITORY, ISSUER_TAG)
+    existing = api(path, allow_not_found=True)
+    if existing is None or peel_tag(existing) != MANIFEST_HEAD:
+        raise Refusal("GENERATION_TAG_IDENTITY_REFUSED")
+
+
+def regular_bytes(path):
     try:
-        value = json.loads(receipt.read_bytes())
+        before = path.lstat()
+        if not stat.S_ISREG(before.st_mode):
+            raise Refusal("PREDECESSOR_NONREGULAR path=%s" % path.name)
+        raw = path.read_bytes()
+        after = path.lstat()
     except (OSError, ValueError):
-        raise Refusal("PREDECESSOR_RECEIPT_REFUSED") from None
-    digest = hashlib.sha256(raw).hexdigest()
-    if value.get("workflow_run_id") != PREDECESSOR_RUN_ID or value.get("wea_sha256") != digest:
-        raise Refusal("PREDECESSOR_IDENTITY_REFUSED")
-    return digest
+        raise Refusal("PREDECESSOR_READ_REFUSED path=%s" % path.name) from None
+    if (before.st_dev, before.st_ino, before.st_size, before.st_mtime_ns) != (
+        after.st_dev, after.st_ino, after.st_size, after.st_mtime_ns
+    ):
+        raise Refusal("PREDECESSOR_FILE_DRIFT path=%s" % path.name)
+    return raw
 
 
-def dispatch_issuer(digest):
+def json_bytes(path):
+    raw = regular_bytes(path)
+    try:
+        value = json.loads(raw.decode("utf-8"))
+    except (UnicodeDecodeError, ValueError):
+        raise Refusal("PREDECESSOR_JSON_REFUSED path=%s" % path.name) from None
+    if not isinstance(value, dict):
+        raise Refusal("PREDECESSOR_JSON_REFUSED path=%s" % path.name)
+    return raw, value
+
+
+def verify_generation4_tag(receipt):
+    workflow_ref = receipt.get("workflow_ref")
+    if not isinstance(workflow_ref, str) or not workflow_ref.startswith(
+        GENERATION4_TAG_PREFIX
+    ):
+        raise Refusal("PREDECESSOR_TAG_REFUSED")
+    tag_name = workflow_ref[len("refs/tags/"):]
+    ref = api("repos/%s/git/ref/tags/%s" % (REPOSITORY, tag_name))
+    if peel_tag(ref) != receipt.get("workflow_sha"):
+        raise Refusal("PREDECESSOR_TAG_REFUSED")
+
+
+def lower_hex(value, length):
+    return (isinstance(value, str) and len(value) == length
+            and all(char in "0123456789abcdef" for char in value))
+
+
+def validate_status_receipt(status, receipt, wea_digest, manifest_digest):
+    run_id = receipt.get("workflow_run_id")
+    epoch = status.get("authority_epoch")
+    if (
+        status.get("verdict") != "PASS" or status.get("state") != "ENFORCING"
+        or status.get("authority_generation") != 4
+        or status.get("predecessor_verified") is not True
+        or status.get("remote_issued") is not True
+        or status.get("state_digest") != wea_digest
+        or status.get("enforcement_bundle_manifest_digest") != manifest_digest
+        or not isinstance(run_id, int) or isinstance(run_id, bool) or run_id <= 0
+        or status.get("workflow_run_id") != run_id
+        or not isinstance(epoch, int) or isinstance(epoch, bool) or epoch <= 0
+    ):
+        raise Refusal("PREDECESSOR_VERIFIER_STATUS_REFUSED")
+    if (
+        receipt.get("schema_version") != RECEIPT_SCHEMA
+        or receipt.get("event") != "workflow_dispatch"
+        or receipt.get("issuer") != ISSUER_URL
+        or receipt.get("workflow_repository") != REPOSITORY
+        or receipt.get("workflow_run_attempt") != 1
+        or receipt.get("wea_sha256") != wea_digest
+        or receipt.get("manifest_sha256") != manifest_digest
+        or receipt.get("issued_at") != status.get("issued_at")
+        or not lower_hex(receipt.get("workflow_sha"), 40)
+        or not lower_hex(receipt.get("workflow_blob_sha256"), 64)
+    ):
+        raise Refusal("PREDECESSOR_RECEIPT_REFUSED")
+    return run_id, epoch
+
+
+def predecessor_snapshot():
+    paths = {
+        "wea": INSTALLED / "write_enforcement_attestation.json",
+        "receipt": INSTALLED / "issuance_receipt.json",
+        "manifest": INSTALLED / "enforcement_bundle_manifest.json",
+        "predecessor": INSTALLED / "predecessor_write_enforcement_attestation.json",
+    }
+    initial = {name: regular_bytes(path) for name, path in paths.items()}
+    try:
+        wea = json.loads(initial["wea"].decode("utf-8"))
+        receipt = json.loads(initial["receipt"].decode("utf-8"))
+        manifest = json.loads(initial["manifest"].decode("utf-8"))
+        json.loads(initial["predecessor"].decode("utf-8"))
+    except (UnicodeDecodeError, ValueError):
+        raise Refusal("PREDECESSOR_JSON_REFUSED") from None
+    if not all(isinstance(row, dict) for row in (wea, receipt, manifest)):
+        raise Refusal("PREDECESSOR_JSON_REFUSED")
+    members = manifest.get("members")
+    ids = [row.get("member_id") for row in members if isinstance(row, dict)] \
+        if isinstance(members, list) else []
+    digest = manifest.get("manifest_digest")
+    verifier_rows = [row for row in members if isinstance(row, dict)
+                     and row.get("member_id") == "verify-only-resolver"] \
+        if isinstance(members, list) else []
+    if (
+        manifest.get("schema_version") != MANIFEST_SCHEMA
+        or manifest.get("authority_generation") != 4
+        or not isinstance(digest, str) or len(digest) != 64
+        or len(ids) != GENERATION4_MEMBER_COUNT
+        or len(set(ids)) != GENERATION4_MEMBER_COUNT
+        or len(verifier_rows) != 1
+    ):
+        raise Refusal("PREDECESSOR_MANIFEST_REFUSED")
+    canonical = dict(manifest)
+    canonical.pop("manifest_digest", None)
+    calculated = hashlib.sha256(
+        json.dumps(canonical, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    ).hexdigest()
+    if calculated != digest:
+        raise Refusal("PREDECESSOR_MANIFEST_DIGEST_REFUSED")
+    verifier_row = verifier_rows[0]
+    if (
+        verifier_row.get("repository") != "research_enforcement_activation"
+        or verifier_row.get("path") != "write_integrity/attestation/wea_verifier.py"
+    ):
+        raise Refusal("PREDECESSOR_VERIFIER_ROW_REFUSED")
+    verifier = SIGNED_ROOTS / digest / verifier_row["repository"] / verifier_row["path"]
+    verifier_raw = regular_bytes(verifier)
+    if (len(verifier_raw) != verifier_row.get("byte_length")
+            or hashlib.sha256(verifier_raw).hexdigest() != verifier_row.get("sha256")):
+        raise Refusal("PREDECESSOR_VERIFIER_DIGEST_REFUSED")
+    verifier_env = os.environ.copy()
+    verifier_env["REA_REMOTE_WEA_ROOT"] = str(INSTALLED)
+    try:
+        status = json.loads(command(
+            ["/usr/bin/python3", str(verifier), "attestation-status"],
+            env=verifier_env,
+        ))
+    except ValueError:
+        raise Refusal("PREDECESSOR_VERIFIER_OUTPUT_REFUSED") from None
+    wea_digest = hashlib.sha256(initial["wea"]).hexdigest()
+    run_id, epoch = validate_status_receipt(status, receipt, wea_digest, digest)
+    remote = run_state(run_id)
+    if (
+        remote.get("status") != "completed" or remote.get("conclusion") != "success"
+        or remote.get("headSha") != receipt["workflow_sha"]
+        or remote.get("headBranch") != receipt["workflow_ref"][len("refs/tags/"):]
+    ):
+        raise Refusal("PREDECESSOR_RUN_REFUSED")
+    verify_generation4_tag(receipt)
+    final = {name: regular_bytes(path) for name, path in paths.items()}
+    if initial != final:
+        raise Refusal("PREDECESSOR_FILES_DRIFT")
+    return {
+        "run_id": run_id,
+        "wea_sha256": wea_digest,
+        "epoch": epoch,
+        "manifest_digest": digest,
+        "workflow_ref": receipt["workflow_ref"],
+        "workflow_sha": receipt["workflow_sha"],
+        "issued_at": receipt["issued_at"],
+        "file_hashes": {name: hashlib.sha256(raw).hexdigest()
+                        for name, raw in initial.items()},
+    }
+
+
+def dispatch_issuer(snapshot):
     rows = json.loads(command([
         "gh", "run", "list", "--repo", REPOSITORY, "--workflow", WORKFLOW,
         "--limit", "1", "--json", "databaseId",
@@ -239,8 +402,8 @@ def dispatch_issuer(digest):
     command([
         "gh", "workflow", "run", WORKFLOW, "--repo", REPOSITORY,
         "--ref", ISSUER_TAG, "-f", "mode=capability_change",
-        "-f", "predecessor_run_id=%s" % PREDECESSOR_RUN_ID,
-        "-f", "predecessor_wea_sha256=%s" % digest,
+        "-f", "predecessor_run_id=%s" % snapshot["run_id"],
+        "-f", "predecessor_wea_sha256=%s" % snapshot["wea_sha256"],
     ])
     for _attempt in range(60):
         candidates = json.loads(command([
@@ -283,12 +446,19 @@ def verify_artifact(run_id):
 
 def preflight():
     runtime_ready()
-    verify_manifest_pr()
-    if pending_environment(REVIEW_RUN_ID) is None:
-        raise Refusal("REVIEW_OWNER_GATE_NOT_PENDING")
+    predecessor = predecessor_snapshot()
+    verify_manifest_pr(require_open=False)
+    review = run_state(REVIEW_RUN_ID)
+    if (review.get("status") != "completed" or review.get("conclusion") != "success"
+            or review.get("headSha") != REVIEW_WORKFLOW_SHA
+            or review.get("headBranch") != "main"):
+        raise Refusal("REVIEW_STATE_REFUSED")
+    verify_issuer_tag()
     print("PREFLIGHT_PASS host=gios-dev review_run=%s manifest_pr=%s "
-          "manifest_digest=%s owner_credential_handling=false mutation=false" % (
-              REVIEW_RUN_ID, MANIFEST_PR, MANIFEST_DIGEST
+          "manifest_digest=%s predecessor_run=%s predecessor_epoch=%s "
+          "owner_credential_handling=false mutation=false" % (
+              REVIEW_RUN_ID, MANIFEST_PR, MANIFEST_DIGEST,
+              predecessor["run_id"], predecessor["epoch"]
           ))
     print("SAFE_TO_PASTE_BACK=true secret_bytes_printed=false")
     return 0
@@ -296,15 +466,28 @@ def preflight():
 
 def run():
     runtime_ready()
-    verify_manifest_pr()
-    approve(REVIEW_RUN_ID, "exact public-packet successor review")
-    review = wait_success(REVIEW_RUN_ID, REVIEW_WORKFLOW_SHA, 120, "REVIEW")
-    if review.get("headBranch") != "main":
-        raise Refusal("REVIEW_WORKFLOW_REF_REFUSED")
-    verify_manifest_pr()
-    merge_manifest_pr()
+    predecessor = predecessor_snapshot()
+    review = run_state(REVIEW_RUN_ID)
+    if review.get("status") == "completed":
+        if (review.get("conclusion") != "success"
+                or review.get("headSha") != REVIEW_WORKFLOW_SHA
+                or review.get("headBranch") != "main"):
+            raise Refusal("REVIEW_STATE_REFUSED")
+    else:
+        approve(REVIEW_RUN_ID, "exact public-packet successor review")
+        review = wait_success(REVIEW_RUN_ID, REVIEW_WORKFLOW_SHA, 120, "REVIEW")
+        if review.get("headBranch") != "main":
+            raise Refusal("REVIEW_WORKFLOW_REF_REFUSED")
+    try:
+        verify_manifest_pr(require_open=False)
+    except Refusal:
+        verify_manifest_pr(require_open=True)
+        merge_manifest_pr()
     create_tag()
-    issuer_run = dispatch_issuer(predecessor_digest())
+    current = predecessor_snapshot()
+    if current != predecessor:
+        raise Refusal("PREDECESSOR_DRIFT_REFUSED")
+    issuer_run = dispatch_issuer(current)
     wait_owner_gate(issuer_run)
     approve(issuer_run, "public-packet successor issuance")
     issued = wait_success(issuer_run, MANIFEST_HEAD, 240, "ISSUER")
