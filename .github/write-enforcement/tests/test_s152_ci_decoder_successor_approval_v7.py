@@ -8,8 +8,8 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
-SOURCE = ROOT / "s152_ci_decoder_successor_approval.py"
-SPEC = importlib.util.spec_from_file_location("s152_ci_decoder_successor_approval", SOURCE)
+SOURCE = ROOT / "s152_ci_decoder_successor_approval_v7.py"
+SPEC = importlib.util.spec_from_file_location("s152_ci_decoder_successor_approval_v7", SOURCE)
 assert SPEC and SPEC.loader
 tool = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(tool)
@@ -281,16 +281,29 @@ def test_installed_generation4_predecessor_is_refused(monkeypatch):
 def test_constants_bind_new_incident():
     assert tool.ISSUER_TAG == "rea-wea-generation-5-" + tool.MANIFEST_HEAD[:12]
     assert len(tool.MANIFEST_FILE_SHA256) == 64
-    assert tool.REVIEW_RUN_ID == 31607877005
+    assert tool.REVIEW_RUN_ID == 31609334732
     assert tool.MANIFEST_PR == 91
+    assert tool.REVIEW_EXPECTED_HEAD == tool.MANIFEST_HEAD
+
+
+def test_one_nibble_review_head_mismatch_refuses():
+    planted = tool.MANIFEST_HEAD[:7] + (
+        "0" if tool.MANIFEST_HEAD[7] != "0" else "1"
+    ) + tool.MANIFEST_HEAD[8:]
+    try:
+        tool.validate_review_subject(planted)
+    except tool.Refusal as exc:
+        assert str(exc) == "REVIEW_EXPECTED_HEAD_MISMATCH"
+    else:
+        raise AssertionError("one-nibble review subject mismatch admitted")
 
 
 def test_new_checked_wrapper_self_anchors_and_invokes_only_new_helper():
-    value = (ROOT / "s152_ci_decoder_successor_approval_checked_wrapper.sh").read_text()
+    value = (ROOT / "s152_ci_decoder_successor_approval_v7_checked_wrapper.sh").read_text()
     assert "cmp -s \"$DEPLOYED_WRAPPER\" \"$CANONICAL_WRAPPER\"" in value
     assert "cmp -s \"$HELPER\" \"$CANONICAL_HELPER\"" in value
     assert "CANONICAL_COMMIT_NOT_PUBLISHED" in value
-    assert "s152_ci_decoder_successor_approval.py" in value
+    assert "s152_ci_decoder_successor_approval_v7.py" in value
     assert "s152_public_retry_approval.py" not in value
     assert '--preflight) exec /usr/bin/python3 "$HELPER" --preflight' in value
 
@@ -298,6 +311,14 @@ def test_new_checked_wrapper_self_anchors_and_invokes_only_new_helper():
 def test_consumed_v5_wrapper_is_tombstoned():
     value = (ROOT / "s152_public_retry_approval_checked_wrapper.sh").read_text()
     assert "WITHDRAWN_CONSUMED_SUCCESS" in value
+    assert "SAFE_TO_PASTE_BACK=true secret_bytes_printed=false" in value
+    assert "exit 2" in value
+    assert "/usr/bin/python3" not in value
+
+
+def test_consumed_v6_wrapper_is_tombstoned():
+    value = (ROOT / "s152_ci_decoder_successor_approval_checked_wrapper.sh").read_text()
+    assert "WITHDRAWN_REVIEW_IDENTITY_MISMATCH" in value
     assert "SAFE_TO_PASTE_BACK=true secret_bytes_printed=false" in value
     assert "exit 2" in value
     assert "/usr/bin/python3" not in value
