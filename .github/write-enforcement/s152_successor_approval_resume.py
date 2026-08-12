@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import base64
+import datetime as dt
 import hashlib
 import json
 import os
@@ -12,23 +13,28 @@ import socket
 import stat
 import subprocess
 import sys
+import tempfile
 import time
 from pathlib import Path
 
 
 HOST = "gios-dev"
-MARKER = "rea-s152-public-successor-dynamic-approval-v2"
+MARKER = "rea-s152-sealed-successor-approval-v3"
 REPOSITORY = "rexcoleman/rexcoleman.dev"
 ENVIRONMENT = "rea-write-enforcement-issuer"
 WORKFLOW = "issue-write-enforcement-attestation.yml"
-REVIEW_RUN_ID = 31558727743
-REVIEW_WORKFLOW_SHA = "4865392bf4837cb8b5eefb9aaf84e2a429479116"
-MANIFEST_PR = 72
-MANIFEST_HEAD = "bbb565d6349c36c3cb6db3018e04003f864711a8"
+REVIEW_RUN_ID = 31597379743
+REVIEW_WORKFLOW_SHA = "8ef44d4314ca621ae340591727a3cd62b24bd2ef"
+MANIFEST_PR = 76
+MANIFEST_HEAD = "d97fd5520ec3f38a7cd13f1b9899a76ff83c14d8"
 MANIFEST_PATH = ".github/write-enforcement/frozen_bundle_manifest.generation-5.json"
-MANIFEST_FILE_SHA256 = "821a0fb63b568383727858bd617922df14ff8f01e8e5b20c11befa844b80493a"
-MANIFEST_DIGEST = "9881c3dbab40d1c7f01e4ed609a5765d836883875a20cda970339364468f6d3c"
-ISSUER_TAG = "rea-wea-generation-5-bbb565d6349c"
+MANIFEST_FILE = Path("/data/tmp/rexdev_s152_successor_review") / MANIFEST_PATH
+MANIFEST_FILE_SHA256 = "185263455c5f88687df3b057b3e1d6d3ca02a3a445c78c8629e648257bc835cf"
+MANIFEST_DIGEST = "61b14636f83daaf080cc8db1cda412b2aa762fb3b5ba0b9f8f4b96e3ce9ae612"
+ISSUER_TAG = "rea-wea-generation-5-d97fd5520ec3"
+TARGET_REPOSITORY = "rexcoleman/research_enforcement_activation"
+SECRET_NAME = "REA_BUNDLE_READ_TOKEN"
+TRANSFER_TOOL = Path(__file__).with_name("provision_downstream_bundle_secret.py")
 INSTALLED = Path("/home/azureuser/.local/state/rea_enforcement/remote_wea")
 SIGNED_ROOTS = Path(
     "/home/azureuser/.local/state/rea_enforcement/signed_member_roots"
@@ -72,6 +78,8 @@ def api(path, method="GET", body=None, allow_not_found=False):
         return None
     if completed.returncode:
         raise Refusal("API_REFUSED exit=%s path=%s" % (completed.returncode, path))
+    if not completed.stdout.strip():
+        return None
     try:
         return json.loads(completed.stdout)
     except ValueError:
@@ -393,18 +401,21 @@ def predecessor_snapshot():
     }
 
 
-def dispatch_issuer(snapshot):
+def dispatch_workflow(snapshot, mode, fields):
     rows = json.loads(command([
         "gh", "run", "list", "--repo", REPOSITORY, "--workflow", WORKFLOW,
         "--limit", "1", "--json", "databaseId",
     ]))
     baseline = rows[0]["databaseId"] if rows else 0
-    command([
+    argv = [
         "gh", "workflow", "run", WORKFLOW, "--repo", REPOSITORY,
-        "--ref", ISSUER_TAG, "-f", "mode=capability_change",
+        "--ref", ISSUER_TAG, "-f", "mode=%s" % mode,
         "-f", "predecessor_run_id=%s" % snapshot["run_id"],
         "-f", "predecessor_wea_sha256=%s" % snapshot["wea_sha256"],
-    ])
+    ]
+    for key, value in sorted(fields.items()):
+        argv.extend(["-f", "%s=%s" % (key, value)])
+    command(argv)
     for _attempt in range(60):
         candidates = json.loads(command([
             "gh", "run", "list", "--repo", REPOSITORY, "--workflow", WORKFLOW,
@@ -421,6 +432,83 @@ def dispatch_issuer(snapshot):
             raise Refusal("ISSUER_DISCOVERY_AMBIGUOUS")
         time.sleep(5)
     raise Refusal("ISSUER_DISCOVERY_TIMEOUT")
+
+
+def downstream_public_key():
+    value = api("repos/%s/actions/secrets/public-key" % TARGET_REPOSITORY)
+    try:
+        raw = base64.b64decode(value["key"].encode("ascii"), validate=True)
+        key_id = value["key_id"]
+    except (AttributeError, KeyError, TypeError, ValueError):
+        raise Refusal("DOWNSTREAM_PUBLIC_KEY_REFUSED") from None
+    if len(raw) != 32 or not isinstance(key_id, str) or not key_id.isdigit():
+        raise Refusal("DOWNSTREAM_PUBLIC_KEY_REFUSED")
+    return {
+        "key_id": key_id, "key_b64": value["key"],
+        "key_sha256": hashlib.sha256(raw).hexdigest(),
+    }
+
+
+def sealed_packet(run_id, key):
+    artifacts = api("repos/%s/actions/runs/%s/artifacts" % (REPOSITORY, run_id))
+    expected = "rea-downstream-sealed-secret-%s" % run_id
+    matches = [row for row in artifacts.get("artifacts", [])
+               if isinstance(row, dict) and row.get("name") == expected
+               and row.get("expired") is False
+               and row.get("workflow_run", {}).get("id") == run_id]
+    if len(matches) != 1:
+        raise Refusal("SEALED_ARTIFACT_REFUSED")
+    with tempfile.TemporaryDirectory(prefix="rea-s152-sealed-") as temporary:
+        root = Path(temporary)
+        command([
+            "gh", "run", "download", str(run_id), "--repo", REPOSITORY,
+            "--name", expected, "--dir", str(root),
+        ])
+        path = root / "sealed-transfer.json"
+        try:
+            value = json.loads(path.read_bytes())
+        except (OSError, ValueError):
+            raise Refusal("SEALED_PACKET_REFUSED") from None
+        ciphertext_sha = value.get("ciphertext_sha256")
+        if not lower_hex(ciphertext_sha, 64):
+            raise Refusal("SEALED_PACKET_REFUSED")
+        command([
+            "/usr/bin/python3", str(TRANSFER_TOOL), "verify",
+            "--packet", str(path), "--manifest", str(MANIFEST_FILE),
+            "--key-id", key["key_id"],
+            "--public-key-sha256", key["key_sha256"],
+            "--ciphertext-sha256", ciphertext_sha,
+            "--run-id", str(run_id), "--workflow-ref", "refs/tags/%s" % ISSUER_TAG,
+            "--workflow-sha", MANIFEST_HEAD,
+        ])
+        return value
+
+
+def submit_ciphertext(packet, key):
+    if downstream_public_key() != key:
+        raise Refusal("DOWNSTREAM_PUBLIC_KEY_DRIFT")
+    before = dt.datetime.now(dt.timezone.utc) - dt.timedelta(minutes=1)
+    value = api(
+        "repos/%s/actions/secrets/%s" % (TARGET_REPOSITORY, SECRET_NAME),
+        method="PUT", body={
+            "encrypted_value": packet["ciphertext_b64"], "key_id": key["key_id"],
+        },
+    )
+    if value is not None:
+        raise Refusal("DOWNSTREAM_SECRET_WRITE_RESPONSE_REFUSED")
+    observed = api("repos/%s/actions/secrets/%s" % (
+        TARGET_REPOSITORY, SECRET_NAME,
+    ))
+    try:
+        updated = dt.datetime.fromisoformat(
+            observed["updated_at"].replace("Z", "+00:00")
+        ).astimezone(dt.timezone.utc)
+    except (AttributeError, KeyError, TypeError, ValueError):
+        raise Refusal("DOWNSTREAM_SECRET_POSTCHECK_REFUSED") from None
+    if observed.get("name") != SECRET_NAME or updated < before:
+        raise Refusal("DOWNSTREAM_SECRET_POSTCHECK_REFUSED")
+    if downstream_public_key() != key:
+        raise Refusal("DOWNSTREAM_PUBLIC_KEY_DRIFT")
 
 
 def wait_owner_gate(run_id):
@@ -447,18 +535,19 @@ def verify_artifact(run_id):
 def preflight():
     runtime_ready()
     predecessor = predecessor_snapshot()
-    verify_manifest_pr(require_open=False)
+    verify_manifest_pr(require_open=True)
     review = run_state(REVIEW_RUN_ID)
-    if (review.get("status") != "completed" or review.get("conclusion") != "success"
+    if (review.get("status") == "completed"
             or review.get("headSha") != REVIEW_WORKFLOW_SHA
-            or review.get("headBranch") != "main"):
+            or review.get("headBranch") != "main"
+            or pending_environment(REVIEW_RUN_ID) is None):
         raise Refusal("REVIEW_STATE_REFUSED")
-    verify_issuer_tag()
+    key = downstream_public_key()
     print("PREFLIGHT_PASS host=gios-dev review_run=%s manifest_pr=%s "
           "manifest_digest=%s predecessor_run=%s predecessor_epoch=%s "
-          "owner_credential_handling=false mutation=false" % (
+          "downstream_key_id=%s owner_credential_handling=false mutation=false" % (
               REVIEW_RUN_ID, MANIFEST_PR, MANIFEST_DIGEST,
-              predecessor["run_id"], predecessor["epoch"]
+              predecessor["run_id"], predecessor["epoch"], key["key_id"]
           ))
     print("SAFE_TO_PASTE_BACK=true secret_bytes_printed=false")
     return 0
@@ -478,25 +567,41 @@ def run():
         review = wait_success(REVIEW_RUN_ID, REVIEW_WORKFLOW_SHA, 120, "REVIEW")
         if review.get("headBranch") != "main":
             raise Refusal("REVIEW_WORKFLOW_REF_REFUSED")
-    try:
-        verify_manifest_pr(require_open=False)
-    except Refusal:
-        verify_manifest_pr(require_open=True)
-        merge_manifest_pr()
+    verify_manifest_pr(require_open=True)
+    merge_manifest_pr()
     create_tag()
     current = predecessor_snapshot()
     if current != predecessor:
         raise Refusal("PREDECESSOR_DRIFT_REFUSED")
-    issuer_run = dispatch_issuer(current)
+    key = downstream_public_key()
+    seal_run = dispatch_workflow(current, "seal_downstream", {
+        "downstream_key_id": key["key_id"],
+        "downstream_public_key_b64": key["key_b64"],
+        "downstream_public_key_sha256": key["key_sha256"],
+    })
+    wait_owner_gate(seal_run)
+    approve(seal_run, "sealed downstream bundle transfer")
+    sealed = wait_success(seal_run, MANIFEST_HEAD, 240, "SEALED_TRANSFER")
+    if sealed.get("headBranch") != ISSUER_TAG:
+        raise Refusal("SEALED_TRANSFER_TAG_REFUSED")
+    packet = sealed_packet(seal_run, key)
+    submit_ciphertext(packet, key)
+    current = predecessor_snapshot()
+    issuer_run = dispatch_workflow(current, "capability_change", {
+        "downstream_key_id": key["key_id"],
+        "downstream_public_key_sha256": key["key_sha256"],
+        "sealed_transfer_run_id": seal_run,
+        "sealed_ciphertext_sha256": packet["ciphertext_sha256"],
+    })
     wait_owner_gate(issuer_run)
-    approve(issuer_run, "public-packet successor issuance")
+    approve(issuer_run, "sealed public-packet successor issuance")
     issued = wait_success(issuer_run, MANIFEST_HEAD, 240, "ISSUER")
     if issued.get("headBranch") != ISSUER_TAG:
         raise Refusal("ISSUER_TAG_REFUSED")
     verify_artifact(issuer_run)
-    print("S152_SUCCESSOR_APPROVAL_PASS review_run=%s manifest_pr=%s tag=%s "
-          "issuer_run=%s artifact=verified owner_credential_handling=false" % (
-              REVIEW_RUN_ID, MANIFEST_PR, ISSUER_TAG, issuer_run
+    print("S152_SEALED_SUCCESSOR_PASS review_run=%s manifest_pr=%s tag=%s "
+          "seal_run=%s issuer_run=%s artifact=verified plaintext_exposed=false" % (
+              REVIEW_RUN_ID, MANIFEST_PR, ISSUER_TAG, seal_run, issuer_run
           ))
     print("SAFE_TO_PASTE_BACK=true secret_bytes_printed=false")
     return 0
