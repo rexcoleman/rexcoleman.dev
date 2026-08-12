@@ -180,10 +180,14 @@ def test_capability_change_jobs_are_skipped_in_renewal_mode():
     jobs = issuer()["jobs"]
     assert jobs["preflight-predecessor"]["if"] == "inputs.mode != 'renew'"
     assert jobs["issue-wea"]["if"] == (
-        "inputs.mode == 'capability_change' || inputs.mode == 'public_retry'"
+        "inputs.mode == 'capability_change' || "
+        "inputs.mode == 'capability_change_existing_secret' || "
+        "inputs.mode == 'public_retry'"
     )
     assert jobs["preflight-sealed-transfer"]["if"] == (
-        "inputs.mode == 'capability_change' || inputs.mode == 'public_retry'"
+        "inputs.mode == 'capability_change' || "
+        "inputs.mode == 'capability_change_existing_secret' || "
+        "inputs.mode == 'public_retry'"
     )
     assert jobs["seal-downstream"]["if"] == "inputs.mode == 'seal_downstream'"
 
@@ -193,9 +197,12 @@ def test_public_retry_is_protected_and_structurally_has_no_seal_or_secret_write(
     assert jobs["issue-wea"]["environment"] == PROTECTED_ENVIRONMENT
     preflight = jobs["preflight-sealed-transfer"]["steps"]
     refusal = [row for row in preflight
-               if row.get("name") == "Refuse seal inputs and mutation in public retry mode"]
+               if row.get("name") == "Refuse seal inputs and mutation in no-seal modes"]
     assert len(refusal) == 1
-    assert refusal[0]["if"] == "inputs.mode == 'public_retry'"
+    assert refusal[0]["if"] == (
+        "inputs.mode == 'public_retry' || "
+        "inputs.mode == 'capability_change_existing_secret'"
+    )
     assert all("test -z" in refusal[0]["run"] and name in refusal[0]["run"]
                for name in ("TRANSFER_RUN_ID", "KEY_ID", "PUBLIC_KEY_SHA256",
                             "CIPHERTEXT_SHA256"))
@@ -205,6 +212,18 @@ def test_public_retry_is_protected_and_structurally_has_no_seal_or_secret_write(
     assert "encrypted_value" not in raw
     seal = raw_job(ISSUER, "seal-downstream")
     assert "inputs.mode == 'seal_downstream'" in seal
+
+
+def test_existing_secret_capability_change_is_protected_and_never_seals_or_mutates():
+    jobs = issuer()["jobs"]
+    assert jobs["issue-wea"]["environment"] == PROTECTED_ENVIRONMENT
+    preflight = raw_job(ISSUER, "preflight-sealed-transfer")
+    assert "capability_change_existing_secret" in preflight
+    assert "NO_SEAL_CAPABILITY_PASS" in preflight
+    issue = raw_job(ISSUER, "issue-wea")
+    assert "inputs.mode == 'capability_change'" in issue
+    assert "encrypted_value" not in issue
+    assert "actions/secrets" not in issue
 
 
 def test_renewal_jobs_only_run_in_renewal_mode():
@@ -490,10 +509,11 @@ def test_scheduler_dispatch_candidate_is_bound_to_selected_ref_and_sha():
     assert '[ "$candidate_sha" = "$RENEWAL_GENERATION_HEAD_SHA" ]' in body
 
 
-def test_issuer_exposes_exactly_four_closed_modes():
+def test_issuer_exposes_exactly_five_closed_modes():
     on = triggers(issuer())
     assert on["workflow_dispatch"]["inputs"]["mode"]["options"] == [
         "capability_change",
+        "capability_change_existing_secret",
         "public_retry",
         "seal_downstream",
         "renew",
