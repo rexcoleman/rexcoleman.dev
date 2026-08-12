@@ -1,0 +1,1322 @@
+#!/usr/bin/env python3
+"""Verify signed authority and consume one exact boundary preauthorization.
+
+The provider is deliberately verify-only.  Its production state contains a
+public key, public authority inputs, and an Environment-signed capability
+authority.  There is no signing API and no private-key discovery path.
+"""
+
+from __future__ import annotations
+
+import argparse
+import base64
+import hashlib
+import json
+import os
+import re
+import sqlite3
+import stat
+import sys
+import uuid
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Any
+
+from cryptography.exceptions import InvalidSignature, UnsupportedAlgorithm
+from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
+
+PRODUCTION_STATE = Path.home() / ".local/state/rea_enforcement/remote_wea"
+PRODUCTION_PROVIDER = (
+    Path.home() / ".local/libexec/rea_enforcement/hybrid_capability_provider"
+)
+PRODUCTION_RUNTIME = (
+    Path.home() / ".local/libexec/rea_enforcement/runtime_mount.py"
+)
+SIGNED_MEMBER_ROOT_BASE = (
+    Path.home() / ".local/state/rea_enforcement/signed_member_roots"
+)
+PRODUCTION_BOUNDARY_ROOT = Path("/home/azureuser/rea150p")
+PRODUCTION_PREAUTH_STORE = (
+    Path.home()
+    / ".local/state/rea_enforcement/hybrid/boundary_preauthorizations.sqlite3"
+)
+# This is the digest of the trusted-public-key bundle member.  The public key
+# travels in the issuance for verification, but it is not self-authenticating:
+# pinning its already-frozen bytes prevents an artifact holder from substituting
+# an attacker key and re-signing an otherwise self-consistent artifact.
+TRUSTED_PUBLIC_KEY_SHA256 = (
+    "69654455a16e7627ccbc3a6ea2bcaeaa20efbe8ca09ed772cd372434e0732b02"
+)
+PRIVATE_KEY_PEM = re.compile(
+    b"-----BEGIN " + br"(?:[A-Z0-9]+ )*" + b"PRIVATE KEY-----"
+)
+# The CLOSED set of members the issuance state directory must contain -- no
+# more and no fewer.  It is deliberately not a subset test: an unexpected extra
+# file is as much a refusal as a missing one, because an artifact holder who can
+# add a file to the state directory can otherwise smuggle unverified bytes past
+# a permissive check.
+#
+# `predecessor_write_enforcement_attestation.json` was missing from this set
+# while the issuer had already been publishing it for two generations.  The
+# issuer's own SHA256SUMS names it, `s105_generation4_lifecycle.INSTALL_NAMES`
+# installs it, `scripts/artifact_contract_versions.json` registers it in the
+# current generation, and `wea_verifier.PREDECESSOR_PATH` reads it out of this
+# very directory to assert `predecessor_verified: true`.  Only this frozenset
+# had not been told, so exact-set-equality refused every capability request with
+# ISSUANCE_ARTIFACT_SET_MISMATCH extra=[predecessor...].  The set was stale, not
+# wrong in shape: the fix is to admit the member the issuance actually contains,
+# NOT to relax the equality.
+REQUIRED_FILES = frozenset(
+    {
+        "SHA256SUMS",
+        "claim_policy.json",
+        "claim_registry.json",
+        "enforcement_bundle_manifest.json",
+        "hybrid_capability_authority.json",
+        "hybrid_capability_provider",
+        "issuance_receipt.json",
+        "predecessor_write_enforcement_attestation.json",
+        "runtime_mount.py",
+        "trusted_wea_public.pem",
+        "write_enforcement_attestation.json",
+    }
+)
+WRITE_BOUNDARY_POLICY_MEMBERS = (
+    "write_integrity/write_boundary/boundary_engine.py",
+    "write_integrity/write_boundary/trusted_admission.py",
+    "write_integrity/write_boundary/row_registry.json",
+    "write_integrity/write_boundary/seam_registry.json",
+    "write_integrity/write_boundary/transform_registry.json",
+    "write_integrity/write_boundary/schemas/request.schema.json",
+    "write_integrity/write_boundary/schemas/parent_admission.schema.json",
+    "write_integrity/write_boundary/schemas/receipt.schema.json",
+    "write_integrity/write_boundary/schemas/ledger.schema.json",
+)
+SIGNED_WRITE_BOUNDARY_POLICY_MEMBERS = (
+    (
+        "write_integrity/write_boundary/boundary_engine.py",
+        "write-boundary-engine",
+        "govML",
+        "templates/build/enforcement/signed_authoring/write_boundary_engine.py",
+        0o644,
+    ),
+    (
+        "write_integrity/write_boundary/trusted_admission.py",
+        "write-boundary-trusted-admission",
+        "research_enforcement_activation",
+        "write_integrity/write_boundary/trusted_admission.py",
+        0o644,
+    ),
+    (
+        "write_integrity/write_boundary/row_registry.json",
+        "write-boundary-row-registry",
+        "research_enforcement_activation",
+        "write_integrity/write_boundary/row_registry.json",
+        0o644,
+    ),
+    (
+        "write_integrity/write_boundary/seam_registry.json",
+        "write-boundary-seam-registry",
+        "research_enforcement_activation",
+        "write_integrity/write_boundary/seam_registry.json",
+        0o644,
+    ),
+    (
+        "write_integrity/write_boundary/transform_registry.json",
+        "write-boundary-transform-registry",
+        "research_enforcement_activation",
+        "write_integrity/write_boundary/transform_registry.json",
+        0o644,
+    ),
+    (
+        "write_integrity/write_boundary/schemas/request.schema.json",
+        "write-boundary-request-schema",
+        "research_enforcement_activation",
+        "write_integrity/write_boundary/schemas/request.schema.json",
+        0o644,
+    ),
+    (
+        "write_integrity/write_boundary/schemas/parent_admission.schema.json",
+        "write-boundary-parent-admission-schema",
+        "research_enforcement_activation",
+        "write_integrity/write_boundary/schemas/parent_admission.schema.json",
+        0o644,
+    ),
+    (
+        "write_integrity/write_boundary/schemas/receipt.schema.json",
+        "write-boundary-receipt-schema",
+        "research_enforcement_activation",
+        "write_integrity/write_boundary/schemas/receipt.schema.json",
+        0o644,
+    ),
+    (
+        "write_integrity/write_boundary/schemas/ledger.schema.json",
+        "write-boundary-ledger-schema",
+        "research_enforcement_activation",
+        "write_integrity/write_boundary/schemas/ledger.schema.json",
+        0o644,
+    ),
+)
+SIGNED_MEMBER_FIELDS = {
+    "member_id", "repository", "commit", "path", "sha256", "byte_length"
+}
+SIGNED_REPOSITORIES = frozenset({
+    "research_enforcement_activation",
+    "govML",
+    "Moonshots_Career_Thesis_v2",
+    "newsletter",
+    "rexcoleman.dev",
+})
+
+
+class ProviderRefusal(RuntimeError):
+    def __init__(self, reason_code: str, detail: str) -> None:
+        self.reason_code = reason_code
+        self.detail = detail
+        super().__init__(f"{reason_code}:{detail}")
+
+
+class BoundaryPreauthorizationStore:
+    """Rendezvous for one exact subject; stored bytes never supply authority."""
+
+    def __init__(self, path: Path) -> None:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        if path.is_symlink():
+            raise ProviderRefusal("BOUNDARY_PREAUTH_STORE_INVALID", "symlink")
+        self.path = path
+        try:
+            with sqlite3.connect(path, timeout=30) as connection:
+                connection.execute("PRAGMA journal_mode=WAL")
+                connection.execute("PRAGMA synchronous=FULL")
+                connection.execute(
+                    """
+                    CREATE TABLE IF NOT EXISTS boundary_preauthorizations_v2 (
+                        preauthorization_id TEXT PRIMARY KEY,
+                        binding_sha256 TEXT NOT NULL,
+                        preauthorization_json TEXT NOT NULL,
+                        status TEXT NOT NULL,
+                        created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        consumed_at TEXT
+                    )
+                    """
+                )
+                connection.execute(
+                    """
+                    CREATE UNIQUE INDEX IF NOT EXISTS
+                    boundary_preauthorizations_v2_one_reserved_binding
+                    ON boundary_preauthorizations_v2(binding_sha256)
+                    WHERE status='RESERVED'
+                    """
+                )
+        except sqlite3.Error as exc:
+            raise ProviderRefusal(
+                "BOUNDARY_PREAUTH_STORE_UNAVAILABLE", type(exc).__name__
+            ) from None
+
+    def reserve(self, binding: dict[str, Any], document: dict[str, Any]) -> str:
+        binding_sha = digest(canonical(binding))
+        identifier = "boundary-preauth-" + uuid.uuid4().hex
+        try:
+            with sqlite3.connect(self.path, timeout=30) as connection:
+                connection.execute(
+                    """
+                    INSERT INTO boundary_preauthorizations_v2
+                    (preauthorization_id, binding_sha256, preauthorization_json, status)
+                    VALUES (?, ?, ?, 'RESERVED')
+                    """,
+                    (
+                        identifier,
+                        binding_sha,
+                        canonical(document).decode("utf-8"),
+                    ),
+                )
+        except sqlite3.IntegrityError:
+            raise ProviderRefusal(
+                "BOUNDARY_PREAUTH_ALREADY_RESERVED", binding_sha
+            ) from None
+        except sqlite3.Error as exc:
+            raise ProviderRefusal(
+                "BOUNDARY_PREAUTH_STORE_UNAVAILABLE", type(exc).__name__
+            ) from None
+        return identifier
+
+    def peek(self, binding: dict[str, Any]) -> tuple[str, dict[str, Any]]:
+        binding_sha = digest(canonical(binding))
+        try:
+            with sqlite3.connect(self.path, timeout=30) as connection:
+                rows = connection.execute(
+                    """
+                    SELECT preauthorization_id, preauthorization_json
+                    FROM boundary_preauthorizations_v2
+                    WHERE binding_sha256=? AND status='RESERVED'
+                    """,
+                    (binding_sha,),
+                ).fetchall()
+                if len(rows) != 1:
+                    raise ProviderRefusal(
+                        "BOUNDARY_PREAUTHORIZATION_REQUIRED",
+                        f"matches={len(rows)}",
+                    )
+                document = json.loads(rows[0][1])
+        except ProviderRefusal:
+            raise
+        except (sqlite3.Error, json.JSONDecodeError):
+            raise ProviderRefusal("BOUNDARY_PREAUTH_STORE_UNAVAILABLE", binding_sha) from None
+        if not isinstance(document, dict):
+            raise ProviderRefusal("BOUNDARY_PREAUTH_SUBJECT_INVALID", "not_object")
+        return rows[0][0], document
+
+    def consume(
+        self,
+        binding: dict[str, Any],
+        identifier: str,
+        document: dict[str, Any],
+    ) -> None:
+        binding_sha = digest(canonical(binding))
+        document_json = canonical(document).decode("utf-8")
+        try:
+            with sqlite3.connect(self.path, timeout=30, isolation_level=None) as connection:
+                connection.execute("BEGIN IMMEDIATE")
+                changed = connection.execute(
+                    """
+                    UPDATE boundary_preauthorizations_v2
+                    SET status='CONSUMED', consumed_at=CURRENT_TIMESTAMP
+                    WHERE preauthorization_id=? AND binding_sha256=?
+                    AND preauthorization_json=? AND status='RESERVED'
+                    """,
+                    (identifier, binding_sha, document_json),
+                ).rowcount
+                if changed != 1:
+                    connection.execute("ROLLBACK")
+                    raise ProviderRefusal("BOUNDARY_PREAUTHORIZATION_REPLAY", identifier)
+                connection.execute("COMMIT")
+        except ProviderRefusal:
+            raise
+        except sqlite3.Error:
+            raise ProviderRefusal("BOUNDARY_PREAUTH_STORE_UNAVAILABLE", binding_sha) from None
+
+
+def canonical(value: object) -> bytes:
+    return json.dumps(
+        value, sort_keys=True, separators=(",", ":"), ensure_ascii=False
+    ).encode()
+
+
+def digest(raw: bytes) -> str:
+    return hashlib.sha256(raw).hexdigest()
+
+
+def _validated_bundle_manifest(state: Path) -> tuple[dict[str, Any], str]:
+    """Validate the exact signed-member identity table carried by the WEA."""
+    manifest = _json(state / "enforcement_bundle_manifest.json")
+    claimed = manifest.get("manifest_digest")
+    unsigned = {key: value for key, value in manifest.items()
+                if key != "manifest_digest"}
+    members = manifest.get("members")
+    if (
+        manifest.get("schema_version")
+        not in {
+            "rea.write.enforcement-bundle-manifest.v1",
+            "rea.write.enforcement-bundle-manifest.staged-nonproduction.v1",
+        }
+        or not isinstance(claimed, str)
+        or not re.fullmatch(r"[0-9a-f]{64}", claimed)
+        or digest(canonical(unsigned)) != claimed
+        or not isinstance(members, list)
+        or not members
+    ):
+        raise ProviderRefusal("SIGNED_MEMBER_ROOT_INVALID", "manifest")
+    identities: set[str] = set()
+    subjects: set[tuple[str, str]] = set()
+    repository_commits: dict[str, str] = {}
+    for row in members:
+        if not isinstance(row, dict) or set(row) != SIGNED_MEMBER_FIELDS:
+            raise ProviderRefusal("SIGNED_MEMBER_ROOT_INVALID", "member_shape")
+        member_id = row.get("member_id")
+        repository = row.get("repository")
+        commit = row.get("commit")
+        relative = row.get("path")
+        subject = (repository, relative)
+        if (
+            not isinstance(member_id, str)
+            or not member_id
+            or member_id in identities
+            or repository not in SIGNED_REPOSITORIES
+            or not isinstance(commit, str)
+            or not re.fullmatch(r"[0-9a-f]{40}", commit)
+            or not isinstance(relative, str)
+            or not relative
+            or Path(relative).is_absolute()
+            or ".." in Path(relative).parts
+            or subject in subjects
+            or not isinstance(row.get("sha256"), str)
+            or not re.fullmatch(r"[0-9a-f]{64}", row["sha256"])
+            or isinstance(row.get("byte_length"), bool)
+            or not isinstance(row.get("byte_length"), int)
+            or row["byte_length"] < 0
+            or repository in repository_commits
+            and repository_commits[repository] != commit
+        ):
+            raise ProviderRefusal(
+                "SIGNED_MEMBER_ROOT_INVALID", f"member:{member_id}"
+            )
+        identities.add(member_id)
+        subjects.add(subject)
+        repository_commits[repository] = commit
+    if set(repository_commits) != SIGNED_REPOSITORIES:
+        raise ProviderRefusal("SIGNED_MEMBER_ROOT_INVALID", "repository_set")
+    return manifest, claimed
+
+
+def verify_signed_member_root(
+    state: Path, root_base: Path = SIGNED_MEMBER_ROOT_BASE
+) -> Path:
+    """Recheck the complete content-addressed root; permissions are not trust."""
+    production_state = state.resolve() == PRODUCTION_STATE.resolve()
+    if production_state:
+        manifest, manifest_digest = _validated_bundle_manifest(state)
+    else:
+        # Isolated unit fixtures historically use a minimal synthetic manifest.
+        # They cannot select the production boundary root; dedicated root tests
+        # exercise the complete contract directly.
+        manifest = _json(state / "enforcement_bundle_manifest.json")
+        manifest_digest = manifest.get("manifest_digest")
+    root = root_base / manifest_digest
+    if root.is_symlink() or not root.is_dir():
+        raise ProviderRefusal("SIGNED_MEMBER_ROOT_INVALID", "root_absent_or_symlink")
+    expected: set[Path] = set()
+    by_id: dict[str, Path] = {}
+    for row in manifest["members"]:
+        relative = Path(row["repository"]) / row["path"]
+        expected.add(relative)
+        subject = root / relative
+        try:
+            subject.resolve().relative_to(root.resolve())
+        except ValueError:
+            raise ProviderRefusal("SIGNED_MEMBER_ROOT_INVALID", "path_escape") from None
+        if subject.is_symlink() or not subject.is_file():
+            raise ProviderRefusal(
+                "SIGNED_MEMBER_ROOT_INVALID", f"member_absent:{row['member_id']}"
+            )
+        raw = subject.read_bytes()
+        if len(raw) != row["byte_length"] or digest(raw) != row["sha256"]:
+            raise ProviderRefusal(
+                "SIGNED_MEMBER_ROOT_INVALID", f"member_digest:{row['member_id']}"
+            )
+        by_id[row["member_id"]] = subject
+    observed: set[Path] = set()
+    for subject in root.rglob("*"):
+        if subject.is_symlink():
+            raise ProviderRefusal("SIGNED_MEMBER_ROOT_INVALID", "symlink")
+        if subject.is_file():
+            observed.add(subject.relative_to(root))
+    if observed != expected:
+        raise ProviderRefusal(
+            "SIGNED_MEMBER_ROOT_INVALID",
+            f"closed_set:missing={len(expected-observed)}:extra={len(observed-expected)}",
+        )
+    # The provider and runtime actually invoked on this host must be exact
+    # copies of their independently signed root subjects.  The issuance's
+    # hybrid authority also binds them; this comparison closes the root/runtime
+    # side of the same identity rather than trusting either representation.
+    return root
+
+
+def _signed_member_by_id(
+    manifest: dict[str, Any], root: Path, member_id: str
+) -> Path:
+    rows = [row for row in manifest["members"] if row["member_id"] == member_id]
+    if len(rows) != 1:
+        raise ProviderRefusal(
+            "SIGNED_MEMBER_ROOT_INVALID", f"identity:{member_id}"
+        )
+    return root / rows[0]["repository"] / rows[0]["path"]
+
+
+def _production_boundary_root(state: Path) -> Path:
+    manifest, _manifest_digest = _validated_bundle_manifest(state)
+    root = verify_signed_member_root(state)
+    signed_sources = _signed_boundary_policy_sources(manifest, root)
+    return _verified_live_boundary_root(PRODUCTION_BOUNDARY_ROOT, signed_sources)
+
+
+def _provider_request(
+    *,
+    route_id: str,
+    surface: str,
+    candidate: bytes,
+    destination: str,
+    requested_effect: str,
+) -> dict[str, Any]:
+    """Reproduce exactly the request built by byte-identical runtime_mount.py."""
+    hybrid_effect = "atomic_write" if requested_effect == "write" else requested_effect
+    target = {"artifact_path": destination}
+    effect_plan = {
+        "schema_version": "rea.c3.closed-effect-plan.v1",
+        "route_id": route_id,
+        "operation": hybrid_effect,
+        "parameters": target,
+    }
+    try:
+        preimage = Path(destination).read_bytes()
+    except FileNotFoundError:
+        preimage = None
+    except OSError as exc:
+        raise ProviderRefusal(
+            "PREIMAGE_SNAPSHOT_FAILED", type(exc).__name__
+        ) from None
+    return {
+        "schema_version": "rea.c3.hybrid.capability-request.v2",
+        "route_id": route_id,
+        "surface": surface,
+        "destination": destination,
+        "requested_effect": hybrid_effect,
+        "candidate_sha256": digest(candidate),
+        "candidate_byte_length": len(candidate),
+        "candidate_b64": base64.b64encode(candidate).decode("ascii"),
+        "target_sha256": digest(canonical(target)),
+        "plan_sha256": digest(canonical(effect_plan)),
+        "preimage_sha256": digest(preimage) if preimage is not None else None,
+        "wea": {"provider_verified": True},
+    }
+
+
+def _authorization_binding(request: dict[str, Any]) -> dict[str, Any]:
+    return {
+        key: request[key]
+        for key in (
+            "route_id", "surface", "destination", "requested_effect",
+            "candidate_sha256", "candidate_byte_length", "target_sha256",
+            "plan_sha256", "preimage_sha256", "wea",
+        )
+    }
+
+
+def _boundary_policy_digest(root: Path) -> str:
+    members: dict[str, str] = {}
+    try:
+        for relative in WRITE_BOUNDARY_POLICY_MEMBERS:
+            path = root / relative
+            if path.is_symlink() or not path.is_file():
+                raise ProviderRefusal(
+                    "WRITE_BOUNDARY_POLICY_INVALID", relative
+                )
+            members[relative] = digest(path.read_bytes())
+    except OSError as exc:
+        raise ProviderRefusal(
+            "WRITE_BOUNDARY_POLICY_INVALID", type(exc).__name__
+        ) from None
+    return digest(canonical(members))
+
+
+def _signed_boundary_policy_sources(
+    manifest: dict[str, Any], signed_root: Path,
+) -> dict[str, Path]:
+    """Resolve the closed policy by authenticated member ID, never basename."""
+    mapping = SIGNED_WRITE_BOUNDARY_POLICY_MEMBERS
+    logical = [row[0] for row in mapping]
+    identities = [row[1] for row in mapping]
+    if (
+        len(mapping) != len(WRITE_BOUNDARY_POLICY_MEMBERS)
+        or len(set(logical)) != len(logical)
+        or len(set(identities)) != len(identities)
+        or set(logical) != set(WRITE_BOUNDARY_POLICY_MEMBERS)
+    ):
+        raise ProviderRefusal("SIGNED_BOUNDARY_POLICY_INVALID", "mapping_shape")
+    resolved: dict[str, Path] = {}
+    for relative, member_id, repository, member_path, _live_mode in mapping:
+        rows = [row for row in manifest["members"] if row["member_id"] == member_id]
+        if len(rows) != 1:
+            raise ProviderRefusal(
+                "SIGNED_BOUNDARY_POLICY_INVALID", f"identity:{member_id}"
+            )
+        row = rows[0]
+        if row["repository"] != repository or row["path"] != member_path:
+            raise ProviderRefusal(
+                "SIGNED_BOUNDARY_POLICY_INVALID", f"subject:{member_id}"
+            )
+        subject = signed_root / repository / member_path
+        try:
+            status = subject.lstat()
+        except OSError as exc:
+            raise ProviderRefusal(
+                "SIGNED_BOUNDARY_POLICY_INVALID", f"source:{member_id}:{type(exc).__name__}"
+            ) from None
+        if subject.is_symlink() or not stat.S_ISREG(status.st_mode):
+            raise ProviderRefusal(
+                "SIGNED_BOUNDARY_POLICY_INVALID", f"source:{member_id}"
+            )
+        resolved[relative] = subject
+    return resolved
+
+
+def _boundary_policy_digest_sources(sources: dict[str, Path]) -> str:
+    if set(sources) != set(WRITE_BOUNDARY_POLICY_MEMBERS):
+        raise ProviderRefusal("SIGNED_BOUNDARY_POLICY_INVALID", "source_set")
+    members = {relative: digest(sources[relative].read_bytes()) for relative in WRITE_BOUNDARY_POLICY_MEMBERS}
+    return digest(canonical(members))
+
+
+def _verified_live_boundary_root(
+    live_root: Path, signed_sources: dict[str, Path],
+) -> Path:
+    """Bind every actually imported live policy locus to its signed subject."""
+    try:
+        root_status = live_root.lstat()
+    except OSError as exc:
+        raise ProviderRefusal(
+            "LIVE_BOUNDARY_POLICY_INVALID", f"root:{type(exc).__name__}"
+        ) from None
+    if live_root.is_symlink() or not stat.S_ISDIR(root_status.st_mode):
+        raise ProviderRefusal("LIVE_BOUNDARY_POLICY_INVALID", "root")
+    expected_modes = {row[0]: row[4] for row in SIGNED_WRITE_BOUNDARY_POLICY_MEMBERS}
+    if set(expected_modes) != set(WRITE_BOUNDARY_POLICY_MEMBERS):
+        raise ProviderRefusal("SIGNED_BOUNDARY_POLICY_INVALID", "live_mode_set")
+    for relative in WRITE_BOUNDARY_POLICY_MEMBERS:
+        live = live_root / relative
+        try:
+            live_status = live.lstat()
+            live_raw = live.read_bytes()
+            signed_raw = signed_sources[relative].read_bytes()
+        except (KeyError, OSError) as exc:
+            raise ProviderRefusal(
+                "LIVE_BOUNDARY_POLICY_INVALID", f"{relative}:{type(exc).__name__}"
+            ) from None
+        if (
+            live.is_symlink()
+            or not stat.S_ISREG(live_status.st_mode)
+            or stat.S_IMODE(live_status.st_mode) != expected_modes[relative]
+            or live_raw != signed_raw
+        ):
+            raise ProviderRefusal("LIVE_BOUNDARY_POLICY_INVALID", relative)
+    return live_root
+
+
+def _json(path: Path) -> dict[str, Any]:
+    try:
+        value = json.loads(path.read_bytes())
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise ProviderRefusal("AUTHORITY_ARTIFACT_INVALID", path.name) from exc
+    if not isinstance(value, dict):
+        raise ProviderRefusal("AUTHORITY_ARTIFACT_INVALID", path.name)
+    return value
+
+
+def _parse_time(value: object, field: str) -> datetime:
+    if not isinstance(value, str) or not value.endswith("Z"):
+        raise ProviderRefusal("WEA_TIME_INVALID", field)
+    try:
+        parsed = datetime.fromisoformat(value[:-1] + "+00:00")
+    except ValueError:
+        raise ProviderRefusal("WEA_TIME_INVALID", field) from None
+    return parsed
+
+
+def _route_allows_surface(bindings: object, route: object, surface: object) -> bool:
+    if not isinstance(bindings, dict) or not isinstance(route, str):
+        return False
+    allowed = bindings.get(route)
+    if isinstance(allowed, str):
+        return allowed == surface
+    return (
+        isinstance(allowed, list)
+        and bool(allowed)
+        and all(item in {"report", "blog", "publication", "distribution"} for item in allowed)
+        and len(allowed) == len(set(allowed))
+        and surface in allowed
+    )
+
+
+def _verify_signature(
+    envelope: dict[str, Any], public_key: Path, *, label: str
+) -> dict[str, Any]:
+    if set(envelope) != {"payload", "signature"}:
+        raise ProviderRefusal("SIGNED_ENVELOPE_INVALID", label)
+    payload, signature = envelope["payload"], envelope["signature"]
+    if not isinstance(payload, dict) or not isinstance(signature, dict):
+        raise ProviderRefusal("SIGNED_ENVELOPE_INVALID", label)
+    if set(signature) != {"algorithm", "signed_digest", "value"}:
+        raise ProviderRefusal("SIGNED_ENVELOPE_INVALID", label)
+    subject_digest = digest(canonical(payload))
+    if (
+        signature["algorithm"] != "ed25519"
+        or signature["signed_digest"] != subject_digest
+    ):
+        raise ProviderRefusal("SIGNATURE_SUBJECT_MISMATCH", label)
+    try:
+        signature_raw = base64.b64decode(signature["value"], validate=True)
+    except (TypeError, ValueError):
+        raise ProviderRefusal("SIGNATURE_INVALID", label) from None
+    if len(signature_raw) != 64:
+        raise ProviderRefusal("SIGNATURE_INVALID", label)
+    try:
+        verifier = serialization.load_pem_public_key(
+            public_key.read_bytes(), backend=default_backend()
+        )
+        if not isinstance(verifier, Ed25519PublicKey):
+            raise ValueError("public key is not Ed25519")
+        verifier.verify(signature_raw, bytes.fromhex(subject_digest))
+    except (
+        InvalidSignature,
+        UnsupportedAlgorithm,
+        OSError,
+        TypeError,
+        ValueError,
+    ):
+        raise ProviderRefusal("SIGNATURE_INVALID", label) from None
+    return payload
+
+
+def _artifact_inventory(state: Path) -> dict[str, bytes]:
+    observed = {
+        path.name
+        for path in state.iterdir()
+        if path.is_file() and not path.name.startswith(".")
+    }
+    if observed != REQUIRED_FILES:
+        raise ProviderRefusal(
+            "ISSUANCE_ARTIFACT_SET_MISMATCH",
+            f"missing={sorted(REQUIRED_FILES-observed)};"
+            f"extra={sorted(observed-REQUIRED_FILES)}",
+        )
+    checksums: dict[str, str] = {}
+    for line in (state / "SHA256SUMS").read_text(encoding="ascii").splitlines():
+        match = re.fullmatch(r"([0-9a-f]{64})  ([A-Za-z0-9_.-]+)", line)
+        if match is None or match.group(2) in checksums:
+            raise ProviderRefusal("SHA256SUMS_INVALID", line)
+        checksums[match.group(2)] = match.group(1)
+    expected_checksum_names = REQUIRED_FILES - {"SHA256SUMS"}
+    if set(checksums) != expected_checksum_names:
+        raise ProviderRefusal("SHA256SUMS_SET_MISMATCH", "closed_set")
+    loaded = {name: (state / name).read_bytes() for name in checksums}
+    for name, raw in loaded.items():
+        if digest(raw) != checksums[name]:
+            raise ProviderRefusal("ARTIFACT_DIGEST_MISMATCH", name)
+    for name, raw in loaded.items():
+        if PRIVATE_KEY_PEM.search(raw):
+            raise ProviderRefusal("PRIVATE_KEY_MATERIAL_REFUSED", name)
+    return loaded
+
+
+def verify_authority(
+    state: Path,
+    *,
+    provider_path: Path,
+    runtime_path: Path,
+    now: datetime | None = None,
+) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any]]:
+    production_state = state.resolve() == PRODUCTION_STATE.resolve()
+    loaded = _artifact_inventory(state)
+    public_key = state / "trusted_wea_public.pem"
+    if digest(loaded["trusted_wea_public.pem"]) != TRUSTED_PUBLIC_KEY_SHA256:
+        raise ProviderRefusal("TRUSTED_PUBLIC_KEY_MISMATCH", "pinned_digest")
+    authority = _json(state / "hybrid_capability_authority.json")
+    payload = _verify_signature(authority, public_key, label="hybrid_authority")
+    required = {
+        "schema_version",
+        "purpose",
+        "issuer",
+        "authority_epoch",
+        "wea_sha256",
+        "enforcement_bundle_manifest_digest",
+        "claim_registry_sha256",
+        "claim_policy_sha256",
+        "provider_sha256",
+        "runtime_mount_sha256",
+        "write_boundary_policy_sha256",
+        "route_surface_bindings",
+        "issued_at",
+        "expires_at",
+    }
+    if (
+        set(payload) != required
+        or payload.get("schema_version")
+        != "rea.write.hybrid-capability-authority.v1"
+        or payload.get("purpose") != "VERIFY_ONLY_CURRENT_REGISTRY"
+        or not isinstance(payload.get("route_surface_bindings"), dict)
+        or any(
+            not isinstance(route, str)
+            or not route
+            or not (
+                isinstance(surfaces, str)
+                and surfaces in {"report", "blog", "publication", "distribution"}
+                or isinstance(surfaces, list)
+                and bool(surfaces)
+                and all(
+                    surface in {"report", "blog", "publication", "distribution"}
+                    for surface in surfaces
+                )
+                and len(surfaces) == len(set(surfaces))
+            )
+            for route, surfaces in payload.get("route_surface_bindings", {}).items()
+        )
+    ):
+        raise ProviderRefusal("HYBRID_AUTHORITY_INVALID", "closed_shape")
+    exact = {
+        "wea_sha256": digest(loaded["write_enforcement_attestation.json"]),
+        "claim_registry_sha256": digest(loaded["claim_registry.json"]),
+        "claim_policy_sha256": digest(loaded["claim_policy.json"]),
+        "provider_sha256": digest(provider_path.read_bytes()),
+        "runtime_mount_sha256": digest(runtime_path.read_bytes()),
+    }
+    for field, observed in exact.items():
+        if payload.get(field) != observed:
+            raise ProviderRefusal("HYBRID_AUTHORITY_BINDING_MISMATCH", field)
+    if production_state:
+        manifest, manifest_digest = _validated_bundle_manifest(state)
+    else:
+        # Existing isolated cryptographic fixtures carry a deliberately small
+        # manifest.  They never select the production content-addressed root;
+        # the readiness/root fixtures exercise that closed-set path directly.
+        manifest = _json(state / "enforcement_bundle_manifest.json")
+        manifest_digest = manifest.get("manifest_digest")
+    if (
+        payload["enforcement_bundle_manifest_digest"]
+        != manifest_digest
+    ):
+        raise ProviderRefusal(
+            "HYBRID_AUTHORITY_BINDING_MISMATCH", "manifest_digest"
+        )
+    if production_state:
+        signed_root = verify_signed_member_root(state)
+        live_subjects = {
+            "hybrid-capability-provider": provider_path,
+            "route-runtime-mount": runtime_path,
+        }
+        for member_id, live_path in live_subjects.items():
+            signed_path = _signed_member_by_id(manifest, signed_root, member_id)
+            if (
+                live_path.is_symlink()
+                or not live_path.is_file()
+                or live_path.read_bytes() != signed_path.read_bytes()
+            ):
+                raise ProviderRefusal(
+                    "SIGNED_RUNTIME_DIVERGENCE", member_id
+                )
+        signed_policy_sources = _signed_boundary_policy_sources(
+            manifest, signed_root
+        )
+        if payload["write_boundary_policy_sha256"] != (
+            _boundary_policy_digest_sources(signed_policy_sources)
+        ):
+            raise ProviderRefusal(
+                "WRITE_BOUNDARY_POLICY_BINDING_MISMATCH", "signed_member_root"
+            )
+    wea = _json(state / "write_enforcement_attestation.json")
+    if "signature" not in wea:
+        raise ProviderRefusal("WEA_INVALID", "signature")
+    wea_envelope = {
+        "payload": {key: value for key, value in wea.items() if key != "signature"},
+        "signature": wea["signature"],
+    }
+    wea_payload = _verify_signature(wea_envelope, public_key, label="wea")
+    clock = now or datetime.now(timezone.utc)
+    if (
+        wea_payload.get("purpose") != "LIVE_ENFORCEMENT"
+        or wea_payload.get("state") != "ENFORCING"
+        or wea_payload.get("authority_epoch") != payload["authority_epoch"]
+        or wea_payload.get("enforcement_bundle_manifest_digest")
+        != payload["enforcement_bundle_manifest_digest"]
+        or clock < _parse_time(wea_payload.get("not_before"), "not_before")
+        or clock >= _parse_time(wea_payload.get("expires_at"), "expires_at")
+        or clock >= _parse_time(payload.get("expires_at"), "authority_expires_at")
+    ):
+        raise ProviderRefusal("WEA_NOT_ENFORCING", "state_or_lifetime")
+    registry = _json(state / "claim_registry.json")
+    policy = _json(state / "claim_policy.json")
+    subject = registry.get("subject")
+    if (
+        registry.get("schema_version") != "rea.claim-registry.v1"
+        or policy.get("schema_version") != "rea.claim-admission-policy.v1"
+        or policy.get("default") != "REFUSE"
+        or policy.get("qualified_review_in_deterministic_path") is not False
+        or policy.get("advisory_output_can_authorize") is not False
+        or not isinstance(subject, dict)
+        or policy.get("authority_subject")
+        != {
+            "findings_commit": subject.get("commit"),
+            "findings_sha256": subject.get("findings_sha256"),
+        }
+    ):
+        raise ProviderRefusal("CURRENT_REGISTRY_AUTHORITY_INVALID", "subject")
+    return payload, registry, authority
+
+
+def _current_boundary_authority(
+    state: Path,
+    payload: dict[str, Any],
+    registry: dict[str, Any],
+) -> dict[str, Any]:
+    wea = _json(state / "write_enforcement_attestation.json")
+    subject = registry["subject"]
+    bound_subject = {
+        "findings_commit": subject["commit"],
+        "findings_sha256": subject["findings_sha256"],
+    }
+    bound_subject.update(_current_brief_subject(state))
+    return {
+        "generation": payload["authority_epoch"],
+        "expires_at": wea["expires_at"],
+        "state_digest": payload["wea_sha256"],
+        "enforcement_bundle_manifest_digest": payload[
+            "enforcement_bundle_manifest_digest"
+        ],
+        "subject": bound_subject,
+    }
+
+
+def _current_brief_subject(state: Path) -> dict[str, str]:
+    """Bind the installed brief authority, when one has actually been issued.
+
+    No brief authority is issued today, so the installed state carries no
+    ``brief_claim_registry.json`` and this returns an empty binding, leaving the
+    authority subject byte-identical to its pre-existing shape.  A partially or
+    malformed installed brief registry refuses rather than degrading silently.
+    """
+    installed = state / "brief_claim_registry.json"
+    if not installed.is_file():
+        return {}
+    raw = installed.read_bytes()
+    brief_registry = _json(installed)
+    brief_subject = brief_registry.get("subject")
+    if (
+        brief_registry.get("schema_version") != "rea.brief-claim-registry.v2"
+        or not isinstance(brief_subject, dict)
+        or not re.fullmatch(r"[0-9a-f]{40}", str(brief_subject.get("commit")))
+        or not re.fullmatch(
+            r"[0-9a-f]{64}", str(brief_subject.get("population_manifest_sha256"))
+        )
+    ):
+        raise ProviderRefusal(
+            "CURRENT_REGISTRY_AUTHORITY_INVALID", "brief_claim_registry.json"
+        )
+    return {
+        "brief_subject_commit": brief_subject["commit"],
+        "brief_registry_sha256": digest(raw),
+        "brief_population_manifest_sha256": brief_subject[
+            "population_manifest_sha256"
+        ],
+    }
+
+
+def _validate_boundary_document(
+    document: object,
+    state: Path,
+    *,
+    provider_path: Path,
+    runtime_path: Path,
+    boundary_root: Path | None = None,
+    preauthorization_store_path: Path = PRODUCTION_PREAUTH_STORE,
+    isolated_fixture: bool = False,
+    isolated_trusted_parent_receipts: tuple[dict[str, Any], ...] = (),
+    isolated_trusted_source_receipts: tuple[dict[str, Any], ...] = (),
+    isolated_trusted_prerequisite_receipts: tuple[dict[str, Any], ...] = (),
+    now: datetime | None = None,
+) -> dict[str, Any]:
+    """Revalidate one complete subject against current canonical policy."""
+    expected = {
+        "schema_version", "boundary_request", "parent_receipt",
+        "parent_b64", "candidate_b64",
+    }
+    if (
+        not isinstance(document, dict)
+        or set(document) != expected
+        or document.get("schema_version")
+        != "rea.write.boundary-preauthorization-request.v1"
+        or not isinstance(document.get("boundary_request"), dict)
+        or not isinstance(document.get("parent_receipt"), dict)
+    ):
+        raise ProviderRefusal("BOUNDARY_PREAUTH_REQUEST_INVALID", "closed_shape")
+    if isolated_fixture:
+        if boundary_root is None:
+            raise ProviderRefusal("ISOLATED_ARGUMENT_SET_INCOMPLETE", "boundary_root")
+        roots = (state, provider_path, runtime_path, boundary_root, preauthorization_store_path)
+        try:
+            for path in roots:
+                path.resolve().relative_to(Path("/tmp").resolve())
+        except ValueError:
+            raise ProviderRefusal("ISOLATED_FIXTURE_REQUIRED", "preauthorization_paths") from None
+    elif (
+        boundary_root is not None
+        or preauthorization_store_path != PRODUCTION_PREAUTH_STORE
+        or isolated_trusted_parent_receipts
+        or isolated_trusted_source_receipts
+        or isolated_trusted_prerequisite_receipts
+    ):
+        raise ProviderRefusal("CALLER_AUTHORITY_INPUT_REFUSED", "preauthorization_context")
+    try:
+        parent_bytes = base64.b64decode(document["parent_b64"], validate=True)
+        candidate = base64.b64decode(document["candidate_b64"], validate=True)
+    except (TypeError, ValueError):
+        raise ProviderRefusal("BOUNDARY_PREAUTH_REQUEST_INVALID", "base64") from None
+    if not parent_bytes or not candidate:
+        raise ProviderRefusal("BOUNDARY_PREAUTH_REQUEST_INVALID", "empty_subject")
+
+    payload, registry, _ = verify_authority(
+        state, provider_path=provider_path, runtime_path=runtime_path, now=now
+    )
+    if not isolated_fixture:
+        boundary_root = _production_boundary_root(state)
+    assert boundary_root is not None
+    current_authority = _current_boundary_authority(state, payload, registry)
+    if payload["write_boundary_policy_sha256"] != _boundary_policy_digest(
+        boundary_root
+    ):
+        raise ProviderRefusal(
+            "WRITE_BOUNDARY_POLICY_BINDING_MISMATCH", "closed_member_set"
+        )
+    boundary_request = document["boundary_request"]
+    if boundary_request.get("authority") != current_authority:
+        raise ProviderRefusal("CURRENT_AUTHORITY_BINDING_MISMATCH", "boundary_request")
+
+    resolved_boundary_root = boundary_root.resolve()
+    if os.fspath(resolved_boundary_root) not in sys.path:
+        sys.path.insert(0, os.fspath(resolved_boundary_root))
+    sys.dont_write_bytecode = True
+    from write_integrity.write_boundary.boundary_engine import (  # noqa: PLC0415
+        BoundaryEngine,
+        BoundaryRefusal,
+    )
+
+    engine = BoundaryEngine(
+        authority_generation=current_authority["generation"],
+        isolated_fixture_root=(state.parent if isolated_fixture else None),
+    )
+    if isolated_fixture:
+        for receipt in isolated_trusted_parent_receipts:
+            engine.admission_resolver.trust_parent_for_test(receipt)
+        for receipt in isolated_trusted_source_receipts:
+            engine.admission_resolver.trust_source_for_test(receipt)
+        for receipt in isolated_trusted_prerequisite_receipts:
+            engine.admission_resolver.trust_prerequisite_for_test(receipt)
+    try:
+        decision = engine.validate_preauthorization(
+            boundary_request,
+            parent_receipt=document["parent_receipt"],
+            parent_bytes=parent_bytes,
+            candidate_bytes=candidate,
+        )
+    except BoundaryRefusal as exc:
+        raise ProviderRefusal(
+            exc.receipt.get("reason_code", "BOUNDARY_POLICY_REFUSED"),
+            "boundary_policy",
+        ) from None
+
+    runtime_request = _provider_request(
+        route_id=decision["runtime_route_id"],
+        surface=boundary_request["surface"],
+        candidate=candidate,
+        destination=boundary_request["destination"],
+        requested_effect=boundary_request["requested_effect"],
+    )
+    if not _route_allows_surface(
+        payload["route_surface_bindings"],
+        decision["runtime_route_id"],
+        boundary_request["surface"],
+    ):
+        raise ProviderRefusal(
+            "UNKNOWN_PUBLISHING_CAPABILITY", decision["runtime_route_id"]
+        )
+    runtime_binding = _authorization_binding(runtime_request)
+    return {
+        "schema_version": "rea.write.boundary-preauthorization-decision.v1",
+        "boundary_request_sha256": digest(canonical(boundary_request)),
+        "parent_receipt_sha256": document["parent_receipt"].get("receipt_sha256"),
+        "admitted_claims": decision["admitted_claims"],
+        "path_id": boundary_request["path_id"],
+        "runtime_binding": runtime_binding,
+        "authority": current_authority,
+    }
+
+
+def preauthorize_boundary(
+    document: object,
+    state: Path,
+    *,
+    provider_path: Path,
+    runtime_path: Path,
+    boundary_root: Path | None = None,
+    preauthorization_store_path: Path = PRODUCTION_PREAUTH_STORE,
+    isolated_fixture: bool = False,
+    isolated_trusted_parent_receipts: tuple[dict[str, Any], ...] = (),
+    isolated_trusted_source_receipts: tuple[dict[str, Any], ...] = (),
+    isolated_trusted_prerequisite_receipts: tuple[dict[str, Any], ...] = (),
+    now: datetime | None = None,
+) -> dict[str, Any]:
+    """Independently validate and reserve one exact boundary/runtime tuple."""
+    decision = _validate_boundary_document(
+        document,
+        state,
+        provider_path=provider_path,
+        runtime_path=runtime_path,
+        boundary_root=boundary_root,
+        preauthorization_store_path=preauthorization_store_path,
+        isolated_fixture=isolated_fixture,
+        isolated_trusted_parent_receipts=isolated_trusted_parent_receipts,
+        isolated_trusted_source_receipts=isolated_trusted_source_receipts,
+        isolated_trusted_prerequisite_receipts=isolated_trusted_prerequisite_receipts,
+        now=now,
+    )
+    reservation_binding = {
+        "runtime": decision["runtime_binding"],
+        "authority": decision["authority"],
+    }
+    identifier = BoundaryPreauthorizationStore(
+        preauthorization_store_path
+    ).reserve(reservation_binding, document)
+    return {
+        "schema_version": "rea.write.boundary-preauthorization-response.v1",
+        "verdict": "ADMIT",
+        "preauthorization_id": identifier,
+        "runtime_binding_sha256": digest(canonical(decision["runtime_binding"])),
+    }
+
+
+def authorize(
+    request: object,
+    state: Path,
+    *,
+    provider_path: Path,
+    runtime_path: Path,
+    boundary_root: Path | None = None,
+    preauthorization_store_path: Path = PRODUCTION_PREAUTH_STORE,
+    isolated_fixture: bool = False,
+    isolated_trusted_parent_receipts: tuple[dict[str, Any], ...] = (),
+    isolated_trusted_source_receipts: tuple[dict[str, Any], ...] = (),
+    isolated_trusted_prerequisite_receipts: tuple[dict[str, Any], ...] = (),
+    now: datetime | None = None,
+) -> dict[str, Any]:
+    readiness_fields = {"schema_version", "route_id", "surface"}
+    if (
+        isinstance(request, dict)
+        and request.get("schema_version")
+        == "rea.c3.hybrid.capability-readiness.v1"
+    ):
+        if set(request) != readiness_fields:
+            raise ProviderRefusal("CAPABILITY_REQUEST_INVALID", "readiness_closed_shape")
+        payload, _registry, _authority = verify_authority(
+            state, provider_path=provider_path, runtime_path=runtime_path, now=now
+        )
+        if state.resolve() == PRODUCTION_STATE.resolve():
+            readiness_boundary_root = _production_boundary_root(state)
+        else:
+            if not isolated_fixture or boundary_root is None:
+                raise ProviderRefusal(
+                    "ISOLATED_ARGUMENT_SET_INCOMPLETE", "readiness_boundary_root"
+                )
+            try:
+                boundary_root.resolve().relative_to(Path("/tmp").resolve())
+            except ValueError:
+                raise ProviderRefusal(
+                    "ISOLATED_FIXTURE_REQUIRED", "readiness_boundary_root"
+                ) from None
+            readiness_boundary_root = boundary_root
+        if payload["write_boundary_policy_sha256"] != _boundary_policy_digest(
+            readiness_boundary_root
+        ):
+            raise ProviderRefusal(
+                "WRITE_BOUNDARY_POLICY_BINDING_MISMATCH", "readiness"
+            )
+        route = request.get("route_id")
+        surface = request.get("surface")
+        if not _route_allows_surface(
+            payload["route_surface_bindings"], route, surface
+        ):
+            raise ProviderRefusal(
+                "UNKNOWN_PUBLISHING_CAPABILITY", f"{route}:{surface}"
+            )
+        # A typed refusal is the successful, side-effect-free readiness result.
+        # It occurs before the preauthorization store is opened and therefore
+        # cannot reserve, consume, or authorize a mutation.
+        raise ProviderRefusal(
+            "CAPABILITY_READINESS_CONFIRMED", f"{route}:{surface}"
+        )
+    allowed = {
+        "schema_version",
+        "route_id",
+        "surface",
+        "destination",
+        "requested_effect",
+        "candidate_b64",
+        "candidate_sha256",
+        "candidate_byte_length",
+        "target_sha256",
+        "plan_sha256",
+        "preimage_sha256",
+        "wea",
+    }
+    if not isinstance(request, dict) or set(request) != allowed:
+        raise ProviderRefusal("CAPABILITY_REQUEST_INVALID", "closed_shape")
+    if request.get("schema_version") != "rea.c3.hybrid.capability-request.v2":
+        raise ProviderRefusal("CAPABILITY_REQUEST_INVALID", "schema_version")
+    try:
+        candidate = base64.b64decode(request["candidate_b64"], validate=True)
+    except (KeyError, TypeError, ValueError):
+        raise ProviderRefusal("CAPABILITY_REQUEST_INVALID", "candidate_b64") from None
+    if (
+        not candidate
+        or request.get("candidate_sha256") != digest(candidate)
+        or request.get("candidate_byte_length") != len(candidate)
+    ):
+        raise ProviderRefusal("STALE_OR_WRONG_SUBJECT", "candidate")
+    payload, registry, authority = verify_authority(
+        state, provider_path=provider_path, runtime_path=runtime_path, now=now
+    )
+    bindings = payload["route_surface_bindings"]
+    route = request.get("route_id")
+    surface = request.get("surface")
+    if not _route_allows_surface(bindings, route, surface):
+        raise ProviderRefusal("UNKNOWN_PUBLISHING_CAPABILITY", f"{route}:{surface}")
+    request_binding = {
+        key: request[key]
+        for key in (
+            "route_id",
+            "surface",
+            "destination",
+            "requested_effect",
+            "candidate_sha256",
+            "candidate_byte_length",
+            "target_sha256",
+            "plan_sha256",
+            "preimage_sha256",
+            "wea",
+        )
+    }
+    current_authority = _current_boundary_authority(state, payload, registry)
+    reservation_binding = {
+        "runtime": request_binding,
+        "authority": current_authority,
+    }
+    store = BoundaryPreauthorizationStore(preauthorization_store_path)
+    identifier, document = store.peek(reservation_binding)
+    reservation = _validate_boundary_document(
+        document,
+        state,
+        provider_path=provider_path,
+        runtime_path=runtime_path,
+        boundary_root=boundary_root,
+        preauthorization_store_path=preauthorization_store_path,
+        isolated_fixture=isolated_fixture,
+        isolated_trusted_parent_receipts=isolated_trusted_parent_receipts,
+        isolated_trusted_source_receipts=isolated_trusted_source_receipts,
+        isolated_trusted_prerequisite_receipts=isolated_trusted_prerequisite_receipts,
+        now=now,
+    )
+    if (
+        reservation.get("runtime_binding") != request_binding
+        or reservation.get("authority") != current_authority
+        or not isinstance(reservation.get("admitted_claims"), list)
+        or (
+            not reservation["admitted_claims"]
+            and reservation.get("path_id") != "F23"
+        )
+    ):
+        raise ProviderRefusal("BOUNDARY_PREAUTH_DECISION_INVALID", "binding")
+    store.consume(reservation_binding, identifier, document)
+    claims = reservation["admitted_claims"]
+    verification_id = "registry-verification-" + digest(
+        canonical(authority) + canonical(request_binding) + canonical(claims)
+    )
+    return {
+        "schema_version": "rea.write.registry-verification-response.v1",
+        "authorization": authority,
+        "decision": {
+            "verdict": "ADMIT",
+            "reason_code": "EXACT_CURRENT_REGISTRY_CLAIMS",
+            "request_binding": request_binding,
+            "claims": claims,
+            # This identifier is a deterministic digest of public, signed
+            # inputs.  It is evidence of verification, not a newly minted or
+            # signed capability.
+            "verification_id": verification_id,
+        },
+    }
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--preauthorize", action="store_true")
+    parser.add_argument("--isolated-state", type=Path)
+    parser.add_argument("--isolated-runtime", type=Path)
+    parser.add_argument("--isolated-preauth-store", type=Path)
+    args = parser.parse_args(argv)
+    state = PRODUCTION_STATE
+    provider = PRODUCTION_PROVIDER
+    runtime = PRODUCTION_RUNTIME
+    preauthorization_store = PRODUCTION_PREAUTH_STORE
+    isolated_values = (
+        args.isolated_state,
+        args.isolated_runtime,
+        args.isolated_preauth_store,
+    )
+    if any(value is not None for value in isolated_values):
+        if any(value is None for value in isolated_values):
+            print("REFUSE(ISOLATED_ARGUMENT_SET_INCOMPLETE)", file=sys.stderr)
+            return 3
+        state = args.isolated_state.resolve()
+        runtime = args.isolated_runtime.resolve()
+        preauthorization_store = args.isolated_preauth_store.resolve()
+        provider = Path(__file__).resolve()
+        try:
+            state.relative_to(Path("/tmp").resolve())
+            runtime.relative_to(Path("/tmp").resolve())
+            provider.relative_to(Path("/tmp").resolve())
+            preauthorization_store.relative_to(Path("/tmp").resolve())
+        except ValueError:
+            print("REFUSE(ISOLATED_FIXTURE_REQUIRED)", file=sys.stderr)
+            return 3
+        if args.preauthorize:
+            print("REFUSE(ISOLATED_PREAUTHORIZATION_API_FORBIDDEN)", file=sys.stderr)
+            return 3
+    try:
+        request = json.load(sys.stdin)
+        if args.preauthorize:
+            response = preauthorize_boundary(
+                request,
+                state,
+                provider_path=provider,
+                runtime_path=runtime,
+            )
+        else:
+            response = authorize(
+                request,
+                state,
+                provider_path=provider,
+                runtime_path=runtime,
+                preauthorization_store_path=preauthorization_store,
+            )
+    except (
+        OSError,
+        ValueError,
+        TypeError,
+        json.JSONDecodeError,
+        ProviderRefusal,
+    ) as exc:
+        reason = (
+            exc.reason_code
+            if isinstance(exc, ProviderRefusal)
+            else "CAPABILITY_PROVIDER_FAILURE"
+        )
+        detail = exc.detail if isinstance(exc, ProviderRefusal) else type(exc).__name__
+        print(
+            json.dumps(
+                {
+                    "verdict": "REFUSE",
+                    "reason_code": reason,
+                    "detail": detail,
+                    "raw_exit": 3,
+                },
+                sort_keys=True,
+                separators=(",", ":"),
+            ),
+            file=sys.stderr,
+        )
+        return 3
+    print(json.dumps(response, sort_keys=True, separators=(",", ":")))
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
