@@ -19,7 +19,7 @@ from pathlib import Path
 
 
 HOST = "gios-dev"
-MARKER = "rea-s152-sealed-successor-approval-v3"
+MARKER = "rea-s152-capability-approval-v4"
 REPOSITORY = "rexcoleman/rexcoleman.dev"
 ENVIRONMENT = "rea-write-enforcement-issuer"
 WORKFLOW = "issue-write-enforcement-attestation.yml"
@@ -32,6 +32,20 @@ MANIFEST_FILE_SHA256 = "185263455c5f88687df3b057b3e1d6d3ca02a3a445c78c8629e64825
 MANIFEST_DIGEST = "61b14636f83daaf080cc8db1cda412b2aa762fb3b5ba0b9f8f4b96e3ce9ae612"
 ISSUER_TAG = "rea-wea-generation-5-d97fd5520ec3"
 PRESERVED_SEAL_RUN_ID = 31598988338
+CAPABILITY_RUN_ID = 31599576142
+CAPABILITY_JOB_ID = 94123435123
+CAPABILITY_ENVIRONMENT_ID = 18598689835
+PRESERVED_SEAL_ARTIFACT_ID = 9142274030
+PRESERVED_SEAL_ARTIFACT_DIGEST = (
+    "sha256:bddd58767b7a3f924a51a7c9db7674784c918d105785afea5de4e0a7dece04c5"
+)
+PRESERVED_CIPHERTEXT_SHA256 = (
+    "d412e2baeccb59e0b6441669308ac796cddd891d6405da0404b20e8adf817c0c"
+)
+CAPABILITY_PREDECESSOR_RUN_ID = 31575965295
+CAPABILITY_PREDECESSOR_WEA_SHA256 = (
+    "469039f445f6dd77f16386c0d996ee0169da1321b3c276c159b411a7af198a14"
+)
 TARGET_REPOSITORY = "rexcoleman/research_enforcement_activation"
 SECRET_NAME = "REA_BUNDLE_READ_TOKEN"
 TRANSFER_TOOL = Path(__file__).with_name("provision_downstream_bundle_secret.py")
@@ -127,6 +141,47 @@ def pending_environment(run_id):
     if len(matches) != 1:
         return None
     return matches[0]["environment"]["id"]
+
+
+def capability_job():
+    value = api("repos/%s/actions/runs/%s/jobs?per_page=100" % (
+        REPOSITORY, CAPABILITY_RUN_ID,
+    ))
+    matches = [
+        row for row in value.get("jobs", []) if isinstance(row, dict)
+        and row.get("id") == CAPABILITY_JOB_ID
+        and row.get("run_id") == CAPABILITY_RUN_ID
+        and row.get("run_attempt") == 1
+        and row.get("name") == "issue-wea"
+        and row.get("head_sha") == MANIFEST_HEAD
+        and row.get("head_branch") == ISSUER_TAG
+    ] if isinstance(value, dict) else []
+    if len(matches) != 1:
+        raise Refusal("CAPABILITY_JOB_IDENTITY_REFUSED")
+    return matches[0]
+
+
+def preserved_packet_identity():
+    value = api("repos/%s/actions/runs/%s/artifacts" % (
+        REPOSITORY, PRESERVED_SEAL_RUN_ID,
+    ))
+    matches = [
+        row for row in value.get("artifacts", []) if isinstance(row, dict)
+        and row.get("id") == PRESERVED_SEAL_ARTIFACT_ID
+        and row.get("name") == "rea-downstream-sealed-secret-%s" % PRESERVED_SEAL_RUN_ID
+        and row.get("expired") is False
+        and row.get("digest") == PRESERVED_SEAL_ARTIFACT_DIGEST
+        and row.get("workflow_run", {}).get("id") == PRESERVED_SEAL_RUN_ID
+        and row.get("workflow_run", {}).get("head_sha") == MANIFEST_HEAD
+        and row.get("workflow_run", {}).get("head_branch") == ISSUER_TAG
+    ] if isinstance(value, dict) else []
+    if len(matches) != 1:
+        raise Refusal("PRESERVED_SEAL_ARTIFACT_IDENTITY_REFUSED")
+    key = downstream_public_key()
+    packet = sealed_packet(PRESERVED_SEAL_RUN_ID, key)
+    if packet.get("ciphertext_sha256") != PRESERVED_CIPHERTEXT_SHA256:
+        raise Refusal("PRESERVED_CIPHERTEXT_IDENTITY_REFUSED")
+    return packet
 
 
 def approve(run_id, purpose):
@@ -675,14 +730,66 @@ def coach_resume_sealed():
     return 0
 
 
+def capability_approval_boundary():
+    runtime_ready()
+    value = run_state(CAPABILITY_RUN_ID)
+    environment_id = pending_environment(CAPABILITY_RUN_ID)
+    job = capability_job()
+    predecessor = predecessor_snapshot()
+    if (value.get("status") != "waiting" or value.get("conclusion") not in ("", None)
+            or value.get("headSha") != MANIFEST_HEAD
+            or value.get("headBranch") != ISSUER_TAG
+            or environment_id != CAPABILITY_ENVIRONMENT_ID
+            or job.get("status") != "waiting" or job.get("conclusion") is not None
+            or predecessor.get("run_id") != CAPABILITY_PREDECESSOR_RUN_ID
+            or predecessor.get("wea_sha256") != CAPABILITY_PREDECESSOR_WEA_SHA256):
+        raise Refusal("CAPABILITY_OWNER_GATE_REFUSED")
+    preserved_packet_identity()
+    return value
+
+
+def preflight_capability_run():
+    capability_approval_boundary()
+    print("S152_CAPABILITY_APPROVAL_PREFLIGHT_PASS issuer_run=%s job=%s "
+          "environment=%s sealed_run=%s ciphertext_sha256=%s mutation=false "
+          "secret_bytes_printed=false" % (
+              CAPABILITY_RUN_ID, CAPABILITY_JOB_ID, CAPABILITY_ENVIRONMENT_ID,
+              PRESERVED_SEAL_RUN_ID, PRESERVED_CIPHERTEXT_SHA256,
+          ))
+    print("SAFE_TO_PASTE_BACK=true secret_bytes_printed=false")
+    return 0
+
+
+def approve_capability_run():
+    capability_approval_boundary()
+    approve(CAPABILITY_RUN_ID, "sealed public-packet successor issuance")
+    issued = wait_success(CAPABILITY_RUN_ID, MANIFEST_HEAD, 240, "ISSUER")
+    if issued.get("headBranch") != ISSUER_TAG:
+        raise Refusal("ISSUER_TAG_REFUSED")
+    job = capability_job()
+    if job.get("status") != "completed" or job.get("conclusion") != "success":
+        raise Refusal("CAPABILITY_JOB_RESULT_REFUSED")
+    verify_artifact(CAPABILITY_RUN_ID)
+    print("S152_CAPABILITY_APPROVAL_PASS issuer_run=%s artifact=verified "
+          "secret_bytes_printed=false" % CAPABILITY_RUN_ID)
+    print("SAFE_TO_PASTE_BACK=true secret_bytes_printed=false")
+    return 0
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--preflight", action="store_true")
     parser.add_argument("--coach-resume-sealed", action="store_true")
+    parser.add_argument("--approve-capability-run", action="store_true")
+    parser.add_argument("--preflight-capability-run", action="store_true")
     args = parser.parse_args(argv)
     try:
         if args.coach_resume_sealed:
             return coach_resume_sealed()
+        if args.approve_capability_run:
+            return approve_capability_run()
+        if args.preflight_capability_run:
+            return preflight_capability_run()
         return preflight() if args.preflight else run()
     except Refusal as exc:
         print("REFUSE(S152_SUCCESSOR_APPROVAL): %s" % exc, file=sys.stderr)
