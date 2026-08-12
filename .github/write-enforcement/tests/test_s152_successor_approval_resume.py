@@ -35,10 +35,13 @@ def test_preflight_is_nonmutating(monkeypatch):
     monkeypatch.setattr(tool, "predecessor_snapshot", lambda: snapshot)
     monkeypatch.setattr(tool, "verify_manifest_pr", lambda **_kwargs: None)
     monkeypatch.setattr(tool, "run_state", lambda _run: {
-        "status": "completed", "conclusion": "success",
+        "status": "waiting", "conclusion": "",
         "headSha": tool.REVIEW_WORKFLOW_SHA, "headBranch": "main",
     })
-    monkeypatch.setattr(tool, "verify_issuer_tag", lambda: None)
+    monkeypatch.setattr(tool, "pending_environment", lambda _run: 7)
+    monkeypatch.setattr(tool, "downstream_public_key", lambda: {
+        "key_id": "9", "key_b64": "x", "key_sha256": "a" * 64,
+    })
     monkeypatch.setattr(tool, "approve", lambda *_args: mutations.append("approve"))
     monkeypatch.setattr(tool, "create_tag", lambda: mutations.append("tag"))
     assert tool.preflight() == 0
@@ -53,7 +56,7 @@ def test_full_arc_order(monkeypatch):
     monkeypatch.setattr(tool, "verify_manifest_pr", lambda *args, **kwargs: order.append(
         "verify-%s" % kwargs.get("require_open")))
     monkeypatch.setattr(tool, "run_state", lambda _run: {
-        "status": "completed", "conclusion": "success",
+        "status": "waiting", "conclusion": "",
         "headSha": tool.REVIEW_WORKFLOW_SHA, "headBranch": "main",
     })
     monkeypatch.setattr(tool, "approve", lambda run, purpose: order.append("approve-%s" % run))
@@ -63,11 +66,20 @@ def test_full_arc_order(monkeypatch):
     })
     monkeypatch.setattr(tool, "merge_manifest_pr", lambda: order.append("merge"))
     monkeypatch.setattr(tool, "create_tag", lambda: order.append("tag"))
-    monkeypatch.setattr(tool, "dispatch_issuer", lambda snapshot: 999)
+    key = {"key_id": "9", "key_b64": "x", "key_sha256": "a" * 64}
+    monkeypatch.setattr(tool, "downstream_public_key", lambda: key)
+    runs = iter([100, 200])
+    monkeypatch.setattr(tool, "dispatch_workflow", lambda *args: next(runs))
+    monkeypatch.setattr(tool, "sealed_packet", lambda *_args: {
+        "ciphertext_b64": "YQ==", "ciphertext_sha256": "b" * 64,
+    })
+    monkeypatch.setattr(tool, "submit_ciphertext", lambda *_args: order.append("submit"))
     monkeypatch.setattr(tool, "wait_owner_gate", lambda run: order.append("wait-owner"))
     monkeypatch.setattr(tool, "verify_artifact", lambda run: order.append("artifact"))
     assert tool.run() == 0
-    assert order == ["verify-False", "tag", "wait-owner", "approve-999", "artifact"]
+    assert order == ["approve-%s" % tool.REVIEW_RUN_ID, "verify-True", "merge",
+                     "tag", "wait-owner", "approve-100", "submit",
+                     "wait-owner", "approve-200", "artifact"]
 
 
 def test_predecessor_advance_between_preflight_and_execution_is_accepted(monkeypatch):
@@ -76,21 +88,29 @@ def test_predecessor_advance_between_preflight_and_execution_is_accepted(monkeyp
         {"run_id": 10, "epoch": 3, "wea_sha256": "a" * 64},
         {"run_id": 11, "epoch": 4, "wea_sha256": "b" * 64},
         {"run_id": 11, "epoch": 4, "wea_sha256": "b" * 64},
+        {"run_id": 11, "epoch": 4, "wea_sha256": "b" * 64},
     ]
     monkeypatch.setattr(tool, "predecessor_snapshot", lambda: snapshots.pop(0))
     monkeypatch.setattr(tool, "verify_manifest_pr", lambda **_kwargs: None)
-    monkeypatch.setattr(tool, "verify_issuer_tag", lambda: None)
+    monkeypatch.setattr(tool, "pending_environment", lambda _run: 7)
+    monkeypatch.setattr(tool, "downstream_public_key", lambda: {
+        "key_id": "9", "key_b64": "x", "key_sha256": "a" * 64,
+    })
     monkeypatch.setattr(tool, "run_state", lambda run: {
-        "status": "completed", "conclusion": "success",
+        "status": "waiting", "conclusion": "",
         "headSha": tool.REVIEW_WORKFLOW_SHA, "headBranch": "main",
     })
     monkeypatch.setattr(tool, "create_tag", lambda: None)
     dispatched = []
-    monkeypatch.setattr(tool, "dispatch_issuer", lambda snap: dispatched.append(snap) or 99)
+    monkeypatch.setattr(tool, "dispatch_workflow", lambda snap, *_args: dispatched.append(snap) or 99)
+    monkeypatch.setattr(tool, "sealed_packet", lambda *_args: {
+        "ciphertext_b64": "YQ==", "ciphertext_sha256": "b" * 64,
+    })
+    monkeypatch.setattr(tool, "submit_ciphertext", lambda *_args: None)
     monkeypatch.setattr(tool, "wait_owner_gate", lambda _run: None)
     monkeypatch.setattr(tool, "approve", lambda *_args: None)
-    monkeypatch.setattr(tool, "wait_success", lambda *_args: {
-        "headBranch": tool.ISSUER_TAG,
+    monkeypatch.setattr(tool, "wait_success", lambda run, *_args: {
+        "headBranch": "main" if run == tool.REVIEW_RUN_ID else tool.ISSUER_TAG,
     })
     monkeypatch.setattr(tool, "verify_artifact", lambda _run: None)
     assert tool.preflight() == 0
@@ -112,7 +132,7 @@ def test_predecessor_drift_after_review_before_dispatch_refuses(monkeypatch):
     })
     monkeypatch.setattr(tool, "create_tag", lambda: None)
     dispatched = []
-    monkeypatch.setattr(tool, "dispatch_issuer", lambda snap: dispatched.append(snap))
+    monkeypatch.setattr(tool, "dispatch_workflow", lambda snap, *_args: dispatched.append(snap))
     try:
         tool.run()
     except tool.Refusal as exc:
@@ -194,6 +214,50 @@ def test_wrong_generation4_tag_refuses(monkeypatch):
         assert str(exc) == "PREDECESSOR_TAG_REFUSED"
     else:
         raise AssertionError("wrong predecessor tag admitted")
+
+
+def test_public_key_drift_refuses_before_secret_write(monkeypatch):
+    first = {"key_id": "1", "key_b64": "a", "key_sha256": "b" * 64}
+    second = {"key_id": "2", "key_b64": "c", "key_sha256": "d" * 64}
+    monkeypatch.setattr(tool, "downstream_public_key", lambda: second)
+    writes = []
+    monkeypatch.setattr(tool, "api", lambda *args, **kwargs: writes.append(args))
+    try:
+        tool.submit_ciphertext({"ciphertext_b64": "e", "ciphertext_sha256": "f" * 64}, first)
+    except tool.Refusal as exc:
+        assert str(exc) == "DOWNSTREAM_PUBLIC_KEY_DRIFT"
+    else:
+        raise AssertionError("key drift admitted")
+    assert writes == []
+
+
+def test_sealed_packet_rejects_ciphertext_identity(monkeypatch, tmp_path):
+    monkeypatch.setattr(tool.tempfile, "TemporaryDirectory", lambda **_kwargs: (
+        _Temporary(tmp_path)
+    ))
+    monkeypatch.setattr(tool, "api", lambda *_args, **_kwargs: {
+        "artifacts": [{"name": "rea-downstream-sealed-secret-7", "expired": False,
+                       "workflow_run": {"id": 7}}],
+    })
+    (tmp_path / "sealed-transfer.json").write_text(
+        '{"ciphertext_sha256":"wrong"}', encoding="utf-8"
+    )
+    monkeypatch.setattr(tool, "command", lambda *_args, **_kwargs: "")
+    try:
+        tool.sealed_packet(7, {"key_id": "1", "key_sha256": "a" * 64})
+    except tool.Refusal as exc:
+        assert str(exc) == "SEALED_PACKET_REFUSED"
+    else:
+        raise AssertionError("ciphertext substitution admitted")
+
+
+class _Temporary:
+    def __init__(self, path):
+        self.path = path
+    def __enter__(self):
+        return str(self.path)
+    def __exit__(self, *_args):
+        return False
 
 
 def test_direct_helper_refuses(monkeypatch):
