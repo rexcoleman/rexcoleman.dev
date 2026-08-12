@@ -7,6 +7,9 @@ on:
         description: >-
           capability_change = owner-approved issuance over a new capability
           basis (unchanged behaviour, required_reviewers still apply).
+          capability_change_existing_secret = owner-approved issuance over a
+          new capability basis after the downstream read secret is already
+          installed; refuses all seal inputs and never mutates that secret.
           public_retry = owner-approved re-issuance after a post-artifact
           public-packet publication failure; refuses all seal inputs and never
           mutates the already-installed downstream secret.
@@ -18,6 +21,7 @@ on:
         default: capability_change
         options:
           - capability_change
+          - capability_change_existing_secret
           - public_retry
           - seal_downstream
           - renew
@@ -112,7 +116,7 @@ jobs:
         run: |
           set -euo pipefail
           case "${MODE:-capability_change}" in
-            capability_change|public_retry|seal_downstream) ;;
+            capability_change|capability_change_existing_secret|public_retry|seal_downstream) ;;
             *) echo "REFUSED ISSUANCE_MODE_UNRECOGNISED: $MODE" >&2; exit 3 ;;
           esac
       - name: Authenticate exact predecessor before protected environment
@@ -234,7 +238,7 @@ jobs:
           retention-days: 1
 
   preflight-sealed-transfer:
-    if: inputs.mode == 'capability_change' || inputs.mode == 'public_retry'
+    if: inputs.mode == 'capability_change' || inputs.mode == 'capability_change_existing_secret' || inputs.mode == 'public_retry'
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
@@ -242,9 +246,10 @@ jobs:
         with:
           path: repo
           persist-credentials: false
-      - name: Refuse seal inputs and mutation in public retry mode
-        if: inputs.mode == 'public_retry'
+      - name: Refuse seal inputs and mutation in no-seal modes
+        if: inputs.mode == 'public_retry' || inputs.mode == 'capability_change_existing_secret'
         env:
+          MODE: ${{ inputs.mode }}
           TRANSFER_RUN_ID: ${{ inputs.sealed_transfer_run_id }}
           KEY_ID: ${{ inputs.downstream_key_id }}
           PUBLIC_KEY_SHA256: ${{ inputs.downstream_public_key_sha256 }}
@@ -255,7 +260,7 @@ jobs:
           test -z "$KEY_ID"
           test -z "$PUBLIC_KEY_SHA256"
           test -z "$CIPHERTEXT_SHA256"
-          echo "PUBLIC_RETRY_NO_SEAL_PASS mutation=false secret_write=false"
+          echo "NO_SEAL_CAPABILITY_PASS mode=$MODE mutation=false secret_write=false"
       - name: Authenticate exact sealed-transfer run and packet
         if: inputs.mode == 'capability_change'
         env:
@@ -314,7 +319,7 @@ jobs:
 
   issue-wea:
     needs: [preflight-predecessor, preflight-sealed-transfer]
-    if: inputs.mode == 'capability_change' || inputs.mode == 'public_retry'
+    if: inputs.mode == 'capability_change' || inputs.mode == 'capability_change_existing_secret' || inputs.mode == 'public_retry'
     permissions:
       contents: write
       actions: read
