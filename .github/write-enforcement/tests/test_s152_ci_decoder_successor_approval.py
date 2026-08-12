@@ -2,12 +2,14 @@ from __future__ import annotations
 
 import importlib.util
 import io
+import hashlib
+import json
 from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
-SOURCE = ROOT / "s152_public_retry_approval.py"
-SPEC = importlib.util.spec_from_file_location("s152_public_retry_approval", SOURCE)
+SOURCE = ROOT / "s152_ci_decoder_successor_approval.py"
+SPEC = importlib.util.spec_from_file_location("s152_ci_decoder_successor_approval", SOURCE)
 assert SPEC and SPEC.loader
 tool = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(tool)
@@ -184,18 +186,118 @@ def test_direct_helper_and_non_tty_refuse(monkeypatch):
         raise AssertionError("direct helper admitted")
 
 
+def predecessor_fixture(monkeypatch, authority_generation=5, member_count=247):
+    wea_raw = b'{"fixture":"wea"}'
+    verifier_raw = b"fixture-verifier\n"
+    members = [{
+        "member_id": "verify-only-resolver",
+        "repository": "research_enforcement_activation",
+        "path": "write_integrity/attestation/wea_verifier.py",
+        "sha256": hashlib.sha256(verifier_raw).hexdigest(),
+        "byte_length": len(verifier_raw),
+    }, {
+        "member_id": "ci-enforcement-materializer",
+    }, {
+        "member_id": "public-attestation-publisher",
+    }]
+    members.extend({"member_id": "fixture-%s" % index}
+                   for index in range(member_count - len(members)))
+    manifest = {
+        "schema_version": tool.MANIFEST_SCHEMA,
+        "authority_generation": authority_generation,
+        "members": members,
+    }
+    manifest["manifest_digest"] = hashlib.sha256(json.dumps(
+        manifest, sort_keys=True, separators=(",", ":")
+    ).encode()).hexdigest()
+    wea_digest = hashlib.sha256(wea_raw).hexdigest()
+    receipt = {
+        "schema_version": tool.RECEIPT_SCHEMA,
+        "event": "workflow_dispatch",
+        "issuer": tool.ISSUER_URL,
+        "workflow_repository": tool.REPOSITORY,
+        "workflow_run_id": 7,
+        "workflow_run_attempt": 1,
+        "workflow_ref": "refs/tags/rea-wea-generation-5-fixture",
+        "workflow_sha": "a" * 40,
+        "wea_sha256": wea_digest,
+        "manifest_sha256": manifest["manifest_digest"],
+    }
+    values = {
+        "write_enforcement_attestation.json": wea_raw,
+        "issuance_receipt.json": json.dumps(receipt).encode(),
+        "enforcement_bundle_manifest.json": json.dumps(manifest).encode(),
+        "predecessor_write_enforcement_attestation.json": b"{}",
+        "wea_verifier.py": verifier_raw,
+    }
+    monkeypatch.setattr(tool, "regular_bytes", lambda path: values[path.name])
+    status = {
+        "verdict": "PASS", "state": "ENFORCING",
+        "authority_generation": 5, "authority_epoch": 22,
+        "predecessor_verified": True, "state_digest": wea_digest,
+        "enforcement_bundle_manifest_digest": manifest["manifest_digest"],
+        "workflow_run_id": 7,
+    }
+
+    def fake_command(argv, env=None):
+        if argv[0] == "/usr/bin/python3":
+            return json.dumps(status)
+        return json.dumps({
+            "databaseId": 7, "event": "workflow_dispatch",
+            "status": "completed", "conclusion": "success",
+            "headSha": "a" * 40,
+            "headBranch": "rea-wea-generation-5-fixture",
+        })
+
+    monkeypatch.setattr(tool, "command", fake_command)
+    monkeypatch.setattr(tool, "api", lambda path, **_kwargs: (
+        {"object": {"type": "tag", "sha": "b" * 40}}
+        if "/git/ref/tags/" in path else
+        {"object": {"type": "commit", "sha": "a" * 40}}
+    ))
+
+
+def test_installed_generation5_predecessor_is_accepted(monkeypatch):
+    predecessor_fixture(monkeypatch)
+    observed = tool.predecessor_snapshot()
+    assert observed == {
+        "run_id": 7,
+        "wea_sha256": hashlib.sha256(b'{"fixture":"wea"}').hexdigest(),
+        "epoch": 22,
+        "manifest_digest": observed["manifest_digest"],
+    }
+
+
+def test_installed_generation4_predecessor_is_refused(monkeypatch):
+    predecessor_fixture(monkeypatch, authority_generation=4, member_count=244)
+    try:
+        tool.predecessor_snapshot()
+    except tool.Refusal as exc:
+        assert str(exc) == "PREDECESSOR_MANIFEST_REFUSED"
+    else:
+        raise AssertionError("generation-4 predecessor admitted into gen5 successor")
+
+
 def test_constants_bind_new_incident():
     assert tool.ISSUER_TAG == "rea-wea-generation-5-" + tool.MANIFEST_HEAD[:12]
     assert len(tool.MANIFEST_FILE_SHA256) == 64
-    assert tool.REVIEW_RUN_ID == 31604361900
-    assert tool.MANIFEST_PR == 88
+    assert tool.REVIEW_RUN_ID == 31607877005
+    assert tool.MANIFEST_PR == 91
 
 
-def test_checked_wrapper_self_anchors_and_invokes_only_new_helper():
-    value = (ROOT / "s152_public_retry_approval_checked_wrapper.sh").read_text()
+def test_new_checked_wrapper_self_anchors_and_invokes_only_new_helper():
+    value = (ROOT / "s152_ci_decoder_successor_approval_checked_wrapper.sh").read_text()
     assert "cmp -s \"$DEPLOYED_WRAPPER\" \"$CANONICAL_WRAPPER\"" in value
     assert "cmp -s \"$HELPER\" \"$CANONICAL_HELPER\"" in value
     assert "CANONICAL_COMMIT_NOT_PUBLISHED" in value
-    assert "s152_public_retry_approval.py" in value
-    assert "s152_successor_approval_resume.py" not in value
+    assert "s152_ci_decoder_successor_approval.py" in value
+    assert "s152_public_retry_approval.py" not in value
     assert '--preflight) exec /usr/bin/python3 "$HELPER" --preflight' in value
+
+
+def test_consumed_v5_wrapper_is_tombstoned():
+    value = (ROOT / "s152_public_retry_approval_checked_wrapper.sh").read_text()
+    assert "WITHDRAWN_CONSUMED_SUCCESS" in value
+    assert "SAFE_TO_PASTE_BACK=true secret_bytes_printed=false" in value
+    assert "exit 2" in value
+    assert "/usr/bin/python3" not in value
