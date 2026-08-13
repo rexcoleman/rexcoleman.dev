@@ -51,6 +51,33 @@ REQUIRED_CLASSES = [
 ]
 
 
+def test_successor_contract_closes_registered_production_authority_pair():
+    expected = {
+        "artifact-integrity-authority-resolver": (
+            "govML",
+            "templates/build/enforcement/artifact_integrity_authority_resolver.py",
+        ),
+        "artifact-integrity-production-authorities": (
+            "govML",
+            "templates/build/enforcement/artifact_integrity_production_authorities.json",
+        ),
+    }
+    successor = contract_module.successor_members()
+    assert {member_id: successor[member_id] for member_id in expected} == expected
+    assert len(successor) == 251
+    planted = dict(contract_module.SUCCESSOR_ADDITIONAL_MEMBERS)
+    planted["artifact-integrity-authority-resolver"] = planted[
+        "artifact-integrity-production-authorities"
+    ]
+    original = contract_module.SUCCESSOR_ADDITIONAL_MEMBERS
+    try:
+        contract_module.SUCCESSOR_ADDITIONAL_MEMBERS = planted
+        with pytest.raises(ValueError, match="successor member subject collision"):
+            contract_module.successor_members()
+    finally:
+        contract_module.SUCCESSOR_ADDITIONAL_MEMBERS = original
+
+
 def test_production_provisioner_has_distinct_equal_byte_authoring_subject():
     pair = (
         "production-request-provisioner",
