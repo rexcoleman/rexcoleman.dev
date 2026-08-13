@@ -24,6 +24,7 @@ from pathlib import Path
 
 
 ADAPTER_SCHEMA = "rea.signed-release-convergence-adapter.v1"
+INDEX_SCHEMA = "rea.signed-release-convergence-index.v1"
 STATE_SCHEMA = "rea.signed-release-convergence-state.v1"
 SUMMARY_SCHEMA = "rea.signed-release-convergence-summary.v1"
 RECEIPT_SCHEMA = "rea.signed-release-convergence-phase-receipt.v1"
@@ -40,6 +41,7 @@ PHASES = (
 HEX40 = re.compile(r"[0-9a-f]{40}\Z")
 HEX64 = re.compile(r"[0-9a-f]{64}\Z")
 LOGICAL = re.compile(r"[A-Za-z0-9_.-]+\Z")
+DEFAULT_INDEX = Path(__file__).with_name("signed_release_convergence_index.json")
 
 
 class Refusal(RuntimeError):
@@ -292,6 +294,85 @@ def load_adapter(path: Path):
     if boundaries != expected_boundaries:
         raise Refusal("BOUNDARIES_REFUSED")
     return value
+
+
+def load_index(path: Path):
+    try:
+        value = json.loads(regular_bytes(path))
+    except ValueError:
+        raise Refusal("INDEX_JSON_REFUSED")
+    required = {
+        "schema_version",
+        "engine",
+        "documentation",
+        "index_guide",
+        "focused_tests",
+        "workflow",
+        "adapters",
+    }
+    closed_dict(value, required, "INDEX")
+    if value["schema_version"] != INDEX_SCHEMA:
+        raise Refusal("INDEX_SCHEMA_REFUSED")
+    paths = {
+        "engine": ("signed_release_convergence.py", ".py"),
+        "documentation": ("SIGNED_RELEASE_CONVERGENCE.md", ".md"),
+        "index_guide": ("SIGNED_RELEASE_CONVERGENCE_INDEX.md", ".md"),
+        "focused_tests": ("tests/test_signed_release_convergence.py", ".py"),
+        "workflow": ("../workflows/signed-release-convergence.yml", ".yml"),
+    }
+    index_root = path.resolve().parent
+    for field, (expected, suffix) in paths.items():
+        if not isinstance(value[field], str):
+            raise Refusal("INDEX_PATH_TYPE_REFUSED:%s" % field)
+        if value[field] != expected:
+            raise Refusal("INDEX_PATH_IDENTITY_REFUSED:%s" % field)
+        relative = Path(value[field])
+        if relative.is_absolute() or not relative.parts or relative.suffix != suffix:
+            raise Refusal("INDEX_PATH_REFUSED:%s" % field)
+        target = (index_root / relative).resolve()
+        try:
+            target.relative_to(index_root.parent)
+        except ValueError:
+            raise Refusal("INDEX_PATH_SCOPE_REFUSED:%s" % field)
+        regular_bytes(target)
+    rows = value["adapters"]
+    if not isinstance(rows, list) or not rows:
+        raise Refusal("INDEX_ADAPTERS_REFUSED")
+    identifiers = []
+    for row in rows:
+        closed_dict(row, {"adapter_id", "path", "status"}, "INDEX_ADAPTER")
+        if (
+            not isinstance(row["adapter_id"], str)
+            or not LOGICAL.fullmatch(row["adapter_id"])
+            or row["status"] not in ("active", "retired")
+        ):
+            raise Refusal("INDEX_ADAPTER_ROW_REFUSED")
+        relative_adapter = safe_relative(row["path"], ".json")
+        if relative_adapter.parts[:1] != ("adapters",):
+            raise Refusal("INDEX_ADAPTER_PATH_REFUSED:%s" % row["adapter_id"])
+        adapter_path = index_root / relative_adapter
+        try:
+            adapter_path.resolve().relative_to(index_root)
+        except ValueError:
+            raise Refusal("INDEX_ADAPTER_PATH_SCOPE_REFUSED")
+        adapter = load_adapter(adapter_path)
+        if adapter["adapter_id"] != row["adapter_id"]:
+            raise Refusal("INDEX_ADAPTER_ID_MISMATCH:%s" % row["adapter_id"])
+        identifiers.append(row["adapter_id"])
+    if len(set(identifiers)) != len(identifiers):
+        raise Refusal("INDEX_ADAPTER_ID_DUPLICATE")
+    return value
+
+
+def resolve_adapter(index_path: Path, adapter_id: str):
+    value = load_index(index_path)
+    for row in value["adapters"]:
+        if row["adapter_id"] != adapter_id:
+            continue
+        if row["status"] != "active":
+            raise Refusal("INDEX_ADAPTER_RETIRED:%s" % adapter_id)
+        return index_path.resolve().parent / row["path"]
+    raise Refusal("INDEX_ADAPTER_UNKNOWN:%s" % adapter_id)
 
 
 def parse_roots(rows, adapter):
@@ -913,6 +994,13 @@ def self_test():
             checks += 1
         else:
             raise AssertionError("receipt drift admitted")
+    index = load_index(DEFAULT_INDEX)
+    adapter_id = index["adapters"][0]["adapter_id"]
+    if resolve_adapter(DEFAULT_INDEX, adapter_id).name != (
+        "research_enforcement_activation.v1.json"
+    ):
+        raise AssertionError("indexed adapter resolution")
+    checks += 1
     print("SELF_TEST_PASS checks=%s" % checks)
     return 0
 
@@ -920,7 +1008,10 @@ def self_test():
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--self-test", action="store_true")
+    parser.add_argument("--list-adapters", action="store_true")
     parser.add_argument("--adapter", type=Path)
+    parser.add_argument("--adapter-id")
+    parser.add_argument("--index", type=Path, default=DEFAULT_INDEX)
     parser.add_argument("--state", type=Path)
     parser.add_argument("--evidence-dir", type=Path)
     parser.add_argument("--root", action="append", default=[], metavar="NAME=PATH")
@@ -932,7 +1023,8 @@ def main(argv=None):
     args = parser.parse_args(argv)
     if args.self_test:
         if (
-            any((args.adapter, args.state, args.evidence_dir, args.root,
+            any((args.list_adapters, args.adapter, args.adapter_id,
+                 args.index != DEFAULT_INDEX, args.state, args.evidence_dir, args.root,
                  args.baseline_manifest, args.plan, args.noop_rehearsal,
                  args.resume))
         ):
@@ -942,7 +1034,38 @@ def main(argv=None):
             )
             return 2
         return self_test()
-    if not all((args.adapter, args.state, args.evidence_dir)) or not any(
+    if args.list_adapters:
+        if any((args.adapter, args.adapter_id, args.state, args.evidence_dir,
+                args.root, args.baseline_manifest, args.plan,
+                args.noop_rehearsal, args.resume)):
+            print(
+                "REFUSE(SIGNED_RELEASE_CONVERGENCE): LIST_ARGUMENT_REFUSED",
+                file=sys.stderr,
+            )
+            return 2
+        try:
+            index = load_index(args.index)
+            for row in index["adapters"]:
+                print("%s\t%s\t%s" % (
+                    row["adapter_id"], row["status"], row["path"]
+                ))
+            return 0
+        except Refusal as exc:
+            print("REFUSE(SIGNED_RELEASE_CONVERGENCE): %s" % exc, file=sys.stderr)
+            return 2
+    if args.adapter and args.adapter_id:
+        print(
+            "REFUSE(SIGNED_RELEASE_CONVERGENCE): ADAPTER_SELECTION_CONFLICT",
+            file=sys.stderr,
+        )
+        return 2
+    if not args.adapter and not args.adapter_id:
+        print(
+            "REFUSE(SIGNED_RELEASE_CONVERGENCE): ADAPTER_SELECTION_REQUIRED",
+            file=sys.stderr,
+        )
+        return 2
+    if not all((args.state, args.evidence_dir)) or not any(
         (args.plan, args.noop_rehearsal, args.resume)
     ):
         print(
@@ -952,8 +1075,9 @@ def main(argv=None):
         return 2
     mode = "noop-rehearsal" if args.noop_rehearsal else "plan"
     try:
+        adapter_path = args.adapter or resolve_adapter(args.index, args.adapter_id)
         return execute(
-            args.adapter,
+            adapter_path,
             args.state,
             args.evidence_dir,
             args.root,
