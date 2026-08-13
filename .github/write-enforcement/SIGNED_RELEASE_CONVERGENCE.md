@@ -1,0 +1,60 @@
+# Signed-release convergence accelerator
+
+Use this capability when a change to signed REA/govML/rexdev enforcement bytes
+would otherwise begin a review/issue/install cycle before clean-runner and
+deterministic-manifest preconditions have been exhausted.
+
+It is not the BCS deployment accelerator, gate-carry generalization, anti-spin,
+or an owner rail:
+
+- BCS deployment remains in `deploy_at_parity.py` and is outside REA.
+- Gate carry remains a plug-in to `run_gate_inflow_carry.py`.
+- Anti-spin applies to LLM-judged carries; this release planner is deterministic.
+- Owner rail is reserved for a genuinely irreducible human action. The planner
+  performs no remote mutation and emits no owner command.
+
+## Registered entry point
+
+`signed_release_convergence.py` with
+`adapters/research_enforcement_activation.v1.json`.
+
+Run `python3 signed_release_convergence.py --self-test` for the isolated
+determinism, receipt-drift, path, environment, and atomic-state battery.
+
+The planner requires five explicit clean repository roots. It:
+
+1. verifies exact origin, HEAD, cleanliness, and GitHub reachability;
+2. maps changed paths to the signed member contract;
+3. compiles registered runtime sources under system Python and runs
+   adapter-selected tests under the available pytest interpreter, always with
+   a minimal environment and nonexistent HOME;
+4. fetches and validates the active signed ruleset;
+5. builds the candidate manifest twice into fresh output roots;
+6. refuses non-determinism, wrong generation/member count, or no-op divergence;
+7. persists a mode-0600 state file and per-phase hash-bound receipts so a retry
+   resumes only after verifying the exact tool, adapter, completed evidence,
+   baseline, and live five-root identities; and
+8. rechecks all five input roots after the build and refuses if any HEAD or
+   worktree changed.
+
+Hermetic test children receive no host credentials. The manifest builder's
+independent private-repository reachability check receives one transient token
+from `gh auth token`; that value is passed only in the builder child environment
+and is never written to state, receipts, logs, evidence, or command arguments.
+
+`--plan` prepares a candidate without comparing it to the installed manifest.
+`--noop-rehearsal --baseline-manifest <path>` requires every source root at
+the exact commits recorded in that separately supplied manifest-only commit
+and requires byte-identical rebuild. Keeping the baseline separate preserves
+the two-commit freeze: the rex source root remains at the implementation
+commit while the baseline bytes come from the later manifest commit.
+`--resume` accepts only the same tool and adapter bytes, baseline digest,
+evidence root, phase prefix, receipt hashes, and live root identities.
+
+The read-only `signed-release-convergence` pull-request workflow compiles the
+tool, runs its internal refusal matrix, and runs the focused tests. Its token
+has Contents:Read only and checkout persistence is disabled.
+
+The output is a prerequisite, never release authority. A PASS does not merge a
+manifest PR, create a tag, approve an environment, issue, install, or declare
+project CI green. Those later actions retain their registered gates.
