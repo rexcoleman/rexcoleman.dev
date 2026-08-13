@@ -51,6 +51,11 @@ The planner requires five explicit clean repository roots. It:
 8. rechecks all five input roots after the build and refuses if any HEAD or
    worktree changed.
 
+The adapter closes over the expected authority generation and production
+member count. This keeps contract growth explicit without leaving a stale
+session-specific count hidden in the engine; either an unregistered population
+change or a stale adapter count refuses after the deterministic double build.
+
 Hermetic test children receive no host credentials. The manifest builder's
 independent private-repository reachability check receives one transient token
 from `gh auth token`; that value is passed only in the builder child environment

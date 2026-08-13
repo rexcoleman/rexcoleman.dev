@@ -185,6 +185,7 @@ def load_adapter(path: Path):
         "schema_version",
         "adapter_id",
         "authority_generation",
+        "expected_member_count",
         "manifest_path",
         "manifest_builder",
         "manifest_builder_flag",
@@ -204,6 +205,12 @@ def load_adapter(path: Path):
         raise Refusal("ADAPTER_ID_REFUSED")
     if value["authority_generation"] != 5:
         raise Refusal("AUTHORITY_GENERATION_REFUSED")
+    if (
+        isinstance(value["expected_member_count"], bool)
+        or not isinstance(value["expected_member_count"], int)
+        or value["expected_member_count"] < 1
+    ):
+        raise Refusal("EXPECTED_MEMBER_COUNT_REFUSED")
     safe_relative(value["manifest_path"], ".json")
     safe_relative(value["manifest_builder"], ".py")
     if value["manifest_builder_flag"] != "--successor-ci-materialization":
@@ -758,7 +765,7 @@ def contract_snapshot(adapter, evidence_dir, mode, baseline):
         raise Refusal("DETERMINISTIC_REBUILD_REFUSED")
     if (
         a["authority_generation"] != adapter["authority_generation"]
-        or a["member_count"] != 248
+        or a["member_count"] != adapter["expected_member_count"]
         or not HEX64.fullmatch(a["manifest_digest"] or "")
     ):
         raise Refusal("BUILT_MANIFEST_CONTRACT_REFUSED")
@@ -1022,11 +1029,11 @@ def self_test():
             "sha256": "a" * 64,
             "manifest_digest": "b" * 64,
             "authority_generation": 5,
-            "member_count": 248,
+            "member_count": 249,
         }
         receipt(evidence, "manifest-a", build)
         receipt(evidence, "manifest-b", build)
-        adapter = {"authority_generation": 5}
+        adapter = {"authority_generation": 5, "expected_member_count": 249}
         result = contract_snapshot(adapter, evidence, "plan", None)
         if not result["deterministic"] or result["remote_mutation"]:
             raise AssertionError("deterministic contract")

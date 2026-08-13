@@ -44,7 +44,7 @@ def contract_result():
         "noop_equal": False,
         "manifest_sha256": "a" * 64,
         "manifest_digest": "b" * 64,
-        "member_count": 248,
+        "member_count": 249,
         "remote_mutation": False,
         "owner_action": False,
         "anti_spin": "not-applicable-deterministic",
@@ -60,7 +60,7 @@ def build_result(raw_sha="a" * 64):
         "byte_length": 1,
         "manifest_digest": "b" * 64,
         "authority_generation": 5,
-        "member_count": 248,
+        "member_count": 249,
         "stdout_sha256": "c" * 64,
         "stderr_sha256": "d" * 64,
     }
@@ -69,6 +69,7 @@ def build_result(raw_sha="a" * 64):
 def test_adapter_is_closed_and_separates_other_infrastructure():
     value = tool.load_adapter(ADAPTER)
     assert value["schema_version"] == tool.ADAPTER_SCHEMA
+    assert value["expected_member_count"] == 249
     assert value["boundaries"] == {
         "anti_spin": "not-applicable-deterministic",
         "bcs_partition": "forbidden",
@@ -84,6 +85,30 @@ def test_adapter_is_closed_and_separates_other_infrastructure():
     planted["owner_command"] = "forbidden"
     with pytest.raises(tool.Refusal, match="ADAPTER_FIELDS_REFUSED"):
         tool.closed_dict(planted, set(value), "ADAPTER")
+
+
+def test_adapter_refuses_invalid_expected_member_count(tmp_path):
+    value = json.loads(ADAPTER.read_text())
+    for planted_value in (True, 0, "249"):
+        value["expected_member_count"] = planted_value
+        planted = tmp_path / ("adapter-%s.json" % str(planted_value).lower())
+        planted.write_text(json.dumps(value))
+        with pytest.raises(tool.Refusal, match="EXPECTED_MEMBER_COUNT_REFUSED"):
+            tool.load_adapter(planted)
+
+
+def test_contract_snapshot_refuses_stale_adapter_member_count(tmp_path):
+    evidence = tmp_path / "evidence"
+    result = build_result()
+    tool.receipt(evidence, "manifest-a", result)
+    tool.receipt(evidence, "manifest-b", result)
+    with pytest.raises(tool.Refusal, match="BUILT_MANIFEST_CONTRACT_REFUSED"):
+        tool.contract_snapshot(
+            {"authority_generation": 5, "expected_member_count": 248},
+            evidence,
+            "plan",
+            None,
+        )
 
 
 def test_index_is_closed_and_resolves_every_registered_adapter():
