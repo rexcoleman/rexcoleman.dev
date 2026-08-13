@@ -220,8 +220,24 @@ def test_member_contract_imports_on_supported_controller_pythons(tmp_path):
         capture_output=True,
         check=False,
     )
-    assert regression.returncode != 0
-    assert "type' object is not subscriptable" in regression.stderr
+    controller_version = subprocess.run(
+        [
+            "/usr/bin/python3",
+            "-c",
+            "import sys; print('.'.join(map(str, sys.version_info[:2])))",
+        ],
+        text=True,
+        capture_output=True,
+        check=True,
+    ).stdout.strip()
+    if tuple(map(int, controller_version.split("."))) < (3, 9):
+        assert regression.returncode != 0
+        assert "type' object is not subscriptable" in regression.stderr
+    else:
+        # Python 3.9+ natively evaluates built-in generic annotations, so the
+        # planted absence is not a negative on that interpreter.  The positive
+        # import above remains the portable controller assertion.
+        assert regression.returncode == 0
 EXPECTED_ROW_COMPLETE_PACKAGE = {
     "row-complete-full-receipts": (
         "govML", "templates/build/enforcement/row_complete/full-receipts.json"
