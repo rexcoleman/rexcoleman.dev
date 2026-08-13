@@ -1,0 +1,35 @@
+{
+  "schema_version": "rea.signed-release-convergence-inventory.v1",
+  "repositories": {
+    "govML": {"default_branch": "main"},
+    "rexcoleman.dev": {"default_branch": "main"}
+  },
+  "properties": {
+    "evidence": "tested",
+    "hermetic": "tested",
+    "identity": "tested",
+    "poststate": "tested",
+    "refusal": "tested",
+    "resume": "tested"
+  },
+  "untested_properties": [],
+  "entries": [
+    {"id":"s88-arm-foundation-evidence","repository":"govML","session":"s88","path":"tests/evidence/s88_arm_foundation_members","kind":"evidence-suite","markers":["convergence_pass1","planted_negatives"],"properties":["evidence","identity","refusal"]},
+    {"id":"s88-arm-remote-evidence","repository":"govML","session":"s88","path":"tests/evidence/s88_arm_remote_members","kind":"evidence-suite","markers":["WEA_WRONG_BUNDLE","planted_negatives"],"properties":["evidence","identity","refusal"]},
+    {"id":"s127-row-chain-test","repository":"govML","session":"s127","path":"tests/test_s127_row_complete_chain_convergence.py","kind":"test","markers":["ROW_COMPLETE_TEST_ARM","poststate"],"properties":["identity","poststate","refusal"]},
+    {"id":"s127-row-chain-evidence","repository":"govML","session":"s127","path":"tests/evidence/s127_row_ledger_chain_convergence","kind":"evidence-suite","markers":["convergence","ledger"],"properties":["evidence","identity","poststate"]},
+    {"id":"s127-reproduction-evidence","repository":"govML","session":"s127","path":"tests/evidence/s127_three_postfreeze_reproductions","kind":"evidence-suite","markers":["postfreeze-r1","CANONICAL_COMPARISON"],"properties":["evidence","hermetic","poststate"]},
+    {"id":"s131-govml-convergence-test","repository":"govML","session":"s131","path":"tests/test_s131_convergence.py","kind":"test","markers":["test_profile_inventory","installed"],"properties":["hermetic","identity","poststate","refusal"]},
+    {"id":"s132-govml-convergence-test","repository":"govML","session":"s132","path":"tests/test_s132_convergence.py","kind":"test","markers":["BYPASS_ARGUMENT_REJECTED","convergence"],"properties":["identity","refusal"]},
+    {"id":"runner-adapter-launcher","repository":"govML","session":"s132","path":"templates/build/enforcement/runner_adapter_launcher.py","kind":"adapter","markers":["adapter","identity"],"properties":["hermetic","identity","refusal"]},
+    {"id":"runner-adapter-launcher-test","repository":"govML","session":"s132","path":"tests/test_runner_adapter_launcher.py","kind":"test","markers":["runner_adapter_launcher","refus"],"properties":["hermetic","identity","refusal"]},
+    {"id":"fixed-provisioning-adapter","repository":"govML","session":"s149","path":"templates/build/enforcement/hybrid_core/write_integrity/provisioning/fixed_adapter.py","kind":"adapter","markers":["FixedAdapter","receipt"],"properties":["identity","poststate","refusal"]},
+    {"id":"s149-absent-profile-evidence","repository":"govML","session":"s149","path":"tests/evidence/s149_absent_profile_refusal","kind":"evidence-suite","markers":["absent_profile","REFUSE"],"properties":["evidence","refusal"]},
+    {"id":"s149-row-package-evidence","repository":"govML","session":"s149","path":"tests/evidence/s149_row_complete_signed_package","kind":"evidence-suite","markers":["true_exits","package_builder"],"properties":["evidence","identity","poststate","refusal"]},
+    {"id":"s131-rex-convergence-test","repository":"rexcoleman.dev","session":"s131","path":".github/write-enforcement/tests/test_s131_convergence.py","kind":"test","markers":["convergence","installed"],"properties":["hermetic","identity","poststate","refusal"]},
+    {"id":"s149-freeze-evidence","repository":"rexcoleman.dev","session":"s149","path":"tests/evidence/s149_band3_freeze","kind":"evidence-suite","markers":["strict_ancestry","postfreeze"],"properties":["evidence","hermetic","identity","poststate","refusal"]},
+    {"id":"s153-release-engine","repository":"rexcoleman.dev","session":"s153","path":".github/write-enforcement/signed_release_convergence.py","kind":"engine","markers":["resume","receipt"],"properties":["evidence","hermetic","identity","poststate","refusal","resume"]},
+    {"id":"s153-release-adapter","repository":"rexcoleman.dev","session":"s153","path":".github/write-enforcement/adapters/research_enforcement_activation.v1.json","kind":"adapter","markers":["hermetic_tests","expected_origins"],"properties":["hermetic","identity","refusal"]},
+    {"id":"s154-release-engine-test","repository":"rexcoleman.dev","session":"s154","path":".github/write-enforcement/tests/test_signed_release_convergence.py","kind":"test","markers":["resume","wrong_baseline"],"properties":["evidence","hermetic","identity","poststate","refusal","resume"]}
+  ]
+}

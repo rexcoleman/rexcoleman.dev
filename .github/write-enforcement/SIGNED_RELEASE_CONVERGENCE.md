@@ -25,6 +25,13 @@ adapter-registration procedure are documented in
 `--adapter` path remains compatible, while `--list-adapters` validates and
 prints the current registry.
 
+Before inventing a convergence helper, inspect the cross-generation inventory
+named by the machine index and run its two-method enumerator against clean,
+fetched govML and rexcoleman.dev roots. That inventory preserves the reusable
+s88/s127/s131/s132/s149 mechanisms and proof suites alongside this s153 engine,
+so current work starts from the already-tested hermetic, identity, resume,
+refusal, poststate, and evidence contracts.
+
 Run `python3 signed_release_convergence.py --self-test` for the isolated
 determinism, receipt-drift, path, environment, and atomic-state battery.
 
