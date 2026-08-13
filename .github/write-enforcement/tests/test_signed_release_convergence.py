@@ -44,7 +44,7 @@ def contract_result():
         "noop_equal": False,
         "manifest_sha256": "a" * 64,
         "manifest_digest": "b" * 64,
-        "member_count": 249,
+        "member_count": 251,
         "remote_mutation": False,
         "owner_action": False,
         "anti_spin": "not-applicable-deterministic",
@@ -60,7 +60,7 @@ def build_result(raw_sha="a" * 64):
         "byte_length": 1,
         "manifest_digest": "b" * 64,
         "authority_generation": 5,
-        "member_count": 249,
+        "member_count": 251,
         "stdout_sha256": "c" * 64,
         "stderr_sha256": "d" * 64,
     }
@@ -69,7 +69,7 @@ def build_result(raw_sha="a" * 64):
 def test_adapter_is_closed_and_separates_other_infrastructure():
     value = tool.load_adapter(ADAPTER)
     assert value["schema_version"] == tool.ADAPTER_SCHEMA
-    assert value["expected_member_count"] == 249
+    assert value["expected_member_count"] == 251
     assert value["boundaries"] == {
         "anti_spin": "not-applicable-deterministic",
         "bcs_partition": "forbidden",
