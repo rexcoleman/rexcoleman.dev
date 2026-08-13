@@ -1104,14 +1104,18 @@ STAGED_NONPRODUCTION_ADDITIONAL_MEMBERS = {
 
 
 def staged_nonproduction_members():
-    """Return the frozen staging contract without production trust roots.
+    """Return the current successor contract plus isolated staging trust.
 
-    Staging is an explicit 245-member superset with one dedicated committed
-    fixture key.  The production 244-member contract and both production
-    trust roots remain present and unchanged.
+    Staging rehearses the release contract that would actually be issued.  It
+    therefore extends the generation-5 successor population, rather than the
+    historical generation-4 population, with one dedicated committed fixture
+    key.  Production trust roots remain present and unchanged; the staged key
+    is an additional, explicitly isolated authority domain.
     """
-    members = dict(EXPECTED_MEMBERS)
+    members = successor_members()
     members.update(STAGED_NONPRODUCTION_ADDITIONAL_MEMBERS)
+    if len(set(members.values())) != len(members):
+        raise ValueError("staged nonproduction member subject collision")
     return members
 
 

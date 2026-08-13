@@ -17,15 +17,45 @@ def fixture_public() -> bytes:
     )
 
 
-def test_staged_contract_is_exact_production_plus_one():
-    production = member_contract.EXPECTED_MEMBERS
+def test_staged_contract_is_exact_current_successor_plus_one():
+    historical = member_contract.EXPECTED_MEMBERS
+    production = member_contract.successor_members()
     staged = member_contract.staged_nonproduction_members()
-    assert len(production) == 244
-    assert len(staged) == 245
+    assert len(historical) == 244
+    assert len(production) == 248
+    assert len(staged) == 249
     assert set(staged) - set(production) == {
         "staged-nonproduction-trusted-public-key"
     }
     assert all(staged[key] == value for key, value in production.items())
+    assert set(member_contract.SUCCESSOR_ADDITIONAL_MEMBERS) <= set(staged)
+
+
+def test_staged_issuer_refuses_historical_population_before_member_reads(tmp_path):
+    historical_staged = dict(member_contract.EXPECTED_MEMBERS)
+    historical_staged.update(
+        member_contract.STAGED_NONPRODUCTION_ADDITIONAL_MEMBERS
+    )
+    manifest = {
+        "members": [
+            {
+                "member_id": member_id,
+                "repository": repository,
+                "path": path,
+            }
+            for member_id, (repository, path) in historical_staged.items()
+        ]
+    }
+
+    with pytest.raises(
+        issue_wea.IssuerRefusal,
+        match="BUNDLE_MEMBER_SET_MISMATCH",
+    ):
+        issue_wea.verify_members(
+            manifest,
+            tmp_path / "absent-workspace",
+            staged_nonproduction=True,
+        )
 
 
 def test_trust_domains_refuse_crossed_and_arbitrary_keys():

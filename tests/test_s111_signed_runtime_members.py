@@ -42,10 +42,11 @@ def test_generation4_contract_registers_all_runtime_consumers_exactly_once():
     production = member_contract.EXPECTED_MEMBERS
     staged = member_contract.staged_nonproduction_members()
     assert len(production) == 244
-    assert len(staged) == 245
-    assert set(staged) - set(production) == {
-        "staged-nonproduction-trusted-public-key"
-    }
+    assert len(staged) == 249
+    assert set(staged) - set(production) == (
+        set(member_contract.SUCCESSOR_ADDITIONAL_MEMBERS)
+        | {"staged-nonproduction-trusted-public-key"}
+    )
     assert {
         key: production[key]
         for key in SIGNED_RUNTIME_MEMBERS
@@ -63,14 +64,8 @@ def test_ci_materializer_is_successor_only_and_generation4_stays_exact():
     successor = member_contract.successor_members()
     added = member_contract.SUCCESSOR_ADDITIONAL_MEMBERS
     assert len(production) == 244
-    assert len(successor) == 245
-    assert set(successor) - set(production) == {"ci-enforcement-materializer"}
-    assert added == {
-        "ci-enforcement-materializer": (
-            "govML",
-            "templates/build/enforcement/ci_materialize_enforcement.py",
-        )
-    }
+    assert len(successor) == 248
+    assert set(successor) - set(production) == set(added)
     assert successor["ci-enforcement-materializer"] == added[
         "ci-enforcement-materializer"
     ]

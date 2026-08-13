@@ -363,7 +363,12 @@ def main() -> int:
         }
     else:
         members = group_member_contract(expected_members)
-    active_contract = args.successor_ci_materialization
+    # A staged artifact rehearses the current active successor population.
+    # Treating it as historical generation 4 allowed release additions to be
+    # absent from the rehearsal even while the installed-population check saw
+    # their bytes and refused.  Staging differs in trust domain, not member
+    # generation.
+    active_contract = args.successor_ci_materialization or args.staged_nonproduction
     authority_generation = (
         AUTHORITY_GENERATION if active_contract
         else HISTORICAL_AUTHORITY_GENERATION
