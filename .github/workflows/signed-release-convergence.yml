@@ -5,7 +5,9 @@ on:
     paths:
       - ".github/workflows/signed-release-convergence.yml"
       - ".github/write-enforcement/SIGNED_RELEASE_CONVERGENCE.md"
+      - ".github/write-enforcement/SIGNED_RELEASE_CONVERGENCE_INDEX.md"
       - ".github/write-enforcement/adapters/**"
+      - ".github/write-enforcement/signed_release_convergence_index.json"
       - ".github/write-enforcement/signed_release_convergence.py"
       - ".github/write-enforcement/tests/test_signed_release_convergence.py"
   push:
@@ -14,7 +16,9 @@ on:
     paths:
       - ".github/workflows/signed-release-convergence.yml"
       - ".github/write-enforcement/SIGNED_RELEASE_CONVERGENCE.md"
+      - ".github/write-enforcement/SIGNED_RELEASE_CONVERGENCE_INDEX.md"
       - ".github/write-enforcement/adapters/**"
+      - ".github/write-enforcement/signed_release_convergence_index.json"
       - ".github/write-enforcement/signed_release_convergence.py"
       - ".github/write-enforcement/tests/test_signed_release_convergence.py"
 

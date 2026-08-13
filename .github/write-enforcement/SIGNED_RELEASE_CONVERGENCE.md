@@ -18,6 +18,13 @@ or an owner rail:
 `signed_release_convergence.py` with
 `adapters/research_enforcement_activation.v1.json`.
 
+Start discovery at `signed_release_convergence_index.json`; its contract and
+adapter-registration procedure are documented in
+`SIGNED_RELEASE_CONVERGENCE_INDEX.md`. Select the registered adapter with
+`--adapter-id research-enforcement-activation-generation-5`. The direct
+`--adapter` path remains compatible, while `--list-adapters` validates and
+prints the current registry.
+
 Run `python3 signed_release_convergence.py --self-test` for the isolated
 determinism, receipt-drift, path, environment, and atomic-state battery.
 

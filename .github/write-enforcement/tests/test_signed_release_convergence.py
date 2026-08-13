@@ -3,6 +3,7 @@ from __future__ import annotations
 import importlib.util
 import json
 import os
+import shutil
 import stat
 from pathlib import Path
 
@@ -12,7 +13,9 @@ import pytest
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE = ROOT / "signed_release_convergence.py"
 ADAPTER = ROOT / "adapters/research_enforcement_activation.v1.json"
+INDEX = ROOT / "signed_release_convergence_index.json"
 DOC = ROOT / "SIGNED_RELEASE_CONVERGENCE.md"
+INDEX_DOC = ROOT / "SIGNED_RELEASE_CONVERGENCE_INDEX.md"
 FREEZE = ROOT / "FREEZE_SEQUENCE.md"
 WORKFLOW = ROOT.parent / "workflows/signed-release-convergence.yml"
 SPEC = importlib.util.spec_from_file_location("signed_release_convergence", SOURCE)
@@ -80,6 +83,76 @@ def test_adapter_is_closed_and_separates_other_infrastructure():
     planted["owner_command"] = "forbidden"
     with pytest.raises(tool.Refusal, match="ADAPTER_FIELDS_REFUSED"):
         tool.closed_dict(planted, set(value), "ADAPTER")
+
+
+def test_index_is_closed_and_resolves_every_registered_adapter():
+    value = tool.load_index(INDEX)
+    assert value["schema_version"] == tool.INDEX_SCHEMA
+    assert value["engine"] == SOURCE.name
+    assert value["documentation"] == DOC.name
+    assert value["index_guide"] == INDEX_DOC.name
+    identifiers = [row["adapter_id"] for row in value["adapters"]]
+    assert identifiers == ["research-enforcement-activation-generation-5"]
+    for adapter_id in identifiers:
+        path = tool.resolve_adapter(INDEX, adapter_id)
+        assert tool.load_adapter(path)["adapter_id"] == adapter_id
+
+
+def test_index_refuses_duplicate_unknown_retired_and_traversing_rows(
+    tmp_path,
+):
+    index_root = tmp_path / "write-enforcement"
+    index_root.mkdir()
+    (tmp_path / "workflows").mkdir()
+    for source in (SOURCE, DOC, INDEX_DOC):
+        shutil.copyfile(source, index_root / source.name)
+    tests = index_root / "tests"
+    tests.mkdir()
+    shutil.copyfile(Path(__file__), tests / Path(__file__).name)
+    adapters = index_root / "adapters"
+    adapters.mkdir()
+    shutil.copyfile(ADAPTER, adapters / ADAPTER.name)
+    shutil.copyfile(WORKFLOW, tmp_path / "workflows" / WORKFLOW.name)
+
+    value = json.loads(INDEX.read_text())
+    duplicate = dict(value["adapters"][0])
+    value["adapters"].append(duplicate)
+    planted = index_root / "index.json"
+    planted.write_text(json.dumps(value))
+    with pytest.raises(tool.Refusal, match="INDEX_ADAPTER_ID_DUPLICATE"):
+        tool.load_index(planted)
+    with pytest.raises(tool.Refusal, match="INDEX_ADAPTER_UNKNOWN"):
+        tool.resolve_adapter(INDEX, "unknown-adapter")
+
+    retired = json.loads(INDEX.read_text())
+    retired["adapters"][0]["status"] = "retired"
+    planted_retired = index_root / "retired.json"
+    planted_retired.write_text(json.dumps(retired))
+    with pytest.raises(tool.Refusal, match="INDEX_ADAPTER_RETIRED"):
+        tool.resolve_adapter(
+            planted_retired, "research-enforcement-activation-generation-5"
+        )
+
+    traversing = json.loads(INDEX.read_text())
+    traversing["adapters"][0]["path"] = "../escape.json"
+    planted_traversing = index_root / "traversing.json"
+    planted_traversing.write_text(json.dumps(traversing))
+    with pytest.raises(tool.Refusal, match="RELATIVE_PATH_REFUSED"):
+        tool.load_index(planted_traversing)
+
+    shadowed = json.loads(INDEX.read_text())
+    shadowed["engine"] = "tests/test_signed_release_convergence.py"
+    planted_shadowed = index_root / "shadowed.json"
+    planted_shadowed.write_text(json.dumps(shadowed))
+    with pytest.raises(tool.Refusal, match="INDEX_PATH_IDENTITY_REFUSED:engine"):
+        tool.load_index(planted_shadowed)
+
+    misplaced = json.loads(INDEX.read_text())
+    misplaced["adapters"][0]["path"] = "shadow.json"
+    planted_misplaced = index_root / "misplaced.json"
+    planted_misplaced.write_text(json.dumps(misplaced))
+    with pytest.raises(tool.Refusal, match="INDEX_ADAPTER_PATH_REFUSED"):
+        tool.load_index(planted_misplaced)
 
 
 def test_adapter_rejects_arbitrary_test_program(tmp_path):
@@ -379,6 +452,7 @@ def test_driver_has_no_remote_mutation_or_owner_delivery_surface():
 
 def test_navigation_docs_bind_registered_entry_and_boundaries():
     doc = DOC.read_text(encoding="utf-8")
+    index_doc = INDEX_DOC.read_text(encoding="utf-8")
     freeze = FREEZE.read_text(encoding="utf-8")
     for required in (
         "signed_release_convergence.py",
@@ -386,11 +460,15 @@ def test_navigation_docs_bind_registered_entry_and_boundaries():
         "not the BCS deployment accelerator",
         "Anti-spin applies to LLM-judged carries",
         "Owner rail is reserved",
+        "signed_release_convergence_index.json",
+        "--adapter-id",
     ):
         assert required in doc
     assert "signed-release" in freeze
     assert "convergence accelerator" in freeze
     assert "--noop-rehearsal" in freeze
+    assert "canonical discovery surface" in index_doc
+    assert "not release authority" in index_doc
 
 
 def test_pr_workflow_is_read_only_and_runs_both_test_layers():
@@ -399,6 +477,8 @@ def test_pr_workflow_is_read_only_and_runs_both_test_layers():
     assert "persist-credentials: false" in raw
     assert "--self-test" in raw
     assert "test_signed_release_convergence.py" in raw
+    assert "signed_release_convergence_index.json" in raw
+    assert "SIGNED_RELEASE_CONVERGENCE_INDEX.md" in raw
     assert "actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065" in raw
     assert "pytest==8.4.1" in raw
     assert "FREEZE_SEQUENCE.md" not in raw
@@ -408,4 +488,41 @@ def test_pr_workflow_is_read_only_and_runs_both_test_layers():
 
 def test_isolated_self_test(capsys):
     assert tool.self_test() == 0
-    assert "SELF_TEST_PASS checks=8" in capsys.readouterr().out
+    assert "SELF_TEST_PASS checks=9" in capsys.readouterr().out
+
+
+def test_list_adapters_and_indexed_execution_selection(monkeypatch, capsys, tmp_path):
+    assert tool.main(["--list-adapters"]) == 0
+    listed = capsys.readouterr().out
+    assert "research-enforcement-activation-generation-5\tactive\t" in listed
+
+    captured = {}
+
+    def fake_execute(adapter_path, *_args, **_kwargs):
+        captured["adapter"] = adapter_path
+        return 0
+
+    monkeypatch.setattr(tool, "execute", fake_execute)
+    assert tool.main([
+        "--adapter-id", "research-enforcement-activation-generation-5",
+        "--state", str(tmp_path / "state.json"),
+        "--evidence-dir", str(tmp_path / "evidence"),
+        "--plan",
+    ]) == 0
+    assert captured["adapter"] == ADAPTER
+
+
+def test_cli_refuses_ambiguous_or_missing_adapter_selection(capsys, tmp_path):
+    common = [
+        "--state", str(tmp_path / "state.json"),
+        "--evidence-dir", str(tmp_path / "evidence"),
+        "--plan",
+    ]
+    assert tool.main(common) == 2
+    assert "ADAPTER_SELECTION_REQUIRED" in capsys.readouterr().err
+    assert tool.main([
+        "--adapter", str(ADAPTER),
+        "--adapter-id", "research-enforcement-activation-generation-5",
+        *common,
+    ]) == 2
+    assert "ADAPTER_SELECTION_CONFLICT" in capsys.readouterr().err
