@@ -614,6 +614,14 @@ SUCCESSOR_ADDITIONAL_MEMBERS = {
         "govML",
         "templates/build/enforcement/artifact_integrity_production_adapter.py",
     ),
+    "artifact-integrity-authority-resolver": (
+        "govML",
+        "templates/build/enforcement/artifact_integrity_authority_resolver.py",
+    ),
+    "artifact-integrity-production-authorities": (
+        "govML",
+        "templates/build/enforcement/artifact_integrity_production_authorities.json",
+    ),
 }
 
 
