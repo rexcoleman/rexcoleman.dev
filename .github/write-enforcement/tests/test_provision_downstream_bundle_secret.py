@@ -14,6 +14,7 @@ SPEC = importlib.util.spec_from_file_location("sealed_bundle_transfer", TOOL)
 assert SPEC and SPEC.loader
 tool = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(tool)
+TARGET = "rexcoleman/cycle_10_autonomous_cycle_apparatus_build"
 
 
 def frozen_manifest(tmp_path):
@@ -64,6 +65,7 @@ def seal_packet(tmp_path, monkeypatch, secret="planted-source-secret"):
     output = tmp_path / "sealed.json"
     rc = tool.main([
         "seal", "--manifest", str(manifest), "--key-id", "789",
+        "--target-repository", TARGET,
         "--public-key-b64", public, "--public-key-sha256", digest,
         "--output", str(output),
     ], environment(secret))
@@ -73,6 +75,7 @@ def seal_packet(tmp_path, monkeypatch, secret="planted-source-secret"):
 def verify_argv(output, manifest, digest, ciphertext):
     return [
         "verify", "--packet", str(output), "--manifest", str(manifest),
+        "--target-repository", TARGET,
         "--key-id", "789", "--public-key-sha256", digest,
         "--ciphertext-sha256", ciphertext, "--run-id", "12345",
         "--workflow-ref", "refs/tags/rea-wea-generation-5-abcdef123456",
@@ -87,6 +90,7 @@ def test_seals_after_all_five_reads_and_never_outputs_secret(tmp_path, monkeypat
     packet = json.loads(output.read_bytes())
     assert set(packet) == tool.PACKET_KEYS
     assert packet["workflow_run_id"] == 12345
+    assert packet["target_repository"] == TARGET
     assert packet["source_commits"] == {
         logical: ("%x" % (index + 1)) * 40
         for index, logical in enumerate(tool.LOGICAL_REPOSITORIES)
@@ -131,6 +135,7 @@ def test_wrong_public_key_digest_refuses_before_reads(tmp_path, monkeypatch):
     public, _digest = key()
     assert tool.main([
         "seal", "--manifest", str(manifest), "--key-id", "789",
+        "--target-repository", TARGET,
         "--public-key-b64", public, "--public-key-sha256", "f" * 64,
         "--output", str(tmp_path / "out"),
     ], environment()) == 3
@@ -146,6 +151,7 @@ def test_git_read_refusal_prevents_packet(tmp_path, monkeypatch):
     public, digest = key()
     assert tool.main([
         "seal", "--manifest", str(manifest), "--key-id", "789",
+        "--target-repository", TARGET,
         "--public-key-b64", public, "--public-key-sha256", digest,
         "--output", str(output),
     ], environment()) == 3
@@ -159,6 +165,7 @@ def test_absent_source_refuses(tmp_path, monkeypatch):
     public, digest = key()
     assert tool.main([
         "seal", "--manifest", str(manifest), "--key-id", "789",
+        "--target-repository", TARGET,
         "--public-key-b64", public, "--public-key-sha256", digest,
         "--output", str(tmp_path / "out"),
     ], {}) == 3
@@ -181,6 +188,9 @@ def test_workflow_has_two_phase_sealed_transfer_without_writer_credential():
     assert "REA_SECRETS_WRITE_PAT" not in raw
     assert "encrypted_value" not in raw
     assert raw.count("provision_downstream_bundle_secret.py verify") == 2
+    assert "downstream_repository:" in raw
+    assert raw.count('--target-repository "$DOWNSTREAM_REPOSITORY"') == 3
+    assert raw.count("DOWNSTREAM_REPOSITORY: ${{ inputs.downstream_repository }}") == 4
 
 
 def test_secret_safe_refusal(tmp_path, monkeypatch, capsys):
@@ -193,9 +203,28 @@ def test_secret_safe_refusal(tmp_path, monkeypatch, capsys):
     ))
     assert tool.main([
         "seal", "--manifest", str(manifest), "--key-id", "789",
+        "--target-repository", TARGET,
         "--public-key-b64", public, "--public-key-sha256", digest,
         "--output", str(tmp_path / "out"),
     ], environment(secret)) == 3
     captured = capsys.readouterr()
     combined = captured.out + captured.err
     assert secret not in combined
+
+
+def test_unregistered_or_substituted_target_refuses(tmp_path, monkeypatch):
+    rc, output, manifest, _calls, digest = seal_packet(tmp_path, monkeypatch)
+    assert rc == 0
+    packet = json.loads(output.read_bytes())
+    wrong = verify_argv(output, manifest, digest, packet["ciphertext_sha256"])
+    wrong[wrong.index("--target-repository") + 1] = (
+        "rexcoleman/unregistered-target"
+    )
+    assert tool.main(wrong) == 3
+    public, public_digest = key()
+    assert tool.main([
+        "seal", "--manifest", str(manifest), "--key-id", "789",
+        "--target-repository", "rexcoleman/unregistered-target",
+        "--public-key-b64", public, "--public-key-sha256", public_digest,
+        "--output", str(tmp_path / "wrong-target"),
+    ], environment()) == 3

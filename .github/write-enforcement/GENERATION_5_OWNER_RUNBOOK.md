@@ -1,6 +1,6 @@
 # Generation-5 WEA owner runbook
 
-Generation 5 is a successor authority over the exact 247-member frozen
+Generation 5 is a successor authority over the exact 248-member frozen
 manifest. It adds `ci-enforcement-materializer`, the protected downstream
 bundle-secret transition, and the public attestation packet publisher.
 It never edits or reuses the generation-4 manifest.
@@ -11,23 +11,24 @@ The manifest-only commit must change exactly
 `.github/write-enforcement/frozen_bundle_manifest.generation-5.json`. Its
 annotated protected tag is derived as `rea-wea-generation-5-` plus the first
 12 lowercase hexadecimal characters of that commit. The tag must peel exactly
-once to that commit and the manifest must report generation 5, 247 members,
+once to that commit and the manifest must report generation 5, 248 members,
 the registered successor materializer subject, the registered protected
 downstream bundle-secret transition, and the public packet publisher.
 
 ## Active successor dispatch
 
-The checked owner arc first reads REA's public Actions-secret key and dispatches
+The registered local transition first reads the exact bound downstream
+repository's public Actions-secret key and dispatches
 `issue-write-enforcement-attestation.yml` at that immutable tag in
 `seal_downstream` mode with exact key ID, decoded-key SHA-256, predecessor run
 ID, and predecessor WEA SHA-256. After protected approval, the issuer validates
 all five frozen Contents reads and emits only a bound sealed-box ciphertext
 artifact. The checked local transition re-verifies the artifact and live public
-key, submits only ciphertext plus key ID to REA, and proves the target secret's
+key, submits only ciphertext plus key ID to the bound target, and proves the target secret's
 name/update metadata. It then dispatches `capability_change` with the exact
 sealed run and ciphertext identities. The unprotected jobs authenticate both
 predecessor and sealed artifact before the second protected approval. After
-approval, the issuer checks out the 247-member manifest, verifies every
+approval, the issuer checks out the 248-member manifest, verifies every
 committed byte, issues epoch+1, completes its hosted self-check, and publishes
 the closed 11-file public artifact.
 
@@ -42,5 +43,10 @@ printed, persisted, placed on argv, or exposed to the owner/local transition.
 The verified 11-file packet is then appended to the issuer's dedicated public
 Git ref with exact run/tag/SHA/file-digest and predecessor-chain bindings, so
 downstream CI needs Contents read only and no cross-repository Actions scope.
-No owner action substitutes for manifest construction, tag proof, dispatch,
-or artifact verification.
+For cycle10, `provision_registered_downstream_bundle_secret.py` is the
+closeable local transition. It refuses a pre-existing secret, is bound to the
+exact cycle10 repository, and rolls back a newly created secret on any failed
+postcheck or downstream issuance. The Coach's authenticated GitHub session may
+execute and approve this registered rail under the active authority; no owner
+credential handling substitutes for manifest construction, tag proof,
+dispatch, artifact verification, or exact deployment approval.

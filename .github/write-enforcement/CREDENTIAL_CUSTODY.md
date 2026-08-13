@@ -100,19 +100,32 @@ Generation-5 capability-change issuance does not use `REA_SECRETS_WRITE_PAT`
 for downstream REA. That PAT is intentionally scoped to rexcoleman.dev, so it
 cannot and must not be broadened merely to copy a Contents token.
 
-The registered transition reads REA's repository Actions-secret public key
-locally with the owner's existing GitHub session. The protected issuer first
+The protected transition accepts only the registered REA and cycle10 target
+repositories. The local closeable transition for cycle10 is
+`provision_registered_downstream_bundle_secret.py`; it runs with the Coach's
+existing authenticated GitHub session and is exactly bound to
+`rexcoleman/cycle_10_autonomous_cycle_apparatus_build`.
+
+The transition reads the target repository's Actions-secret public key
+locally. The protected issuer first
 proves `REA_BUNDLE_READ_TOKEN` can read an exact signed Git commit in each of
 the five frozen repositories. It then uses libsodium sealed-box encryption to
 produce a one-day artifact containing ciphertext, exact key identity, public
 key hash, manifest identity, and workflow identity. It emits no plaintext or
 token digest. The local checked transition downloads and verifies those exact
-bytes, rechecks that REA's public key has not rotated, and submits only
-`encrypted_value` plus `key_id` to REA's secret API. A second exact issuer
+bytes, rechecks that the target's public key has not rotated, and submits only
+`encrypted_value` plus `key_id` to the bound target's secret API. A second exact issuer
 dispatch re-authenticates the sealed artifact before signing. The signed public
 packet still travels separately over the issuer's append-only Contents surface,
 so the bundle token needs no cross-repository Actions permission. Neither the
 owner nor the local process receives plaintext token bytes.
+
+For cycle10 the transition refuses if the secret already exists. GitHub never
+returns an old secret value, so overwriting one would make rollback impossible.
+After an absent-only creation, every failed postcheck or later issuance step
+deletes the newly created secret and verifies absence. The Coach can dispatch
+and approve both exact issuer deployments through the registered transition;
+there is no credential-paste or key-generation owner step.
 
 ## Running the checker
 

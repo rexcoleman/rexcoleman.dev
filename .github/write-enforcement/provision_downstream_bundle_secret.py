@@ -38,7 +38,10 @@ SODIUM_REFUSED = "SODIUM_REFUSED"
 PACKET_REFUSED = "PACKET_REFUSED"
 
 SOURCE_ENV = "REA_BUNDLE_READ_TOKEN"
-TARGET_REPOSITORY = "rexcoleman/research_enforcement_activation"
+TARGET_REPOSITORIES = frozenset({
+    "rexcoleman/research_enforcement_activation",
+    "rexcoleman/cycle_10_autonomous_cycle_apparatus_build",
+})
 SECRET_NAME = "REA_BUNDLE_READ_TOKEN"
 PACKET_SCHEMA = "rea.write.sealed-bundle-secret.v1"
 SEALED_OVERHEAD = 48
@@ -215,6 +218,8 @@ def seal(args, environ) -> int:
         raise Refusal(SOURCE_TOKEN_ABSENT, SOURCE_ENV)
     if not isinstance(args.key_id, str) or not re.fullmatch(r"[0-9]+", args.key_id):
         raise Refusal(KEY_BINDING_REFUSED, "key_id")
+    if args.target_repository not in TARGET_REPOSITORIES:
+        raise Refusal(KEY_BINDING_REFUSED, "target_repository")
     manifest_raw, manifest_digest, commits = load_manifest(args.manifest)
     public_key = decode_key(args.public_key_b64, args.public_key_sha256)
     validate_source_reads(token, commits)
@@ -222,7 +227,7 @@ def seal(args, environ) -> int:
     ciphertext = seal_bytes(token.encode("utf-8"), public_key)
     packet = {
         "schema_version": PACKET_SCHEMA,
-        "target_repository": TARGET_REPOSITORY,
+        "target_repository": args.target_repository,
         "secret_name": SECRET_NAME,
         "key_id": args.key_id,
         "public_key_sha256": args.public_key_sha256,
@@ -265,7 +270,7 @@ def verify(args) -> int:
     _raw, manifest_digest, commits = load_manifest(args.manifest)
     checks = {
         "schema_version": PACKET_SCHEMA,
-        "target_repository": TARGET_REPOSITORY,
+        "target_repository": args.target_repository,
         "secret_name": SECRET_NAME,
         "key_id": args.key_id,
         "public_key_sha256": args.public_key_sha256,
@@ -291,6 +296,7 @@ def parser() -> argparse.ArgumentParser:
     commands = value.add_subparsers(dest="command", required=True)
     seal_parser = commands.add_parser("seal")
     seal_parser.add_argument("--manifest", type=Path, required=True)
+    seal_parser.add_argument("--target-repository", required=True)
     seal_parser.add_argument("--key-id", required=True)
     seal_parser.add_argument("--public-key-b64", required=True)
     seal_parser.add_argument("--public-key-sha256", required=True)
@@ -298,6 +304,7 @@ def parser() -> argparse.ArgumentParser:
     verify_parser = commands.add_parser("verify")
     verify_parser.add_argument("--packet", type=Path, required=True)
     verify_parser.add_argument("--manifest", type=Path, required=True)
+    verify_parser.add_argument("--target-repository", required=True)
     verify_parser.add_argument("--key-id", required=True)
     verify_parser.add_argument("--public-key-sha256", required=True)
     verify_parser.add_argument("--ciphertext-sha256", required=True)
