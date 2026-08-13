@@ -14,6 +14,7 @@ ROOT = Path(__file__).resolve().parents[1]
 SOURCE = ROOT / "signed_release_convergence.py"
 ADAPTER = ROOT / "adapters/research_enforcement_activation.v1.json"
 INDEX = ROOT / "signed_release_convergence_index.json"
+INVENTORY = ROOT / "signed_release_convergence_inventory.json"
 DOC = ROOT / "SIGNED_RELEASE_CONVERGENCE.md"
 INDEX_DOC = ROOT / "SIGNED_RELEASE_CONVERGENCE_INDEX.md"
 FREEZE = ROOT / "FREEZE_SEQUENCE.md"
@@ -91,6 +92,7 @@ def test_index_is_closed_and_resolves_every_registered_adapter():
     assert value["engine"] == SOURCE.name
     assert value["documentation"] == DOC.name
     assert value["index_guide"] == INDEX_DOC.name
+    assert value["cross_generation_inventory"] == INVENTORY.name
     identifiers = [row["adapter_id"] for row in value["adapters"]]
     assert identifiers == ["research-enforcement-activation-generation-5"]
     for adapter_id in identifiers:
@@ -104,7 +106,7 @@ def test_index_refuses_duplicate_unknown_retired_and_traversing_rows(
     index_root = tmp_path / "write-enforcement"
     index_root.mkdir()
     (tmp_path / "workflows").mkdir()
-    for source in (SOURCE, DOC, INDEX_DOC):
+    for source in (SOURCE, DOC, INDEX_DOC, INVENTORY):
         shutil.copyfile(source, index_root / source.name)
     tests = index_root / "tests"
     tests.mkdir()
@@ -153,6 +155,29 @@ def test_index_refuses_duplicate_unknown_retired_and_traversing_rows(
     planted_misplaced.write_text(json.dumps(misplaced))
     with pytest.raises(tool.Refusal, match="INDEX_ADAPTER_PATH_REFUSED"):
         tool.load_index(planted_misplaced)
+
+
+def test_cross_generation_inventory_is_closed_and_covers_six_properties():
+    value = tool.load_cross_generation_inventory(INVENTORY)
+    assert len(value["entries"]) == 17
+    assert {row["repository"] for row in value["entries"]} == {
+        "govML", "rexcoleman.dev",
+    }
+    assert len({row["session"] for row in value["entries"]}) >= 6
+    assert value["properties"] == {
+        "evidence": "tested", "hermetic": "tested", "identity": "tested",
+        "poststate": "tested", "refusal": "tested", "resume": "tested",
+    }
+    assert value["untested_properties"] == []
+
+
+def test_cross_generation_inventory_refuses_dropped_property(tmp_path):
+    value = json.loads(INVENTORY.read_text())
+    del value["properties"]["resume"]
+    planted = tmp_path / "inventory.json"
+    planted.write_text(json.dumps(value))
+    with pytest.raises(tool.Refusal, match="INVENTORY_PROPERTY_SET_REFUSED"):
+        tool.load_cross_generation_inventory(planted)
 
 
 def test_adapter_rejects_arbitrary_test_program(tmp_path):

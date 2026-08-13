@@ -10,6 +10,7 @@
   "engine": "signed_release_convergence.py",
   "focused_tests": "tests/test_signed_release_convergence.py",
   "index_guide": "SIGNED_RELEASE_CONVERGENCE_INDEX.md",
+  "cross_generation_inventory": "signed_release_convergence_inventory.json",
   "schema_version": "rea.signed-release-convergence-index.v1",
   "workflow": "../workflows/signed-release-convergence.yml"
 }

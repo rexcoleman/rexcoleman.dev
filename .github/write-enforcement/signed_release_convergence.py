@@ -25,6 +25,7 @@ from pathlib import Path
 
 ADAPTER_SCHEMA = "rea.signed-release-convergence-adapter.v1"
 INDEX_SCHEMA = "rea.signed-release-convergence-index.v1"
+INVENTORY_SCHEMA = "rea.signed-release-convergence-inventory.v1"
 STATE_SCHEMA = "rea.signed-release-convergence-state.v1"
 SUMMARY_SCHEMA = "rea.signed-release-convergence-summary.v1"
 RECEIPT_SCHEMA = "rea.signed-release-convergence-phase-receipt.v1"
@@ -296,6 +297,61 @@ def load_adapter(path: Path):
     return value
 
 
+def load_cross_generation_inventory(path: Path):
+    try:
+        value = json.loads(regular_bytes(path))
+    except ValueError:
+        raise Refusal("INVENTORY_JSON_REFUSED")
+    closed_dict(value, {
+        "schema_version", "repositories", "properties",
+        "untested_properties", "entries",
+    }, "INVENTORY")
+    if value["schema_version"] != INVENTORY_SCHEMA:
+        raise Refusal("INVENTORY_SCHEMA_REFUSED")
+    properties = {"hermetic", "identity", "resume", "refusal", "poststate", "evidence"}
+    if set(value["properties"]) != properties or any(
+        status not in ("tested", "untested") for status in value["properties"].values()
+    ):
+        raise Refusal("INVENTORY_PROPERTY_SET_REFUSED")
+    expected_untested = sorted(
+        name for name, status in value["properties"].items() if status == "untested"
+    )
+    if value["untested_properties"] != expected_untested:
+        raise Refusal("INVENTORY_UNTESTED_PROPERTY_MISMATCH")
+    if set(value["repositories"]) != {"govML", "rexcoleman.dev"}:
+        raise Refusal("INVENTORY_REPOSITORY_SET_REFUSED")
+    for row in value["repositories"].values():
+        closed_dict(row, {"default_branch"}, "INVENTORY_REPOSITORY")
+        if row["default_branch"] != "main":
+            raise Refusal("INVENTORY_DEFAULT_BRANCH_REFUSED")
+    identifiers = []
+    sessions = set()
+    for row in value["entries"]:
+        closed_dict(row, {
+            "id", "repository", "session", "path", "kind", "markers", "properties",
+        }, "INVENTORY_ENTRY")
+        if (
+            not LOGICAL.fullmatch(row["id"])
+            or row["repository"] not in value["repositories"]
+            or not re.fullmatch(r"s[0-9]+", row["session"])
+            or row["kind"] not in {"adapter", "engine", "evidence-suite", "test"}
+        ):
+            raise Refusal("INVENTORY_ENTRY_IDENTITY_REFUSED")
+        safe_relative(row["path"])
+        if (
+            not isinstance(row["markers"], list) or not row["markers"]
+            or not all(isinstance(marker, str) and marker for marker in row["markers"])
+            or not isinstance(row["properties"], list) or not row["properties"]
+            or not set(row["properties"]).issubset(properties)
+        ):
+            raise Refusal("INVENTORY_ENTRY_COVERAGE_REFUSED")
+        identifiers.append(row["id"])
+        sessions.add(row["session"])
+    if len(identifiers) != len(set(identifiers)) or len(sessions) < 6:
+        raise Refusal("INVENTORY_BREADTH_REFUSED")
+    return value
+
+
 def load_index(path: Path):
     try:
         value = json.loads(regular_bytes(path))
@@ -306,6 +362,7 @@ def load_index(path: Path):
         "engine",
         "documentation",
         "index_guide",
+        "cross_generation_inventory",
         "focused_tests",
         "workflow",
         "adapters",
@@ -317,6 +374,7 @@ def load_index(path: Path):
         "engine": ("signed_release_convergence.py", ".py"),
         "documentation": ("SIGNED_RELEASE_CONVERGENCE.md", ".md"),
         "index_guide": ("SIGNED_RELEASE_CONVERGENCE_INDEX.md", ".md"),
+        "cross_generation_inventory": ("signed_release_convergence_inventory.json", ".json"),
         "focused_tests": ("tests/test_signed_release_convergence.py", ".py"),
         "workflow": ("../workflows/signed-release-convergence.yml", ".yml"),
     }
@@ -335,6 +393,9 @@ def load_index(path: Path):
         except ValueError:
             raise Refusal("INDEX_PATH_SCOPE_REFUSED:%s" % field)
         regular_bytes(target)
+    load_cross_generation_inventory(
+        index_root / value["cross_generation_inventory"]
+    )
     rows = value["adapters"]
     if not isinstance(rows, list) or not rows:
         raise Refusal("INDEX_ADAPTERS_REFUSED")
