@@ -616,7 +616,7 @@ def contract_snapshot(adapter, evidence_dir, mode, baseline):
         raise Refusal("DETERMINISTIC_REBUILD_REFUSED")
     if (
         a["authority_generation"] != adapter["authority_generation"]
-        or a["member_count"] != 247
+        or a["member_count"] != 248
         or not HEX64.fullmatch(a["manifest_digest"] or "")
     ):
         raise Refusal("BUILT_MANIFEST_CONTRACT_REFUSED")
@@ -880,7 +880,7 @@ def self_test():
             "sha256": "a" * 64,
             "manifest_digest": "b" * 64,
             "authority_generation": 5,
-            "member_count": 247,
+            "member_count": 248,
         }
         receipt(evidence, "manifest-a", build)
         receipt(evidence, "manifest-b", build)

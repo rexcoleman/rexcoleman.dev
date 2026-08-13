@@ -606,6 +606,10 @@ SUCCESSOR_ADDITIONAL_MEMBERS = {
         "rexcoleman.dev",
         ".github/write-enforcement/publish_public_attestation.py",
     ),
+    "scaffold-ci-test-requirements": (
+        "govML",
+        "templates/build/enforcement/requirements-ci.txt",
+    ),
 }
 
 

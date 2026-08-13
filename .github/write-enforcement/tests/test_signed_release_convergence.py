@@ -40,7 +40,7 @@ def contract_result():
         "noop_equal": False,
         "manifest_sha256": "a" * 64,
         "manifest_digest": "b" * 64,
-        "member_count": 247,
+        "member_count": 248,
         "remote_mutation": False,
         "owner_action": False,
         "anti_spin": "not-applicable-deterministic",
@@ -56,7 +56,7 @@ def build_result(raw_sha="a" * 64):
         "byte_length": 1,
         "manifest_digest": "b" * 64,
         "authority_generation": 5,
-        "member_count": 247,
+        "member_count": 248,
         "stdout_sha256": "c" * 64,
         "stderr_sha256": "d" * 64,
     }
@@ -71,6 +71,11 @@ def test_adapter_is_closed_and_separates_other_infrastructure():
         "owner_rail": "irreducible-human-only",
         "remote_mutation": "forbidden",
     }
+    govml = next(
+        row for row in value["hermetic_tests"]
+        if row["name"] == "govml-clean-materialization"
+    )
+    assert "tests/test_s153_installer_ci_requirements.py" in govml["paths"]
     planted = dict(value)
     planted["owner_command"] = "forbidden"
     with pytest.raises(tool.Refusal, match="ADAPTER_FIELDS_REFUSED"):

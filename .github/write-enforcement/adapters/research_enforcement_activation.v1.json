@@ -22,6 +22,7 @@
       "name": "govml-clean-materialization",
       "paths": [
         "tests/test_ci_materialize_enforcement.py",
+        "tests/test_s153_installer_ci_requirements.py",
         "tests/test_s152_ci_artifact_evidence_wiring.py",
         "tests/test_s152_frozen_artifact_authority.py"
       ],
