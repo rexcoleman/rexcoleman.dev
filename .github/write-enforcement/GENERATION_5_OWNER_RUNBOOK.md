@@ -1,6 +1,6 @@
 # Generation-5 WEA owner runbook
 
-Generation 5 is a successor authority over the exact 248-member frozen
+Generation 5 is a successor authority over the exact 249-member frozen
 manifest. It adds `ci-enforcement-materializer`, the protected downstream
 bundle-secret transition, and the public attestation packet publisher.
 It never edits or reuses the generation-4 manifest.
@@ -11,7 +11,7 @@ The manifest-only commit must change exactly
 `.github/write-enforcement/frozen_bundle_manifest.generation-5.json`. Its
 annotated protected tag is derived as `rea-wea-generation-5-` plus the first
 12 lowercase hexadecimal characters of that commit. The tag must peel exactly
-once to that commit and the manifest must report generation 5, 248 members,
+once to that commit and the manifest must report generation 5, 249 members,
 the registered successor materializer subject, the registered protected
 downstream bundle-secret transition, and the public packet publisher.
 
@@ -28,7 +28,7 @@ key, submits only ciphertext plus key ID to the bound target, and proves the tar
 name/update metadata. It then dispatches `capability_change` with the exact
 sealed run and ciphertext identities. The unprotected jobs authenticate both
 predecessor and sealed artifact before the second protected approval. After
-approval, the issuer checks out the 248-member manifest, verifies every
+approval, the issuer checks out the 249-member manifest, verifies every
 committed byte, issues epoch+1, completes its hosted self-check, and publishes
 the closed 11-file public artifact.
 

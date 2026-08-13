@@ -610,6 +610,10 @@ SUCCESSOR_ADDITIONAL_MEMBERS = {
         "govML",
         "templates/build/enforcement/requirements-ci.txt",
     ),
+    "artifact-integrity-production-adapter": (
+        "govML",
+        "templates/build/enforcement/artifact_integrity_production_adapter.py",
+    ),
 }
 
 
