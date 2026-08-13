@@ -74,3 +74,11 @@ rewriting the generation-4 manifest:
    dispatch the issuer at that tag with the authenticated installed generation-4
    predecessor run and WEA digest. Required environment approval remains the
    owner gate; all other construction and verification is executor-owned.
+
+Before step 2 for any new successor, run the registered signed-release
+convergence accelerator in `--plan` mode over the five exact clean roots. It
+must complete its hermetic test matrix and two byte-identical manifest builds
+before a manifest-only PR exists. Use `--noop-rehearsal` to prove the current
+manifest can be rebuilt from its exact frozen commits without any remote
+mutation. The accelerator never replaces independent review, protected
+approval, issuance, installation, or post-install CI.

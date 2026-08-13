@@ -1,0 +1,406 @@
+from __future__ import annotations
+
+import importlib.util
+import json
+import os
+import stat
+from pathlib import Path
+
+import pytest
+
+
+ROOT = Path(__file__).resolve().parents[1]
+SOURCE = ROOT / "signed_release_convergence.py"
+ADAPTER = ROOT / "adapters/research_enforcement_activation.v1.json"
+DOC = ROOT / "SIGNED_RELEASE_CONVERGENCE.md"
+FREEZE = ROOT / "FREEZE_SEQUENCE.md"
+WORKFLOW = ROOT.parent / "workflows/signed-release-convergence.yml"
+SPEC = importlib.util.spec_from_file_location("signed_release_convergence", SOURCE)
+assert SPEC and SPEC.loader
+tool = importlib.util.module_from_spec(SPEC)
+SPEC.loader.exec_module(tool)
+
+
+def roots(tmp_path):
+    return {
+        name: tmp_path / name
+        for name in (
+            "research_enforcement_activation",
+            "govML",
+            "Moonshots_Career_Thesis_v2",
+            "newsletter",
+            "rexcoleman.dev",
+        )
+    }
+
+
+def contract_result():
+    return {
+        "deterministic": True,
+        "noop_equal": False,
+        "manifest_sha256": "a" * 64,
+        "manifest_digest": "b" * 64,
+        "member_count": 247,
+        "remote_mutation": False,
+        "owner_action": False,
+        "anti_spin": "not-applicable-deterministic",
+        "bcs_surface": "untouched",
+    }
+
+
+def build_result(raw_sha="a" * 64):
+    return {
+        "label": "manifest",
+        "path": "/tmp/manifest.json",
+        "sha256": raw_sha,
+        "byte_length": 1,
+        "manifest_digest": "b" * 64,
+        "authority_generation": 5,
+        "member_count": 247,
+        "stdout_sha256": "c" * 64,
+        "stderr_sha256": "d" * 64,
+    }
+
+
+def test_adapter_is_closed_and_separates_other_infrastructure():
+    value = tool.load_adapter(ADAPTER)
+    assert value["schema_version"] == tool.ADAPTER_SCHEMA
+    assert value["boundaries"] == {
+        "anti_spin": "not-applicable-deterministic",
+        "bcs_partition": "forbidden",
+        "owner_rail": "irreducible-human-only",
+        "remote_mutation": "forbidden",
+    }
+    planted = dict(value)
+    planted["owner_command"] = "forbidden"
+    with pytest.raises(tool.Refusal, match="ADAPTER_FIELDS_REFUSED"):
+        tool.closed_dict(planted, set(value), "ADAPTER")
+
+
+def test_adapter_rejects_arbitrary_test_program(tmp_path):
+    value = json.loads(ADAPTER.read_text())
+    value["hermetic_tests"][0]["paths"] = ["scripts/mutate.py"]
+    planted = tmp_path / "adapter.json"
+    planted.write_text(json.dumps(value))
+    with pytest.raises(tool.Refusal, match="HERMETIC_TEST_PATH_REFUSED"):
+        tool.load_adapter(planted)
+
+
+def test_atomic_json_is_mode_0600_and_canonical(tmp_path):
+    target = tmp_path / "state.json"
+    tool.atomic_json(target, {"z": 1, "a": 2})
+    assert stat.S_IMODE(target.stat().st_mode) == 0o600
+    assert target.read_bytes() == b'{"a":2,"z":1}\n'
+
+
+def test_secure_regular_bytes_closes_builder_output_mode(tmp_path):
+    target = tmp_path / "manifest.json"
+    target.write_bytes(b"{}\n")
+    target.chmod(0o664)
+    assert tool.secure_regular_bytes(target) == b"{}\n"
+    assert stat.S_IMODE(target.stat().st_mode) == 0o600
+    link = tmp_path / "manifest-link.json"
+    link.symlink_to(target)
+    with pytest.raises(tool.Refusal, match="NONREGULAR_FILE"):
+        tool.secure_regular_bytes(link)
+
+
+def test_minimal_environment_excludes_host_and_credentials(monkeypatch):
+    monkeypatch.setenv("GH_TOKEN", "secret")
+    monkeypatch.setenv("REA_BUNDLE_READ_TOKEN", "secret")
+    monkeypatch.setenv("SSH_AUTH_SOCK", "/host/socket")
+    value = tool.hermetic_environment()
+    assert value["HOME"] == "/nonexistent/rea-release-preflight"
+    assert value["PYTHONDONTWRITEBYTECODE"] == "1"
+    assert "GH_TOKEN" not in value
+    assert "REA_BUNDLE_READ_TOKEN" not in value
+    assert "SSH_AUTH_SOCK" not in value
+
+
+def test_builder_token_is_transient_and_only_added_to_build_child(monkeypatch):
+    class Completed:
+        stdout = "transient-token\n"
+
+    monkeypatch.setattr(tool, "run", lambda *_args, **_kwargs: Completed())
+    value = tool.authenticated_builder_environment()
+    assert value["GH_TOKEN"] == "transient-token"
+    assert "REA_BUNDLE_READ_TOKEN" not in value
+    assert "SSH_AUTH_SOCK" not in value
+    source = SOURCE.read_text(encoding="utf-8")
+    assert 'state["GH_TOKEN"]' not in source
+    assert '"GH_TOKEN":' not in source
+
+
+def test_pytest_interpreter_is_resolved_before_minimal_child_env(
+    tmp_path, monkeypatch
+):
+    class Completed:
+        stdout = ""
+        stderr = ""
+
+    calls = []
+    candidate = tmp_path / "python3"
+    candidate.write_text("#!/bin/sh\n")
+    monkeypatch.setattr(tool.shutil, "which", lambda name: str(candidate))
+    monkeypatch.setattr(
+        tool,
+        "run",
+        lambda argv, **kwargs: calls.append((argv, kwargs)) or Completed(),
+    )
+    assert tool.pytest_interpreter() == str(candidate)
+    assert calls[0][0][-1] == "import pytest"
+    assert calls[0][1]["env"] == tool.hermetic_environment()
+
+
+def test_pytest_interpreter_refuses_missing_pytest(monkeypatch):
+    monkeypatch.setattr(tool.shutil, "which", lambda name: "/usr/bin/python3")
+    monkeypatch.setattr(
+        tool,
+        "run",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(
+            tool.Refusal("COMMAND_REFUSED")
+        ),
+    )
+    with pytest.raises(tool.Refusal, match="PYTEST_IMPORT_REFUSED"):
+        tool.pytest_interpreter()
+
+
+def test_hermetic_snapshot_compiles_registered_sources_with_system_python(
+    tmp_path, monkeypatch
+):
+    mapping = roots(tmp_path)
+    for path in mapping.values():
+        path.mkdir()
+    adapter = tool.load_adapter(ADAPTER)
+    for row in adapter["system_python_sources"]:
+        for item in row["paths"]:
+            target = mapping[row["repository"]] / item
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_text("value = 1\n")
+    adapter["hermetic_tests"] = []
+    calls = []
+
+    class Completed:
+        stdout = ""
+        stderr = ""
+
+    def planted_run(argv, **kwargs):
+        calls.append((argv, kwargs))
+        return Completed()
+
+    monkeypatch.setattr(tool, "run", planted_run)
+    monkeypatch.setattr(tool, "pytest_interpreter", lambda: "/usr/bin/python3")
+    result = tool.hermetic_snapshot(adapter, mapping)
+    assert len(result) == 5
+    assert all(row["name"] == "system-python-compile" for row in result)
+    assert all(row[0][0] == "/usr/bin/python3" for row in calls)
+    assert all(row[1]["env"] == tool.hermetic_environment() for row in calls)
+
+
+def test_parse_roots_requires_exact_five(tmp_path):
+    adapter = tool.load_adapter(ADAPTER)
+    mapping = roots(tmp_path)
+    for path in mapping.values():
+        path.mkdir()
+    rows = ["%s=%s" % row for row in mapping.items()]
+    assert tool.parse_roots(rows, adapter) == {
+        name: path.resolve() for name, path in mapping.items()
+    }
+    with pytest.raises(tool.Refusal, match="ROOT_SET_REFUSED"):
+        tool.parse_roots(rows[:-1], adapter)
+
+
+def test_contract_refuses_nondeterminism(tmp_path):
+    evidence = tmp_path / "evidence"
+    a = build_result()
+    b = dict(a)
+    b["sha256"] = "c" * 64
+    tool.receipt(evidence, "manifest-a", a)
+    tool.receipt(evidence, "manifest-b", b)
+    with pytest.raises(tool.Refusal, match="DETERMINISTIC_REBUILD_REFUSED"):
+        tool.contract_snapshot(tool.load_adapter(ADAPTER), evidence, "plan", None)
+
+
+def test_noop_contract_requires_exact_baseline_bytes(tmp_path):
+    evidence = tmp_path / "evidence"
+    baseline = tmp_path / "manifest.json"
+    baseline.write_bytes(b"baseline\n")
+    result = build_result(tool.sha256(baseline.read_bytes()))
+    tool.receipt(evidence, "manifest-a", result)
+    tool.receipt(evidence, "manifest-b", result)
+    observed = tool.contract_snapshot(
+        tool.load_adapter(ADAPTER), evidence, "noop-rehearsal", baseline
+    )
+    assert observed["noop_equal"] is True
+    baseline.write_bytes(b"drift\n")
+    with pytest.raises(tool.Refusal, match="NOOP_BASELINE_DIVERGENCE"):
+        tool.contract_snapshot(
+            tool.load_adapter(ADAPTER), evidence, "noop-rehearsal", baseline
+        )
+
+
+def test_state_resume_verifies_receipts_and_does_not_repeat_prefix(
+    tmp_path, monkeypatch
+):
+    state = tmp_path / "state.json"
+    evidence = tmp_path / "evidence"
+    mapping = roots(tmp_path)
+    for path in mapping.values():
+        path.mkdir()
+    calls = []
+
+    monkeypatch.setattr(tool, "parse_roots", lambda _rows, _adapter: mapping)
+
+    def first(phase, _adapter, _roots, _evidence, _mode, _baseline):
+        calls.append(phase)
+        if phase == "impact":
+            raise tool.Refusal("PLANTED_PHASE_REFUSAL")
+        return []
+
+    monkeypatch.setattr(tool, "phase_result", first)
+    with pytest.raises(tool.Refusal, match="PLANTED_PHASE_REFUSAL"):
+        tool.execute(ADAPTER, state, evidence, [], "plan", False)
+    saved = json.loads(state.read_text())
+    assert saved["status"] == "refused"
+    assert saved["completed"] == ["roots"]
+    assert calls == ["roots", "impact"]
+
+    calls[:] = []
+
+    def resumed(phase, _adapter, _roots, _evidence, _mode, _baseline):
+        calls.append(phase)
+        return contract_result() if phase == "contract" else []
+
+    monkeypatch.setattr(tool, "phase_result", resumed)
+    monkeypatch.setattr(tool, "root_snapshot", lambda *_args: [])
+    assert tool.execute(ADAPTER, state, evidence, [], "plan", True) == 0
+    assert calls == list(tool.PHASES[1:])
+    assert json.loads(state.read_text())["status"] == "complete"
+    assert json.loads((evidence / "summary.json").read_text())["status"] == "PASS"
+
+
+def test_resume_refuses_tampered_phase_receipt(tmp_path, monkeypatch):
+    state = tmp_path / "state.json"
+    evidence = tmp_path / "evidence"
+    mapping = roots(tmp_path)
+    for path in mapping.values():
+        path.mkdir()
+    monkeypatch.setattr(tool, "parse_roots", lambda _rows, _adapter: mapping)
+    monkeypatch.setattr(
+        tool,
+        "phase_result",
+        lambda phase, *_args: contract_result() if phase == "contract" else [],
+    )
+    assert tool.execute(ADAPTER, state, evidence, [], "plan", False) == 0
+    target = evidence / "receipts" / "roots.json"
+    value = json.loads(target.read_text())
+    value["result"] = ["tampered"]
+    target.write_text(json.dumps(value))
+    with pytest.raises(tool.Refusal, match="PHASE_RECEIPT_DRIFT"):
+        tool.execute(ADAPTER, state, evidence, [], "plan", True)
+
+
+def test_resume_revalidates_live_root_identity(tmp_path, monkeypatch):
+    state = tmp_path / "state.json"
+    evidence = tmp_path / "evidence"
+    mapping = roots(tmp_path)
+    for path in mapping.values():
+        path.mkdir()
+    monkeypatch.setattr(tool, "parse_roots", lambda _rows, _adapter: mapping)
+    monkeypatch.setattr(
+        tool,
+        "phase_result",
+        lambda phase, *_args: contract_result() if phase == "contract" else [],
+    )
+    assert tool.execute(ADAPTER, state, evidence, [], "plan", False) == 0
+    monkeypatch.setattr(tool, "root_snapshot", lambda *_args: [{"drift": True}])
+    with pytest.raises(tool.Refusal, match="RESUME_ROOT_DRIFT"):
+        tool.execute(ADAPTER, state, evidence, [], "plan", True)
+
+
+def test_state_binds_exact_tool_source(tmp_path, monkeypatch):
+    state = tool.new_state(
+        ADAPTER.read_bytes(),
+        tool.load_adapter(ADAPTER),
+        "plan",
+        tmp_path / "evidence",
+        None,
+    )
+    assert state["tool_sha256"] == tool.sha256(SOURCE.read_bytes())
+    state["tool_sha256"] = "0" * 64
+    target = tmp_path / "state.json"
+    tool.atomic_json(target, state)
+    with pytest.raises(tool.Refusal, match="STATE_IDENTITY_REFUSED"):
+        tool.load_state(
+            target,
+            ADAPTER.read_bytes(),
+            tool.load_adapter(ADAPTER),
+            tmp_path / "evidence",
+            None,
+        )
+
+
+def test_noop_requires_separate_baseline(tmp_path, monkeypatch):
+    mapping = roots(tmp_path)
+    for path in mapping.values():
+        path.mkdir()
+    monkeypatch.setattr(tool, "parse_roots", lambda _rows, _adapter: mapping)
+    with pytest.raises(tool.Refusal, match="NOOP_BASELINE_REQUIRED"):
+        tool.execute(
+            ADAPTER,
+            tmp_path / "state.json",
+            tmp_path / "evidence",
+            [],
+            "noop-rehearsal",
+            False,
+        )
+
+
+def test_driver_has_no_remote_mutation_or_owner_delivery_surface():
+    source = SOURCE.read_text(encoding="utf-8")
+    forbidden = (
+        "gh pr merge",
+        "gh workflow run",
+        "pending_deployments",
+        "git/refs",
+        "owner_step_runner",
+        "WA_KC_LIVE_DEPLOY",
+    )
+    for item in forbidden:
+        assert item not in source
+    assert '"remote_mutation": False' in source
+    assert '"owner_action": False' in source
+
+
+def test_navigation_docs_bind_registered_entry_and_boundaries():
+    doc = DOC.read_text(encoding="utf-8")
+    freeze = FREEZE.read_text(encoding="utf-8")
+    for required in (
+        "signed_release_convergence.py",
+        "research_enforcement_activation.v1.json",
+        "not the BCS deployment accelerator",
+        "Anti-spin applies to LLM-judged carries",
+        "Owner rail is reserved",
+    ):
+        assert required in doc
+    assert "signed-release" in freeze
+    assert "convergence accelerator" in freeze
+    assert "--noop-rehearsal" in freeze
+
+
+def test_pr_workflow_is_read_only_and_runs_both_test_layers():
+    raw = WORKFLOW.read_text(encoding="utf-8")
+    assert "permissions:\n  contents: read" in raw
+    assert "persist-credentials: false" in raw
+    assert "--self-test" in raw
+    assert "test_signed_release_convergence.py" in raw
+    assert "actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065" in raw
+    assert "pytest==8.4.1" in raw
+    assert "FREEZE_SEQUENCE.md" not in raw
+    for forbidden in ("pull-requests: write", "contents: write", "gh pr merge"):
+        assert forbidden not in raw
+
+
+def test_isolated_self_test(capsys):
+    assert tool.self_test() == 0
+    assert "SELF_TEST_PASS checks=8" in capsys.readouterr().out
