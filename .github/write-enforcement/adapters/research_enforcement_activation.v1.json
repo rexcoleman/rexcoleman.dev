@@ -1,7 +1,7 @@
 {
   "adapter_id": "research-enforcement-activation-generation-5",
   "authority_generation": 5,
-  "expected_member_count": 249,
+  "expected_member_count": 251,
   "boundaries": {
     "anti_spin": "not-applicable-deterministic",
     "bcs_partition": "forbidden",
