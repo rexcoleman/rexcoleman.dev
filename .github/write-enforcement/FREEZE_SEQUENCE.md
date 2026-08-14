@@ -63,10 +63,12 @@ rewriting the generation-4 manifest:
 
 1. Commit and push all generation-5 implementation bytes, including the issuer
    workflow pin to `frozen_bundle_manifest.generation-5.json`.
-2. From exact clean, remotely reachable heads of all five repositories, invoke
-   `build_frozen_manifest.py` with `--successor-ci-materialization` and output
-   `.github/write-enforcement/frozen_bundle_manifest.generation-5.json`. The
-   builder must emit generation 5 with exactly 247 members.
+2. From exact clean, remotely reachable heads of all five repositories, run the
+   indexed signed-release convergence adapter for the intended authority
+   population. Its registered `expected_member_count` is the single count
+   contract. The deterministic builder must emit generation 5 with that exact
+   population and output
+   `.github/write-enforcement/frozen_bundle_manifest.generation-5.json`.
 3. Commit only that new manifest in a later rexcoleman.dev commit. Derive the
    annotated tag as `rea-wea-generation-5-` plus the first 12 lowercase hex
    characters of the manifest-only commit.
@@ -76,7 +78,9 @@ rewriting the generation-4 manifest:
    owner gate; all other construction and verification is executor-owned.
 
 Before step 2 for any new successor, run the registered signed-release
-convergence accelerator in `--plan` mode over the five exact clean roots. It
+convergence accelerator in `--plan` mode over the five exact clean roots. Use
+the machine index to select the adapter; do not copy a member count from this
+operator document. It
 must complete its hermetic test matrix and two byte-identical manifest builds
 before a manifest-only PR exists. Use `--noop-rehearsal` to prove the current
 manifest can be rebuilt from its exact frozen commits without any remote
