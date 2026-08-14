@@ -13,6 +13,7 @@ import pytest
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE = ROOT / "signed_release_convergence.py"
 ADAPTER = ROOT / "adapters/research_enforcement_activation.v1.json"
+REGISTRATION_ADAPTER = ROOT / "adapters/research_enforcement_activation.registration-v1.json"
 INDEX = ROOT / "signed_release_convergence_index.json"
 INVENTORY = ROOT / "signed_release_convergence_inventory.json"
 DOC = ROOT / "SIGNED_RELEASE_CONVERGENCE.md"
@@ -97,6 +98,25 @@ def test_adapter_refuses_invalid_expected_member_count(tmp_path):
             tool.load_adapter(planted)
 
 
+def test_registration_adapter_closes_over_s155_authority_population():
+    value = tool.load_adapter(REGISTRATION_ADAPTER)
+    assert value["adapter_id"] == (
+        "research-enforcement-activation-generation-5-registration-v1"
+    )
+    assert value["authority_generation"] == 5
+    assert value["expected_member_count"] == 255
+    govml = next(
+        row for row in value["hermetic_tests"]
+        if row["name"] == "govml-registration-and-clean-materialization"
+    )
+    assert "tests/test_s155_research_type_registration.py" in govml["paths"]
+    sources = next(
+        row for row in value["system_python_sources"]
+        if row["repository"] == "govML"
+    )
+    assert "templates/build/enforcement/research_type_registration.py" in sources["paths"]
+
+
 def test_contract_snapshot_refuses_stale_adapter_member_count(tmp_path):
     evidence = tmp_path / "evidence"
     result = build_result()
@@ -119,7 +139,10 @@ def test_index_is_closed_and_resolves_every_registered_adapter():
     assert value["index_guide"] == INDEX_DOC.name
     assert value["cross_generation_inventory"] == INVENTORY.name
     identifiers = [row["adapter_id"] for row in value["adapters"]]
-    assert identifiers == ["research-enforcement-activation-generation-5"]
+    assert identifiers == [
+        "research-enforcement-activation-generation-5",
+        "research-enforcement-activation-generation-5-registration-v1",
+    ]
     for adapter_id in identifiers:
         path = tool.resolve_adapter(INDEX, adapter_id)
         assert tool.load_adapter(path)["adapter_id"] == adapter_id
@@ -139,6 +162,7 @@ def test_index_refuses_duplicate_unknown_retired_and_traversing_rows(
     adapters = index_root / "adapters"
     adapters.mkdir()
     shutil.copyfile(ADAPTER, adapters / ADAPTER.name)
+    shutil.copyfile(REGISTRATION_ADAPTER, adapters / REGISTRATION_ADAPTER.name)
     shutil.copyfile(WORKFLOW, tmp_path / "workflows" / WORKFLOW.name)
 
     value = json.loads(INDEX.read_text())
@@ -184,7 +208,7 @@ def test_index_refuses_duplicate_unknown_retired_and_traversing_rows(
 
 def test_cross_generation_inventory_is_closed_and_covers_six_properties():
     value = tool.load_cross_generation_inventory(INVENTORY)
-    assert len(value["entries"]) == 17
+    assert len(value["entries"]) == 18
     assert {row["repository"] for row in value["entries"]} == {
         "govML", "rexcoleman.dev",
     }
@@ -545,6 +569,10 @@ def test_list_adapters_and_indexed_execution_selection(monkeypatch, capsys, tmp_
     assert tool.main(["--list-adapters"]) == 0
     listed = capsys.readouterr().out
     assert "research-enforcement-activation-generation-5\tactive\t" in listed
+    assert (
+        "research-enforcement-activation-generation-5-registration-v1\tactive\t"
+        in listed
+    )
 
     captured = {}
 

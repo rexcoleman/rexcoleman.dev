@@ -16,12 +16,18 @@ or an owner rail:
 ## Registered entry point
 
 `signed_release_convergence.py` with
-`adapters/research_enforcement_activation.v1.json`.
+an adapter registered under `adapters/`. The original unchanged generation-5
+contract remains `adapters/research_enforcement_activation.v1.json`; the s155
+registration population uses a successor adapter rather than mutating that
+identity.
 
 Start discovery at `signed_release_convergence_index.json`; its contract and
 adapter-registration procedure are documented in
 `SIGNED_RELEASE_CONVERGENCE_INDEX.md`. Select the registered adapter with
-`--adapter-id research-enforcement-activation-generation-5`. The direct
+`--adapter-id research-enforcement-activation-generation-5` for the unchanged
+generation-5 authority, or
+`--adapter-id research-enforcement-activation-generation-5-registration-v1`
+for the s155 closed research-type registration authority. The direct
 `--adapter` path remains compatible, while `--list-adapters` validates and
 prints the current registry.
 
@@ -55,6 +61,8 @@ The adapter closes over the expected authority generation and production
 member count. This keeps contract growth explicit without leaving a stale
 session-specific count hidden in the engine; either an unregistered population
 change or a stale adapter count refuses after the deterministic double build.
+An authority-population change gets a new adapter identifier; the prior adapter
+is not silently rewritten to mean different release bytes.
 
 Hermetic test children receive no host credentials. The manifest builder's
 independent private-repository reachability check receives one transient token
