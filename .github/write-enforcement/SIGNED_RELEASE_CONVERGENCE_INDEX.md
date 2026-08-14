@@ -24,8 +24,11 @@ adapter before printing the registered rows. Unknown, duplicate, retired,
 traversing, missing, mismatched, or extra-field rows refuse.
 
 The active registry contains the original REA authority adapter, its s155
-registration successor, and the two s157 dependent-project adapters for NGA
-and RER. The dependent adapters use schema v2: in addition to the unchanged
+registration successor, the Band C M1/row-26 257-member successor, and the two
+s157 dependent-project adapters for NGA and RER. A population change always
+gets a new stable adapter identity; the 251- and 255-member adapters remain
+auditable without being silently redefined. The dependent adapters use schema
+v2: in addition to the unchanged
 five-root signed-authority plan they close over the exact dependent repository,
 default branch, project-owned runner and preflight argument, required
 `SIGNED_BUNDLE` source, and named refusal. The engine records that identity in

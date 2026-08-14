@@ -31,6 +31,14 @@ for the s155 closed research-type registration authority. The direct
 `--adapter` path remains compatible, while `--list-adapters` validates and
 prints the current registry.
 
+Band C's M1 and hardening-row-26 population uses the registered successor
+`--adapter-id research-enforcement-activation-generation-5-band-c-m1-v1`.
+It closes over 257 members, adds the signed profile-local producer validator
+and shared probe-fixture resolver, and exercises their focused positive and
+planted-negative suite. The earlier registration adapter remains an immutable
+description of the 255-member population; it is not rewritten to mean the
+successor bytes.
+
 Two generation-5 dependent adapters put successor propagation on the same
 paved road:
 

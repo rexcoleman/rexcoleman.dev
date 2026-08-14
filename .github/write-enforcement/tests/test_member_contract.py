@@ -64,7 +64,13 @@ def test_successor_contract_closes_registered_production_authority_pair():
     }
     successor = contract_module.successor_members()
     assert {member_id: successor[member_id] for member_id in expected} == expected
-    assert len(successor) == 255
+    assert len(successor) == 257
+    assert successor["profile-local-artifact-producer-validator"] == (
+        "govML", "templates/build/enforcement/profile_local_artifact_producers.py"
+    )
+    assert successor["probe-fixture-root-resolver"] == (
+        "govML", "templates/build/enforcement/probe_fixture_root.py"
+    )
     planted = dict(contract_module.SUCCESSOR_ADDITIONAL_MEMBERS)
     planted["artifact-integrity-authority-resolver"] = planted[
         "artifact-integrity-production-authorities"
