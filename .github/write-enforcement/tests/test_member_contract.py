@@ -64,7 +64,7 @@ def test_successor_contract_closes_registered_production_authority_pair():
     }
     successor = contract_module.successor_members()
     assert {member_id: successor[member_id] for member_id in expected} == expected
-    assert len(successor) == 251
+    assert len(successor) == 255
     planted = dict(contract_module.SUCCESSOR_ADDITIONAL_MEMBERS)
     planted["artifact-integrity-authority-resolver"] = planted[
         "artifact-integrity-production-authorities"

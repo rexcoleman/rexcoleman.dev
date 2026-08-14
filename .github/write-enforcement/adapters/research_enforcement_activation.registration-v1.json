@@ -15,7 +15,8 @@
         ".github/write-enforcement/tests/test_build_frozen_manifest.py",
         ".github/write-enforcement/tests/test_independent_review.py",
         ".github/write-enforcement/tests/test_member_contract.py",
-        ".github/write-enforcement/tests/test_renewal_workflow.py"
+        ".github/write-enforcement/tests/test_renewal_workflow.py",
+        "tests/test_s111_signed_runtime_members.py"
       ],
       "repository": "rexcoleman.dev"
     },
