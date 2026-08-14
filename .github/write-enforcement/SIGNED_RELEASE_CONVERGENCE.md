@@ -65,7 +65,10 @@ An authority-population change gets a new adapter identifier; the prior adapter
 is not silently rewritten to mean different release bytes.
 The s155 adapter also runs the registered current-successor staged dry-run
 contract tests, which derive their population from the same closed member
-contract instead of carrying a session count.
+contract instead of carrying a session count. Its govML matrix executes the
+actual write-arm recorder/check and artifact-effect polarity/relocation suites,
+and system-Python compiles those production sources; a registration-only unit
+suite cannot substitute for the Phase A2 consumer paths.
 
 Hermetic test children receive no host credentials. The manifest builder's
 independent private-repository reachability check receives one transient token
