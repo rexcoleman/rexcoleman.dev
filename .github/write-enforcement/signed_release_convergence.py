@@ -528,7 +528,15 @@ def member_contract(rex_root: Path):
     namespace = {"__file__": str(module_path), "__name__": "release_member_contract"}
     raw = regular_bytes(module_path)
     exec(compile(raw, str(module_path), "exec"), namespace)
-    expected = namespace["EXPECTED_MEMBERS"]
+    selector = namespace.get("successor_members")
+    if not callable(selector):
+        raise Refusal("SUCCESSOR_MEMBER_CONTRACT_SELECTOR_REFUSED")
+    try:
+        expected = selector()
+    except Exception as exc:
+        raise Refusal(
+            "SUCCESSOR_MEMBER_CONTRACT_REFUSED:%s" % type(exc).__name__
+        ) from exc
     if not isinstance(expected, dict):
         raise Refusal("MEMBER_CONTRACT_REFUSED")
     return expected

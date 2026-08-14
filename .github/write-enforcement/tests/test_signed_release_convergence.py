@@ -349,6 +349,44 @@ def test_hermetic_snapshot_compiles_registered_sources_with_system_python(
     assert all(row[1]["env"] == tool.hermetic_environment() for row in calls)
 
 
+def test_impact_contract_uses_closed_successor_population():
+    value = tool.member_contract(ROOT.parents[1])
+    assert len(value) == 255
+    assert value["research-type-registration-engine"] == (
+        "govML",
+        "templates/build/enforcement/research_type_registration.py",
+    )
+    assert value["research-type-registration-catalogs"] == (
+        "govML",
+        "templates/build/enforcement/research_type_registration_catalogs.json",
+    )
+    assert value["research-type-registration-registry"] == (
+        "govML",
+        "templates/build/enforcement/research_type_registration_registry.json",
+    )
+    assert value["research-type-registration-schema"] == (
+        "govML",
+        "templates/build/enforcement/research_type_registration_schema.json",
+    )
+
+
+def test_impact_contract_refuses_absent_or_nonmapping_successor_selector(tmp_path):
+    member = tmp_path / ".github/write-enforcement/member_contract.py"
+    member.parent.mkdir(parents=True)
+    member.write_text("EXPECTED_MEMBERS = {}\n")
+    with pytest.raises(
+        tool.Refusal, match="SUCCESSOR_MEMBER_CONTRACT_SELECTOR_REFUSED"
+    ):
+        tool.member_contract(tmp_path)
+    member.write_text(
+        "EXPECTED_MEMBERS = {}\n"
+        "def successor_members():\n"
+        "    return []\n"
+    )
+    with pytest.raises(tool.Refusal, match="MEMBER_CONTRACT_REFUSED"):
+        tool.member_contract(tmp_path)
+
+
 def test_parse_roots_requires_exact_five(tmp_path):
     adapter = tool.load_adapter(ADAPTER)
     mapping = roots(tmp_path)
