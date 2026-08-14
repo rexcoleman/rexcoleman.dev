@@ -23,12 +23,22 @@ the normal route. `--list-adapters` validates the complete index and every
 adapter before printing the registered rows. Unknown, duplicate, retired,
 traversing, missing, mismatched, or extra-field rows refuse.
 
+The active registry contains the original REA authority adapter, its s155
+registration successor, and the two s157 dependent-project adapters for NGA
+and RER. The dependent adapters use schema v2: in addition to the unchanged
+five-root signed-authority plan they close over the exact dependent repository,
+default branch, project-owned runner and preflight argument, required
+`SIGNED_BUNDLE` source, and named refusal. The engine records that identity in
+the contract receipt but keeps release/install mutation outside the planner.
+
 ## Adding or changing an adapter
 
 1. Add or update the adapter JSON under `adapters/`.
 2. Add exactly one matching row to the machine index. Never reuse an existing
    identifier for different semantics.
-3. Extend the focused tests for the adapter contract and planted refusals.
+3. Extend the focused tests for the adapter contract and planted refusals. A
+   dependent adapter must cover hermetic execution, exact target identity,
+   resume, refusal, source-root poststate, and durable contract evidence.
 4. Update `SIGNED_RELEASE_CONVERGENCE.md` when the operating boundary changes.
 5. Run the internal self-test and focused test file. The read-only
    `signed-release-convergence` workflow repeats both on the pull request.
@@ -38,8 +48,8 @@ not merge, tag, approve, issue, install, or prove a target project green.
 
 ## Cross-generation inventory and reconciliation
 
-The inventory has 18 closed rows spanning s88, s127, s131, s132, s149, s153,
-s154, and s155 in govML and rexcoleman.dev. Each row names a stable identity, remote
+The inventory has 20 closed rows spanning s88, s127, s131, s132, s149, s153,
+s154, s155, and s157 in govML and rexcoleman.dev. Each row names a stable identity, remote
 repository/default branch, path, session generation, kind, semantic discovery
 markers, and the tested properties it supplies. The six required properties
 are hermetic execution, identity binding, resume, refusal, poststate, and

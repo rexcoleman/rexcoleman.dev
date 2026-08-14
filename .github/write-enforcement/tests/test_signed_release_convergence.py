@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import copy
 import importlib.util
 import json
 import os
@@ -14,6 +15,8 @@ ROOT = Path(__file__).resolve().parents[1]
 SOURCE = ROOT / "signed_release_convergence.py"
 ADAPTER = ROOT / "adapters/research_enforcement_activation.v1.json"
 REGISTRATION_ADAPTER = ROOT / "adapters/research_enforcement_activation.registration-v1.json"
+NGA_ADAPTER = ROOT / "adapters/newsletter_generation_architecture.generation-5.json"
+RER_ADAPTER = ROOT / "adapters/research_engine_release.generation-5.json"
 INDEX = ROOT / "signed_release_convergence_index.json"
 INVENTORY = ROOT / "signed_release_convergence_inventory.json"
 DOC = ROOT / "SIGNED_RELEASE_CONVERGENCE.md"
@@ -53,7 +56,7 @@ def contract_result():
     }
 
 
-def build_result(raw_sha="a" * 64):
+def build_result(raw_sha="a" * 64, member_count=251):
     return {
         "label": "manifest",
         "path": "/tmp/manifest.json",
@@ -61,7 +64,7 @@ def build_result(raw_sha="a" * 64):
         "byte_length": 1,
         "manifest_digest": "b" * 64,
         "authority_generation": 5,
-        "member_count": 251,
+        "member_count": member_count,
         "stdout_sha256": "c" * 64,
         "stderr_sha256": "d" * 64,
     }
@@ -125,6 +128,133 @@ def test_registration_adapter_closes_over_s155_authority_population():
     assert "templates/build/enforcement/write_side_arm.py" in sources["paths"]
 
 
+def test_dependent_adapters_bind_exact_target_identity_and_signed_authority():
+    expected = {
+        NGA_ADAPTER: {
+            "adapter_id": "newsletter-generation-architecture-generation-5",
+            "project_id": "newsletter_generation_architecture",
+            "repository": "rexcoleman/newsletter_generation_architecture",
+            "default_branch": "main",
+            "named_refusal": "F09",
+        },
+        RER_ADAPTER: {
+            "adapter_id": "research-engine-release-generation-5",
+            "project_id": "research_engine_release",
+            "repository": "rexcoleman/research_engine_release",
+            "default_branch": "master",
+            "named_refusal": "AUTHORITY_LAPSED",
+        },
+    }
+    for path, identity in expected.items():
+        value = tool.load_adapter(path)
+        dependent = value["dependent_project"]
+        assert value["schema_version"] == tool.DEPENDENT_ADAPTER_SCHEMA
+        assert value["adapter_id"] == identity["adapter_id"]
+        assert value["authority_generation"] == 5
+        assert value["expected_member_count"] == 255
+        for field in ("project_id", "repository", "default_branch", "named_refusal"):
+            assert dependent[field] == identity[field]
+        assert dependent["runner_path"] == "scripts/run_gates.sh"
+        assert dependent["preflight_arguments"] == ["--engine-preflight"]
+        assert dependent["required_source"] == "SIGNED_BUNDLE"
+        assert {row["repository"] for row in value["hermetic_tests"]} == {
+            "govML", "research_enforcement_activation", "rexcoleman.dev"
+        }
+
+
+@pytest.mark.parametrize(
+    ("field", "planted", "reason"),
+    [
+        ("repository", "rexcoleman/newsletter", "DEPENDENT_PROJECT_REPOSITORY_REFUSED"),
+        ("default_branch", "develop", "DEPENDENT_PROJECT_DEFAULT_BRANCH_REFUSED"),
+        ("runner_path", "scripts/other.sh", "DEPENDENT_PROJECT_RUNNER_REFUSED"),
+        ("preflight_arguments", ["--no-verify"], "DEPENDENT_PROJECT_PREFLIGHT_REFUSED"),
+        ("required_source", "SHARED_CHECKOUT", "DEPENDENT_PROJECT_SOURCE_REFUSED"),
+        ("named_refusal", "wea_expired", "DEPENDENT_PROJECT_REFUSAL_ID_REFUSED"),
+    ],
+)
+def test_dependent_adapter_refuses_planted_route_drift(
+    tmp_path, field, planted, reason
+):
+    value = copy.deepcopy(json.loads(NGA_ADAPTER.read_text()))
+    value["dependent_project"][field] = planted
+    target = tmp_path / "adapter.json"
+    target.write_text(json.dumps(value))
+    with pytest.raises(tool.Refusal, match=reason):
+        tool.load_adapter(target)
+
+
+def test_dependent_adapter_contract_evidence_binds_target_and_poststate(
+    tmp_path, monkeypatch
+):
+    adapter = tool.load_adapter(RER_ADAPTER)
+    evidence = tmp_path / "evidence"
+    result = build_result(member_count=255)
+    tool.receipt(evidence, "manifest-a", result)
+    tool.receipt(evidence, "manifest-b", result)
+    contract = tool.contract_snapshot(adapter, evidence, "plan", None)
+    assert contract["dependent_project"] == adapter["dependent_project"]
+    assert contract["remote_mutation"] is False
+    assert contract["owner_action"] is False
+
+    expected_roots = [{"logical_name": name} for name in sorted(roots(tmp_path))]
+    tool.receipt(evidence, "roots", expected_roots)
+    monkeypatch.setattr(tool, "root_snapshot", lambda *_args: expected_roots)
+    poststate = tool.poststate_snapshot(adapter, roots(tmp_path), evidence, None)
+    assert poststate == {
+        "roots_unchanged": True,
+        "remote_mutation": False,
+        "root_count": 5,
+    }
+
+
+@pytest.mark.parametrize("adapter_path", [NGA_ADAPTER, RER_ADAPTER])
+def test_dependent_adapter_resume_preserves_refusal_and_evidence(
+    tmp_path, monkeypatch, adapter_path
+):
+    state = tmp_path / (adapter_path.stem + "-state.json")
+    evidence = tmp_path / (adapter_path.stem + "-evidence")
+    mapping = roots(tmp_path / adapter_path.stem)
+    for path in mapping.values():
+        path.mkdir(parents=True)
+    monkeypatch.setattr(tool, "parse_roots", lambda _rows, _adapter: mapping)
+
+    calls = []
+
+    def first(phase, *_args):
+        calls.append(phase)
+        if phase == "impact":
+            raise tool.Refusal("PLANTED_DEPENDENT_REFUSAL")
+        return []
+
+    monkeypatch.setattr(tool, "phase_result", first)
+    with pytest.raises(tool.Refusal, match="PLANTED_DEPENDENT_REFUSAL"):
+        tool.execute(adapter_path, state, evidence, [], "plan", False)
+    assert calls == ["roots", "impact"]
+    assert json.loads(state.read_text())["completed"] == ["roots"]
+
+    dependent = tool.load_adapter(adapter_path)["dependent_project"]
+    calls[:] = []
+
+    def resumed(phase, *_args):
+        calls.append(phase)
+        if phase == "contract":
+            value = contract_result()
+            value["member_count"] = 255
+            value["dependent_project"] = dependent
+            return value
+        return []
+
+    monkeypatch.setattr(tool, "phase_result", resumed)
+    monkeypatch.setattr(tool, "root_snapshot", lambda *_args: [])
+    assert tool.execute(adapter_path, state, evidence, [], "plan", True) == 0
+    assert calls == list(tool.PHASES[1:])
+    summary = json.loads((evidence / "summary.json").read_text())
+    assert summary["adapter_id"] == tool.load_adapter(adapter_path)["adapter_id"]
+    assert summary["contract"]["dependent_project"] == dependent
+    assert json.loads(state.read_text())["status"] == "complete"
+
+
 def test_contract_snapshot_refuses_stale_adapter_member_count(tmp_path):
     evidence = tmp_path / "evidence"
     result = build_result()
@@ -150,6 +280,8 @@ def test_index_is_closed_and_resolves_every_registered_adapter():
     assert identifiers == [
         "research-enforcement-activation-generation-5",
         "research-enforcement-activation-generation-5-registration-v1",
+        "newsletter-generation-architecture-generation-5",
+        "research-engine-release-generation-5",
     ]
     for adapter_id in identifiers:
         path = tool.resolve_adapter(INDEX, adapter_id)
@@ -169,8 +301,8 @@ def test_index_refuses_duplicate_unknown_retired_and_traversing_rows(
     shutil.copyfile(Path(__file__), tests / Path(__file__).name)
     adapters = index_root / "adapters"
     adapters.mkdir()
-    shutil.copyfile(ADAPTER, adapters / ADAPTER.name)
-    shutil.copyfile(REGISTRATION_ADAPTER, adapters / REGISTRATION_ADAPTER.name)
+    for adapter_path in (ADAPTER, REGISTRATION_ADAPTER, NGA_ADAPTER, RER_ADAPTER):
+        shutil.copyfile(adapter_path, adapters / adapter_path.name)
     shutil.copyfile(WORKFLOW, tmp_path / "workflows" / WORKFLOW.name)
 
     value = json.loads(INDEX.read_text())
@@ -216,7 +348,7 @@ def test_index_refuses_duplicate_unknown_retired_and_traversing_rows(
 
 def test_cross_generation_inventory_is_closed_and_covers_six_properties():
     value = tool.load_cross_generation_inventory(INVENTORY)
-    assert len(value["entries"]) == 18
+    assert len(value["entries"]) == 20
     assert {row["repository"] for row in value["entries"]} == {
         "govML", "rexcoleman.dev",
     }
@@ -619,6 +751,8 @@ def test_list_adapters_and_indexed_execution_selection(monkeypatch, capsys, tmp_
         "research-enforcement-activation-generation-5-registration-v1\tactive\t"
         in listed
     )
+    assert "newsletter-generation-architecture-generation-5\tactive\t" in listed
+    assert "research-engine-release-generation-5\tactive\t" in listed
 
     captured = {}
 

@@ -24,6 +24,7 @@ from pathlib import Path
 
 
 ADAPTER_SCHEMA = "rea.signed-release-convergence-adapter.v1"
+DEPENDENT_ADAPTER_SCHEMA = "rea.signed-release-convergence-adapter.v2"
 INDEX_SCHEMA = "rea.signed-release-convergence-index.v1"
 INVENTORY_SCHEMA = "rea.signed-release-convergence-inventory.v1"
 STATE_SCHEMA = "rea.signed-release-convergence-state.v1"
@@ -196,8 +197,10 @@ def load_adapter(path: Path):
         "system_python_sources",
         "boundaries",
     }
+    if value.get("schema_version") == DEPENDENT_ADAPTER_SCHEMA:
+        required.add("dependent_project")
     closed_dict(value, required, "ADAPTER")
-    if value["schema_version"] != ADAPTER_SCHEMA:
+    if value["schema_version"] not in (ADAPTER_SCHEMA, DEPENDENT_ADAPTER_SCHEMA):
         raise Refusal("ADAPTER_SCHEMA_REFUSED")
     if not isinstance(value["adapter_id"], str) or not LOGICAL.fullmatch(
         value["adapter_id"]
@@ -301,6 +304,48 @@ def load_adapter(path: Path):
     }
     if boundaries != expected_boundaries:
         raise Refusal("BOUNDARIES_REFUSED")
+    if value["schema_version"] == DEPENDENT_ADAPTER_SCHEMA:
+        dependent = value["dependent_project"]
+        closed_dict(
+            dependent,
+            {
+                "project_id",
+                "repository",
+                "default_branch",
+                "runner_path",
+                "preflight_arguments",
+                "required_source",
+                "named_refusal",
+            },
+            "DEPENDENT_PROJECT",
+        )
+        project_id = dependent["project_id"]
+        if (
+            not isinstance(project_id, str)
+            or not LOGICAL.fullmatch(project_id)
+            or project_id.lower() != project_id
+        ):
+            raise Refusal("DEPENDENT_PROJECT_ID_REFUSED")
+        expected_adapter_id = "%s-generation-%s" % (
+            project_id.replace("_", "-"), value["authority_generation"]
+        )
+        if value["adapter_id"] != expected_adapter_id:
+            raise Refusal("DEPENDENT_PROJECT_ADAPTER_ID_REFUSED")
+        if dependent["repository"] != "rexcoleman/%s" % project_id:
+            raise Refusal("DEPENDENT_PROJECT_REPOSITORY_REFUSED")
+        if dependent["default_branch"] not in ("main", "master"):
+            raise Refusal("DEPENDENT_PROJECT_DEFAULT_BRANCH_REFUSED")
+        if (
+            not isinstance(dependent["named_refusal"], str)
+            or not re.fullmatch(r"[A-Z][A-Z0-9_]*", dependent["named_refusal"])
+        ):
+            raise Refusal("DEPENDENT_PROJECT_REFUSAL_ID_REFUSED")
+        if safe_relative(dependent["runner_path"]) != Path("scripts/run_gates.sh"):
+            raise Refusal("DEPENDENT_PROJECT_RUNNER_REFUSED")
+        if dependent["preflight_arguments"] != ["--engine-preflight"]:
+            raise Refusal("DEPENDENT_PROJECT_PREFLIGHT_REFUSED")
+        if dependent["required_source"] != "SIGNED_BUNDLE":
+            raise Refusal("DEPENDENT_PROJECT_SOURCE_REFUSED")
     return value
 
 
@@ -781,7 +826,7 @@ def contract_snapshot(adapter, evidence_dir, mode, baseline):
         baseline_raw = regular_bytes(baseline)
         if a["sha256"] != sha256(baseline_raw):
             raise Refusal("NOOP_BASELINE_DIVERGENCE")
-    return {
+    result = {
         "deterministic": True,
         "noop_equal": mode == "noop-rehearsal",
         "manifest_sha256": a["sha256"],
@@ -792,6 +837,9 @@ def contract_snapshot(adapter, evidence_dir, mode, baseline):
         "anti_spin": "not-applicable-deterministic",
         "bcs_surface": "untouched",
     }
+    if "dependent_project" in adapter:
+        result["dependent_project"] = adapter["dependent_project"]
+    return result
 
 
 def poststate_snapshot(adapter, roots, evidence_dir, baseline):

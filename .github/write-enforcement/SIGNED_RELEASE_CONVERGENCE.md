@@ -31,6 +31,23 @@ for the s155 closed research-type registration authority. The direct
 `--adapter` path remains compatible, while `--list-adapters` validates and
 prints the current registry.
 
+Two generation-5 dependent adapters put successor propagation on the same
+paved road:
+
+- `newsletter-generation-architecture-generation-5` binds
+  `rexcoleman/newsletter_generation_architecture` `main`, its own
+  `scripts/run_gates.sh --engine-preflight`, required `SIGNED_BUNDLE` source,
+  and named refusal `F09`.
+- `research-engine-release-generation-5` binds
+  `rexcoleman/research_engine_release` `master`, the same project-owned
+  preflight surface and signed source, and named refusal `AUTHORITY_LAPSED`.
+
+These v2 adapters retain the unchanged generation-5 authority build and all
+five authoritative roots. Their dependent-project contract is validated and
+copied into the convergence receipt; the planner still performs no dependent
+mutation. The registered REA successor transition owns release/install and
+default-branch verification after this prerequisite passes.
+
 Before inventing a convergence helper, inspect the cross-generation inventory
 named by the machine index and run its two-method enumerator against clean,
 fetched govML and rexcoleman.dev roots. That inventory preserves the reusable
@@ -56,6 +73,11 @@ The planner requires five explicit clean repository roots. It:
    baseline, and live five-root identities; and
 8. rechecks all five input roots after the build and refuses if any HEAD or
    worktree changed.
+
+For a dependent v2 adapter, the contract receipt additionally binds the exact
+project identifier, GitHub repository, default branch, runner path, preflight
+argument, required signed source, and named refusal. Wrong or broadened target
+identity refuses while the v1 adapter contract remains compatible.
 
 The adapter closes over the expected authority generation and production
 member count. This keeps contract growth explicit without leaving a stale
