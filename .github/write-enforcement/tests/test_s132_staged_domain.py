@@ -22,8 +22,8 @@ def test_staged_contract_is_exact_current_successor_plus_one():
     production = member_contract.successor_members()
     staged = member_contract.staged_nonproduction_members()
     assert len(historical) == 244
-    assert len(production) == 251
-    assert len(staged) == 252
+    assert len(production) == 255
+    assert len(staged) == 256
     assert set(staged) - set(production) == {
         "staged-nonproduction-trusted-public-key"
     }
