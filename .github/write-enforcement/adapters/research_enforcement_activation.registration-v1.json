@@ -24,6 +24,10 @@
       "name": "govml-registration-and-clean-materialization",
       "paths": [
         "tests/test_s155_research_type_registration.py",
+        "tests/test_s150_signed_member_root.py",
+        "tests/test_s154_production_artifact_adapter.py",
+        "tests/test_s88_arm_remote_members.py",
+        "tests/test_generate_s88_authority_fixture.py",
         "tests/test_ci_materialize_enforcement.py",
         "tests/test_s153_installer_ci_requirements.py",
         "tests/test_s152_ci_artifact_evidence_wiring.py",
@@ -89,7 +93,11 @@
         "templates/build/enforcement/ci_materialize_enforcement.py",
         "templates/build/enforcement/gate_invocation_receipt.py",
         "templates/build/enforcement/managed_enforcement_inventory.py",
-        "templates/build/enforcement/research_type_registration.py"
+        "templates/build/enforcement/research_type_registration.py",
+        "templates/build/enforcement/artifact_integrity_authority_resolver.py",
+        "templates/build/enforcement/artifact_integrity_effect_gate.py",
+        "templates/build/enforcement/record_write_side_validation.py",
+        "templates/build/enforcement/write_side_arm.py"
       ],
       "repository": "govML"
     },

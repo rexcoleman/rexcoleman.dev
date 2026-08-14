@@ -110,11 +110,19 @@ def test_registration_adapter_closes_over_s155_authority_population():
         if row["name"] == "govml-registration-and-clean-materialization"
     )
     assert "tests/test_s155_research_type_registration.py" in govml["paths"]
+    assert "tests/test_s150_signed_member_root.py" in govml["paths"]
+    assert "tests/test_s154_production_artifact_adapter.py" in govml["paths"]
+    assert "tests/test_s88_arm_remote_members.py" in govml["paths"]
+    assert "tests/test_generate_s88_authority_fixture.py" in govml["paths"]
     sources = next(
         row for row in value["system_python_sources"]
         if row["repository"] == "govML"
     )
     assert "templates/build/enforcement/research_type_registration.py" in sources["paths"]
+    assert "templates/build/enforcement/artifact_integrity_authority_resolver.py" in sources["paths"]
+    assert "templates/build/enforcement/artifact_integrity_effect_gate.py" in sources["paths"]
+    assert "templates/build/enforcement/record_write_side_validation.py" in sources["paths"]
+    assert "templates/build/enforcement/write_side_arm.py" in sources["paths"]
 
 
 def test_contract_snapshot_refuses_stale_adapter_member_count(tmp_path):
