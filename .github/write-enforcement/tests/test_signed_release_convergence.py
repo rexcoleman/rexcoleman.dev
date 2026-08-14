@@ -15,6 +15,7 @@ ROOT = Path(__file__).resolve().parents[1]
 SOURCE = ROOT / "signed_release_convergence.py"
 ADAPTER = ROOT / "adapters/research_enforcement_activation.v1.json"
 REGISTRATION_ADAPTER = ROOT / "adapters/research_enforcement_activation.registration-v1.json"
+BAND_C_ADAPTER = ROOT / "adapters/research_enforcement_activation.band-c-m1-v1.json"
 NGA_ADAPTER = ROOT / "adapters/newsletter_generation_architecture.generation-5.json"
 RER_ADAPTER = ROOT / "adapters/research_engine_release.generation-5.json"
 INDEX = ROOT / "signed_release_convergence_index.json"
@@ -126,6 +127,26 @@ def test_registration_adapter_closes_over_s155_authority_population():
     assert "templates/build/enforcement/artifact_integrity_effect_gate.py" in sources["paths"]
     assert "templates/build/enforcement/record_write_side_validation.py" in sources["paths"]
     assert "templates/build/enforcement/write_side_arm.py" in sources["paths"]
+
+
+def test_band_c_adapter_closes_over_m1_and_probe_resolver_population():
+    value = tool.load_adapter(BAND_C_ADAPTER)
+    assert value["adapter_id"] == (
+        "research-enforcement-activation-generation-5-band-c-m1-v1"
+    )
+    assert value["authority_generation"] == 5
+    assert value["expected_member_count"] == 257
+    govml = next(
+        row for row in value["hermetic_tests"]
+        if row["name"] == "govml-registration-and-clean-materialization"
+    )
+    assert "tests/test_s157_profile_local_and_probe_resolver.py" in govml["paths"]
+    sources = next(
+        row for row in value["system_python_sources"]
+        if row["repository"] == "govML"
+    )
+    assert "templates/build/enforcement/profile_local_artifact_producers.py" in sources["paths"]
+    assert "templates/build/enforcement/probe_fixture_root.py" in sources["paths"]
 
 
 def test_dependent_adapters_bind_exact_target_identity_and_signed_authority():
@@ -280,6 +301,7 @@ def test_index_is_closed_and_resolves_every_registered_adapter():
     assert identifiers == [
         "research-enforcement-activation-generation-5",
         "research-enforcement-activation-generation-5-registration-v1",
+        "research-enforcement-activation-generation-5-band-c-m1-v1",
         "newsletter-generation-architecture-generation-5",
         "research-engine-release-generation-5",
     ]
@@ -301,7 +323,9 @@ def test_index_refuses_duplicate_unknown_retired_and_traversing_rows(
     shutil.copyfile(Path(__file__), tests / Path(__file__).name)
     adapters = index_root / "adapters"
     adapters.mkdir()
-    for adapter_path in (ADAPTER, REGISTRATION_ADAPTER, NGA_ADAPTER, RER_ADAPTER):
+    for adapter_path in (
+        ADAPTER, REGISTRATION_ADAPTER, BAND_C_ADAPTER, NGA_ADAPTER, RER_ADAPTER
+    ):
         shutil.copyfile(adapter_path, adapters / adapter_path.name)
     shutil.copyfile(WORKFLOW, tmp_path / "workflows" / WORKFLOW.name)
 
@@ -491,7 +515,7 @@ def test_hermetic_snapshot_compiles_registered_sources_with_system_python(
 
 def test_impact_contract_uses_closed_successor_population():
     value = tool.member_contract(ROOT.parents[1])
-    assert len(value) == 255
+    assert len(value) == 257
     assert value["research-type-registration-engine"] == (
         "govML",
         "templates/build/enforcement/research_type_registration.py",
@@ -749,6 +773,10 @@ def test_list_adapters_and_indexed_execution_selection(monkeypatch, capsys, tmp_
     assert "research-enforcement-activation-generation-5\tactive\t" in listed
     assert (
         "research-enforcement-activation-generation-5-registration-v1\tactive\t"
+        in listed
+    )
+    assert (
+        "research-enforcement-activation-generation-5-band-c-m1-v1\tactive\t"
         in listed
     )
     assert "newsletter-generation-architecture-generation-5\tactive\t" in listed

@@ -638,6 +638,14 @@ SUCCESSOR_ADDITIONAL_MEMBERS = {
         "govML",
         "templates/build/enforcement/research_type_registration_schema.json",
     ),
+    "profile-local-artifact-producer-validator": (
+        "govML",
+        "templates/build/enforcement/profile_local_artifact_producers.py",
+    ),
+    "probe-fixture-root-resolver": (
+        "govML",
+        "templates/build/enforcement/probe_fixture_root.py",
+    ),
 }
 
 
