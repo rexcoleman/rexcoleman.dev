@@ -30,6 +30,7 @@
     {"id":"s149-freeze-evidence","repository":"rexcoleman.dev","session":"s149","path":"tests/evidence/s149_band3_freeze","kind":"evidence-suite","markers":["strict_ancestry","postfreeze"],"properties":["evidence","hermetic","identity","poststate","refusal"]},
     {"id":"s153-release-engine","repository":"rexcoleman.dev","session":"s153","path":".github/write-enforcement/signed_release_convergence.py","kind":"engine","markers":["resume","receipt"],"properties":["evidence","hermetic","identity","poststate","refusal","resume"]},
     {"id":"s153-release-adapter","repository":"rexcoleman.dev","session":"s153","path":".github/write-enforcement/adapters/research_enforcement_activation.v1.json","kind":"adapter","markers":["hermetic_tests","expected_origins"],"properties":["hermetic","identity","refusal"]},
-    {"id":"s154-release-engine-test","repository":"rexcoleman.dev","session":"s154","path":".github/write-enforcement/tests/test_signed_release_convergence.py","kind":"test","markers":["resume","wrong_baseline"],"properties":["evidence","hermetic","identity","poststate","refusal","resume"]}
+    {"id":"s154-release-engine-test","repository":"rexcoleman.dev","session":"s154","path":".github/write-enforcement/tests/test_signed_release_convergence.py","kind":"test","markers":["resume","wrong_baseline"],"properties":["evidence","hermetic","identity","poststate","refusal","resume"]},
+    {"id":"s155-registration-release-adapter","repository":"rexcoleman.dev","session":"s155","path":".github/write-enforcement/adapters/research_enforcement_activation.registration-v1.json","kind":"adapter","markers":["govml-registration-and-clean-materialization","expected_member_count"],"properties":["hermetic","identity","refusal"]}
   ]
 }

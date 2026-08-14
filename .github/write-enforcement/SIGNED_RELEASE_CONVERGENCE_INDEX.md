@@ -38,8 +38,8 @@ not merge, tag, approve, issue, install, or prove a target project green.
 
 ## Cross-generation inventory and reconciliation
 
-The inventory has 17 closed rows spanning s88, s127, s131, s132, s149, s153,
-and s154 in govML and rexcoleman.dev. Each row names a stable identity, remote
+The inventory has 18 closed rows spanning s88, s127, s131, s132, s149, s153,
+s154, and s155 in govML and rexcoleman.dev. Each row names a stable identity, remote
 repository/default branch, path, session generation, kind, semantic discovery
 markers, and the tested properties it supplies. The six required properties
 are hermetic execution, identity binding, resume, refusal, poststate, and

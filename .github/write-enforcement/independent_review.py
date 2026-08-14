@@ -25,7 +25,7 @@ SITE_MANIFEST = ".github/write-enforcement/frozen_bundle_manifest.generation-5.j
 POLICY = "rea-option-a-posthoc-exact-head-v2"
 MEMBER_CONTRACT = Path(__file__).with_name("member_contract.py")
 AUTHORITY_GENERATION = 5
-GENERATION_MEMBER_COUNT = 251
+GENERATION_MEMBER_COUNT = 255
 REQUIRED_MEMBER_CLASSES = {
     "boundary_gate",
     "resolver",

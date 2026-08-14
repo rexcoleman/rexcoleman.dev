@@ -4,6 +4,11 @@
       "adapter_id": "research-enforcement-activation-generation-5",
       "path": "adapters/research_enforcement_activation.v1.json",
       "status": "active"
+    },
+    {
+      "adapter_id": "research-enforcement-activation-generation-5-registration-v1",
+      "path": "adapters/research_enforcement_activation.registration-v1.json",
+      "status": "active"
     }
   ],
   "documentation": "SIGNED_RELEASE_CONVERGENCE.md",

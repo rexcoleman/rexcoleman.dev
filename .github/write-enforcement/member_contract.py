@@ -622,6 +622,22 @@ SUCCESSOR_ADDITIONAL_MEMBERS = {
         "govML",
         "templates/build/enforcement/artifact_integrity_production_authorities.json",
     ),
+    "research-type-registration-engine": (
+        "govML",
+        "templates/build/enforcement/research_type_registration.py",
+    ),
+    "research-type-registration-catalogs": (
+        "govML",
+        "templates/build/enforcement/research_type_registration_catalogs.json",
+    ),
+    "research-type-registration-registry": (
+        "govML",
+        "templates/build/enforcement/research_type_registration_registry.json",
+    ),
+    "research-type-registration-schema": (
+        "govML",
+        "templates/build/enforcement/research_type_registration_schema.json",
+    ),
 }
 
 
