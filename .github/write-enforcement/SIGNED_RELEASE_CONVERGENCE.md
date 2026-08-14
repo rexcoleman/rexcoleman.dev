@@ -63,6 +63,9 @@ session-specific count hidden in the engine; either an unregistered population
 change or a stale adapter count refuses after the deterministic double build.
 An authority-population change gets a new adapter identifier; the prior adapter
 is not silently rewritten to mean different release bytes.
+The s155 adapter also runs the registered current-successor staged dry-run
+contract tests, which derive their population from the same closed member
+contract instead of carrying a session count.
 
 Hermetic test children receive no host credentials. The manifest builder's
 independent private-repository reachability check receives one transient token

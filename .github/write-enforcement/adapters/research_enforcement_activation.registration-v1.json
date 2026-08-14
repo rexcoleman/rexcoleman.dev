@@ -34,6 +34,7 @@
     {
       "name": "rea-consumer-and-antispin",
       "paths": [
+        "tests/test_s123_staged_install_dry_run.py",
         "tests/test_s145_materialize_enforcement_workspace.py",
         "tests/test_s145_renewal_consumer.py",
         "tests/test_s151_blind_harness_antispin.py"
