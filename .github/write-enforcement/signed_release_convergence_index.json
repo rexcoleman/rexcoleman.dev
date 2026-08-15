@@ -21,6 +21,11 @@
       "status": "active"
     },
     {
+      "adapter_id": "research-enforcement-activation-generation-5-w2-project-bundle-v2",
+      "path": "adapters/research_enforcement_activation.w2-project-bundle-v2.json",
+      "status": "active"
+    },
+    {
       "adapter_id": "newsletter-generation-architecture-generation-5",
       "path": "adapters/newsletter_generation_architecture.generation-5.json",
       "status": "active"
