@@ -39,6 +39,13 @@ planted-negative suite. The earlier registration adapter remains an immutable
 description of the 255-member population; it is not rewritten to mean the
 successor bytes.
 
+Band E W2 uses the next immutable adapter identity,
+`--adapter-id research-enforcement-activation-generation-5-w2-project-bundle-v1`.
+It preserves the 257-member population while binding the changed arm, recorder,
+and verdict-emitter sources to the focused project-bundle, relocation, symlink,
+identity, refusal, resume, and poststate tests. It does not reinterpret the Band
+C adapter: both remain independently discoverable and auditable.
+
 Two generation-5 dependent adapters put successor propagation on the same
 paved road:
 
