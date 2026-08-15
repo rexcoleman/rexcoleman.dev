@@ -46,6 +46,14 @@ and verdict-emitter sources to the focused project-bundle, relocation, symlink,
 identity, refusal, resume, and poststate tests. It does not reinterpret the Band
 C adapter: both remain independently discoverable and auditable.
 
+The derived-authority repair discovered by the v1 plan is registered as the
+immutable successor
+`--adapter-id research-enforcement-activation-generation-5-w2-project-bundle-v2`.
+It preserves the same 257-member population and adds both canonical authority
+generators and their planted-negative/current-byte tests to the hermetic
+contract. The refused v1 plan remains evidence of the original stale-derived-
+authority state; v2 is the release convergence route after that repair.
+
 Two generation-5 dependent adapters put successor propagation on the same
 paved road:
 

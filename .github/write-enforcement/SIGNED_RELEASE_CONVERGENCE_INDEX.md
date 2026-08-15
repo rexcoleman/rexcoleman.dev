@@ -25,7 +25,8 @@ traversing, missing, mismatched, or extra-field rows refuse.
 
 The active registry contains the original REA authority adapter, its s155
 registration successor, the Band C M1/row-26 257-member successor, the W2
-project-bundle basis-resolution successor, and the two s157 dependent-project
+project-bundle basis-resolution successor, its derived-authority-generator
+successor, and the two s157 dependent-project
 adapters for NGA and RER. A population change always
 gets a new stable adapter identity; the 251- and 255-member adapters remain
 auditable without being silently redefined. The dependent adapters use schema
@@ -52,7 +53,7 @@ not merge, tag, approve, issue, install, or prove a target project green.
 
 ## Cross-generation inventory and reconciliation
 
-The inventory has 21 closed rows spanning s88, s127, s131, s132, s149, s153,
+The inventory has 22 closed rows spanning s88, s127, s131, s132, s149, s153,
 s154, s155, and s157 in govML and rexcoleman.dev. Each row names a stable identity, remote
 repository/default branch, path, session generation, kind, semantic discovery
 markers, and the tested properties it supplies. The six required properties

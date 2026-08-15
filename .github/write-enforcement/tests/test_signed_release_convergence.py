@@ -17,6 +17,7 @@ ADAPTER = ROOT / "adapters/research_enforcement_activation.v1.json"
 REGISTRATION_ADAPTER = ROOT / "adapters/research_enforcement_activation.registration-v1.json"
 BAND_C_ADAPTER = ROOT / "adapters/research_enforcement_activation.band-c-m1-v1.json"
 W2_ADAPTER = ROOT / "adapters/research_enforcement_activation.w2-project-bundle-v1.json"
+W2_DERIVED_ADAPTER = ROOT / "adapters/research_enforcement_activation.w2-project-bundle-v2.json"
 NGA_ADAPTER = ROOT / "adapters/newsletter_generation_architecture.generation-5.json"
 RER_ADAPTER = ROOT / "adapters/research_engine_release.generation-5.json"
 INDEX = ROOT / "signed_release_convergence_index.json"
@@ -176,6 +177,32 @@ def test_w2_adapter_closes_over_project_bundle_resolution_and_polarities():
     assert "templates/build/enforcement/write_boundary_verdict_event.py" in sources["paths"]
 
 
+def test_w2_derived_authority_adapter_closes_over_registered_generators():
+    value = tool.load_adapter(W2_DERIVED_ADAPTER)
+    assert value["adapter_id"] == (
+        "research-enforcement-activation-generation-5-w2-project-bundle-v2"
+    )
+    assert value["expected_member_count"] == 257
+    govml = next(
+        row for row in value["hermetic_tests"]
+        if row["name"] == "govml-write-side-project-bundle"
+    )
+    for path in (
+        "tests/test_gen_artifact_integrity_production_authorities.py",
+        "tests/test_generate_artifact_integrity_source_migrations.py",
+    ):
+        assert path in govml["paths"]
+    sources = next(
+        row for row in value["system_python_sources"]
+        if row["repository"] == "govML"
+    )
+    for path in (
+        "scripts/generators/gen_artifact_integrity_production_authorities.py",
+        "scripts/generators/generate_artifact_integrity_source_migrations.py",
+    ):
+        assert path in sources["paths"]
+
+
 def test_dependent_adapters_bind_exact_target_identity_and_signed_authority():
     expected = {
         NGA_ADAPTER: {
@@ -330,6 +357,7 @@ def test_index_is_closed_and_resolves_every_registered_adapter():
         "research-enforcement-activation-generation-5-registration-v1",
         "research-enforcement-activation-generation-5-band-c-m1-v1",
         "research-enforcement-activation-generation-5-w2-project-bundle-v1",
+        "research-enforcement-activation-generation-5-w2-project-bundle-v2",
         "newsletter-generation-architecture-generation-5",
         "research-engine-release-generation-5",
     ]
@@ -353,6 +381,7 @@ def test_index_refuses_duplicate_unknown_retired_and_traversing_rows(
     adapters.mkdir()
     for adapter_path in (
         ADAPTER, REGISTRATION_ADAPTER, BAND_C_ADAPTER, W2_ADAPTER,
+        W2_DERIVED_ADAPTER,
         NGA_ADAPTER, RER_ADAPTER
     ):
         shutil.copyfile(adapter_path, adapters / adapter_path.name)
@@ -401,7 +430,7 @@ def test_index_refuses_duplicate_unknown_retired_and_traversing_rows(
 
 def test_cross_generation_inventory_is_closed_and_covers_six_properties():
     value = tool.load_cross_generation_inventory(INVENTORY)
-    assert len(value["entries"]) == 21
+    assert len(value["entries"]) == 22
     assert {row["repository"] for row in value["entries"]} == {
         "govML", "rexcoleman.dev",
     }
@@ -810,6 +839,10 @@ def test_list_adapters_and_indexed_execution_selection(monkeypatch, capsys, tmp_
     )
     assert (
         "research-enforcement-activation-generation-5-w2-project-bundle-v1"
+        "\tactive\t" in listed
+    )
+    assert (
+        "research-enforcement-activation-generation-5-w2-project-bundle-v2"
         "\tactive\t" in listed
     )
     assert "newsletter-generation-architecture-generation-5\tactive\t" in listed
