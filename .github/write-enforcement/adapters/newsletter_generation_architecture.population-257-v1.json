@@ -1,0 +1,133 @@
+{
+  "adapter_id": "newsletter-generation-architecture-generation-5-population-257-v1",
+  "authority_generation": 5,
+  "expected_member_count": 257,
+  "boundaries": {
+    "anti_spin": "not-applicable-deterministic",
+    "bcs_partition": "forbidden",
+    "owner_rail": "irreducible-human-only",
+    "remote_mutation": "forbidden"
+  },
+  "dependent_project": {
+    "project_id": "newsletter_generation_architecture",
+    "repository": "rexcoleman/newsletter_generation_architecture",
+    "default_branch": "main",
+    "runner_path": "scripts/run_gates.sh",
+    "preflight_arguments": ["--engine-preflight"],
+    "required_source": "SIGNED_BUNDLE",
+    "named_refusal": "F09"
+  },
+  "hermetic_tests": [
+    {
+      "name": "rexdev-authority-contract",
+      "paths": [
+        ".github/write-enforcement/tests/test_build_frozen_manifest.py",
+        ".github/write-enforcement/tests/test_independent_review.py",
+        ".github/write-enforcement/tests/test_member_contract.py",
+        ".github/write-enforcement/tests/test_renewal_workflow.py",
+        "tests/test_s111_signed_runtime_members.py"
+      ],
+      "repository": "rexcoleman.dev"
+    },
+    {
+      "name": "govml-write-side-project-bundle",
+      "paths": [
+        "tests/test_s155_research_type_registration.py",
+        "tests/test_s157_profile_local_and_probe_resolver.py",
+        "tests/test_s157_write_side_project_bundle.py",
+        "tests/test_s150_signed_member_root.py",
+        "tests/test_s154_production_artifact_adapter.py",
+        "tests/test_s143_write_boundary_refuses_non_evaluation.py",
+        "tests/test_s88_arm_remote_members.py",
+        "tests/test_s65_close_machinery.py",
+        "tests/test_write_scaffold_install.py",
+        "tests/test_generate_s88_authority_fixture.py",
+        "tests/test_ci_materialize_enforcement.py",
+        "tests/test_s153_installer_ci_requirements.py",
+        "tests/test_s152_ci_artifact_evidence_wiring.py",
+        "tests/test_s152_frozen_artifact_authority.py",
+        "tests/test_gen_artifact_integrity_production_authorities.py",
+        "tests/test_generate_artifact_integrity_source_migrations.py"
+      ],
+      "repository": "govML"
+    },
+    {
+      "name": "rea-consumer-and-antispin",
+      "paths": [
+        "tests/test_s123_staged_install_dry_run.py",
+        "tests/test_s145_materialize_enforcement_workspace.py",
+        "tests/test_s145_renewal_consumer.py",
+        "tests/test_s151_blind_harness_antispin.py"
+      ],
+      "repository": "research_enforcement_activation"
+    }
+  ],
+  "manifest_builder": ".github/write-enforcement/build_frozen_manifest.py",
+  "manifest_builder_flag": "--successor-ci-materialization",
+  "manifest_path": ".github/write-enforcement/frozen_bundle_manifest.generation-5.json",
+  "repositories": [
+    {
+      "default_branch": "master",
+      "logical_name": "research_enforcement_activation",
+      "slug": "research_enforcement_activation"
+    },
+    {
+      "default_branch": "main",
+      "logical_name": "govML",
+      "slug": "govML"
+    },
+    {
+      "default_branch": "main",
+      "logical_name": "Moonshots_Career_Thesis_v2",
+      "slug": "Moonshots_Career_Thesis"
+    },
+    {
+      "default_branch": "main",
+      "logical_name": "newsletter",
+      "slug": "newsletter"
+    },
+    {
+      "default_branch": "main",
+      "logical_name": "rexcoleman.dev",
+      "slug": "rexcoleman.dev"
+    }
+  ],
+  "ruleset_id": 19564990,
+  "ruleset_repository": "rexcoleman/newsletter",
+  "system_python_sources": [
+    {
+      "paths": [
+        ".github/write-enforcement/build_frozen_manifest.py",
+        ".github/write-enforcement/member_contract.py",
+        ".github/write-enforcement/independent_review.py"
+      ],
+      "repository": "rexcoleman.dev"
+    },
+    {
+      "paths": [
+        "scripts/generators/gen_research_type_registration.py",
+        "scripts/generators/gen_artifact_integrity_production_authorities.py",
+        "scripts/generators/generate_artifact_integrity_source_migrations.py",
+        "templates/build/enforcement/ci_materialize_enforcement.py",
+        "templates/build/enforcement/gate_invocation_receipt.py",
+        "templates/build/enforcement/managed_enforcement_inventory.py",
+        "templates/build/enforcement/research_type_registration.py",
+        "templates/build/enforcement/artifact_integrity_authority_resolver.py",
+        "templates/build/enforcement/artifact_integrity_effect_gate.py",
+        "templates/build/enforcement/record_write_side_validation.py",
+        "templates/build/enforcement/write_boundary_verdict_event.py",
+        "templates/build/enforcement/write_side_arm.py",
+        "templates/build/enforcement/profile_local_artifact_producers.py",
+        "templates/build/enforcement/probe_fixture_root.py"
+      ],
+      "repository": "govML"
+    },
+    {
+      "paths": [
+        "scripts/s145_renewal_consumer.py"
+      ],
+      "repository": "research_enforcement_activation"
+    }
+  ],
+  "schema_version": "rea.signed-release-convergence-adapter.v2"
+}

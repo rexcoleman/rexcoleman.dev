@@ -20,6 +20,8 @@ W2_ADAPTER = ROOT / "adapters/research_enforcement_activation.w2-project-bundle-
 W2_DERIVED_ADAPTER = ROOT / "adapters/research_enforcement_activation.w2-project-bundle-v2.json"
 NGA_ADAPTER = ROOT / "adapters/newsletter_generation_architecture.generation-5.json"
 RER_ADAPTER = ROOT / "adapters/research_engine_release.generation-5.json"
+NGA_257_ADAPTER = ROOT / "adapters/newsletter_generation_architecture.population-257-v1.json"
+RER_257_ADAPTER = ROOT / "adapters/research_engine_release.population-257-v1.json"
 INDEX = ROOT / "signed_release_convergence_index.json"
 INVENTORY = ROOT / "signed_release_convergence_inventory.json"
 DOC = ROOT / "SIGNED_RELEASE_CONVERGENCE.md"
@@ -211,6 +213,7 @@ def test_dependent_adapters_bind_exact_target_identity_and_signed_authority():
             "repository": "rexcoleman/newsletter_generation_architecture",
             "default_branch": "main",
             "named_refusal": "F09",
+            "expected_member_count": 255,
         },
         RER_ADAPTER: {
             "adapter_id": "research-engine-release-generation-5",
@@ -218,6 +221,23 @@ def test_dependent_adapters_bind_exact_target_identity_and_signed_authority():
             "repository": "rexcoleman/research_engine_release",
             "default_branch": "master",
             "named_refusal": "AUTHORITY_LAPSED",
+            "expected_member_count": 255,
+        },
+        NGA_257_ADAPTER: {
+            "adapter_id": "newsletter-generation-architecture-generation-5-population-257-v1",
+            "project_id": "newsletter_generation_architecture",
+            "repository": "rexcoleman/newsletter_generation_architecture",
+            "default_branch": "main",
+            "named_refusal": "F09",
+            "expected_member_count": 257,
+        },
+        RER_257_ADAPTER: {
+            "adapter_id": "research-engine-release-generation-5-population-257-v1",
+            "project_id": "research_engine_release",
+            "repository": "rexcoleman/research_engine_release",
+            "default_branch": "master",
+            "named_refusal": "AUTHORITY_LAPSED",
+            "expected_member_count": 257,
         },
     }
     for path, identity in expected.items():
@@ -226,7 +246,7 @@ def test_dependent_adapters_bind_exact_target_identity_and_signed_authority():
         assert value["schema_version"] == tool.DEPENDENT_ADAPTER_SCHEMA
         assert value["adapter_id"] == identity["adapter_id"]
         assert value["authority_generation"] == 5
-        assert value["expected_member_count"] == 255
+        assert value["expected_member_count"] == identity["expected_member_count"]
         for field in ("project_id", "repository", "default_branch", "named_refusal"):
             assert dependent[field] == identity[field]
         assert dependent["runner_path"] == "scripts/run_gates.sh"
@@ -259,6 +279,17 @@ def test_dependent_adapter_refuses_planted_route_drift(
         tool.load_adapter(target)
 
 
+def test_population_versioned_dependent_adapter_refuses_count_identity_drift(
+    tmp_path,
+):
+    value = json.loads(NGA_257_ADAPTER.read_text())
+    value["expected_member_count"] = 256
+    target = tmp_path / "adapter.json"
+    target.write_text(json.dumps(value))
+    with pytest.raises(tool.Refusal, match="DEPENDENT_PROJECT_ADAPTER_ID_REFUSED"):
+        tool.load_adapter(target)
+
+
 def test_dependent_adapter_contract_evidence_binds_target_and_poststate(
     tmp_path, monkeypatch
 ):
@@ -283,7 +314,9 @@ def test_dependent_adapter_contract_evidence_binds_target_and_poststate(
     }
 
 
-@pytest.mark.parametrize("adapter_path", [NGA_ADAPTER, RER_ADAPTER])
+@pytest.mark.parametrize(
+    "adapter_path", [NGA_ADAPTER, RER_ADAPTER, NGA_257_ADAPTER, RER_257_ADAPTER]
+)
 def test_dependent_adapter_resume_preserves_refusal_and_evidence(
     tmp_path, monkeypatch, adapter_path
 ):
@@ -315,7 +348,9 @@ def test_dependent_adapter_resume_preserves_refusal_and_evidence(
         calls.append(phase)
         if phase == "contract":
             value = contract_result()
-            value["member_count"] = 255
+            value["member_count"] = tool.load_adapter(adapter_path)[
+                "expected_member_count"
+            ]
             value["dependent_project"] = dependent
             return value
         return []
@@ -360,6 +395,8 @@ def test_index_is_closed_and_resolves_every_registered_adapter():
         "research-enforcement-activation-generation-5-w2-project-bundle-v2",
         "newsletter-generation-architecture-generation-5",
         "research-engine-release-generation-5",
+        "newsletter-generation-architecture-generation-5-population-257-v1",
+        "research-engine-release-generation-5-population-257-v1",
     ]
     for adapter_id in identifiers:
         path = tool.resolve_adapter(INDEX, adapter_id)
@@ -382,7 +419,7 @@ def test_index_refuses_duplicate_unknown_retired_and_traversing_rows(
     for adapter_path in (
         ADAPTER, REGISTRATION_ADAPTER, BAND_C_ADAPTER, W2_ADAPTER,
         W2_DERIVED_ADAPTER,
-        NGA_ADAPTER, RER_ADAPTER
+        NGA_ADAPTER, RER_ADAPTER, NGA_257_ADAPTER, RER_257_ADAPTER
     ):
         shutil.copyfile(adapter_path, adapters / adapter_path.name)
     shutil.copyfile(WORKFLOW, tmp_path / "workflows" / WORKFLOW.name)
@@ -430,7 +467,7 @@ def test_index_refuses_duplicate_unknown_retired_and_traversing_rows(
 
 def test_cross_generation_inventory_is_closed_and_covers_six_properties():
     value = tool.load_cross_generation_inventory(INVENTORY)
-    assert len(value["entries"]) == 22
+    assert len(value["entries"]) == 24
     assert {row["repository"] for row in value["entries"]} == {
         "govML", "rexcoleman.dev",
     }

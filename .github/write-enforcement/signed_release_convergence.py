@@ -326,10 +326,16 @@ def load_adapter(path: Path):
             or project_id.lower() != project_id
         ):
             raise Refusal("DEPENDENT_PROJECT_ID_REFUSED")
-        expected_adapter_id = "%s-generation-%s" % (
+        base_adapter_id = "%s-generation-%s" % (
             project_id.replace("_", "-"), value["authority_generation"]
         )
-        if value["adapter_id"] != expected_adapter_id:
+        expected_adapter_ids = {
+            base_adapter_id,
+            "%s-population-%s-v1" % (
+                base_adapter_id, value["expected_member_count"]
+            ),
+        }
+        if value["adapter_id"] not in expected_adapter_ids:
             raise Refusal("DEPENDENT_PROJECT_ADAPTER_ID_REFUSED")
         if dependent["repository"] != "rexcoleman/%s" % project_id:
             raise Refusal("DEPENDENT_PROJECT_REPOSITORY_REFUSED")

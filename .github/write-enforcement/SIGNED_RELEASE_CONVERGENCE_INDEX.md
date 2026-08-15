@@ -26,9 +26,9 @@ traversing, missing, mismatched, or extra-field rows refuse.
 The active registry contains the original REA authority adapter, its s155
 registration successor, the Band C M1/row-26 257-member successor, the W2
 project-bundle basis-resolution successor, its derived-authority-generator
-successor, and the two s157 dependent-project
-adapters for NGA and RER. A population change always
-gets a new stable adapter identity; the 251- and 255-member adapters remain
+successor, the two s157 dependent-project adapters for NGA and RER, and their
+population-257 successors. A population change always gets a new stable
+adapter identity; the 251- and 255-member adapters remain
 auditable without being silently redefined. The dependent adapters use schema
 v2: in addition to the unchanged
 five-root signed-authority plan they close over the exact dependent repository,
@@ -44,6 +44,9 @@ the contract receipt but keeps release/install mutation outside the planner.
 3. Extend the focused tests for the adapter contract and planted refusals. A
    dependent adapter must cover hermetic execution, exact target identity,
    resume, refusal, source-root poststate, and durable contract evidence.
+   A population successor uses the closed
+   `<project>-generation-<generation>-population-<count>-v1` identity; the
+   loader refuses when the suffix count and `expected_member_count` diverge.
 4. Update `SIGNED_RELEASE_CONVERGENCE.md` when the operating boundary changes.
 5. Run the internal self-test and focused test file. The read-only
    `signed-release-convergence` workflow repeats both on the pull request.
@@ -53,7 +56,7 @@ not merge, tag, approve, issue, install, or prove a target project green.
 
 ## Cross-generation inventory and reconciliation
 
-The inventory has 22 closed rows spanning s88, s127, s131, s132, s149, s153,
+The inventory has 24 closed rows spanning s88, s127, s131, s132, s149, s153,
 s154, s155, and s157 in govML and rexcoleman.dev. Each row names a stable identity, remote
 repository/default branch, path, session generation, kind, semantic discovery
 markers, and the tested properties it supplies. The six required properties
