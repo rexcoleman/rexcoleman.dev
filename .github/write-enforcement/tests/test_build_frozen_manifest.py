@@ -119,7 +119,7 @@ def test_full_frozen_population_opens_at_selected_authoritative_commits(tmp_path
     roots, commits = full_population_repositories(tmp_path)
     loaded = builder.open_frozen_population(roots, commits)
     assert set(loaded) == set(builder.EXPECTED_MEMBERS)
-    assert len(loaded) == len(builder.EXPECTED_MEMBERS) == 244
+    assert len(loaded) == len(builder.EXPECTED_MEMBERS) == 246
     aliased = {member_id for pair in EXACT_MEMBER_BYTE_ALIASES for member_id in pair}
     special = {
         "managed-enforcement-inventory", "scaffold-hybrid-install-manifest"

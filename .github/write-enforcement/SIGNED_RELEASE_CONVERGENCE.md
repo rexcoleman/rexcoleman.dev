@@ -79,6 +79,18 @@ operator selects these successors for the 257-member population; the earlier
 adapters continue to reproduce and refuse against their original 255-member
 contract.
 
+Moonshots PR 759 made same-cycle build grounding executable in the canonical
+Build-Runner and Build-Orchestrator roles. The corresponding signed successor
+adds the two govML role checklists and advances both Moonshots role identities,
+producing a 259-member population. Its immutable dependent routes are:
+
+- `newsletter-generation-architecture-generation-5-population-259-v1`; and
+- `research-engine-release-generation-5-population-259-v1`.
+
+Both adapters run the Moonshots same-cycle grounding proof in addition to the
+existing rexdev, govML, and REA hermetic suites. The 257-member adapters remain
+registered as the exact predecessor contract and are never redefined.
+
 These v2 adapters retain the unchanged generation-5 authority build and all
 five authoritative roots. Their dependent-project contract is validated and
 copied into the convergence receipt; the planner still performs no dependent

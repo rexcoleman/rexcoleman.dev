@@ -74,10 +74,10 @@ def test_signed_workflow_pem_loads_bind_explicit_default_backend():
 
 def test_member_population_is_complete_and_two_method_count():
     contract = load("member_contract")
-    assert len(contract.EXPECTED_MEMBERS) == 244
-    assert len(set(contract.EXPECTED_MEMBERS.values())) == 244
+    assert len(contract.EXPECTED_MEMBERS) == 246
+    assert len(set(contract.EXPECTED_MEMBERS.values())) == 246
     successor = contract.successor_members()
-    assert len(successor) == 257
+    assert len(successor) == 259
     assert successor["scaffold-ci-test-requirements"] == (
         "govML", "templates/build/enforcement/requirements-ci.txt"
     )

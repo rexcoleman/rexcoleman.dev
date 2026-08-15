@@ -118,6 +118,8 @@ SIGNED_COMPLETE_CHAIN_MEMBER_IDS = frozenset({
     "canonical-enforcement-block",
     "canonical-agent-pre-check-runner",
     "canonical-research-integrity-checklist",
+    "canonical-build-runner-checklist",
+    "canonical-build-orchestrator-checklist",
     "canonical-landscape-depth-f3",
     "canonical-landscape-depth-gate",
 })
@@ -143,6 +145,8 @@ COMPLETE_CHAIN_DEPENDENCIES = {
     "canonical-enforcement-block": frozenset({
         "canonical-agent-pre-check-runner",
         "canonical-research-integrity-checklist",
+        "canonical-build-runner-checklist",
+        "canonical-build-orchestrator-checklist",
         "canonical-landscape-depth-f3",
     }),
     "canonical-landscape-depth-f3": frozenset({
@@ -477,6 +481,8 @@ EXPECTED_MEMBERS = {
     "canonical-enforcement-block": ("govML", "templates/build/enforcement/run_gates_enforcement_block.sh"),
     "canonical-agent-pre-check-runner": ("govML", "scripts/agent_pre_check_runner.sh"),
     "canonical-research-integrity-checklist": ("govML", "checklists/research_integrity.checklist"),
+    "canonical-build-runner-checklist": ("govML", "checklists/build_runner.checklist"),
+    "canonical-build-orchestrator-checklist": ("govML", "checklists/build_orchestrator.checklist"),
     "canonical-landscape-depth-f3": ("govML", "scripts/landscape_depth_gate_F3.sh"),
     "canonical-landscape-depth-gate": ("govML", "scripts/landscape_depth_gate.sh"),
     "master-gate05": ("govML", "scripts/check_gate05.sh"),

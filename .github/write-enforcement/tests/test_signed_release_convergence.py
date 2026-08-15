@@ -22,6 +22,8 @@ NGA_ADAPTER = ROOT / "adapters/newsletter_generation_architecture.generation-5.j
 RER_ADAPTER = ROOT / "adapters/research_engine_release.generation-5.json"
 NGA_257_ADAPTER = ROOT / "adapters/newsletter_generation_architecture.population-257-v1.json"
 RER_257_ADAPTER = ROOT / "adapters/research_engine_release.population-257-v1.json"
+NGA_259_ADAPTER = ROOT / "adapters/newsletter_generation_architecture.population-259-v1.json"
+RER_259_ADAPTER = ROOT / "adapters/research_engine_release.population-259-v1.json"
 INDEX = ROOT / "signed_release_convergence_index.json"
 INVENTORY = ROOT / "signed_release_convergence_inventory.json"
 DOC = ROOT / "SIGNED_RELEASE_CONVERGENCE.md"
@@ -257,6 +259,38 @@ def test_dependent_adapters_bind_exact_target_identity_and_signed_authority():
         }
 
 
+def test_population_259_adapters_bind_build_grounding_and_exact_targets():
+    expected = {
+        NGA_259_ADAPTER: (
+            "newsletter-generation-architecture-generation-5-population-259-v1",
+            "newsletter_generation_architecture",
+            "main",
+            "F09",
+        ),
+        RER_259_ADAPTER: (
+            "research-engine-release-generation-5-population-259-v1",
+            "research_engine_release",
+            "master",
+            "AUTHORITY_LAPSED",
+        ),
+    }
+    for path, (adapter_id, project_id, default_branch, refusal) in expected.items():
+        value = tool.load_adapter(path)
+        assert value["adapter_id"] == adapter_id
+        assert value["expected_member_count"] == 259
+        dependent = value["dependent_project"]
+        assert dependent["project_id"] == project_id
+        assert dependent["default_branch"] == default_branch
+        assert dependent["named_refusal"] == refusal
+        moonshots = next(
+            row for row in value["hermetic_tests"]
+            if row["repository"] == "Moonshots_Career_Thesis_v2"
+        )
+        assert moonshots["paths"] == [
+            "tests/test_s32_registered_construction_grounding.py"
+        ]
+
+
 @pytest.mark.parametrize(
     ("field", "planted", "reason"),
     [
@@ -315,7 +349,10 @@ def test_dependent_adapter_contract_evidence_binds_target_and_poststate(
 
 
 @pytest.mark.parametrize(
-    "adapter_path", [NGA_ADAPTER, RER_ADAPTER, NGA_257_ADAPTER, RER_257_ADAPTER]
+    "adapter_path", [
+        NGA_ADAPTER, RER_ADAPTER, NGA_257_ADAPTER, RER_257_ADAPTER,
+        NGA_259_ADAPTER, RER_259_ADAPTER,
+    ]
 )
 def test_dependent_adapter_resume_preserves_refusal_and_evidence(
     tmp_path, monkeypatch, adapter_path
@@ -397,6 +434,8 @@ def test_index_is_closed_and_resolves_every_registered_adapter():
         "research-engine-release-generation-5",
         "newsletter-generation-architecture-generation-5-population-257-v1",
         "research-engine-release-generation-5-population-257-v1",
+        "newsletter-generation-architecture-generation-5-population-259-v1",
+        "research-engine-release-generation-5-population-259-v1",
     ]
     for adapter_id in identifiers:
         path = tool.resolve_adapter(INDEX, adapter_id)
@@ -419,7 +458,8 @@ def test_index_refuses_duplicate_unknown_retired_and_traversing_rows(
     for adapter_path in (
         ADAPTER, REGISTRATION_ADAPTER, BAND_C_ADAPTER, W2_ADAPTER,
         W2_DERIVED_ADAPTER,
-        NGA_ADAPTER, RER_ADAPTER, NGA_257_ADAPTER, RER_257_ADAPTER
+        NGA_ADAPTER, RER_ADAPTER, NGA_257_ADAPTER, RER_257_ADAPTER,
+        NGA_259_ADAPTER, RER_259_ADAPTER,
     ):
         shutil.copyfile(adapter_path, adapters / adapter_path.name)
     shutil.copyfile(WORKFLOW, tmp_path / "workflows" / WORKFLOW.name)
@@ -467,7 +507,7 @@ def test_index_refuses_duplicate_unknown_retired_and_traversing_rows(
 
 def test_cross_generation_inventory_is_closed_and_covers_six_properties():
     value = tool.load_cross_generation_inventory(INVENTORY)
-    assert len(value["entries"]) == 24
+    assert len(value["entries"]) == 26
     assert {row["repository"] for row in value["entries"]} == {
         "govML", "rexcoleman.dev",
     }
@@ -610,7 +650,7 @@ def test_hermetic_snapshot_compiles_registered_sources_with_system_python(
 
 def test_impact_contract_uses_closed_successor_population():
     value = tool.member_contract(ROOT.parents[1])
-    assert len(value) == 257
+    assert len(value) == 259
     assert value["research-type-registration-engine"] == (
         "govML",
         "templates/build/enforcement/research_type_registration.py",
@@ -884,6 +924,14 @@ def test_list_adapters_and_indexed_execution_selection(monkeypatch, capsys, tmp_
     )
     assert "newsletter-generation-architecture-generation-5\tactive\t" in listed
     assert "research-engine-release-generation-5\tactive\t" in listed
+    assert (
+        "newsletter-generation-architecture-generation-5-population-259-v1"
+        "\tactive\t" in listed
+    )
+    assert (
+        "research-engine-release-generation-5-population-259-v1"
+        "\tactive\t" in listed
+    )
 
     captured = {}
 
