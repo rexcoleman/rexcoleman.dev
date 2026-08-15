@@ -41,8 +41,8 @@ REQUIRED_CLASSES = set(member_contract.REQUIRED_MEMBER_CLASSES)
 def test_generation4_contract_registers_all_runtime_consumers_exactly_once():
     production = member_contract.EXPECTED_MEMBERS
     staged = member_contract.staged_nonproduction_members()
-    assert len(production) == 244
-    assert len(staged) == 258
+    assert len(production) == 246
+    assert len(staged) == 260
     assert set(staged) - set(production) == (
         set(member_contract.SUCCESSOR_ADDITIONAL_MEMBERS)
         | {"staged-nonproduction-trusted-public-key"}
@@ -63,8 +63,8 @@ def test_ci_materializer_is_successor_only_and_generation4_stays_exact():
     production = member_contract.EXPECTED_MEMBERS
     successor = member_contract.successor_members()
     added = member_contract.SUCCESSOR_ADDITIONAL_MEMBERS
-    assert len(production) == 244
-    assert len(successor) == 257
+    assert len(production) == 246
+    assert len(successor) == 259
     assert set(successor) - set(production) == set(added)
     assert successor["ci-enforcement-materializer"] == added[
         "ci-enforcement-materializer"

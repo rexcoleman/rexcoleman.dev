@@ -64,7 +64,7 @@ def test_successor_contract_closes_registered_production_authority_pair():
     }
     successor = contract_module.successor_members()
     assert {member_id: successor[member_id] for member_id in expected} == expected
-    assert len(successor) == 257
+    assert len(successor) == 259
     assert successor["profile-local-artifact-producer-validator"] == (
         "govML", "templates/build/enforcement/profile_local_artifact_producers.py"
     )
@@ -218,7 +218,7 @@ def test_managed_live_alias_population_plants_refuse(monkeypatch, plant, reason)
 def test_member_contract_imports_on_supported_controller_pythons(tmp_path):
     command = (
         "import member_contract as m; "
-        "assert len(m.EXPECTED_MEMBERS) == 244; "
+        "assert len(m.EXPECTED_MEMBERS) == 246; "
         "assert m.write_boundary_policy_digest"
     )
     for interpreter in (Path("/usr/bin/python3"), Path(sys.executable)):
@@ -425,8 +425,8 @@ def test_research_scaffolder_registration_closure_is_signed():
 
 
 def test_contract_covers_complete_s88_face_a_and_face_b_bundle_sets():
-    assert len(EXPECTED_MEMBERS) == 244
-    assert len(set(EXPECTED_MEMBERS.values())) == 244
+    assert len(EXPECTED_MEMBERS) == 246
+    assert len(set(EXPECTED_MEMBERS.values())) == 246
     assert len(FACE_A_MEMBER_IDS) == 11
     assert len(FACE_B_MEMBER_IDS) == 9
     assert FACE_A_MEMBER_IDS < set(EXPECTED_MEMBERS)
@@ -505,6 +505,12 @@ def test_signed_bundle_closes_master_chain_direct_and_transitive_files():
         "canonical-research-integrity-checklist": (
             "govML", "checklists/research_integrity.checklist"
         ),
+        "canonical-build-runner-checklist": (
+            "govML", "checklists/build_runner.checklist"
+        ),
+        "canonical-build-orchestrator-checklist": (
+            "govML", "checklists/build_orchestrator.checklist"
+        ),
         "canonical-landscape-depth-f3": (
             "govML", "scripts/landscape_depth_gate_F3.sh"
         ),
@@ -539,6 +545,8 @@ def test_signed_bundle_closes_master_chain_direct_and_transitive_files():
         "canonical-enforcement-block": {
             "canonical-agent-pre-check-runner",
             "canonical-research-integrity-checklist",
+            "canonical-build-runner-checklist",
+            "canonical-build-orchestrator-checklist",
             "canonical-landscape-depth-f3",
         },
         "canonical-landscape-depth-f3": {
@@ -599,7 +607,7 @@ def test_r4_authority_tools_remain_signed_runtime_members():
         "rexcoleman.dev",
         ".github/write-enforcement/GENERATION_4_OWNER_RUNBOOK.md",
     )
-    assert len(EXPECTED_MEMBERS) == 244
+    assert len(EXPECTED_MEMBERS) == 246
 
 
 def test_external_authoring_paths_are_exact_commit_inputs_not_installed_ids():
@@ -755,7 +763,7 @@ def test_signed_scaffold_installer_closes_all_transitive_comparison_inputs():
         for member_id in SIGNED_SCAFFOLD_MEMBER_IDS
     } == expected
     assert len(SIGNED_SCAFFOLD_MEMBER_IDS) == 41
-    assert len(EXPECTED_MEMBERS) - len(SIGNED_SCAFFOLD_MEMBER_IDS) == 203
+    assert len(EXPECTED_MEMBERS) - len(SIGNED_SCAFFOLD_MEMBER_IDS) == 205
     assert "scaffold_installer" in REQUIRED_CLASSES
 
 
