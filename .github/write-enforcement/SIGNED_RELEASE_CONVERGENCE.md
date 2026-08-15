@@ -65,6 +65,20 @@ paved road:
   `rexcoleman/research_engine_release` `master`, the same project-owned
   preflight surface and signed source, and named refusal `AUTHORITY_LAPSED`.
 
+Those two identifiers remain immutable records of the 255-member population.
+Epoch 67 carries 257 members, so its registered dependent routes are the
+population-versioned successors:
+
+- `newsletter-generation-architecture-generation-5-population-257-v1`; and
+- `research-engine-release-generation-5-population-257-v1`.
+
+They retain the exact project identity, default branch, project-owned runner,
+signed source, and named-refusal bindings while closing over the current
+257-member authority and its expanded hermetic source/test contract. A release
+operator selects these successors for the 257-member population; the earlier
+adapters continue to reproduce and refuse against their original 255-member
+contract.
+
 These v2 adapters retain the unchanged generation-5 authority build and all
 five authoritative roots. Their dependent-project contract is validated and
 copied into the convergence receipt; the planner still performs no dependent
@@ -97,7 +111,8 @@ The planner requires five explicit clean repository roots. It:
 8. rechecks all five input roots after the build and refuses if any HEAD or
    worktree changed.
 
-For a dependent v2 adapter, the contract receipt additionally binds the exact
+For a dependent v2 adapter, including a population-versioned successor, the
+contract receipt additionally binds the exact
 project identifier, GitHub repository, default branch, runner path, preflight
 argument, required signed source, and named refusal. Wrong or broadened target
 identity refuses while the v1 adapter contract remains compatible.

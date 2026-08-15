@@ -34,6 +34,16 @@
       "adapter_id": "research-engine-release-generation-5",
       "path": "adapters/research_engine_release.generation-5.json",
       "status": "active"
+    },
+    {
+      "adapter_id": "newsletter-generation-architecture-generation-5-population-257-v1",
+      "path": "adapters/newsletter_generation_architecture.population-257-v1.json",
+      "status": "active"
+    },
+    {
+      "adapter_id": "research-engine-release-generation-5-population-257-v1",
+      "path": "adapters/research_engine_release.population-257-v1.json",
+      "status": "active"
     }
   ],
   "documentation": "SIGNED_RELEASE_CONVERGENCE.md",
