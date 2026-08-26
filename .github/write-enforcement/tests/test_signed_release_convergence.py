@@ -24,6 +24,7 @@ NGA_257_ADAPTER = ROOT / "adapters/newsletter_generation_architecture.population
 RER_257_ADAPTER = ROOT / "adapters/research_engine_release.population-257-v1.json"
 NGA_259_ADAPTER = ROOT / "adapters/newsletter_generation_architecture.population-259-v1.json"
 RER_259_ADAPTER = ROOT / "adapters/research_engine_release.population-259-v1.json"
+AML_259_ADAPTER = ROOT / "adapters/adversarial_ml_landscape.population-259-v1.json"
 INDEX = ROOT / "signed_release_convergence_index.json"
 INVENTORY = ROOT / "signed_release_convergence_inventory.json"
 DOC = ROOT / "SIGNED_RELEASE_CONVERGENCE.md"
@@ -291,6 +292,34 @@ def test_population_259_adapters_bind_build_grounding_and_exact_targets():
         ]
 
 
+def test_aml_population_259_adapter_binds_pending_genesis_transition():
+    value = tool.load_adapter(AML_259_ADAPTER)
+    assert value["adapter_id"] == (
+        "adversarial-ml-landscape-generation-5-population-259-v1"
+    )
+    assert value["expected_member_count"] == 259
+    dependent = value["dependent_project"]
+    assert dependent == {
+        "project_id": "adversarial_ml_landscape",
+        "repository": "rexcoleman/adversarial_ml_landscape",
+        "default_branch": "main",
+        "runner_path": "scripts/run_gates.sh",
+        "preflight_arguments": ["--engine-preflight"],
+        "required_source": "SIGNED_BUNDLE",
+        "named_refusal": "GOVERNANCE_ENGINE_REF_MISMATCH",
+    }
+    moonshots = next(
+        row for row in value["hermetic_tests"]
+        if row["repository"] == "Moonshots_Career_Thesis_v2"
+    )
+    assert moonshots["paths"] == ["tests/test_s139_convergence_authority.py"]
+    source = next(
+        row for row in value["system_python_sources"]
+        if row["repository"] == "Moonshots_Career_Thesis_v2"
+    )
+    assert source["paths"] == ["scripts/scaffold_research_project.py"]
+
+
 @pytest.mark.parametrize(
     ("field", "planted", "reason"),
     [
@@ -350,8 +379,8 @@ def test_dependent_adapter_contract_evidence_binds_target_and_poststate(
 
 @pytest.mark.parametrize(
     "adapter_path", [
-        NGA_ADAPTER, RER_ADAPTER, NGA_257_ADAPTER, RER_257_ADAPTER,
-        NGA_259_ADAPTER, RER_259_ADAPTER,
+            NGA_ADAPTER, RER_ADAPTER, NGA_257_ADAPTER, RER_257_ADAPTER,
+            NGA_259_ADAPTER, RER_259_ADAPTER, AML_259_ADAPTER,
     ]
 )
 def test_dependent_adapter_resume_preserves_refusal_and_evidence(
@@ -436,6 +465,7 @@ def test_index_is_closed_and_resolves_every_registered_adapter():
         "research-engine-release-generation-5-population-257-v1",
         "newsletter-generation-architecture-generation-5-population-259-v1",
         "research-engine-release-generation-5-population-259-v1",
+        "adversarial-ml-landscape-generation-5-population-259-v1",
     ]
     for adapter_id in identifiers:
         path = tool.resolve_adapter(INDEX, adapter_id)
@@ -459,7 +489,7 @@ def test_index_refuses_duplicate_unknown_retired_and_traversing_rows(
         ADAPTER, REGISTRATION_ADAPTER, BAND_C_ADAPTER, W2_ADAPTER,
         W2_DERIVED_ADAPTER,
         NGA_ADAPTER, RER_ADAPTER, NGA_257_ADAPTER, RER_257_ADAPTER,
-        NGA_259_ADAPTER, RER_259_ADAPTER,
+        NGA_259_ADAPTER, RER_259_ADAPTER, AML_259_ADAPTER,
     ):
         shutil.copyfile(adapter_path, adapters / adapter_path.name)
     shutil.copyfile(WORKFLOW, tmp_path / "workflows" / WORKFLOW.name)
@@ -507,7 +537,7 @@ def test_index_refuses_duplicate_unknown_retired_and_traversing_rows(
 
 def test_cross_generation_inventory_is_closed_and_covers_six_properties():
     value = tool.load_cross_generation_inventory(INVENTORY)
-    assert len(value["entries"]) == 26
+    assert len(value["entries"]) == 28
     assert {row["repository"] for row in value["entries"]} == {
         "govML", "rexcoleman.dev",
     }
@@ -930,6 +960,10 @@ def test_list_adapters_and_indexed_execution_selection(monkeypatch, capsys, tmp_
     )
     assert (
         "research-engine-release-generation-5-population-259-v1"
+        "\tactive\t" in listed
+    )
+    assert (
+        "adversarial-ml-landscape-generation-5-population-259-v1"
         "\tactive\t" in listed
     )
 

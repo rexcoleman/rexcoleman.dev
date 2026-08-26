@@ -91,6 +91,13 @@ Both adapters run the Moonshots same-cycle grounding proof in addition to the
 existing rexdev, govML, and REA hermetic suites. The 257-member adapters remain
 registered as the exact predecessor contract and are never redefined.
 
+The s165 AML route is registered as
+`adversarial-ml-landscape-generation-5-population-259-v1`. Its Moonshots
+hermetic surface covers the one-time committed `PENDING_SIGNED_BUNDLE` genesis
+binding: only authenticated signed-bundle bytes provide the immutable govML
+commit, an installer refusal restores the original governance bytes exactly,
+and the dependent landing remains a separate later step.
+
 These v2 adapters retain the unchanged generation-5 authority build and all
 five authoritative roots. Their dependent-project contract is validated and
 copied into the convergence receipt; the planner still performs no dependent
@@ -163,3 +170,10 @@ has Contents:Read only and checkout persistence is disabled.
 The output is a prerequisite, never release authority. A PASS does not merge a
 manifest PR, create a tag, approve an environment, issue, install, or declare
 project CI green. Those later actions retain their registered gates.
+
+For the generation-5 ruleset-revert variant, the registered cross-generation
+inventory also names `rehearse_generation5_ruleset_revert.py`. It consumes one
+fresh post-revert ruleset JSON file, requires `bypass_actors: []`, derives the
+five immutable commits from the frozen manifest, reuses
+`build_frozen_manifest.py`, and requires two byte-identical builds with all 259
+member rows unchanged. It stages evidence only and performs no remote mutation.
