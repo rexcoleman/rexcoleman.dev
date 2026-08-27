@@ -25,6 +25,7 @@ RER_257_ADAPTER = ROOT / "adapters/research_engine_release.population-257-v1.jso
 NGA_259_ADAPTER = ROOT / "adapters/newsletter_generation_architecture.population-259-v1.json"
 RER_259_ADAPTER = ROOT / "adapters/research_engine_release.population-259-v1.json"
 AML_259_ADAPTER = ROOT / "adapters/adversarial_ml_landscape.population-259-v1.json"
+S169_HARDENING_ADAPTER = ROOT / "adapters/research_enforcement_activation.s169-hardening-v1.json"
 INDEX = ROOT / "signed_release_convergence_index.json"
 INVENTORY = ROOT / "signed_release_convergence_inventory.json"
 DOC = ROOT / "SIGNED_RELEASE_CONVERGENCE.md"
@@ -320,6 +321,25 @@ def test_aml_population_259_adapter_binds_pending_genesis_transition():
     assert source["paths"] == ["scripts/scaffold_research_project.py"]
 
 
+def test_s169_hardening_adapter_closes_four_repository_polarities():
+    value = tool.load_adapter(S169_HARDENING_ADAPTER)
+    assert value["adapter_id"] == (
+        "research-enforcement-activation-generation-5-s169-hardening-v1"
+    )
+    assert value["expected_member_count"] == 259
+    tests = {row["repository"]: row["paths"] for row in value["hermetic_tests"]}
+    assert "tests/test_s155_research_type_registration.py" in tests["govML"]
+    assert "tests/test_s169_registration_agent_spec_bindings.py" in tests[
+        "Moonshots_Career_Thesis_v2"
+    ]
+    assert "tests/test_s145_renewal_consumer.py" in tests[
+        "research_enforcement_activation"
+    ]
+    assert ".github/write-enforcement/tests/test_renewal_workflow.py" in tests[
+        "rexcoleman.dev"
+    ]
+
+
 @pytest.mark.parametrize(
     ("field", "planted", "reason"),
     [
@@ -464,8 +484,9 @@ def test_index_is_closed_and_resolves_every_registered_adapter():
         "newsletter-generation-architecture-generation-5-population-257-v1",
         "research-engine-release-generation-5-population-257-v1",
         "newsletter-generation-architecture-generation-5-population-259-v1",
-        "research-engine-release-generation-5-population-259-v1",
-        "adversarial-ml-landscape-generation-5-population-259-v1",
+            "research-engine-release-generation-5-population-259-v1",
+            "adversarial-ml-landscape-generation-5-population-259-v1",
+            "research-enforcement-activation-generation-5-s169-hardening-v1",
     ]
     for adapter_id in identifiers:
         path = tool.resolve_adapter(INDEX, adapter_id)
@@ -489,8 +510,9 @@ def test_index_refuses_duplicate_unknown_retired_and_traversing_rows(
         ADAPTER, REGISTRATION_ADAPTER, BAND_C_ADAPTER, W2_ADAPTER,
         W2_DERIVED_ADAPTER,
         NGA_ADAPTER, RER_ADAPTER, NGA_257_ADAPTER, RER_257_ADAPTER,
-        NGA_259_ADAPTER, RER_259_ADAPTER, AML_259_ADAPTER,
-    ):
+            NGA_259_ADAPTER, RER_259_ADAPTER, AML_259_ADAPTER,
+            S169_HARDENING_ADAPTER,
+        ):
         shutil.copyfile(adapter_path, adapters / adapter_path.name)
     shutil.copyfile(WORKFLOW, tmp_path / "workflows" / WORKFLOW.name)
 

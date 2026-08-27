@@ -98,6 +98,14 @@ binding: only authenticated signed-bundle bytes provide the immutable govML
 commit, an installer refusal restores the original governance bytes exactly,
 and the dependent landing remains a separate later step.
 
+The s169 hardening set uses the registered population-preserving successor
+`research-enforcement-activation-generation-5-s169-hardening-v1`. It closes
+over recursive ruleset field projection, expired scheduler-row handling,
+signed-object-store fetch/watch path,
+boundary-preauthorization producer registration, and exact Moonshots actor
+spec bindings. The adapter keeps 259 members and adds focused positive and
+planted-negative coverage across rexdev, govML, Moonshots, and REA.
+
 These v2 adapters retain the unchanged generation-5 authority build and all
 five authoritative roots. Their dependent-project contract is validated and
 copied into the convergence receipt; the planner still performs no dependent
@@ -162,6 +170,39 @@ the two-commit freeze: the rex source root remains at the implementation
 commit while the baseline bytes come from the later manifest commit.
 `--resume` accepts only the same tool and adapter bytes, baseline digest,
 evidence root, phase prefix, receipt hashes, and live root identities.
+
+## Registered re-baseline path
+
+A changed signed source is re-baselined only through the selected registered
+adapter. The operation is source-first and keeps the two-commit freeze
+boundary explicit:
+
+1. Fetch each authoritative remote and create five clean roots pinned to the
+   intended source commits. Record every root's origin, default branch, and
+   full commit beside the plan evidence.
+2. Run the convergence engine in `--plan` mode with the registered adapter and
+   those exact roots. A plan refusal is repaired on the legitimately faulty
+   source or recorded; it is never worked around by changing a manifest,
+   expected count, or adapter threshold.
+3. Review the candidate manifest and receipts. Every changed member must map
+   to an intended source diff, all registered hermetic positive and planted
+   negative tests must pass, the two manifest builds must be byte-identical,
+   and poststate must show that no input root moved.
+4. Commit source changes by repository. Re-run `--plan` from clean roots at
+   those published source commits. This second plan is the candidate basis;
+   an earlier plan from uncommitted bytes is rehearsal evidence only.
+5. Stop before freeze unless the active dispatch separately authorizes it.
+   The later freeze operation writes only the generated manifest in a distinct
+   commit and does not reinterpret an older adapter identity. A population
+   change requires a successor adapter and index entry.
+6. Rehearse the frozen result with `--noop-rehearsal` using the separately
+   supplied baseline manifest and roots at the commits recorded inside it.
+   Byte inequality, root drift, a missing receipt, or a stale adapter refuses.
+
+This path never edits a generated digest or manifest by hand, never deletes a
+remote artifact to make a resolver green, and never creates a shadow copy at a
+gate read path. `--plan` and `--noop-rehearsal` prepare and verify authority;
+neither freezes, tags, issues, installs, or activates it.
 
 The read-only `signed-release-convergence` pull-request workflow compiles the
 tool, runs its internal refusal matrix, and runs the focused tests. Its token

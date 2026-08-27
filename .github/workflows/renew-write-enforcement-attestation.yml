@@ -134,18 +134,30 @@ jobs:
               )
               raise SystemExit(3)
           expected = f"rea-write-enforcement-attestation-{run_id}"
+          # Expired Actions artifacts are tombstone records, not live
+          # candidates.  They must not poison an otherwise valid issuance or
+          # prevent the resolver from continuing to an older live issuance.
           named = [row for row in rows if isinstance(row, dict)
                    and row.get("name") == expected]
-          if not named:
+          malformed_named = [row for row in named
+                             if row.get("expired") is not True
+                             and row.get("expired") is not False]
+          if malformed_named:
+              print(
+                  f"REFUSED RENEWAL_ARTIFACT_RESPONSE_REFUSED: run_id={run_id}",
+                  file=sys.stderr,
+              )
+              raise SystemExit(3)
+          live_named = [row for row in named if row.get("expired") is False]
+          if not live_named:
               raise SystemExit(0)
           valid = [
-              row for row in named
-              if row.get("expired") is False
-              and row.get("workflow_run", {}).get("id") == run_id
+              row for row in live_named
+              if row.get("workflow_run", {}).get("id") == run_id
               and row.get("workflow_run", {}).get("head_branch") == ref
               and row.get("workflow_run", {}).get("head_sha") == sha
           ]
-          if len(named) != 1 or len(valid) != 1:
+          if len(live_named) != 1 or len(valid) != 1:
               print(
                   f"REFUSED RENEWAL_ISSUANCE_ARTIFACT_IDENTITY_REFUSED: run_id={run_id}",
                   file=sys.stderr,

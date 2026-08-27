@@ -81,6 +81,9 @@ def executable_lines(path):
 def run_scheduler_resolver(
     tmp_path, rows, target_sha, *, annotated=False, missing=False,
     issuance_run_ids=None, invalid_artifact_run_ids=(),
+    expired_artifact_run_ids=(), extra_expired_artifact_run_ids=(),
+    extra_live_artifact_run_ids=(),
+    malformed_expired_artifact_run_ids=(),
 ):
     """Execute the workflow's literal resolver against a closed fake GH API."""
     tmp_path.mkdir(parents=True, exist_ok=True)
@@ -104,16 +107,25 @@ if args and args[0] == "api" and "/actions/runs/" in args[1] and "/artifacts" in
         raise SystemExit(0)
     artifact = {
         "name": "rea-write-enforcement-attestation-%s" % run_id,
-        "expired": False,
+        "expired": run_id in json.loads(os.environ["FAKE_EXPIRED_ARTIFACT_RUN_IDS"]),
         "workflow_run": {
             "id": run_id,
             "head_branch": row["headBranch"],
             "head_sha": row["headSha"],
         },
     }
+    if run_id in json.loads(os.environ["FAKE_MALFORMED_EXPIRED_ARTIFACT_RUN_IDS"]):
+        artifact.pop("expired")
     if run_id in json.loads(os.environ["FAKE_INVALID_ARTIFACT_RUN_IDS"]):
         artifact["workflow_run"]["head_sha"] = "f" * 40
-    print(json.dumps({"total_count": 1, "artifacts": [artifact]}))
+    artifacts = [artifact]
+    if run_id in json.loads(os.environ["FAKE_EXTRA_EXPIRED_ARTIFACT_RUN_IDS"]):
+        expired = dict(artifact)
+        expired["expired"] = True
+        artifacts.append(expired)
+    if run_id in json.loads(os.environ["FAKE_EXTRA_LIVE_ARTIFACT_RUN_IDS"]):
+        artifacts.append(dict(artifact))
+    print(json.dumps({"total_count": len(artifacts), "artifacts": artifacts}))
     raise SystemExit(0)
 if args and args[0] == "api" and "/git/ref/tags/" in args[1]:
     if os.environ.get("FAKE_TAG_MISSING") == "1":
@@ -147,6 +159,18 @@ raise SystemExit(9)
             ),
             "FAKE_INVALID_ARTIFACT_RUN_IDS": json.dumps(
                 list(invalid_artifact_run_ids)
+            ),
+            "FAKE_EXPIRED_ARTIFACT_RUN_IDS": json.dumps(
+                list(expired_artifact_run_ids)
+            ),
+            "FAKE_EXTRA_EXPIRED_ARTIFACT_RUN_IDS": json.dumps(
+                list(extra_expired_artifact_run_ids)
+            ),
+            "FAKE_EXTRA_LIVE_ARTIFACT_RUN_IDS": json.dumps(
+                list(extra_live_artifact_run_ids)
+            ),
+            "FAKE_MALFORMED_EXPIRED_ARTIFACT_RUN_IDS": json.dumps(
+                list(malformed_expired_artifact_run_ids)
             ),
         }
     )
@@ -470,6 +494,65 @@ def test_scheduler_excludes_newer_successful_seal_without_wea_artifact(tmp_path)
     assert "RENEWAL_GENERATION_REF=rea-wea-generation-4-0123456789ab\n" in exported
     assert "run_id=100" in result.stdout
     assert "run_id=200" not in result.stdout
+
+
+def test_scheduler_skips_expired_newer_artifact_and_selects_older_live_one(tmp_path):
+    older_sha = "1" * 40
+    newer_sha = "2" * 40
+    rows = [
+        {"databaseId": 100,
+         "headBranch": "rea-wea-generation-4-0123456789ab",
+         "headSha": older_sha},
+        {"databaseId": 200,
+         "headBranch": "rea-wea-generation-5-abcdef012345",
+         "headSha": newer_sha},
+    ]
+    result, exported = run_scheduler_resolver(
+        tmp_path, rows, older_sha, expired_artifact_run_ids=[200]
+    )
+    assert result.returncode == 0, result.stderr
+    assert "run_id=100" in result.stdout
+    assert "run_id=200" not in result.stdout
+    assert f"RENEWAL_GENERATION_HEAD_SHA={older_sha}\n" in exported
+
+
+def test_scheduler_ignores_expired_duplicate_beside_one_live_artifact(tmp_path):
+    head_sha = "2" * 40
+    rows = [{"databaseId": 200,
+             "headBranch": "rea-wea-generation-5-abcdef012345",
+             "headSha": head_sha}]
+    result, exported = run_scheduler_resolver(
+        tmp_path, rows, head_sha, extra_expired_artifact_run_ids=[200]
+    )
+    assert result.returncode == 0, result.stderr
+    assert "run_id=200" in result.stdout
+    assert f"RENEWAL_GENERATION_HEAD_SHA={head_sha}\n" in exported
+
+
+def test_scheduler_still_refuses_multiple_live_named_artifacts(tmp_path):
+    head_sha = "2" * 40
+    rows = [{"databaseId": 200,
+             "headBranch": "rea-wea-generation-5-abcdef012345",
+             "headSha": head_sha}]
+    result, exported = run_scheduler_resolver(
+        tmp_path, rows, head_sha, extra_live_artifact_run_ids=[200]
+    )
+    assert result.returncode == 3
+    assert "RENEWAL_ISSUANCE_ARTIFACT_IDENTITY_REFUSED" in result.stderr
+    assert exported == ""
+
+
+def test_scheduler_refuses_named_artifact_with_malformed_expiry_state(tmp_path):
+    head_sha = "2" * 40
+    rows = [{"databaseId": 200,
+             "headBranch": "rea-wea-generation-5-abcdef012345",
+             "headSha": head_sha}]
+    result, exported = run_scheduler_resolver(
+        tmp_path, rows, head_sha, malformed_expired_artifact_run_ids=[200]
+    )
+    assert result.returncode == 3
+    assert "RENEWAL_ARTIFACT_RESPONSE_REFUSED" in result.stderr
+    assert exported == ""
 
 
 def test_scheduler_refuses_when_no_successful_run_has_wea_artifact(tmp_path):

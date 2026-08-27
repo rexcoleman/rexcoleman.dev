@@ -909,6 +909,80 @@ def test_ruleset_response_refuses_capability_elision():
         normalize_ruleset(complete)
 
 
+def ruleset_projection_fixture():
+    return {
+        "id": 19564990,
+        "name": "newsletter-main-integrity",
+        "target": "branch",
+        "enforcement": "active",
+        "conditions": {
+            "ref_name": {
+                "include": ["refs/heads/main"],
+                "exclude": [],
+            },
+        },
+        "rules": [
+            {"type": "deletion"},
+            {"type": "non_fast_forward"},
+            {"type": "pull_request", "parameters": {
+                "allowed_merge_methods": ["merge", "squash", "rebase"],
+                "dismiss_stale_reviews_on_push": True,
+                "require_code_owner_review": False,
+                "require_extra_approval_for_unattributed_changes": True,
+                "require_last_push_approval": True,
+                "required_approving_review_count": 1,
+                "required_review_thread_resolution": True,
+                "required_reviewers": [],
+            }},
+            {"type": "required_status_checks", "parameters": {
+                "do_not_enforce_on_create": False,
+                "required_status_checks": [{
+                    "context": "newsletter-remote-integrity / newsletter-remote-integrity",
+                    "integration_id": 15368,
+                }],
+                "strict_required_status_checks_policy": True,
+            }},
+        ],
+        "bypass_actors": [{
+            "actor_id": 5,
+            "actor_type": "RepositoryRole",
+            "bypass_mode": "always",
+        }],
+    }
+
+
+def test_ruleset_projection_ignores_unadopted_nested_rollout_fields():
+    baseline = ruleset_projection_fixture()
+    projected = normalize_ruleset(baseline)
+    assert "require_extra_approval_for_unattributed_changes" not in (
+        projected["rules"][2]["parameters"]
+    )
+    rolled_out = json.loads(json.dumps(baseline))
+    rolled_out["future_top_level"] = "ignored"
+    rolled_out["conditions"]["future_condition"] = {"ignored": True}
+    rolled_out["conditions"]["ref_name"]["future_ref_field"] = ["ignored"]
+    rolled_out["rules"][0]["future_rule_field"] = "ignored"
+    rolled_out["rules"][2]["parameters"]["future_pr_parameter"] = True
+    rolled_out["rules"][3]["parameters"]["future_status_parameter"] = True
+    rolled_out["rules"][3]["parameters"]["required_status_checks"][0][
+        "future_check_field"
+    ] = "ignored"
+    rolled_out["bypass_actors"][0]["future_actor_field"] = "ignored"
+    assert normalize_ruleset(rolled_out) == normalize_ruleset(baseline)
+
+
+def test_ruleset_projection_refuses_nested_capability_elision_and_unknown_rules():
+    missing = ruleset_projection_fixture()
+    del missing["rules"][2]["parameters"]["require_last_push_approval"]
+    with pytest.raises(ValueError, match="pull_request capability elision"):
+        normalize_ruleset(missing)
+
+    unknown = ruleset_projection_fixture()
+    unknown["rules"].append({"type": "future_destructive_rule"})
+    with pytest.raises(ValueError, match="unsupported rule type"):
+        normalize_ruleset(unknown)
+
+
 def boundary_registry_fixture():
     actors = [
         "RPT-01", "BLG-01", "BLG-02", "BLG-03", "BLG-04", "BLG-05",

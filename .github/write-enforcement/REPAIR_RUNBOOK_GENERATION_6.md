@@ -72,8 +72,9 @@ the same operation the repo performed ~30 times (see the
    `expired: true` (workflow lines 141-153). Because issuance stopped on
    Aug 20, old runs stopped aging out of the top-100 window and their 30-day
    artifact retention began expiring inside it. **A new successful issuance
-   does NOT clear this by itself** — the expired-artifact records must be
-   deleted (step 6 below) or the refusal continues and grows daily. As of
+   does NOT clear this by itself.** The scheduler must treat expired listing
+   rows as tombstones and continue to the newest live identity-bound artifact
+   (step 6 below). No artifact-record deletion is part of the repair. As of
    2026-08-26: runs 30136397395, 30116484408, 30115223596 (artifacts
    8613163935, 8605648354, 8605316797).
 5. **Local install state.** The installed authority at
@@ -229,28 +230,13 @@ Rex's only mandatory action is step 4's environment approval.
    `rea-write-enforcement-attestation-<new_run_id>`, and appends the public
    packet.
 
-**6. Unpoison the renewal scheduler.** Delete the *expired* WEA artifact
-   records that sit inside the scheduler's newest-100 successful-run window
-   (their content is already gone; only the listing rows block the resolve
-   step). Enumerate mechanically at execution time — the set grows daily:
-
-   ```
-   gh run list -R rexcoleman/rexcoleman.dev \
-     --workflow issue-write-enforcement-attestation.yml \
-     --status success --event workflow_dispatch --limit 100 \
-     --json databaseId,headBranch --jq \
-     '.[] | select(.headBranch|test("^rea-wea-generation-[0-9]+-[0-9a-f]{12}$")) | .databaseId' |
-   while read -r rid; do
-     gh api "repos/rexcoleman/rexcoleman.dev/actions/runs/$rid/artifacts?per_page=100" \
-       --jq ".artifacts[] | select(.name==\"rea-write-enforcement-attestation-$rid\" and .expired==true) | .id"
-   done |
-   while read -r aid; do
-     gh api -X DELETE "repos/rexcoleman/rexcoleman.dev/actions/artifacts/$aid"
-     echo "deleted expired artifact record $aid"
-   done
-   ```
-
-   Never delete an unexpired artifact. Then confirm the scheduler recovers:
+**6. Unpoison the renewal scheduler at the resolver.** Land the registered
+   scheduler repair that filters the matching artifact population to
+   `expired == false` before uniqueness and identity checks. An expired row is
+   skipped; exactly one live identity-bound row is accepted; multiple live
+   rows or a live identity mismatch still refuse. The focused workflow suite
+   proves all three polarities. Do not delete any GitHub artifact record to
+   satisfy this read path. Then confirm the scheduler recovers:
    `gh workflow run renew-write-enforcement-attestation.yml -R rexcoleman/rexcoleman.dev`
    and watch it reach `RENEWAL_RUN_STATE … completed:success` — it must now
    resolve the step-4 run's tag and the renew-mode issuance must pass the
