@@ -30,6 +30,12 @@ successor, the two s157 dependent-project adapters for NGA and RER, their
 population-257 and population-259 successors, and the s165 population-259 AML
 dependent adapter. The population-259 identities
 bind the PR 759 Moonshots build roles plus both govML role checklists. A
+population-preserving s169 hardening successor is registered as
+`research-enforcement-activation-generation-5-s169-hardening-v1`. It binds
+nested ruleset projection, expired-row scheduler semantics, consumer
+object-store refresh/watch path, registration
+preauthorization producer, and exact Moonshots agent-spec digests while
+retaining the 259-member population. A
 population change always gets a new stable
 adapter identity; the 251- and 255-member adapters remain
 auditable without being silently redefined. The dependent adapters use schema

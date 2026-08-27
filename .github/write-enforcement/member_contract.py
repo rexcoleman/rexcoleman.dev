@@ -16,6 +16,20 @@ RULESET_ID = 19564990
 RULESET_FIELDS = (
     "name", "target", "enforcement", "conditions", "rules", "bypass_actors",
 )
+PULL_REQUEST_PARAMETER_FIELDS = (
+    "allowed_merge_methods",
+    "dismiss_stale_reviews_on_push",
+    "require_code_owner_review",
+    "require_last_push_approval",
+    "required_approving_review_count",
+    "required_review_thread_resolution",
+    "required_reviewers",
+)
+STATUS_CHECK_PARAMETER_FIELDS = (
+    "do_not_enforce_on_create",
+    "required_status_checks",
+    "strict_required_status_checks_policy",
+)
 REQUIRED_MEMBER_CLASSES = (
     "boundary_gate",
     "resolver",
@@ -325,7 +339,13 @@ def generation_tag(commit: str) -> str:
 
 
 def normalize_ruleset(value: dict) -> dict:
-    """Return only cryptographically covered fields, refusing an elided response."""
+    """Project the versioned ruleset contract, refusing known-field elision.
+
+    GitHub may add response fields without an API-version change.  Those fields
+    are not authority-bearing until this contract explicitly adopts them, so
+    normalization projects at every nested object boundary rather than only at
+    the response root.
+    """
     if not isinstance(value, dict) or value.get("id") != RULESET_ID:
         raise ValueError(f"ruleset {RULESET_ID} unavailable")
     missing = sorted(set(RULESET_FIELDS) - set(value))
@@ -343,7 +363,79 @@ def normalize_ruleset(value: dict) -> dict:
                    if not isinstance(value[key], expected))
     if wrong:
         raise ValueError(f"ruleset response field shape: {wrong}")
-    return {key: value[key] for key in RULESET_FIELDS}
+
+    conditions = value["conditions"]
+    if set(("ref_name",)) - set(conditions) or not isinstance(conditions["ref_name"], dict):
+        raise ValueError("ruleset conditions missing ref_name")
+    ref_name = conditions["ref_name"]
+    if any(key not in ref_name for key in ("include", "exclude")):
+        raise ValueError("ruleset ref_name capability elision")
+    if any(
+        not isinstance(ref_name[key], list)
+        or any(not isinstance(item, str) for item in ref_name[key])
+        for key in ("include", "exclude")
+    ):
+        raise ValueError("ruleset ref_name field shape")
+
+    normalized_rules = []
+    for rule in value["rules"]:
+        if not isinstance(rule, dict) or not isinstance(rule.get("type"), str):
+            raise ValueError("ruleset rule shape")
+        rule_type = rule["type"]
+        if rule_type in ("deletion", "non_fast_forward"):
+            normalized_rules.append({"type": rule_type})
+            continue
+        if rule_type == "pull_request":
+            fields = PULL_REQUEST_PARAMETER_FIELDS
+        elif rule_type == "required_status_checks":
+            fields = STATUS_CHECK_PARAMETER_FIELDS
+        else:
+            raise ValueError(f"ruleset unsupported rule type: {rule_type}")
+        parameters = rule.get("parameters")
+        if not isinstance(parameters, dict):
+            raise ValueError(f"ruleset {rule_type} parameters shape")
+        missing_parameters = sorted(set(fields) - set(parameters))
+        if missing_parameters:
+            raise ValueError(
+                f"ruleset {rule_type} capability elision: {missing_parameters}"
+            )
+        projected = {key: parameters[key] for key in fields}
+        if rule_type == "required_status_checks":
+            checks = projected["required_status_checks"]
+            if not isinstance(checks, list):
+                raise ValueError("ruleset required_status_checks field shape")
+            projected["required_status_checks"] = []
+            for check in checks:
+                if (
+                    not isinstance(check, dict)
+                    or "context" not in check
+                    or "integration_id" not in check
+                ):
+                    raise ValueError("ruleset required status check shape")
+                projected["required_status_checks"].append({
+                    "context": check["context"],
+                    "integration_id": check["integration_id"],
+                })
+        normalized_rules.append({"type": rule_type, "parameters": projected})
+
+    normalized_bypass = []
+    for actor in value["bypass_actors"]:
+        fields = ("actor_id", "actor_type", "bypass_mode")
+        if not isinstance(actor, dict) or any(key not in actor for key in fields):
+            raise ValueError("ruleset bypass actor capability elision")
+        normalized_bypass.append({key: actor[key] for key in fields})
+
+    return {
+        "name": value["name"],
+        "target": value["target"],
+        "enforcement": value["enforcement"],
+        "conditions": {"ref_name": {
+            "include": ref_name["include"],
+            "exclude": ref_name["exclude"],
+        }},
+        "rules": normalized_rules,
+        "bypass_actors": normalized_bypass,
+    }
 
 EXPECTED_MEMBERS = {
     # Authority, schemas, resolver, gates, and canonical consumer.
