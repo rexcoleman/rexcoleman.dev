@@ -1,0 +1,1 @@
+bash /home/azureuser/rexcoleman.dev/.github/write-enforcement/setup_external_judge_hosted_principal.sh

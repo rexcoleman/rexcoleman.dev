@@ -216,7 +216,10 @@ def load_adapter(path: Path):
         raise Refusal("EXPECTED_MEMBER_COUNT_REFUSED")
     safe_relative(value["manifest_path"], ".json")
     safe_relative(value["manifest_builder"], ".py")
-    if value["manifest_builder_flag"] != "--successor-ci-materialization":
+    if value["manifest_builder_flag"] not in {
+        "--successor-ci-materialization",
+        "--hosted-external-judge-principal",
+    }:
         raise Refusal("MANIFEST_BUILDER_FLAG_REFUSED")
     if not isinstance(value["ruleset_id"], int) or isinstance(
         value["ruleset_id"], bool

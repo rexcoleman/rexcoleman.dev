@@ -1,0 +1,101 @@
+name: Issue external judge authority
+run-name: External judge authority ${{ inputs.request_sha256 }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      request_b64:
+        description: Base64 of the exact non-secret create-request bytes
+        required: true
+        type: string
+      request_sha256:
+        description: SHA-256 of the exact decoded create-request bytes
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: govml-external-judge-approver
+  cancel-in-progress: false
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  issue:
+    environment: govml-external-judge-approver
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    env:
+      GOVML_ISSUER_COMMIT: ${{ vars.GOVML_EXTERNAL_JUDGE_ISSUER_COMMIT }}
+      GOVML_ISSUER_SHA256: ${{ vars.GOVML_EXTERNAL_JUDGE_ISSUER_SHA256 }}
+      GOVML_EXTERNAL_JUDGE_APPROVING_PUBLIC_KEY_SHA256: ${{ vars.GOVML_EXTERNAL_JUDGE_APPROVING_PUBLIC_KEY_SHA256 }}
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - name: Checkout the exact registered govML issuer
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          repository: rexcoleman/govML
+          ref: ${{ env.GOVML_ISSUER_COMMIT }}
+          path: govml
+          persist-credentials: false
+      - name: Bind protected workflow and issuer source
+        run: |
+          set -euo pipefail
+          [[ "$GITHUB_REF" == refs/heads/main ]]
+          [[ "$GITHUB_REF_PROTECTED" == true ]]
+          [[ "$GITHUB_SHA" =~ ^[0-9a-f]{40}$ ]]
+          [[ "$GOVML_ISSUER_COMMIT" =~ ^[0-9a-f]{40}$ ]]
+          [[ "$GOVML_ISSUER_SHA256" =~ ^[0-9a-f]{64}$ ]]
+          [[ "$GOVML_EXTERNAL_JUDGE_APPROVING_PUBLIC_KEY_SHA256" =~ ^[0-9a-f]{64}$ ]]
+          test "$(git -C govml rev-parse HEAD)" = "$GOVML_ISSUER_COMMIT"
+          test "$(sha256sum govml/scripts/issue_external_judge_authority.py | cut -d' ' -f1)" = "$GOVML_ISSUER_SHA256"
+          python3 govml/scripts/issue_external_judge_authority.py --help >/dev/null
+          echo "HOSTED_ISSUER_BINDING_PASS commit=$GOVML_ISSUER_COMMIT issuer_sha256=$GOVML_ISSUER_SHA256"
+      - name: Materialize exact request bytes
+        env:
+          REQUEST_B64: ${{ inputs.request_b64 }}
+          REQUEST_SHA256: ${{ inputs.request_sha256 }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import base64, hashlib, os, pathlib, re
+          expected = os.environ["REQUEST_SHA256"]
+          if re.fullmatch(r"[0-9a-f]{64}", expected) is None:
+              raise SystemExit("REQUEST_SHA256_REFUSED")
+          try:
+              raw = base64.b64decode(os.environ["REQUEST_B64"], validate=True)
+              raw.decode("ascii")
+          except (ValueError, UnicodeError):
+              raise SystemExit("REQUEST_BYTES_REFUSED") from None
+          if hashlib.sha256(raw).hexdigest() != expected:
+              raise SystemExit("REQUEST_DIGEST_MISMATCH")
+          pathlib.Path("request.json").write_bytes(raw)
+          PY
+      - name: Approve exact request with protected hosted principal
+        env:
+          GOVML_EXTERNAL_JUDGE_APPROVING_PRIVATE_KEY_PEM: ${{ secrets.GOVML_EXTERNAL_JUDGE_APPROVING_PRIVATE_KEY_PEM }}
+          REQUEST_SHA256: ${{ inputs.request_sha256 }}
+        run: |
+          set -euo pipefail
+          test -n "$GOVML_EXTERNAL_JUDGE_APPROVING_PRIVATE_KEY_PEM"
+          PYTHONDONTWRITEBYTECODE=1 python3 govml/scripts/issue_external_judge_authority.py \
+            approve-request-hosted \
+            --request request.json \
+            --expected-request-sha256 "$REQUEST_SHA256" \
+            --output external_judge_authority.json \
+            --receipt hosted_issuance_receipt.json
+      - name: Upload authenticated authority and receipt
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: govml-external-judge-authority-${{ github.run_id }}
+          path: |
+            external_judge_authority.json
+            hosted_issuance_receipt.json
+          if-no-files-found: error
+          retention-days: 1
