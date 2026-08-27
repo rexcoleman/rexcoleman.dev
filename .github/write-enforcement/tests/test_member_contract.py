@@ -84,6 +84,26 @@ def test_successor_contract_closes_registered_production_authority_pair():
         contract_module.SUCCESSOR_ADDITIONAL_MEMBERS = original
 
 
+def test_hosted_principal_successor_closes_private_key_custody_workflow():
+    historical_successor = contract_module.successor_members()
+    hosted = contract_module.hosted_principal_successor_members()
+    member_id = "hosted-external-judge-authority-workflow"
+    assert len(historical_successor) == 259
+    assert len(hosted) == 260
+    assert hosted[member_id] == (
+        "rexcoleman.dev",
+        ".github/workflows/issue-external-judge-authority.yml",
+    )
+    contract_module.validate_hosted_principal_member_ids(hosted)
+    dropped = dict(hosted)
+    dropped.pop(member_id)
+    with pytest.raises(
+        ValueError,
+        match="hosted principal member set refused:missing=.*hosted-external-judge",
+    ):
+        contract_module.validate_hosted_principal_member_ids(dropped)
+
+
 def test_production_provisioner_has_distinct_equal_byte_authoring_subject():
     pair = (
         "production-request-provisioner",

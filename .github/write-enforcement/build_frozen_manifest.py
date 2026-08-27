@@ -28,10 +28,12 @@ from member_contract import (
     STAGED_NONPRODUCTION_MANIFEST_SCHEMA,
     group_member_contract,
     grouped_members,
+    hosted_principal_successor_members,
     normalize_ruleset,
     staged_nonproduction_members,
     successor_members,
     validate_managed_live_member_aliases,
+    validate_hosted_principal_member_ids,
 )
 
 MEMBERS = grouped_members()
@@ -337,18 +339,28 @@ def main() -> int:
     parser.add_argument("--ruleset-json", type=Path, required=True)
     parser.add_argument("--staged-nonproduction", action="store_true")
     parser.add_argument("--successor-ci-materialization", action="store_true")
+    parser.add_argument("--hosted-external-judge-principal", action="store_true")
     for name in MEMBERS:
         slug = name.lower().replace("_", "-").replace(".", "-")
         parser.add_argument("--root-" + slug, dest="root_" + name.lower().replace(".", "_"),
                             type=Path, required=True)
     args = parser.parse_args()
-    if args.staged_nonproduction and args.successor_ci_materialization:
+    selected_contracts = sum((
+        args.staged_nonproduction,
+        args.successor_ci_materialization,
+        args.hosted_external_judge_principal,
+    ))
+    if selected_contracts > 1:
         raise ValueError("staged and successor contracts are mutually exclusive")
     expected_members = (
         staged_nonproduction_members() if args.staged_nonproduction
+        else hosted_principal_successor_members()
+        if args.hosted_external_judge_principal
         else successor_members() if args.successor_ci_materialization
         else EXPECTED_MEMBERS
     )
+    if args.hosted_external_judge_principal:
+        validate_hosted_principal_member_ids(expected_members)
     synthetic_contract = (
         not args.staged_nonproduction and MEMBERS != grouped_members()
     )
@@ -368,7 +380,11 @@ def main() -> int:
     # absent from the rehearsal even while the installed-population check saw
     # their bytes and refused.  Staging differs in trust domain, not member
     # generation.
-    active_contract = args.successor_ci_materialization or args.staged_nonproduction
+    active_contract = (
+        args.successor_ci_materialization
+        or args.hosted_external_judge_principal
+        or args.staged_nonproduction
+    )
     authority_generation = (
         AUTHORITY_GENERATION if active_contract
         else HISTORICAL_AUTHORITY_GENERATION

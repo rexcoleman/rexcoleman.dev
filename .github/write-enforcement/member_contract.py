@@ -746,6 +746,17 @@ SUCCESSOR_ADDITIONAL_MEMBERS = {
     ),
 }
 
+# The hosted external-judge workflow has custody of the approving private key.
+# It is therefore an enforcement authority, not orchestration metadata. Keep
+# this as an explicit successor extension so the historical 259-member
+# generation-5 releases remain byte-for-byte auditable.
+HOSTED_PRINCIPAL_ADDITIONAL_MEMBERS = {
+    "hosted-external-judge-authority-workflow": (
+        "rexcoleman.dev",
+        ".github/workflows/issue-external-judge-authority.yml",
+    ),
+}
+
 
 def successor_members():
     value = dict(EXPECTED_MEMBERS)
@@ -758,6 +769,27 @@ def successor_members():
     return value
 
 
+def hosted_principal_successor_members():
+    value = successor_members()
+    overlap = set(value) & set(HOSTED_PRINCIPAL_ADDITIONAL_MEMBERS)
+    if overlap:
+        raise ValueError("hosted principal member id collision: %s" % sorted(overlap))
+    value.update(HOSTED_PRINCIPAL_ADDITIONAL_MEMBERS)
+    if len(set(value.values())) != len(value):
+        raise ValueError("hosted principal member subject collision")
+    return value
+
+
+def validate_hosted_principal_member_ids(observed) -> None:
+    expected = set(hosted_principal_successor_members())
+    actual = set(observed)
+    if actual != expected:
+        raise ValueError(
+            "hosted principal member set refused:missing=%s:extra=%s"
+            % (sorted(expected - actual), sorted(actual - expected))
+        )
+
+
 def production_members_for_manifest(manifest, baseline=None):
     """Select the exact closed set for one known generation; never a subset."""
     rows = manifest.get("members") if isinstance(manifest, dict) else None
@@ -768,6 +800,8 @@ def production_members_for_manifest(manifest, baseline=None):
     base = EXPECTED_MEMBERS if baseline is None else baseline
     successor = dict(base)
     successor.update(SUCCESSOR_ADDITIONAL_MEMBERS)
+    hosted_successor = dict(successor)
+    hosted_successor.update(HOSTED_PRINCIPAL_ADDITIONAL_MEMBERS)
     generation = manifest.get("authority_generation") if isinstance(manifest, dict) else None
     if generation is None and baseline is not None:
         # Unit-level byte/membership checks historically pass a reduced explicit
@@ -779,7 +813,11 @@ def production_members_for_manifest(manifest, baseline=None):
             raise ValueError("generation-4 manifest contains successor members")
         return base
     if generation == AUTHORITY_GENERATION:
-        return successor
+        return (
+            hosted_successor
+            if observed & set(HOSTED_PRINCIPAL_ADDITIONAL_MEMBERS)
+            else successor
+        )
     raise ValueError("manifest authority generation is not registered")
 
 # Separate immutable authoring subjects may target the same installed runtime

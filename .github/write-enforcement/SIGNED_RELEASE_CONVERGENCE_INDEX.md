@@ -35,7 +35,18 @@ population-preserving s169 hardening successor is registered as
 nested ruleset projection, expired-row scheduler semantics, consumer
 object-store refresh/watch path, registration
 preauthorization producer, and exact Moonshots agent-spec digests while
-retaining the 259-member population. A
+retaining the 259-member population. A second s169 successor is registered as
+`research-enforcement-activation-generation-5-s169-hosted-principal-v1`.
+It retains every hardening suite and adds the protected hosted external-judge
+workflow, canonical govML hosted approval and machine client, fixed public-key
+HYBRID boundary, exact-request/TTL/single-spend polarities, and the one-time
+checked owner setup with tested rollback. The adapter raises the population to
+260: `external-judge-authority-issuer` and verifier are existing members, while
+the new hosted workflow is a genuine `remote_workflow` member because it has
+custody of the approving private key. The client and setup rail cannot sign or
+make an invalid authority verify, so they remain registered and tested
+orchestration surfaces outside the signed member population.
+A
 population change always gets a new stable
 adapter identity; the 251- and 255-member adapters remain
 auditable without being silently redefined. The dependent adapters use schema
