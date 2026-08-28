@@ -223,6 +223,8 @@ def test_validation_failure_before_write_does_not_run_rollback_replace(
 
 def test_whole_arc_binds_preflight_then_both_one_time_actions() -> None:
     raw = ARC.read_text(encoding="ascii")
+    assert "MOONSHOTS_REPOSITORY=/home/azureuser/moonshots_rea_s170" in raw
+    assert "/home/azureuser/Moonshots_Career_Thesis_v2" not in raw
     assert "ls-remote origin refs/heads/main" in raw
     assert "PAYLOAD_DIRTY_REFUSED" in raw
     assert "diff --quiet \"$COMMIT\"" in raw

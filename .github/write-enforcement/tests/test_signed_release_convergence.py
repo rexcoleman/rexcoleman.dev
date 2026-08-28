@@ -993,6 +993,11 @@ def test_pr_workflow_is_read_only_and_runs_both_test_layers():
     assert "persist-credentials: false" in raw
     assert "--self-test" in raw
     assert "test_signed_release_convergence.py" in raw
+    assert raw.count('".github/write-enforcement/rea_s170_owner_arc.sh"') == 2
+    assert raw.count('".github/write-enforcement/populate_rea_s170_govml_credentials.py"') == 2
+    assert raw.count('".github/write-enforcement/setup_external_judge_hosted_principal.py"') == 2
+    assert raw.count(".github/write-enforcement/tests/test_s169_hosted_external_judge_principal.py") == 3
+    assert raw.count(".github/write-enforcement/tests/test_s170_owner_arc.py") == 3
     assert "signed_release_convergence_index.json" in raw
     assert "SIGNED_RELEASE_CONVERGENCE_INDEX.md" in raw
     assert "actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065" in raw
