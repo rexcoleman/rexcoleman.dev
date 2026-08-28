@@ -46,6 +46,14 @@ the new hosted workflow is a genuine `remote_workflow` member because it has
 custody of the approving private key. The client and setup rail cannot sign or
 make an invalid authority verify, so they remain registered and tested
 orchestration surfaces outside the signed member population.
+A population-preserving s170 successor is registered as
+`research-enforcement-activation-generation-5-s170-hosted-principal-ownership-v1`.
+It retains the same hosted workflow, member population, issuer bindings, and
+one-time owner boundary, while binding the public-key predecessor to the live
+host identity: regular `root:root` mode `0644`. The earlier `65534:65534`
+observation was a sandbox namespace artifact and is not an admissible
+production precondition. The successor changes no schema and fires no setup,
+issuance, freeze, WEA reissue, or F2/F3 activation.
 A
 population change always gets a new stable
 adapter identity; the 251- and 255-member adapters remain

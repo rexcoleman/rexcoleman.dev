@@ -8,8 +8,11 @@ freeze a manifest, reissue a WEA, or activate production. The only genuinely
 owner-held capabilities are the one-time GitHub and Azure authentications used
 to establish the protected environment and the fixed root-owned public half.
 
-The source owner row is
+The s169 source owner row is
 `.github/write-enforcement/rea_s169_external_judge_principal_owner_row.txt`.
+The s170 combined source is
+`.github/write-enforcement/rea_s170_owner_arc.sh`; the registered delivery
+compiler, not a hand-authored row, owns its final one-row wrapper.
 It is deliberately **not deliverable** from this review worktree: the payload
 must first land on protected `rexcoleman.dev` `origin/main`, then the registered
 delivery compiler must deploy a digest-bound durable package and emit the one
@@ -24,12 +27,26 @@ directory does not matter.
 
 1. The wrapper proves hostname `gios-dev`, uid 1000, and that its complete
    transitive rex payload is a clean byte-for-byte checkout of the exact
-   protected `origin/main` commit. The Python tool repeats that binding before
-   any GitHub or Azure mutation. It also proves a
+   protected `origin/main` commit. It separately binds the existing Moonshots
+   repository-enrollment adapter to its exact protected `origin/main` bytes.
+   The Python tool repeats the rex binding before any GitHub or Azure mutation.
+   It also proves a
    govML `origin/main` issuer containing the hosted exact-byte, TTL, and secret
    bindings. Expected result: `READY_FOR_ONE_TIME_SETUP`, or an idempotent
    `COMPLETE` if setup already matches exactly.
-2. The wrapper authenticates the owner to GitHub once if the existing `gh`
+2. If the two canonical names in `/home/azureuser/.config/govml/env` are
+   unset, the wrapper asks once, through hidden TTY prompts, for separate
+   fine-grained tokens restricted to `rexcoleman/govML` and
+   `rexcoleman/research_enforcement_activation` with Contents read-only access.
+   It proves owner, exact repository, tree-read capability, and absence of
+   admin, maintain, push, and triage capability before an atomic mode-`0600`
+   update. Existing values must pass the same live checks. It then invokes the
+   already-registered Moonshots enrollment adapter to set
+   `GOVML_AUTHORITY_TOKEN` and `REA_BUNDLE_READ_TOKEN` on
+   `rexcoleman/adversarial-ml-landscape` through standard input, verifies both
+   names, and rolls back every newly-created name if any set or postcondition
+   fails. Expected output reports both names `SET`; it never reports values.
+3. The wrapper authenticates the owner to GitHub once if the existing `gh`
    session is absent or expired. It creates only the dedicated
    `govml-external-judge-approver` environment and refuses any required
    reviewer or wait-timer protection that would create a per-issuance human
@@ -40,25 +57,26 @@ directory does not matter.
    two identical reads precede any partial-state deletion. An unreadable list,
    foreign row, concurrent environment id, or protection drift refuses without
    deletion.
-3. It generates one Ed25519 keypair in process memory. The private half is sent
+4. It generates one Ed25519 keypair in process memory. The private half is sent
    over standard input to the dedicated environment secret and is never
    written to disk, printed, placed in an argument, or recorded in evidence.
    The environment receives the public-key digest plus the exact govML issuer
    commit and source digest as non-secret variables.
-4. The wrapper authenticates the owner to Azure once if required, derives the
+5. The wrapper authenticates the owner to Azure once if required, derives the
    current VM identity from the Azure Instance Metadata Service, and uses Azure
    VM Run Command to atomically link a staged public half at the verifier's
    fixed path as `root:root` mode `0644`. The measured predecessor is a regular
-   `nobody:nogroup` (`65534:65534`) mode `0644`, 113-byte file with SHA-256
+   `root:root` (`0:0`) mode `0644`, 113-byte file with SHA-256
    `69a974bc7dd189c6ee56d105a2abcf35ddba0e039b070f153ad82bd22806b928`;
    the same privileged transition binds it exactly, hard-links a protected
    backup, and atomically replaces it. Any predecessor drift or an unexpected
    target at execution time refuses. No Mac or BCS route is involved.
-5. It re-reads the fixed public file, proves ownership, mode, and exact digest,
+6. It re-reads the fixed public file, proves ownership, mode, and exact digest,
    marks the protected environment complete, and re-runs the whole preflight.
    Expected final line: `HOSTED_PRINCIPAL_SETUP_COMPLETE` with
-   `per_issuance_human_steps` equal to zero. Estimated duration is 5-10 minutes,
-   dominated by the two one-time browser authentications.
+   `per_issuance_human_steps` equal to zero. Estimated duration is 10-15
+   minutes, including hidden entry of the two read-only tokens and the two
+   one-time browser authentications.
 
 Afterward a machine dispatches exact non-secret create-request bytes to the
 registered workflow. The workflow signs with the protected environment secret
@@ -87,7 +105,7 @@ still leaving no invocation-created authority.
 | planted completion-marker failure | secret and public placement completed but final commit of setup state failed | wrapper re-reads and deletes only the exact package-owned pending environment, then removes only the regular root-owned non-writable public file with the expected digest | `test_transition_failures_run_recovery[mark]` passes |
 | interrupted pending setup | a prior process ended between protected-secret creation and completion | wrapper refuses a mismatched public file, re-reads the exact pending remote state twice, deletes that state, removes only its digest-matching public file, and starts a fresh transition | pending, mismatch, and remote-drift planted tests pass |
 | target appears after preflight | another file occupies the fixed path before root install | atomic no-clobber link fails; remote pending state is rolled back and the occupying file is unchanged | `test_post_preflight_target_appearance_never_overwrites_unrelated_key` passes |
-| measured predecessor plus planted later failure | the real nobody-owned predecessor was replaced, then setup failed before the complete marker | exact pending remote state is deleted and the privileged rollback atomically restores predecessor bytes, uid, gid, and mode | `test_measured_predecessor_is_restored_exactly_on_later_failure` passes |
+| measured predecessor plus planted later failure | the real root-owned predecessor was replaced, then setup failed before the complete marker | exact pending remote state is deleted and the privileged rollback atomically restores predecessor bytes, uid, gid, and mode | `test_measured_predecessor_is_restored_exactly_on_later_failure` passes |
 | final check fails after complete marker | GitHub already holds exact complete state and the fixed file is the matching new root-owned key | the complete marker is the commit boundary; no destructive pending rollback runs, and rerun is idempotent | `test_final_postcheck_failure_after_marker_keeps_exact_complete_commit` passes |
 | rex payload or hosted workflow drifts | reviewed local bytes are no longer the landed protected-main package, or a dispatched run uses another commit | hard refusal before setup mutation or artifact credit | local-drift and wrong-head/receipt-commit planted tests pass |
 | configuration fails after environment creation or any variable/secret boundary | an attributable exact prefix exists | twice-read exact partial state is deleted; unreadable or foreign state refuses without DELETE | six-boundary, concurrent-appearance, and list-failure planted tests pass |

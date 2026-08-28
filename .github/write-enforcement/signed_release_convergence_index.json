@@ -69,6 +69,11 @@
       "adapter_id": "research-enforcement-activation-generation-5-s169-hosted-principal-v1",
       "path": "adapters/research_enforcement_activation.s169-hosted-principal-v1.json",
       "status": "active"
+    },
+    {
+      "adapter_id": "research-enforcement-activation-generation-5-s170-hosted-principal-ownership-v1",
+      "path": "adapters/research_enforcement_activation.s170-hosted-principal-ownership-v1.json",
+      "status": "active"
     }
   ],
   "documentation": "SIGNED_RELEASE_CONVERGENCE.md",
