@@ -11,9 +11,14 @@ on:
       - ".github/write-enforcement/signed_release_convergence.py"
       - ".github/write-enforcement/build_frozen_manifest.py"
       - ".github/write-enforcement/member_contract.py"
+      - ".github/write-enforcement/populate_rea_s170_govml_credentials.py"
+      - ".github/write-enforcement/rea_s170_owner_arc.sh"
+      - ".github/write-enforcement/setup_external_judge_hosted_principal.py"
       - ".github/write-enforcement/tests/test_signed_release_convergence.py"
       - ".github/write-enforcement/tests/test_build_frozen_manifest.py"
       - ".github/write-enforcement/tests/test_member_contract.py"
+      - ".github/write-enforcement/tests/test_s169_hosted_external_judge_principal.py"
+      - ".github/write-enforcement/tests/test_s170_owner_arc.py"
       - ".github/write-enforcement/tests/test_s131_convergence.py"
       - ".github/write-enforcement/tests/test_s132_staged_domain.py"
       - "tests/test_s111_signed_runtime_members.py"
@@ -29,9 +34,14 @@ on:
       - ".github/write-enforcement/signed_release_convergence.py"
       - ".github/write-enforcement/build_frozen_manifest.py"
       - ".github/write-enforcement/member_contract.py"
+      - ".github/write-enforcement/populate_rea_s170_govml_credentials.py"
+      - ".github/write-enforcement/rea_s170_owner_arc.sh"
+      - ".github/write-enforcement/setup_external_judge_hosted_principal.py"
       - ".github/write-enforcement/tests/test_signed_release_convergence.py"
       - ".github/write-enforcement/tests/test_build_frozen_manifest.py"
       - ".github/write-enforcement/tests/test_member_contract.py"
+      - ".github/write-enforcement/tests/test_s169_hosted_external_judge_principal.py"
+      - ".github/write-enforcement/tests/test_s170_owner_arc.py"
       - ".github/write-enforcement/tests/test_s131_convergence.py"
       - ".github/write-enforcement/tests/test_s132_staged_domain.py"
       - "tests/test_s111_signed_runtime_members.py"
@@ -67,6 +77,8 @@ jobs:
           .github/write-enforcement/tests/test_signed_release_convergence.py
           .github/write-enforcement/tests/test_build_frozen_manifest.py
           .github/write-enforcement/tests/test_member_contract.py
+          .github/write-enforcement/tests/test_s169_hosted_external_judge_principal.py
+          .github/write-enforcement/tests/test_s170_owner_arc.py
           .github/write-enforcement/tests/test_s131_convergence.py
           .github/write-enforcement/tests/test_s132_staged_domain.py
           tests/test_s111_signed_runtime_members.py
