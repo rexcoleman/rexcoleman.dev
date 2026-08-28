@@ -118,16 +118,6 @@ def validate_token(token: str, repository: str) -> None:
     repo = gh_json(token, f"repos/{repository}")
     if not isinstance(repo, dict) or repo.get("full_name") != repository:
         raise Refusal(f"TOKEN_REPOSITORY_REFUSED repository={repository}")
-    permissions = repo.get("permissions")
-    if (
-        not isinstance(permissions, dict)
-        or permissions.get("pull") is not True
-        or any(
-            permissions.get(name) is not False
-            for name in ("admin", "maintain", "push", "triage")
-        )
-    ):
-        raise Refusal(f"TOKEN_READ_ONLY_SCOPE_REFUSED repository={repository}")
     branch = repo.get("default_branch")
     if not isinstance(branch, str) or not branch:
         raise Refusal(f"TOKEN_DEFAULT_BRANCH_REFUSED repository={repository}")

@@ -38,9 +38,10 @@ directory does not matter.
    unset, the wrapper asks once, through hidden TTY prompts, for separate
    fine-grained tokens restricted to `rexcoleman/govML` and
    `rexcoleman/research_enforcement_activation` with Contents read-only access.
-   It proves owner, exact repository, tree-read capability, and absence of
-   admin, maintain, push, and triage capability before an atomic mode-`0600`
-   update. Existing values must pass the same live checks. It then invokes the
+   It proves owner, exact repository, and tree-read capability before an
+   atomic mode-`0600` update. Existing values must pass the same live checks.
+   The owner instruction requires Contents read-only scope; the read-only
+   limit is not inferred from repository-role metadata. It then invokes the
    already-registered Moonshots enrollment adapter to set
    `GOVML_AUTHORITY_TOKEN` and `REA_BUNDLE_READ_TOKEN` on
    `rexcoleman/adversarial-ml-landscape` through standard input, verifies both
@@ -138,5 +139,7 @@ This staged package does not prove the owner has run it, that the GitHub
 environment or secret exists, that the fixed public key has been replaced,
 that a hosted workflow has run, that a real authority has been issued, that a
 real subject has been read or disclosed, that F2/F3 is clear, or that any
-production activation is authorized. Scratch signatures and fake-backend
+production activation is authorized. The capability preflight proves exact
+repository tree read, not the absence of write scope; the owner instruction
+requires Contents read-only tokens. Scratch signatures and fake-backend
 rollback tests prove mechanism and refusal behavior only.

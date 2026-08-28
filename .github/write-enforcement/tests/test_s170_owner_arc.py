@@ -103,7 +103,7 @@ def test_complete_preflight_refuses_invalid_existing_token(
         tool.preflight(path)
 
 
-def test_token_capability_requires_read_without_write_privileges(
+def test_token_capability_proves_exact_repository_tree_read(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     tool = load_tool()
@@ -112,36 +112,12 @@ def test_token_capability_requires_read_without_write_privileges(
         {
             "full_name": "rexcoleman/govML",
             "default_branch": "main",
-            "permissions": {
-                "admin": False,
-                "maintain": False,
-                "push": False,
-                "triage": False,
-                "pull": True,
-            },
         },
         {"sha": "a" * 40},
     ))
     monkeypatch.setattr(tool, "gh_json", lambda _token, _endpoint: next(responses))
     tool.validate_token("github_pat_fixture", "rexcoleman/govML")
 
-    privileged = iter((
-        {"login": "rexcoleman"},
-        {
-            "full_name": "rexcoleman/govML",
-            "default_branch": "main",
-            "permissions": {
-                "admin": False,
-                "maintain": False,
-                "push": True,
-                "triage": False,
-                "pull": True,
-            },
-        },
-    ))
-    monkeypatch.setattr(tool, "gh_json", lambda _token, _endpoint: next(privileged))
-    with pytest.raises(tool.Refusal, match="TOKEN_READ_ONLY_SCOPE_REFUSED"):
-        tool.validate_token("github_pat_fixture", "rexcoleman/govML")
 
 
 def test_apply_validates_hidden_values_and_preserves_unrelated_rows(
