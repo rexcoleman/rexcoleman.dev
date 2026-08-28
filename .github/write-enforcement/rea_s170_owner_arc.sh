@@ -2,7 +2,7 @@
 set -euo pipefail
 
 REPOSITORY=/home/azureuser/rexcoleman.dev
-MOONSHOTS_REPOSITORY=/home/azureuser/Moonshots_Career_Thesis_v2
+MOONSHOTS_REPOSITORY=/home/azureuser/moonshots_rea_s170
 CREDENTIAL_TOOL=$REPOSITORY/.github/write-enforcement/populate_rea_s170_govml_credentials.py
 PRINCIPAL_TOOL=$REPOSITORY/.github/write-enforcement/setup_external_judge_hosted_principal.py
 PRINCIPAL_WRAPPER=$REPOSITORY/.github/write-enforcement/setup_external_judge_hosted_principal.sh
