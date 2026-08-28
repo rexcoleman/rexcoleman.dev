@@ -91,6 +91,13 @@ def test_setup_self_test_and_fixed_one_time_contract() -> None:
     assert "PENDING_REMOTE_STATE_DRIFT_REFUSED" in source
 
 
+def test_measured_production_predecessor_is_root_owned() -> None:
+    tool = load_tool()
+    assert tool.PREDECESSOR_UID == 0
+    assert tool.PREDECESSOR_GID == 0
+    assert tool.PREDECESSOR_MODE == 0o644
+
+
 def test_root_install_and_removal_scripts_are_no_clobber_and_digest_bound(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

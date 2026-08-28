@@ -43,8 +43,8 @@ PREDECESSOR_BACKUP_PATH = PUBLIC_KEY_PATH.with_name(
     PUBLIC_KEY_PATH.name + ".s169-predecessor"
 )
 PREDECESSOR_SHA256 = "69a974bc7dd189c6ee56d105a2abcf35ddba0e039b070f153ad82bd22806b928"
-PREDECESSOR_UID = 65534
-PREDECESSOR_GID = 65534
+PREDECESSOR_UID = 0
+PREDECESSOR_GID = 0
 PREDECESSOR_MODE = 0o644
 GOVML_REPOSITORY = Path("/home/azureuser/ml-governance-templates")
 ISSUER_PATH = "scripts/issue_external_judge_authority.py"
