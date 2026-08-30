@@ -28,6 +28,7 @@ AML_259_ADAPTER = ROOT / "adapters/adversarial_ml_landscape.population-259-v1.js
 S169_HARDENING_ADAPTER = ROOT / "adapters/research_enforcement_activation.s169-hardening-v1.json"
 S169_HOSTED_PRINCIPAL_ADAPTER = ROOT / "adapters/research_enforcement_activation.s169-hosted-principal-v1.json"
 S170_HOSTED_PRINCIPAL_OWNERSHIP_ADAPTER = ROOT / "adapters/research_enforcement_activation.s170-hosted-principal-ownership-v1.json"
+S173_AUTHENTICATED_HEAD_REBASE_ADAPTER = ROOT / "adapters/research_enforcement_activation.s173-authenticated-head-rebase-v1.json"
 INDEX = ROOT / "signed_release_convergence_index.json"
 INVENTORY = ROOT / "signed_release_convergence_inventory.json"
 DOC = ROOT / "SIGNED_RELEASE_CONVERGENCE.md"
@@ -389,6 +390,28 @@ def test_s170_hosted_principal_adapter_registers_live_root_ownership_repair():
     ]
 
 
+def test_s173_adapter_registers_authenticated_head_rebase_and_residue_fix():
+    value = tool.load_adapter(S173_AUTHENTICATED_HEAD_REBASE_ADAPTER)
+    assert value["adapter_id"] == (
+        "research-enforcement-activation-generation-5-"
+        "s173-authenticated-head-rebase-v1"
+    )
+    assert value["expected_member_count"] == 260
+    tests = {row["repository"]: row["paths"] for row in value["hermetic_tests"]}
+    assert "tests/test_s145_renewal_consumer.py" in tests[
+        "research_enforcement_activation"
+    ]
+    sources = {
+        row["repository"]: row["paths"] for row in value["system_python_sources"]
+    }
+    assert "scripts/s145_renewal_consumer.py" in sources[
+        "research_enforcement_activation"
+    ]
+    assert "write_integrity/attestation/authenticated_head_rebase.py" in sources[
+        "research_enforcement_activation"
+    ]
+
+
 @pytest.mark.parametrize(
     ("field", "planted", "reason"),
     [
@@ -538,6 +561,7 @@ def test_index_is_closed_and_resolves_every_registered_adapter():
             "research-enforcement-activation-generation-5-s169-hardening-v1",
             "research-enforcement-activation-generation-5-s169-hosted-principal-v1",
             "research-enforcement-activation-generation-5-s170-hosted-principal-ownership-v1",
+            "research-enforcement-activation-generation-5-s173-authenticated-head-rebase-v1",
     ]
     for adapter_id in identifiers:
         path = tool.resolve_adapter(INDEX, adapter_id)
@@ -565,6 +589,7 @@ def test_index_refuses_duplicate_unknown_retired_and_traversing_rows(
             S169_HARDENING_ADAPTER,
             S169_HOSTED_PRINCIPAL_ADAPTER,
             S170_HOSTED_PRINCIPAL_OWNERSHIP_ADAPTER,
+            S173_AUTHENTICATED_HEAD_REBASE_ADAPTER,
         ):
         shutil.copyfile(adapter_path, adapters / adapter_path.name)
     shutil.copyfile(WORKFLOW, tmp_path / "workflows" / WORKFLOW.name)
@@ -612,7 +637,7 @@ def test_index_refuses_duplicate_unknown_retired_and_traversing_rows(
 
 def test_cross_generation_inventory_is_closed_and_covers_six_properties():
     value = tool.load_cross_generation_inventory(INVENTORY)
-    assert len(value["entries"]) == 28
+    assert len(value["entries"]) == 29
     assert {row["repository"] for row in value["entries"]} == {
         "govML", "rexcoleman.dev",
     }
@@ -1046,6 +1071,10 @@ def test_list_adapters_and_indexed_execution_selection(monkeypatch, capsys, tmp_
         "adversarial-ml-landscape-generation-5-population-259-v1"
         "\tactive\t" in listed
     )
+    assert (
+        "research-enforcement-activation-generation-5-s173-"
+        "authenticated-head-rebase-v1\tactive\t" in listed
+    )
 
     captured = {}
 
@@ -1061,6 +1090,17 @@ def test_list_adapters_and_indexed_execution_selection(monkeypatch, capsys, tmp_
         "--plan",
     ]) == 0
     assert captured["adapter"] == ADAPTER
+
+    captured.clear()
+    assert tool.main([
+        "--adapter-id",
+        "research-enforcement-activation-generation-5-"
+        "s173-authenticated-head-rebase-v1",
+        "--state", str(tmp_path / "s173-state.json"),
+        "--evidence-dir", str(tmp_path / "s173-evidence"),
+        "--plan",
+    ]) == 0
+    assert captured["adapter"] == S173_AUTHENTICATED_HEAD_REBASE_ADAPTER
 
 
 def test_cli_refuses_ambiguous_or_missing_adapter_selection(capsys, tmp_path):

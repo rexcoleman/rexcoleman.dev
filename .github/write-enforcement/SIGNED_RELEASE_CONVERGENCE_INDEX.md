@@ -54,6 +54,17 @@ host identity: regular `root:root` mode `0644`. The earlier `65534:65534`
 observation was a sandbox namespace artifact and is not an admissible
 production precondition. The successor changes no schema and fires no setup,
 issuance, freeze, WEA reissue, or F2/F3 activation.
+A population-preserving s173 successor is registered as
+`research-enforcement-activation-generation-5-s173-authenticated-head-rebase-v1`.
+It retains the s170 hosted-principal contract and adds the consumer-side,
+no-issuance authenticated-head re-base.  The selected adapter hermetically
+tests an exact signed public-tag walk from a stale installed anchor to the
+current live head, refuses a forged head and every missing or skipped
+intermediate link, reuses the atomic state/libexec rollback and resume
+boundary, records the ordered run/tag/commit evidence, and binds the cron's
+bytecode-residue prevention.  Registration plans and tests these bytes; it
+does not fire convergence, issue or reissue an attestation, change the WEA
+generation, or activate F2/F3.
 A
 population change always gets a new stable
 adapter identity; the 251- and 255-member adapters remain
