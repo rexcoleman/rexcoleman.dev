@@ -410,6 +410,10 @@ def test_s173_adapter_registers_authenticated_head_rebase_and_residue_fix():
     assert "write_integrity/attestation/authenticated_head_rebase.py" in sources[
         "research_enforcement_activation"
     ]
+    assert "tests/test_ci_materialize_enforcement.py" in tests["govML"]
+    assert "templates/build/enforcement/ci_materialize_enforcement.py" in sources[
+        "govML"
+    ]
 
 
 @pytest.mark.parametrize(
