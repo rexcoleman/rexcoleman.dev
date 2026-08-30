@@ -57,12 +57,18 @@ issuance, freeze, WEA reissue, or F2/F3 activation.
 A population-preserving s173 successor is registered as
 `research-enforcement-activation-generation-5-s173-authenticated-head-rebase-v1`.
 It retains the s170 hosted-principal contract and adds the consumer-side,
-no-issuance authenticated-head re-base.  The selected adapter hermetically
+no-issuance authenticated-head re-base at both the machine-state renewal and
+project-local installed-copy refresh surfaces. The selected adapter hermetically
 tests an exact signed public-tag walk from a stale installed anchor to the
 current live head, refuses a forged head and every missing or skipped
 intermediate link, reuses the atomic state/libexec rollback and resume
-boundary, records the ordered run/tag/commit evidence, and binds the cron's
-bytecode-residue prevention.  Registration plans and tests these bytes; it
+boundary, records the ordered run/tag/commit evidence, binds the cron's
+bytecode-residue prevention, and proves a consumer runner never imports the
+REA working tree. The project refresh installs the byte-identical verifier as
+`scripts/authenticated_head_rebase.py` in the consumer's signed managed set and
+loads only that project-local path, including when the current packet still
+pins a predecessor REA commit that predates s173. Registration plans and tests
+these bytes; it
 does not fire convergence, issue or reissue an attestation, change the WEA
 generation, or activate F2/F3.
 A
