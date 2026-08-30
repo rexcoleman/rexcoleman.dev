@@ -64,9 +64,11 @@ current live head, refuses a forged head and every missing or skipped
 intermediate link, reuses the atomic state/libexec rollback and resume
 boundary, records the ordered run/tag/commit evidence, binds the cron's
 bytecode-residue prevention, and proves a consumer runner never imports the
-REA working tree. The project refresh loads the same verifier from the exact
-REA commit named by the authenticated head manifest. Registration plans and
-tests these bytes; it
+REA working tree. The project refresh installs the byte-identical verifier as
+`scripts/authenticated_head_rebase.py` in the consumer's signed managed set and
+loads only that project-local path, including when the current packet still
+pins a predecessor REA commit that predates s173. Registration plans and tests
+these bytes; it
 does not fire convergence, issue or reissue an attestation, change the WEA
 generation, or activate F2/F3.
 A
