@@ -91,6 +91,12 @@ Both adapters run the Moonshots same-cycle grounding proof in addition to the
 existing rexdev, govML, and REA hermetic suites. The 257-member adapters remain
 registered as the exact predecessor contract and are never redefined.
 
+Epoch 106 installed a 260-member signed root. Its population-preserving dependent
+successors are `newsletter-generation-architecture-generation-5-population-260-v1`
+and `research-engine-release-generation-5-population-260-v1`. The 259-member
+adapters remain registered as immutable predecessor contracts; callers select the
+260-member successors explicitly with `--adapter-id`.
+
 The s165 AML route is registered as
 `adversarial-ml-landscape-generation-5-population-259-v1`. Its Moonshots
 hermetic surface covers the one-time committed `PENDING_SIGNED_BUNDLE` genesis

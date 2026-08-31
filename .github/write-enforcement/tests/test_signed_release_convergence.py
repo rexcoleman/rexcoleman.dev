@@ -24,6 +24,8 @@ NGA_257_ADAPTER = ROOT / "adapters/newsletter_generation_architecture.population
 RER_257_ADAPTER = ROOT / "adapters/research_engine_release.population-257-v1.json"
 NGA_259_ADAPTER = ROOT / "adapters/newsletter_generation_architecture.population-259-v1.json"
 RER_259_ADAPTER = ROOT / "adapters/research_engine_release.population-259-v1.json"
+NGA_260_ADAPTER = ROOT / "adapters/newsletter_generation_architecture.population-260-v1.json"
+RER_260_ADAPTER = ROOT / "adapters/research_engine_release.population-260-v1.json"
 AML_259_ADAPTER = ROOT / "adapters/adversarial_ml_landscape.population-259-v1.json"
 S169_HARDENING_ADAPTER = ROOT / "adapters/research_enforcement_activation.s169-hardening-v1.json"
 S169_HOSTED_PRINCIPAL_ADAPTER = ROOT / "adapters/research_enforcement_activation.s169-hosted-principal-v1.json"
@@ -296,6 +298,32 @@ def test_population_259_adapters_bind_build_grounding_and_exact_targets():
         ]
 
 
+def test_population_260_successors_bind_exact_dependents_and_member_root():
+    expected = {
+        NGA_260_ADAPTER: (
+            "newsletter-generation-architecture-generation-5-population-260-v1",
+            "newsletter_generation_architecture",
+            "main",
+            "F09",
+        ),
+        RER_260_ADAPTER: (
+            "research-engine-release-generation-5-population-260-v1",
+            "research_engine_release",
+            "master",
+            "AUTHORITY_LAPSED",
+        ),
+    }
+    for path, (adapter_id, project_id, default_branch, refusal) in expected.items():
+        value = tool.load_adapter(path)
+        assert value["adapter_id"] == adapter_id
+        assert value["expected_member_count"] == 260
+        dependent = value["dependent_project"]
+        assert dependent["project_id"] == project_id
+        assert dependent["default_branch"] == default_branch
+        assert dependent["named_refusal"] == refusal
+        assert dependent["required_source"] == "SIGNED_BUNDLE"
+
+
 def test_aml_population_259_adapter_binds_pending_genesis_transition():
     value = tool.load_adapter(AML_259_ADAPTER)
     assert value["adapter_id"] == (
@@ -479,7 +507,8 @@ def test_dependent_adapter_contract_evidence_binds_target_and_poststate(
 @pytest.mark.parametrize(
     "adapter_path", [
             NGA_ADAPTER, RER_ADAPTER, NGA_257_ADAPTER, RER_257_ADAPTER,
-            NGA_259_ADAPTER, RER_259_ADAPTER, AML_259_ADAPTER,
+            NGA_259_ADAPTER, RER_259_ADAPTER,
+            NGA_260_ADAPTER, RER_260_ADAPTER, AML_259_ADAPTER,
     ]
 )
 def test_dependent_adapter_resume_preserves_refusal_and_evidence(
@@ -564,6 +593,8 @@ def test_index_is_closed_and_resolves_every_registered_adapter():
         "research-engine-release-generation-5-population-257-v1",
         "newsletter-generation-architecture-generation-5-population-259-v1",
             "research-engine-release-generation-5-population-259-v1",
+            "newsletter-generation-architecture-generation-5-population-260-v1",
+            "research-engine-release-generation-5-population-260-v1",
             "adversarial-ml-landscape-generation-5-population-259-v1",
             "research-enforcement-activation-generation-5-s169-hardening-v1",
             "research-enforcement-activation-generation-5-s169-hosted-principal-v1",
@@ -592,7 +623,8 @@ def test_index_refuses_duplicate_unknown_retired_and_traversing_rows(
         ADAPTER, REGISTRATION_ADAPTER, BAND_C_ADAPTER, W2_ADAPTER,
         W2_DERIVED_ADAPTER,
         NGA_ADAPTER, RER_ADAPTER, NGA_257_ADAPTER, RER_257_ADAPTER,
-            NGA_259_ADAPTER, RER_259_ADAPTER, AML_259_ADAPTER,
+            NGA_259_ADAPTER, RER_259_ADAPTER,
+            NGA_260_ADAPTER, RER_260_ADAPTER, AML_259_ADAPTER,
             S169_HARDENING_ADAPTER,
             S169_HOSTED_PRINCIPAL_ADAPTER,
             S170_HOSTED_PRINCIPAL_OWNERSHIP_ADAPTER,
@@ -644,7 +676,7 @@ def test_index_refuses_duplicate_unknown_retired_and_traversing_rows(
 
 def test_cross_generation_inventory_is_closed_and_covers_six_properties():
     value = tool.load_cross_generation_inventory(INVENTORY)
-    assert len(value["entries"]) == 29
+    assert len(value["entries"]) == 31
     assert {row["repository"] for row in value["entries"]} == {
         "govML", "rexcoleman.dev",
     }
@@ -1072,6 +1104,14 @@ def test_list_adapters_and_indexed_execution_selection(monkeypatch, capsys, tmp_
     )
     assert (
         "research-engine-release-generation-5-population-259-v1"
+        "\tactive\t" in listed
+    )
+    assert (
+        "newsletter-generation-architecture-generation-5-population-260-v1"
+        "\tactive\t" in listed
+    )
+    assert (
+        "research-engine-release-generation-5-population-260-v1"
         "\tactive\t" in listed
     )
     assert (
