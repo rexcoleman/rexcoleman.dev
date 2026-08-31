@@ -56,6 +56,16 @@
       "status": "active"
     },
     {
+      "adapter_id": "newsletter-generation-architecture-generation-5-population-260-v1",
+      "path": "adapters/newsletter_generation_architecture.population-260-v1.json",
+      "status": "active"
+    },
+    {
+      "adapter_id": "research-engine-release-generation-5-population-260-v1",
+      "path": "adapters/research_engine_release.population-260-v1.json",
+      "status": "active"
+    },
+    {
       "adapter_id": "adversarial-ml-landscape-generation-5-population-259-v1",
       "path": "adapters/adversarial_ml_landscape.population-259-v1.json",
       "status": "active"
