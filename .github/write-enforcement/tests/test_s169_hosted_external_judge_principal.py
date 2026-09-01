@@ -25,7 +25,20 @@ def load_tool():
 
 
 def empty_state() -> dict:
-    return {"environment": None, "variables": {}, "secrets": set()}
+    return {
+        "environment": None, "variables": {}, "secrets": set(),
+        "branch_policies": [],
+    }
+
+
+def exact_environment(tool, environment_id: int | None = None) -> dict:
+    value = {
+        "protection_rules": [{"type": "branch_policy"}],
+        "deployment_branch_policy": dict(tool.EXACT_DEPLOYMENT_POLICY),
+    }
+    if environment_id is not None:
+        value["id"] = environment_id
+    return value
 
 
 def test_workflow_is_protected_machine_invoked_exact_byte_signing() -> None:
@@ -86,6 +99,9 @@ def test_setup_self_test_and_fixed_one_time_contract() -> None:
     assert "private_raw = \"\"" in source
     assert "per_issuance_human_steps\": 0" in source
     assert "payload_binding()" in source
+    assert tool.REPOSITORY == "rexcoleman/govML"
+    assert tool.APPROVING_ID == 313448611
+    assert tool.EXACT_BRANCH_POLICIES == [{"name": "main", "type": "branch"}]
     assert "ln \\\"$stage\\\"" in source
     assert "PENDING_PUBLIC_KEY_MISMATCH_REFUSED" in source
     assert "PENDING_REMOTE_STATE_DRIFT_REFUSED" in source
@@ -167,7 +183,8 @@ def install_fake_transition(monkeypatch: pytest.MonkeyPatch, tool, failure: str 
         tracker = values["tracker"]
         tracker.update({"started": True, "environment_id": 169})
         public_sha = values["public_sha256"]
-        remote["environment"] = {"id": 169, "protection_rules": []}
+        remote["environment"] = exact_environment(tool, 169)
+        remote["branch_policies"] = list(tool.EXACT_BRANCH_POLICIES)
         remote["variables"] = {
             tool.STATE_VARIABLE: f"pending:{public_sha}",
             tool.PUBLIC_SHA_VARIABLE: public_sha,
@@ -375,7 +392,8 @@ def test_pending_interruption_is_recovered_before_fresh_transition(
     tool = load_tool()
     remote, local, _backup, events = install_fake_transition(monkeypatch, tool)
     remote.update({
-        "environment": {"protection_rules": []},
+        "environment": exact_environment(tool),
+        "branch_policies": list(tool.EXACT_BRANCH_POLICIES),
         "variables": {
             tool.STATE_VARIABLE: "pending:" + "c" * 64,
             tool.PUBLIC_SHA_VARIABLE: "c" * 64,
@@ -400,7 +418,8 @@ def test_pending_mismatched_public_key_hard_refuses_without_recovery_mutation(
     tool = load_tool()
     remote, local, _backup, events = install_fake_transition(monkeypatch, tool)
     remote.update({
-        "environment": {"protection_rules": []},
+        "environment": exact_environment(tool),
+        "branch_policies": list(tool.EXACT_BRANCH_POLICIES),
         "variables": {
             tool.STATE_VARIABLE: "pending:" + "c" * 64,
             tool.PUBLIC_SHA_VARIABLE: "c" * 64,
@@ -417,6 +436,7 @@ def test_pending_mismatched_public_key_hard_refuses_without_recovery_mutation(
         "environment": dict(remote["environment"]),
         "variables": dict(remote["variables"]),
         "secrets": set(remote["secrets"]),
+        "branch_policies": list(remote["branch_policies"]),
     }
     before_local = dict(local)
     with pytest.raises(tool.SetupRefusal, match="PENDING_PUBLIC_KEY_MISMATCH_REFUSED"):
@@ -435,7 +455,8 @@ def test_remote_pending_state_drift_refuses_delete_without_mutation(
     public_sha = "c" * 64
     binding = ("a" * 40, "b" * 64)
     exact = {
-        "environment": {"protection_rules": []},
+        "environment": exact_environment(tool),
+        "branch_policies": list(tool.EXACT_BRANCH_POLICIES),
         "variables": {
             tool.STATE_VARIABLE: f"pending:{public_sha}",
             tool.PUBLIC_SHA_VARIABLE: public_sha,
@@ -445,7 +466,8 @@ def test_remote_pending_state_drift_refuses_delete_without_mutation(
         "secrets": {tool.SECRET_NAME},
     }
     drift = {
-        "environment": {"protection_rules": []},
+        "environment": exact_environment(tool),
+        "branch_policies": list(tool.EXACT_BRANCH_POLICIES),
         "variables": dict(exact["variables"]) | {tool.STATE_VARIABLE: "complete:" + public_sha},
         "secrets": {tool.SECRET_NAME},
     }
@@ -477,15 +499,20 @@ def test_each_partial_configuration_boundary_is_attributed_and_rolled_back(
             "environment": None if remote["environment"] is None else dict(remote["environment"]),
             "variables": dict(remote["variables"]),
             "secrets": set(remote["secrets"]),
+            "branch_policies": list(remote["branch_policies"]),
         }
 
     monkeypatch.setattr(tool, "remote_state", snapshot)
 
     def fake_command(arguments, **kwargs):
         if "PUT" in arguments:
-            remote["environment"] = {"id": 169, "protection_rules": []}
+            remote["environment"] = exact_environment(tool, 169)
             mutations.append("put")
             return SimpleNamespace(returncode=0, stdout='{"id":169}', stderr="")
+        if "POST" in arguments:
+            remote["branch_policies"] = list(tool.EXACT_BRANCH_POLICIES)
+            mutations.append("policy")
+            return SimpleNamespace(returncode=0, stdout='{}', stderr="")
         if arguments[:3] == ["gh", "variable", "set"]:
             position = len(remote["variables"]) + 1
             name = arguments[3]
@@ -524,7 +551,7 @@ def test_each_partial_configuration_boundary_is_attributed_and_rolled_back(
             )
         assert tracker == {"started": True, "environment_id": None}
         assert mutations == ["put"]
-        assert remote["environment"] == {"id": 169, "protection_rules": []}
+        assert remote["environment"] == exact_environment(tool, 169)
         return
 
     with pytest.raises(tool.SetupRefusal, match="PLANTED_CONFIG_BOUNDARY"):
@@ -546,9 +573,10 @@ def test_concurrent_environment_appearance_is_never_deleted(
     rows = iter([
         empty_state(),
         {
-            "environment": {"id": 999, "protection_rules": []},
+            "environment": exact_environment(tool, 999),
             "variables": {"FOREIGN": "state"},
             "secrets": set(),
+            "branch_policies": list(tool.EXACT_BRANCH_POLICIES),
         },
     ])
     deletes = []
@@ -558,6 +586,8 @@ def test_concurrent_environment_appearance_is_never_deleted(
         lambda arguments, **kwargs: (
             SimpleNamespace(returncode=0, stdout='{"id":169}', stderr="")
             if "PUT" in arguments else deletes.append(arguments)
+            if "POST" not in arguments else
+            SimpleNamespace(returncode=0, stdout='{}', stderr="")
         ),
     )
     tracker = {"started": False, "environment_id": None}
@@ -567,6 +597,51 @@ def test_concurrent_environment_appearance_is_never_deleted(
             issuer_commit="a" * 40, issuer_sha256="b" * 64, tracker=tracker,
         )
     assert deletes == []
+
+
+def test_environment_policy_and_authenticated_approver_are_exact() -> None:
+    tool = load_tool()
+    exact = exact_environment(tool, 169)
+    assert tool.exact_environment_policy(exact, tool.EXACT_BRANCH_POLICIES)
+    assert not tool.exact_environment_policy(exact, [{"name": "main", "type": "tag"}])
+    reviewed = dict(exact)
+    reviewed["protection_rules"] = [{"type": "required_reviewers"}]
+    assert not tool.exact_environment_policy(reviewed, tool.EXACT_BRANCH_POLICIES)
+
+
+def test_wrong_authenticated_principal_refuses(monkeypatch: pytest.MonkeyPatch) -> None:
+    tool = load_tool()
+    monkeypatch.setattr(
+        tool, "command",
+        lambda arguments, **kwargs: SimpleNamespace(
+            returncode=0, stdout='{"login":"rexcoleman","id":89108541}', stderr="",
+        ),
+    )
+    with pytest.raises(tool.SetupRefusal, match="APPROVING_PRINCIPAL_AUTHENTICATION_REFUSED"):
+        tool.authenticated_approver()
+
+
+def test_issuer_binding_requires_exact_approver_actor_marker(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    tool = load_tool()
+    issuer = "approve-request-hosted GOVML_EXTERNAL_JUDGE_APPROVING_PRIVATE_KEY_PEM request remaining TTL exceeds"
+    workflow = "workflow_dispatch: environment: govml-external-judge-approver GOVML_EXTERNAL_JUDGE_APPROVING_PRIVATE_KEY_PEM GOVML_EXTERNAL_JUDGE_APPROVING_PUBLIC_KEY_SHA256 refs/heads/main GITHUB_REF_PROTECTED"
+
+    def fake_command(arguments, **kwargs):
+        if "ls-remote" in arguments:
+            return SimpleNamespace(
+                returncode=0, stdout="a" * 40 + "\trefs/heads/main\n", stderr="",
+            )
+        return SimpleNamespace(
+            returncode=0,
+            stdout=issuer if arguments[-1].endswith(tool.ISSUER_PATH) else workflow,
+            stderr="",
+        )
+
+    monkeypatch.setattr(tool, "command", fake_command)
+    with pytest.raises(tool.SetupRefusal, match="GOVML_APPROVER_IDENTITY_WORKFLOW_NOT_LANDED"):
+        tool.issuer_binding()
 
 
 @pytest.mark.parametrize("failed_kind", ["variable", "secret"])

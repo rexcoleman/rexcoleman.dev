@@ -21,13 +21,12 @@ from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
 
-REPOSITORY = "rexcoleman/rexcoleman.dev"
-REX_REPOSITORY = Path("/home/azureuser/rexcoleman.dev")
+REPOSITORY = "rexcoleman/govML"
+REX_REPOSITORY = Path(__file__).resolve().parents[2]
 PAYLOAD_PATHS = (
     ".github/write-enforcement/setup_external_judge_hosted_principal.py",
     ".github/write-enforcement/setup_external_judge_hosted_principal.sh",
     ".github/write-enforcement/rea_s169_external_judge_principal_owner_row.txt",
-    ".github/workflows/issue-external-judge-authority.yml",
 )
 ENVIRONMENT = "govml-external-judge-approver"
 SECRET_NAME = "GOVML_EXTERNAL_JUDGE_APPROVING_PRIVATE_KEY_PEM"
@@ -48,6 +47,14 @@ PREDECESSOR_GID = 0
 PREDECESSOR_MODE = 0o644
 GOVML_REPOSITORY = Path("/home/azureuser/ml-governance-templates")
 ISSUER_PATH = "scripts/issue_external_judge_authority.py"
+WORKFLOW_PATH = ".github/workflows/issue-external-judge-authority.yml"
+APPROVING_LOGIN = "rexcoleman-ci"
+APPROVING_ID = 313448611
+EXACT_DEPLOYMENT_POLICY = {
+    "protected_branches": False,
+    "custom_branch_policies": True,
+}
+EXACT_BRANCH_POLICIES = [{"name": "main", "type": "branch"}]
 METADATA_URL = (
     "http://169.254.169.254/metadata/instance/compute"
     "?api-version=2021-02-01"
@@ -136,6 +143,21 @@ def issuer_binding() -> tuple[str, str]:
     )
     if not all(marker.encode("ascii") in raw for marker in required):
         raise SetupRefusal("GOVML_HOSTED_ISSUER_NOT_LANDED")
+    workflow = command([
+        "git", "-C", str(GOVML_REPOSITORY), "show", f"{commit}:{WORKFLOW_PATH}",
+    ]).stdout.encode("utf-8")
+    workflow_required = (
+        "workflow_dispatch:",
+        "environment: govml-external-judge-approver",
+        "GOVML_EXTERNAL_JUDGE_APPROVING_PRIVATE_KEY_PEM",
+        "GOVML_EXTERNAL_JUDGE_APPROVING_PUBLIC_KEY_SHA256",
+        "github.actor_id",
+        str(APPROVING_ID),
+        "refs/heads/main",
+        "GITHUB_REF_PROTECTED",
+    )
+    if not all(marker.encode("ascii") in workflow for marker in workflow_required):
+        raise SetupRefusal("GOVML_APPROVER_IDENTITY_WORKFLOW_NOT_LANDED")
     return commit, sha256(raw)
 
 
@@ -212,9 +234,46 @@ def gh_environment() -> dict | None:
         raise SetupRefusal("GITHUB_ENVIRONMENT_JSON_REFUSED") from exc
     if not isinstance(value, dict):
         raise SetupRefusal("GITHUB_ENVIRONMENT_JSON_REFUSED")
-    if value.get("protection_rules") not in ([], None):
+    rules = value.get("protection_rules") or []
+    if any(
+        not isinstance(row, dict) or row.get("type") != "branch_policy"
+        for row in rules
+    ):
         raise SetupRefusal("PER_ISSUANCE_HUMAN_REVIEW_REFUSED")
     return value
+
+
+def gh_branch_policies() -> list[dict]:
+    completed = command(
+        [
+            "gh", "api", "--method", "GET",
+            f"repos/{REPOSITORY}/environments/{ENVIRONMENT}/deployment-branch-policies",
+        ],
+        allow_failure=True,
+    )
+    if completed.returncode:
+        raise SetupRefusal("GITHUB_BRANCH_POLICY_LIST_REFUSED")
+    try:
+        value = json.loads(completed.stdout).get("branch_policies")
+    except (AttributeError, json.JSONDecodeError) as exc:
+        raise SetupRefusal("GITHUB_BRANCH_POLICY_LIST_REFUSED") from exc
+    if not isinstance(value, list):
+        raise SetupRefusal("GITHUB_BRANCH_POLICY_LIST_REFUSED")
+    return [
+        {"name": row.get("name"), "type": row.get("type")}
+        for row in value if isinstance(row, dict)
+    ]
+
+
+def exact_environment_policy(environment: dict | None, branch_policies: list[dict]) -> bool:
+    if not isinstance(environment, dict):
+        return False
+    rules = environment.get("protection_rules") or []
+    return (
+        [row.get("type") for row in rules if isinstance(row, dict)] == ["branch_policy"]
+        and environment.get("deployment_branch_policy") == EXACT_DEPLOYMENT_POLICY
+        and branch_policies == EXACT_BRANCH_POLICIES
+    )
 
 
 def gh_rows(kind: str) -> list[dict]:
@@ -244,7 +303,13 @@ def remote_state() -> dict:
         row.get("name") for row in gh_rows("secret")
         if isinstance(row, dict) and isinstance(row.get("name"), str)
     } if environment else set()
-    return {"environment": environment, "variables": variables, "secrets": secrets}
+    branch_policies = gh_branch_policies() if environment else []
+    return {
+        "environment": environment,
+        "variables": variables,
+        "secrets": secrets,
+        "branch_policies": branch_policies,
+    }
 
 
 def file_state(path: Path) -> dict:
@@ -290,6 +355,17 @@ def exact_predecessor(state: dict) -> bool:
     )
 
 
+def authenticated_approver() -> dict:
+    completed = command(["gh", "api", "user"], allow_failure=True)
+    try:
+        value = json.loads(completed.stdout) if completed.returncode == 0 else {}
+    except json.JSONDecodeError as exc:
+        raise SetupRefusal("APPROVING_PRINCIPAL_AUTHENTICATION_REFUSED") from exc
+    if (value.get("login"), value.get("id")) != (APPROVING_LOGIN, APPROVING_ID):
+        raise SetupRefusal("APPROVING_PRINCIPAL_AUTHENTICATION_REFUSED")
+    return {"login": value["login"], "id": value["id"]}
+
+
 def gh_login() -> None:
     status = command(["gh", "auth", "status", "--hostname", "github.com"], allow_failure=True)
     if status.returncode:
@@ -297,6 +373,13 @@ def gh_login() -> None:
             "gh", "auth", "login", "--hostname", "github.com", "--git-protocol", "https", "--web",
         ])
     command(["gh", "auth", "status", "--hostname", "github.com"])
+    try:
+        authenticated_approver()
+    except SetupRefusal:
+        interactive([
+            "gh", "auth", "login", "--hostname", "github.com", "--git-protocol", "https", "--web",
+        ])
+        authenticated_approver()
 
 
 def azure_environment() -> dict[str, str]:
@@ -456,8 +539,7 @@ def expected_pending_state(
     *, public_sha256: str, binding: tuple[str, str], state: dict,
 ) -> bool:
     return (
-        state["environment"] is not None
-        and state["environment"].get("protection_rules") in ([], None)
+        exact_environment_policy(state["environment"], state["branch_policies"])
         and state["secrets"] == {SECRET_NAME}
         and state["variables"] == {
             STATE_VARIABLE: f"pending:{public_sha256}",
@@ -505,7 +587,7 @@ def exact_partial_state(
     return (
         isinstance(environment, dict)
         and environment.get("id") == environment_id
-        and environment.get("protection_rules") in ([], None)
+        and exact_environment_policy(environment, state.get("branch_policies", []))
         and state.get("variables") == dict(values[:completed_values])
         and state.get("secrets") == ({SECRET_NAME} if secret_present else set())
     )
@@ -518,10 +600,13 @@ def configure_environment(
     if remote_state()["environment"] is not None:
         raise SetupRefusal("CONCURRENT_ENVIRONMENT_APPEARANCE_REFUSED")
     tracker["started"] = True
-    created = command([
-        "gh", "api", "--method", "PUT",
-        f"repos/{REPOSITORY}/environments/{ENVIRONMENT}",
-    ])
+    created = command(
+        [
+            "gh", "api", "--method", "PUT",
+            f"repos/{REPOSITORY}/environments/{ENVIRONMENT}", "--input", "-",
+        ],
+        input_text=json.dumps({"deployment_branch_policy": EXACT_DEPLOYMENT_POLICY}),
+    )
     try:
         environment_id = json.loads(created.stdout).get("id")
     except (AttributeError, json.JSONDecodeError) as exc:
@@ -529,6 +614,14 @@ def configure_environment(
     if not isinstance(environment_id, int) or environment_id <= 0:
         raise SetupRefusal("CREATED_ENVIRONMENT_ID_REFUSED")
     tracker["environment_id"] = environment_id
+    command(
+        [
+            "gh", "api", "--method", "POST",
+            f"repos/{REPOSITORY}/environments/{ENVIRONMENT}/deployment-branch-policies",
+            "--input", "-",
+        ],
+        input_text=json.dumps(EXACT_BRANCH_POLICIES[0]),
+    )
     values = partial_values(
         public_sha256=public_sha256,
         issuer_commit=issuer_commit,
@@ -601,7 +694,7 @@ def completed_postmark_state(state: dict, local: dict, binding: tuple[str, str])
     variables = state["variables"]
     public_sha = variables.get(PUBLIC_SHA_VARIABLE)
     return (
-        state["environment"] is not None
+        exact_environment_policy(state["environment"], state["branch_policies"])
         and state["secrets"] == {SECRET_NAME}
         and variables == {
             STATE_VARIABLE: f"complete:{public_sha}",
@@ -625,6 +718,7 @@ def completed_state(
 
 def preflight() -> dict:
     ensure_host()
+    approver = authenticated_approver()
     payload_commit, payload_digests = payload_binding()
     binding = issuer_binding()
     state = remote_state()
@@ -649,6 +743,7 @@ def preflight() -> dict:
         "host": socket.gethostname(),
         "repository": REPOSITORY,
         "environment": ENVIRONMENT,
+        "authenticated_approver": approver,
         "issuer_commit": binding[0],
         "issuer_sha256": binding[1],
         "rex_payload_commit": payload_commit,

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-REPOSITORY=/home/azureuser/rexcoleman.dev
+REPOSITORY="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." && pwd -P)"
 TOOL=$REPOSITORY/.github/write-enforcement/setup_external_judge_hosted_principal.py
 if [[ ! -f "$TOOL" || -L "$TOOL" ]]; then
   printf 'HOSTED_PRINCIPAL_SETUP_REFUSED reason=CHECKED_TOOL_ABSENT path=%s\n' "$TOOL"
@@ -21,7 +21,6 @@ PAYLOAD=(
   .github/write-enforcement/setup_external_judge_hosted_principal.py
   .github/write-enforcement/setup_external_judge_hosted_principal.sh
   .github/write-enforcement/rea_s169_external_judge_principal_owner_row.txt
-  .github/workflows/issue-external-judge-authority.yml
 )
 if [[ -n "$(/usr/bin/git -C "$REPOSITORY" status --porcelain -- "${PAYLOAD[@]}")" ]]; then
   printf 'HOSTED_PRINCIPAL_SETUP_REFUSED reason=REX_PAYLOAD_DIRTY_REFUSED\n'
