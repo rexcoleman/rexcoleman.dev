@@ -22,7 +22,7 @@ from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
 
 REPOSITORY = "rexcoleman/rexcoleman.dev"
-REX_REPOSITORY = Path("/home/azureuser/rexcoleman.dev")
+REX_REPOSITORY = Path(__file__).resolve().parents[2]
 PAYLOAD_PATHS = (
     ".github/write-enforcement/setup_external_judge_hosted_principal.py",
     ".github/write-enforcement/setup_external_judge_hosted_principal.sh",

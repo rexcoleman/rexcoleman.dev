@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-REPOSITORY=/home/azureuser/rexcoleman.dev
+REPOSITORY="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." && pwd -P)"
 TOOL=$REPOSITORY/.github/write-enforcement/setup_external_judge_hosted_principal.py
 if [[ ! -f "$TOOL" || -L "$TOOL" ]]; then
   printf 'HOSTED_PRINCIPAL_SETUP_REFUSED reason=CHECKED_TOOL_ABSENT path=%s\n' "$TOOL"
