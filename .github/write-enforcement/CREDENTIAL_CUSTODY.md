@@ -45,6 +45,47 @@ renewal run at least six hours before the live attestation expires. Lapse
 surfaces while enforcement is still valid. That is the difference between this
 and what happened before.
 
+## Primary GitHub App custody for governed-project reads
+
+New governed research projects use one read-only GitHub App rather than
+project-specific long-lived read tokens. The only long-lived repository-secret
+names for this route are:
+
+- `GOVML_REA_READ_APP_ID` — the numeric ID of the App installed for the exact
+  registered repository set;
+- `GOVML_REA_READ_APP_PRIVATE_KEY_B64` — the App private key in single-line
+  base64 transport encoding. Base64 is not encryption.
+
+The owner creates and installs the App through GitHub's App settings. Its
+installation is owned by `rexcoleman`, grants Contents:Read and no broader
+permission, and is limited to `govML`, `research_enforcement_activation`,
+`Moonshots_Career_Thesis`, `newsletter`, and `rexcoleman.dev`. The canonical
+local enrollment source is the mode-0600 `~/.config/govml/env`; Moonshots
+validates the complete pair against that exact installation before reconciling
+both names into a governed repository. Values never enter this document,
+command arguments, logs, or public enrollment output.
+
+Each hosted run uses the signed installed
+`scripts/github_app_installation_token.py` to create a fresh App JWT, prove the
+installation identity, permissions, and closed repository set, then mint one
+short-lived installation token. The token is verified against all five exact
+repositories and is never stored as a repository secret. Check-only mode
+withholds it. The workflow mode writes it atomically to a mode-0600 temporary
+file, uses it only for current-run exact Git/API reads, disables credential
+persistence, and removes the file before untrusted gate code runs. Neither the
+token nor a token digest is printed. Expiration therefore belongs to the
+ephemeral GitHub-issued token lifecycle; no owner renewal or per-project PAT
+rotation is part of the primary route.
+
+`GOVML_AUTHORITY_TOKEN`, `GOVML_READ_TOKEN`, and `REA_BUNDLE_READ_TOKEN` are
+deprecated compatibility labels for already-provisioned project read paths.
+They are selected only when the complete App pair is absent. A partial App pair
+refuses instead of downgrading, and a complete App pair takes precedence even
+when compatibility names remain configured. Existing rexcoleman.dev issuance
+and renewal jobs that still name `REA_BUNDLE_READ_TOKEN` remain legacy
+consumers until their own separately validated migration; this custody update
+does not rename, delete, or silently reinterpret those secrets.
+
 ## Owner acts
 
 There are exactly two, per the binding ruling of 2026-08-07. Neither ever
