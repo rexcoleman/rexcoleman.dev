@@ -95,6 +95,12 @@
       "path": "adapters/research_enforcement_activation.population-261-v1.json",
       "status": "active"
     }
+,
+    {
+      "adapter_id": "research-enforcement-activation-generation-5-population-264-v1",
+      "path": "adapters/research_enforcement_activation.population-264-v1.json",
+      "status": "active"
+    }
   ],
   "documentation": "SIGNED_RELEASE_CONVERGENCE.md",
   "engine": "signed_release_convergence.py",

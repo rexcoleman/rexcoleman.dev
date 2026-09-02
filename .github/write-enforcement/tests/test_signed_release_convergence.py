@@ -32,6 +32,7 @@ S169_HOSTED_PRINCIPAL_ADAPTER = ROOT / "adapters/research_enforcement_activation
 S170_HOSTED_PRINCIPAL_OWNERSHIP_ADAPTER = ROOT / "adapters/research_enforcement_activation.s170-hosted-principal-ownership-v1.json"
 S173_AUTHENTICATED_HEAD_REBASE_ADAPTER = ROOT / "adapters/research_enforcement_activation.s173-authenticated-head-rebase-v1.json"
 POPULATION_261_ADAPTER = ROOT / "adapters/research_enforcement_activation.population-261-v1.json"
+POPULATION_264_ADAPTER = ROOT / "adapters/research_enforcement_activation.population-264-v1.json"
 INDEX = ROOT / "signed_release_convergence_index.json"
 INVENTORY = ROOT / "signed_release_convergence_inventory.json"
 DOC = ROOT / "SIGNED_RELEASE_CONVERGENCE.md"
@@ -471,6 +472,77 @@ def test_population_261_adapter_registers_exact_installed_successor():
     ]
 
 
+def test_population_264_adapter_registers_control_closure_successor():
+    value = tool.load_adapter(POPULATION_264_ADAPTER)
+    predecessor = tool.load_adapter(POPULATION_261_ADAPTER)
+    assert value["adapter_id"] == (
+        "research-enforcement-activation-generation-5-population-264-v1"
+    )
+    assert value["expected_member_count"] == 264
+    assert value["manifest_builder_flag"] == "--control-closure-successor"
+    assert predecessor["expected_member_count"] == 261
+    assert predecessor["manifest_builder_flag"] == (
+        "--authenticated-head-rebase-successor"
+    )
+    for field in (
+        "authority_generation", "boundaries", "manifest_builder",
+        "manifest_path", "repositories", "ruleset_id", "ruleset_repository",
+        "schema_version",
+    ):
+        assert value[field] == predecessor[field]
+    tests = {row["repository"]: row["paths"] for row in value["hermetic_tests"]}
+    assert "tests/test_s131_convergence.py" in tests["govML"]
+    assert "tests/test_s188_final_phase_transition.py" in tests["govML"]
+    sources = {
+        row["repository"]: row["paths"] for row in value["system_python_sources"]
+    }
+    for source in (
+        "scripts/request_hosted_external_judge_authority.py",
+        "scripts/external_judge_authority_lifecycle_self_test.py",
+        "scripts/gen_infrastructure_index.py",
+    ):
+        assert source in sources["govML"]
+
+
+def test_population_adapters_refuse_each_others_population(tmp_path):
+    """The 261 contract refuses the 264 population and vice versa."""
+    for adapter_path, foreign_count in (
+        (POPULATION_261_ADAPTER, 264), (POPULATION_264_ADAPTER, 261),
+    ):
+        adapter = tool.load_adapter(adapter_path)
+        evidence = tmp_path / adapter_path.stem
+        (evidence / "receipts").mkdir(parents=True)
+        result = dict(build_result())
+        result["member_count"] = foreign_count
+        for name in ("manifest-a.json", "manifest-b.json"):
+            (evidence / "receipts" / name).write_text(json.dumps({"result": result}))
+        with pytest.raises(tool.Refusal, match="BUILT_MANIFEST_CONTRACT_REFUSED"):
+            tool.contract_snapshot(adapter, evidence, "plan", None)
+        result["member_count"] = adapter["expected_member_count"]
+        for name in ("manifest-a.json", "manifest-b.json"):
+            (evidence / "receipts" / name).write_text(json.dumps({"result": result}))
+        assert tool.contract_snapshot(adapter, evidence, "plan", None)[
+            "manifest_digest"
+        ] == result["manifest_digest"]
+
+
+def test_impact_selector_binds_control_closure_flag_to_264_contract():
+    adapter_264 = tool.load_adapter(POPULATION_264_ADAPTER)
+    adapter_261 = tool.load_adapter(POPULATION_261_ADAPTER)
+    rex_root = ROOT.parent.parent
+    expected_264 = tool.member_contract(rex_root, "control_closure_successor_members")
+    expected_261 = tool.member_contract(
+        rex_root, "authenticated_head_rebase_successor_members"
+    )
+    assert len(expected_264) == adapter_264["expected_member_count"]
+    assert len(expected_261) == adapter_261["expected_member_count"]
+    assert set(expected_264) - set(expected_261) == {
+        "external-judge-authority-hosted-requester",
+        "external-judge-authority-lifecycle-self-test",
+        "infrastructure-index-generator",
+    }
+
+
 @pytest.mark.parametrize(
     ("field", "planted", "reason"),
     [
@@ -625,6 +697,7 @@ def test_index_is_closed_and_resolves_every_registered_adapter():
             "research-enforcement-activation-generation-5-s170-hosted-principal-ownership-v1",
             "research-enforcement-activation-generation-5-s173-authenticated-head-rebase-v1",
             "research-enforcement-activation-generation-5-population-261-v1",
+            "research-enforcement-activation-generation-5-population-264-v1",
     ]
     for adapter_id in identifiers:
         path = tool.resolve_adapter(INDEX, adapter_id)
@@ -655,6 +728,7 @@ def test_index_refuses_duplicate_unknown_retired_and_traversing_rows(
             S170_HOSTED_PRINCIPAL_OWNERSHIP_ADAPTER,
             S173_AUTHENTICATED_HEAD_REBASE_ADAPTER,
             POPULATION_261_ADAPTER,
+            POPULATION_264_ADAPTER,
         ):
         shutil.copyfile(adapter_path, adapters / adapter_path.name)
     shutil.copyfile(WORKFLOW, tmp_path / "workflows" / WORKFLOW.name)
@@ -702,7 +776,7 @@ def test_index_refuses_duplicate_unknown_retired_and_traversing_rows(
 
 def test_cross_generation_inventory_is_closed_and_covers_six_properties():
     value = tool.load_cross_generation_inventory(INVENTORY)
-    assert len(value["entries"]) == 32
+    assert len(value["entries"]) == 33
     assert {row["repository"] for row in value["entries"]} == {
         "govML", "rexcoleman.dev",
     }

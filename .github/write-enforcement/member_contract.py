@@ -769,6 +769,29 @@ AUTHENTICATED_HEAD_REBASE_ADDITIONAL_MEMBERS = {
     ),
 }
 
+# kc-77 R3 (s188 B4) closes the authenticated control set measured by the
+# govML consumer bootstrap.  govML `managed_inventory_bootstrap.py` requires
+# every `AUTHENTICATED_CONTROL_SOURCES` row to be a signed govML manifest
+# member (`CONTROL_CLOSURE_MEMBER_ABSENT` otherwise).  Six of the nine were
+# already members; these three were added to the control set by govML
+# c8676fa and were never registered here, so the 261-member manifest refused
+# under its own consumer.  Keep them in a third successor layer: the 260- and
+# 261-member contracts must continue to refuse these additional subjects.
+CONTROL_CLOSURE_ADDITIONAL_MEMBERS = {
+    "external-judge-authority-hosted-requester": (
+        "govML",
+        "scripts/request_hosted_external_judge_authority.py",
+    ),
+    "external-judge-authority-lifecycle-self-test": (
+        "govML",
+        "scripts/external_judge_authority_lifecycle_self_test.py",
+    ),
+    "infrastructure-index-generator": (
+        "govML",
+        "scripts/gen_infrastructure_index.py",
+    ),
+}
+
 
 def successor_members():
     value = dict(EXPECTED_MEMBERS)
@@ -826,6 +849,29 @@ def validate_authenticated_head_rebase_member_ids(observed) -> None:
         )
 
 
+def control_closure_successor_members():
+    value = authenticated_head_rebase_successor_members()
+    overlap = set(value) & set(CONTROL_CLOSURE_ADDITIONAL_MEMBERS)
+    if overlap:
+        raise ValueError(
+            "control-closure member id collision: %s" % sorted(overlap)
+        )
+    value.update(CONTROL_CLOSURE_ADDITIONAL_MEMBERS)
+    if len(set(value.values())) != len(value):
+        raise ValueError("control-closure member subject collision")
+    return value
+
+
+def validate_control_closure_member_ids(observed) -> None:
+    expected = set(control_closure_successor_members())
+    actual = set(observed)
+    if actual != expected:
+        raise ValueError(
+            "control-closure member set refused:missing=%s:extra=%s"
+            % (sorted(expected - actual), sorted(actual - expected))
+        )
+
+
 def production_members_for_manifest(manifest, baseline=None):
     """Select the exact closed set for one known generation; never a subset."""
     rows = manifest.get("members") if isinstance(manifest, dict) else None
@@ -840,6 +886,8 @@ def production_members_for_manifest(manifest, baseline=None):
     hosted_successor.update(HOSTED_PRINCIPAL_ADDITIONAL_MEMBERS)
     rebase_successor = dict(hosted_successor)
     rebase_successor.update(AUTHENTICATED_HEAD_REBASE_ADDITIONAL_MEMBERS)
+    control_successor = dict(rebase_successor)
+    control_successor.update(CONTROL_CLOSURE_ADDITIONAL_MEMBERS)
     generation = manifest.get("authority_generation") if isinstance(manifest, dict) else None
     if generation is None and baseline is not None:
         # Unit-level byte/membership checks historically pass a reduced explicit
@@ -852,7 +900,9 @@ def production_members_for_manifest(manifest, baseline=None):
         return base
     if generation == AUTHORITY_GENERATION:
         return (
-            rebase_successor
+            control_successor
+            if observed & set(CONTROL_CLOSURE_ADDITIONAL_MEMBERS)
+            else rebase_successor
             if observed & set(AUTHENTICATED_HEAD_REBASE_ADDITIONAL_MEMBERS)
             else hosted_successor
             if observed & set(HOSTED_PRINCIPAL_ADDITIONAL_MEMBERS)

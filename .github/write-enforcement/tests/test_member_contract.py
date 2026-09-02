@@ -155,6 +155,98 @@ def test_manifest_contract_selector_distinguishes_260_from_261():
     assert contract_module.production_members_for_manifest(manifest_261) == successor_261
 
 
+CONTROL_CLOSURE_SOURCES = (
+    "scripts/check_all_gates.sh",
+    "scripts/issue_external_judge_authority.py",
+    "scripts/request_hosted_external_judge_authority.py",
+    "scripts/external_judge_authority.py",
+    "scripts/external_judge_authority_lifecycle_self_test.py",
+    "scripts/gen_infrastructure_index.py",
+    "scripts/landscape_depth_judge.py",
+    "templates/build/enforcement/gate_invocation_receipt.py",
+    "templates/build/enforcement/project_run_gates.sh",
+)
+
+
+def test_population_264_successor_closes_authenticated_control_sources_exactly():
+    historical_261 = contract_module.authenticated_head_rebase_successor_members()
+    successor_264 = contract_module.control_closure_successor_members()
+    added = {
+        "external-judge-authority-hosted-requester": (
+            "govML", "scripts/request_hosted_external_judge_authority.py"
+        ),
+        "external-judge-authority-lifecycle-self-test": (
+            "govML", "scripts/external_judge_authority_lifecycle_self_test.py"
+        ),
+        "infrastructure-index-generator": (
+            "govML", "scripts/gen_infrastructure_index.py"
+        ),
+    }
+    assert len(historical_261) == 261
+    assert len(successor_264) == 264
+    assert contract_module.CONTROL_CLOSURE_ADDITIONAL_MEMBERS == added
+    for member_id, subject in added.items():
+        assert successor_264[member_id] == subject
+        assert member_id not in historical_261
+        assert subject not in historical_261.values()
+
+    # The govML consumer bootstrap requires every AUTHENTICATED_CONTROL_SOURCES
+    # row as a signed govML member; the 261 contract lacked exactly three.
+    govml_261 = {path for repo, path in historical_261.values() if repo == "govML"}
+    govml_264 = {path for repo, path in successor_264.values() if repo == "govML"}
+    assert set(CONTROL_CLOSURE_SOURCES) - govml_261 == {
+        subject[1] for subject in added.values()
+    }
+    assert set(CONTROL_CLOSURE_SOURCES) <= govml_264
+
+    with pytest.raises(
+        ValueError,
+        match="authenticated-head-rebase member set refused:.*extra=.*infrastructure-index-generator",
+    ):
+        contract_module.validate_authenticated_head_rebase_member_ids(successor_264)
+    with pytest.raises(
+        ValueError,
+        match="control-closure member set refused:missing=.*external-judge-authority-hosted-requester",
+    ):
+        contract_module.validate_control_closure_member_ids(historical_261)
+
+    contract_module.validate_control_closure_member_ids(successor_264)
+    for member_id in added:
+        omitted = dict(successor_264)
+        omitted.pop(member_id)
+        with pytest.raises(
+            ValueError,
+            match="control-closure member set refused:missing=.*%s" % member_id,
+        ):
+            contract_module.validate_control_closure_member_ids(omitted)
+        substituted = dict(omitted)
+        substituted["forged-" + member_id] = successor_264[member_id]
+        with pytest.raises(
+            ValueError,
+            match=(
+                "control-closure member set refused:"
+                ".*missing=.*%s.*extra=.*forged" % member_id
+            ),
+        ):
+            contract_module.validate_control_closure_member_ids(substituted)
+
+
+def test_manifest_contract_selector_distinguishes_261_from_264():
+    historical_261 = contract_module.authenticated_head_rebase_successor_members()
+    successor_264 = contract_module.control_closure_successor_members()
+    manifest_261 = {
+        "authority_generation": contract_module.AUTHORITY_GENERATION,
+        "members": [{"member_id": member_id} for member_id in historical_261],
+    }
+    manifest_264 = {
+        "authority_generation": contract_module.AUTHORITY_GENERATION,
+        "members": [{"member_id": member_id} for member_id in successor_264],
+    }
+    assert contract_module.production_members_for_manifest(manifest_261) == historical_261
+    assert contract_module.production_members_for_manifest(manifest_264) == successor_264
+    assert contract_module.production_members_for_manifest(manifest_264) != historical_261
+
+
 def test_production_provisioner_has_distinct_equal_byte_authoring_subject():
     pair = (
         "production-request-provisioner",
