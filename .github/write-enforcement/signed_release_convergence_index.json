@@ -89,6 +89,11 @@
       "adapter_id": "research-enforcement-activation-generation-5-s173-authenticated-head-rebase-v1",
       "path": "adapters/research_enforcement_activation.s173-authenticated-head-rebase-v1.json",
       "status": "active"
+    },
+    {
+      "adapter_id": "research-enforcement-activation-generation-5-population-261-v1",
+      "path": "adapters/research_enforcement_activation.population-261-v1.json",
+      "status": "active"
     }
   ],
   "documentation": "SIGNED_RELEASE_CONVERGENCE.md",

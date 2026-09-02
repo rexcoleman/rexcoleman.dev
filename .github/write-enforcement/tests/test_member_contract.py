@@ -104,6 +104,57 @@ def test_hosted_principal_successor_closes_private_key_custody_workflow():
         contract_module.validate_hosted_principal_member_ids(dropped)
 
 
+def test_population_261_successor_closes_installed_authenticated_rebase_exactly():
+    historical_260 = contract_module.hosted_principal_successor_members()
+    successor_261 = contract_module.authenticated_head_rebase_successor_members()
+    member_id = "authenticated-head-rebase"
+    assert len(historical_260) == 260
+    assert len(successor_261) == 261
+    assert successor_261[member_id] == (
+        "govML", "templates/build/enforcement/authenticated_head_rebase.py"
+    )
+
+    with pytest.raises(
+        ValueError,
+        match="hosted principal member set refused:.*extra=.*authenticated-head-rebase",
+    ):
+        contract_module.validate_hosted_principal_member_ids(successor_261)
+
+    contract_module.validate_authenticated_head_rebase_member_ids(successor_261)
+    omitted = dict(successor_261)
+    omitted.pop(member_id)
+    with pytest.raises(
+        ValueError,
+        match="authenticated-head-rebase member set refused:missing=.*authenticated-head-rebase",
+    ):
+        contract_module.validate_authenticated_head_rebase_member_ids(omitted)
+    substituted = dict(omitted)
+    substituted["forged-authenticated-head-rebase"] = successor_261[member_id]
+    with pytest.raises(
+        ValueError,
+        match=(
+            "authenticated-head-rebase member set refused:"
+            ".*missing=.*authenticated-head-rebase.*extra=.*forged"
+        ),
+    ):
+        contract_module.validate_authenticated_head_rebase_member_ids(substituted)
+
+
+def test_manifest_contract_selector_distinguishes_260_from_261():
+    historical_260 = contract_module.hosted_principal_successor_members()
+    successor_261 = contract_module.authenticated_head_rebase_successor_members()
+    manifest_260 = {
+        "authority_generation": contract_module.AUTHORITY_GENERATION,
+        "members": [{"member_id": member_id} for member_id in historical_260],
+    }
+    manifest_261 = {
+        "authority_generation": contract_module.AUTHORITY_GENERATION,
+        "members": [{"member_id": member_id} for member_id in successor_261],
+    }
+    assert contract_module.production_members_for_manifest(manifest_260) == historical_260
+    assert contract_module.production_members_for_manifest(manifest_261) == successor_261
+
+
 def test_production_provisioner_has_distinct_equal_byte_authoring_subject():
     pair = (
         "production-request-provisioner",

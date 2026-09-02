@@ -757,6 +757,18 @@ HOSTED_PRINCIPAL_ADDITIONAL_MEMBERS = {
     ),
 }
 
+# s188 closes the installed-population gap measured by the manifest builder.
+# The authenticated-head rebase helper is installed in every governed project,
+# so it is a signed runtime member rather than adapter-only test metadata.
+# Keep it in a second successor layer: the historical hosted-principal and s173
+# 260-member contracts must continue to refuse this additional subject.
+AUTHENTICATED_HEAD_REBASE_ADDITIONAL_MEMBERS = {
+    "authenticated-head-rebase": (
+        "govML",
+        "templates/build/enforcement/authenticated_head_rebase.py",
+    ),
+}
+
 
 def successor_members():
     value = dict(EXPECTED_MEMBERS)
@@ -780,12 +792,36 @@ def hosted_principal_successor_members():
     return value
 
 
+def authenticated_head_rebase_successor_members():
+    value = hosted_principal_successor_members()
+    overlap = set(value) & set(AUTHENTICATED_HEAD_REBASE_ADDITIONAL_MEMBERS)
+    if overlap:
+        raise ValueError(
+            "authenticated-head-rebase member id collision: %s"
+            % sorted(overlap)
+        )
+    value.update(AUTHENTICATED_HEAD_REBASE_ADDITIONAL_MEMBERS)
+    if len(set(value.values())) != len(value):
+        raise ValueError("authenticated-head-rebase member subject collision")
+    return value
+
+
 def validate_hosted_principal_member_ids(observed) -> None:
     expected = set(hosted_principal_successor_members())
     actual = set(observed)
     if actual != expected:
         raise ValueError(
             "hosted principal member set refused:missing=%s:extra=%s"
+            % (sorted(expected - actual), sorted(actual - expected))
+        )
+
+
+def validate_authenticated_head_rebase_member_ids(observed) -> None:
+    expected = set(authenticated_head_rebase_successor_members())
+    actual = set(observed)
+    if actual != expected:
+        raise ValueError(
+            "authenticated-head-rebase member set refused:missing=%s:extra=%s"
             % (sorted(expected - actual), sorted(actual - expected))
         )
 
@@ -802,6 +838,8 @@ def production_members_for_manifest(manifest, baseline=None):
     successor.update(SUCCESSOR_ADDITIONAL_MEMBERS)
     hosted_successor = dict(successor)
     hosted_successor.update(HOSTED_PRINCIPAL_ADDITIONAL_MEMBERS)
+    rebase_successor = dict(hosted_successor)
+    rebase_successor.update(AUTHENTICATED_HEAD_REBASE_ADDITIONAL_MEMBERS)
     generation = manifest.get("authority_generation") if isinstance(manifest, dict) else None
     if generation is None and baseline is not None:
         # Unit-level byte/membership checks historically pass a reduced explicit
@@ -814,7 +852,9 @@ def production_members_for_manifest(manifest, baseline=None):
         return base
     if generation == AUTHORITY_GENERATION:
         return (
-            hosted_successor
+            rebase_successor
+            if observed & set(AUTHENTICATED_HEAD_REBASE_ADDITIONAL_MEMBERS)
+            else hosted_successor
             if observed & set(HOSTED_PRINCIPAL_ADDITIONAL_MEMBERS)
             else successor
         )

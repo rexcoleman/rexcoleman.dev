@@ -31,6 +31,7 @@ S169_HARDENING_ADAPTER = ROOT / "adapters/research_enforcement_activation.s169-h
 S169_HOSTED_PRINCIPAL_ADAPTER = ROOT / "adapters/research_enforcement_activation.s169-hosted-principal-v1.json"
 S170_HOSTED_PRINCIPAL_OWNERSHIP_ADAPTER = ROOT / "adapters/research_enforcement_activation.s170-hosted-principal-ownership-v1.json"
 S173_AUTHENTICATED_HEAD_REBASE_ADAPTER = ROOT / "adapters/research_enforcement_activation.s173-authenticated-head-rebase-v1.json"
+POPULATION_261_ADAPTER = ROOT / "adapters/research_enforcement_activation.population-261-v1.json"
 INDEX = ROOT / "signed_release_convergence_index.json"
 INVENTORY = ROOT / "signed_release_convergence_inventory.json"
 DOC = ROOT / "SIGNED_RELEASE_CONVERGENCE.md"
@@ -447,6 +448,29 @@ def test_s173_adapter_registers_authenticated_head_rebase_and_residue_fix():
     ]
 
 
+def test_population_261_adapter_registers_exact_installed_successor():
+    value = tool.load_adapter(POPULATION_261_ADAPTER)
+    assert value["adapter_id"] == (
+        "research-enforcement-activation-generation-5-population-261-v1"
+    )
+    assert value["expected_member_count"] == 261
+    assert value["manifest_builder_flag"] == (
+        "--authenticated-head-rebase-successor"
+    )
+    tests = {row["repository"]: row["paths"] for row in value["hermetic_tests"]}
+    assert "tests/test_s188_final_phase_transition.py" in tests["govML"]
+    assert "tests/test_s188_github_app_read_authority.py" in tests["govML"]
+    sources = {
+        row["repository"]: row["paths"] for row in value["system_python_sources"]
+    }
+    assert "templates/build/enforcement/authenticated_head_rebase.py" in sources[
+        "govML"
+    ]
+    assert "templates/build/enforcement/record_write_side_validation.py" in sources[
+        "govML"
+    ]
+
+
 @pytest.mark.parametrize(
     ("field", "planted", "reason"),
     [
@@ -600,6 +624,7 @@ def test_index_is_closed_and_resolves_every_registered_adapter():
             "research-enforcement-activation-generation-5-s169-hosted-principal-v1",
             "research-enforcement-activation-generation-5-s170-hosted-principal-ownership-v1",
             "research-enforcement-activation-generation-5-s173-authenticated-head-rebase-v1",
+            "research-enforcement-activation-generation-5-population-261-v1",
     ]
     for adapter_id in identifiers:
         path = tool.resolve_adapter(INDEX, adapter_id)
@@ -629,6 +654,7 @@ def test_index_refuses_duplicate_unknown_retired_and_traversing_rows(
             S169_HOSTED_PRINCIPAL_ADAPTER,
             S170_HOSTED_PRINCIPAL_OWNERSHIP_ADAPTER,
             S173_AUTHENTICATED_HEAD_REBASE_ADAPTER,
+            POPULATION_261_ADAPTER,
         ):
         shutil.copyfile(adapter_path, adapters / adapter_path.name)
     shutil.copyfile(WORKFLOW, tmp_path / "workflows" / WORKFLOW.name)
@@ -676,7 +702,7 @@ def test_index_refuses_duplicate_unknown_retired_and_traversing_rows(
 
 def test_cross_generation_inventory_is_closed_and_covers_six_properties():
     value = tool.load_cross_generation_inventory(INVENTORY)
-    assert len(value["entries"]) == 31
+    assert len(value["entries"]) == 32
     assert {row["repository"] for row in value["entries"]} == {
         "govML", "rexcoleman.dev",
     }

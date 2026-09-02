@@ -71,8 +71,16 @@ pins a predecessor REA commit that predates s173. Registration plans and tests
 these bytes; it
 does not fire convergence, issue or reissue an attestation, change the WEA
 generation, or activate F2/F3.
-A
-population change always gets a new stable
+The measured installed-population successor is registered separately as
+`research-enforcement-activation-generation-5-population-261-v1`. It derives
+from s173 without changing that 260-member adapter, adds the installed govML
+`authenticated_head_rebase.py` subject as member 261, and selects a distinct
+builder contract that requires exact hosted-principal-plus-rebase membership.
+It also carries the current govML C1-C3 source/test surface so a later source
+plan validates the population it would actually freeze. This registration
+does not build, freeze, issue, install, or activate generation 5.
+
+A population change always gets a new stable
 adapter identity; the 251- and 255-member adapters remain
 auditable without being silently redefined. The dependent adapters use schema
 v2: in addition to the unchanged
@@ -101,8 +109,9 @@ not merge, tag, approve, issue, install, or prove a target project green.
 
 ## Cross-generation inventory and reconciliation
 
-The inventory has 28 closed rows spanning s88, s127, s131, s132, s149, s153,
-s154, s155, s157, and s165 in govML and rexcoleman.dev. Each row names a stable identity, remote
+The inventory has 32 closed rows spanning s88, s127, s131, s132, s149, s153,
+s154, s155, s157, s165, s169, s170, s173, s180, and s188 in govML and
+rexcoleman.dev. Each row names a stable identity, remote
 repository/default branch, path, session generation, kind, semantic discovery
 markers, and the tested properties it supplies. The six required properties
 are hermetic execution, identity binding, resume, refusal, poststate, and

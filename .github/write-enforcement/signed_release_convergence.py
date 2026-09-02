@@ -219,6 +219,7 @@ def load_adapter(path: Path):
     if value["manifest_builder_flag"] not in {
         "--successor-ci-materialization",
         "--hosted-external-judge-principal",
+        "--authenticated-head-rebase-successor",
     }:
         raise Refusal("MANIFEST_BUILDER_FLAG_REFUSED")
     if not isinstance(value["ruleset_id"], int) or isinstance(
@@ -577,14 +578,14 @@ def root_snapshot(adapter, roots, baseline):
     return rows
 
 
-def member_contract(rex_root: Path):
+def member_contract(rex_root: Path, selector_name="successor_members"):
     module_path = rex_root / ".github/write-enforcement/member_contract.py"
     namespace = {"__file__": str(module_path), "__name__": "release_member_contract"}
     raw = regular_bytes(module_path)
     exec(compile(raw, str(module_path), "exec"), namespace)
-    selector = namespace.get("successor_members")
+    selector = namespace.get(selector_name)
     if not callable(selector):
-        raise Refusal("SUCCESSOR_MEMBER_CONTRACT_SELECTOR_REFUSED")
+        raise Refusal("SUCCESSOR_MEMBER_CONTRACT_SELECTOR_REFUSED:%s" % selector_name)
     try:
         expected = selector()
     except Exception as exc:
@@ -598,7 +599,14 @@ def member_contract(rex_root: Path):
 
 def impact_snapshot(adapter, roots, root_rows):
     rex_root = roots["rexcoleman.dev"]
-    expected = member_contract(rex_root)
+    selector_name = {
+        "--successor-ci-materialization": "successor_members",
+        "--hosted-external-judge-principal": "hosted_principal_successor_members",
+        "--authenticated-head-rebase-successor": (
+            "authenticated_head_rebase_successor_members"
+        ),
+    }[adapter["manifest_builder_flag"]]
+    expected = member_contract(rex_root, selector_name)
     by_subject = {}
     for member_id, subject in expected.items():
         if (
