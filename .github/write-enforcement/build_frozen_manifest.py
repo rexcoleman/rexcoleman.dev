@@ -26,6 +26,7 @@ from member_contract import (
     RULESET_ID,
     PACKAGED_BUILD_PROFILE_GATE_SOURCES,
     STAGED_NONPRODUCTION_MANIFEST_SCHEMA,
+    authenticated_head_rebase_successor_members,
     group_member_contract,
     grouped_members,
     hosted_principal_successor_members,
@@ -34,6 +35,7 @@ from member_contract import (
     successor_members,
     validate_managed_live_member_aliases,
     validate_hosted_principal_member_ids,
+    validate_authenticated_head_rebase_member_ids,
 )
 
 MEMBERS = grouped_members()
@@ -340,6 +342,7 @@ def main() -> int:
     parser.add_argument("--staged-nonproduction", action="store_true")
     parser.add_argument("--successor-ci-materialization", action="store_true")
     parser.add_argument("--hosted-external-judge-principal", action="store_true")
+    parser.add_argument("--authenticated-head-rebase-successor", action="store_true")
     for name in MEMBERS:
         slug = name.lower().replace("_", "-").replace(".", "-")
         parser.add_argument("--root-" + slug, dest="root_" + name.lower().replace(".", "_"),
@@ -349,11 +352,14 @@ def main() -> int:
         args.staged_nonproduction,
         args.successor_ci_materialization,
         args.hosted_external_judge_principal,
+        args.authenticated_head_rebase_successor,
     ))
     if selected_contracts > 1:
         raise ValueError("staged and successor contracts are mutually exclusive")
     expected_members = (
         staged_nonproduction_members() if args.staged_nonproduction
+        else authenticated_head_rebase_successor_members()
+        if args.authenticated_head_rebase_successor
         else hosted_principal_successor_members()
         if args.hosted_external_judge_principal
         else successor_members() if args.successor_ci_materialization
@@ -361,6 +367,8 @@ def main() -> int:
     )
     if args.hosted_external_judge_principal:
         validate_hosted_principal_member_ids(expected_members)
+    if args.authenticated_head_rebase_successor:
+        validate_authenticated_head_rebase_member_ids(expected_members)
     synthetic_contract = (
         not args.staged_nonproduction and MEMBERS != grouped_members()
     )
@@ -383,6 +391,7 @@ def main() -> int:
     active_contract = (
         args.successor_ci_materialization
         or args.hosted_external_judge_principal
+        or args.authenticated_head_rebase_successor
         or args.staged_nonproduction
     )
     authority_generation = (

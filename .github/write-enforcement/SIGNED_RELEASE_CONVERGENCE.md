@@ -97,6 +97,16 @@ and `research-engine-release-generation-5-population-260-v1`. The 259-member
 adapters remain registered as immutable predecessor contracts; callers select the
 260-member successors explicitly with `--adapter-id`.
 
+The REA population-261 successor is
+`research-enforcement-activation-generation-5-population-261-v1`. It preserves
+the s173 260-member adapter byte-for-byte and adds exactly one signed subject:
+the govML `templates/build/enforcement/authenticated_head_rebase.py` source
+that the managed inventory genuinely installs. Its dedicated builder selector
+requires the hosted-principal member plus this runtime member; the old 260
+contract continues to refuse the extra installed source. The adapter includes
+the current govML C1-C3 hermetic test and Python-source surfaces, but it neither
+creates a manifest nor freezes, issues, installs, or activates an authority.
+
 The s165 AML route is registered as
 `adversarial-ml-landscape-generation-5-population-259-v1`. Its Moonshots
 hermetic surface covers the one-time committed `PENDING_SIGNED_BUNDLE` genesis
