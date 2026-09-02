@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import re
 import stat
@@ -17,6 +18,9 @@ TARGET_AUTHORITY_PIN = "71c7835246171126ab657fba28fad649172c345d"
 LEGACY_WORKFLOW = Path(".github/workflows/newsletter-integrity.yml")
 UPGRADE_WORKFLOW = Path(".github/workflows/newsletter-upgrade-integrity.yml")
 CAPABILITY = Path(".github/integrity/newsletter/bootstrap-capability.json")
+TRANSITION_INDEX = Path(
+    ".github/write-enforcement/newsletter_upgrade_transition_index.v1.json"
+)
 ALLOWED_CONTROL_PATHS = {
     str(LEGACY_WORKFLOW), str(UPGRADE_WORKFLOW), str(CAPABILITY),
 }
@@ -24,6 +28,15 @@ ALLOWED_CONTROL_PATHS = {
 
 class Refusal(RuntimeError):
     pass
+
+
+def _reject_duplicate_keys(pairs: list[tuple[str, object]]) -> dict[str, object]:
+    result: dict[str, object] = {}
+    for key, value in pairs:
+        if key in result:
+            raise Refusal(f"TRANSITION_INDEX_DUPLICATE_KEY:{key}")
+        result[key] = value
+    return result
 
 
 def git(repo: Path, *args: str) -> bytes:
@@ -49,6 +62,184 @@ def regular_bytes(repo: Path, relative: Path) -> bytes:
         return path.read_bytes()
     except OSError as exc:
         raise Refusal(f"CONTROL_UNREADABLE:{relative}") from exc
+
+
+def git_tree_bytes(repo: Path, commit: str, relative: str) -> bytes | None:
+    raw = git(repo, "ls-tree", "-z", commit, "--", relative)
+    if not raw:
+        return None
+    entries = [entry for entry in raw.split(b"\0") if entry]
+    if len(entries) != 1:
+        raise Refusal(f"REGISTERED_PATH_TREE_SHAPE:{relative}")
+    try:
+        metadata, observed_path = entries[0].split(b"\t", 1)
+        mode, object_type, object_id = metadata.decode("ascii").split(" ")
+        decoded_path = observed_path.decode("utf-8")
+    except (UnicodeError, ValueError) as exc:
+        raise Refusal(f"REGISTERED_PATH_TREE_SHAPE:{relative}") from exc
+    if decoded_path != relative:
+        raise Refusal(f"REGISTERED_PATH_IDENTITY:{relative}")
+    if mode != "100644" or object_type != "blob" or re.fullmatch(
+        r"[0-9a-f]{40,64}", object_id
+    ) is None:
+        raise Refusal(f"REGISTERED_PATH_NOT_REGULAR:{relative}")
+    return git(repo, "cat-file", "blob", object_id)
+
+
+def load_transition_index(authority_root: Path) -> list[dict[str, object]]:
+    raw = regular_bytes(authority_root, TRANSITION_INDEX)
+    try:
+        loaded = json.loads(raw, object_pairs_hook=_reject_duplicate_keys)
+    except (UnicodeError, json.JSONDecodeError) as exc:
+        raise Refusal("TRANSITION_INDEX_JSON") from exc
+    if not isinstance(loaded, dict) or set(loaded) != {
+        "schema_version", "repository", "transitions"
+    }:
+        raise Refusal("TRANSITION_INDEX_SHAPE")
+    if loaded["schema_version"] != "rea.newsletter.control-transition-index.v1":
+        raise Refusal("TRANSITION_INDEX_SCHEMA")
+    if loaded["repository"] != "rexcoleman/newsletter":
+        raise Refusal("TRANSITION_INDEX_REPOSITORY")
+    transitions = loaded["transitions"]
+    if not isinstance(transitions, list) or not transitions:
+        raise Refusal("TRANSITION_INDEX_EMPTY")
+    if raw != (json.dumps(loaded, indent=2) + "\n").encode():
+        raise Refusal("TRANSITION_INDEX_NONCANONICAL")
+    return transitions
+
+
+def _validate_state_shape(
+    transition_id: str, relative: str, side: str, state: object
+) -> dict[str, object]:
+    if not isinstance(state, dict) or set(state) not in (
+        {"present"}, {"present", "byte_length", "sha256"}
+    ):
+        raise Refusal(f"TRANSITION_STATE_SHAPE:{transition_id}:{relative}:{side}")
+    present = state.get("present")
+    if not isinstance(present, bool):
+        raise Refusal(f"TRANSITION_STATE_PRESENT:{transition_id}:{relative}:{side}")
+    if present:
+        if set(state) != {"present", "byte_length", "sha256"}:
+            raise Refusal(f"TRANSITION_STATE_SHAPE:{transition_id}:{relative}:{side}")
+        if not isinstance(state["byte_length"], int) or state["byte_length"] < 0:
+            raise Refusal(f"TRANSITION_STATE_LENGTH:{transition_id}:{relative}:{side}")
+        if not isinstance(state["sha256"], str) or re.fullmatch(
+            r"[0-9a-f]{64}", state["sha256"]
+        ) is None:
+            raise Refusal(f"TRANSITION_STATE_DIGEST:{transition_id}:{relative}:{side}")
+    elif set(state) != {"present"}:
+        raise Refusal(f"TRANSITION_STATE_ABSENT_FIELDS:{transition_id}:{relative}:{side}")
+    return state
+
+
+def validate_registered_transition(
+    repo: Path,
+    base_sha: str,
+    event_sha: str,
+    authority_root: Path,
+    changed: list[str],
+    transitions: list[dict[str, object]] | None = None,
+) -> str:
+    observed_paths = sorted(changed)
+    matched: list[str] = []
+    seen_ids: set[str] = set()
+    registered = (
+        load_transition_index(authority_root) if transitions is None else transitions
+    )
+    byte_mismatches: list[str] = []
+    for transition in registered:
+        if not isinstance(transition, dict) or set(transition) != {
+            "transition_id", "purpose", "files"
+        }:
+            raise Refusal("TRANSITION_ENTRY_SHAPE")
+        transition_id = transition["transition_id"]
+        if not isinstance(transition_id, str) or re.fullmatch(
+            r"[a-z0-9][a-z0-9-]{0,95}", transition_id
+        ) is None:
+            raise Refusal("TRANSITION_ID_SHAPE")
+        if transition_id in seen_ids:
+            raise Refusal(f"TRANSITION_ID_DUPLICATE:{transition_id}")
+        seen_ids.add(transition_id)
+        if not isinstance(transition["purpose"], str) or not transition["purpose"]:
+            raise Refusal(f"TRANSITION_PURPOSE:{transition_id}")
+        files = transition["files"]
+        if not isinstance(files, list) or not files:
+            raise Refusal(f"TRANSITION_FILES_EMPTY:{transition_id}")
+        paths: list[str] = []
+        file_states: list[tuple[str, dict[str, object], dict[str, object]]] = []
+        for entry in files:
+            if not isinstance(entry, dict) or set(entry) != {"path", "before", "after"}:
+                raise Refusal(f"TRANSITION_FILE_SHAPE:{transition_id}")
+            relative = entry["path"]
+            if (
+                not isinstance(relative, str)
+                or not relative
+                or Path(relative).is_absolute()
+            ):
+                raise Refusal(f"TRANSITION_PATH_SHAPE:{transition_id}")
+            if (
+                "\\" in relative
+                or relative != Path(relative).as_posix()
+                or Path(relative).parts
+                != tuple(part for part in relative.split("/") if part)
+            ):
+                raise Refusal(f"TRANSITION_PATH_CANONICAL:{transition_id}:{relative}")
+            if ".." in Path(relative).parts or relative in paths:
+                raise Refusal(
+                    "TRANSITION_PATH_DUPLICATE_OR_TRAVERSAL:"
+                    f"{transition_id}:{relative}"
+                )
+            before = _validate_state_shape(
+                transition_id, relative, "before", entry["before"]
+            )
+            after = _validate_state_shape(
+                transition_id, relative, "after", entry["after"]
+            )
+            if before == after:
+                raise Refusal(f"TRANSITION_FILE_UNCHANGED:{transition_id}:{relative}")
+            paths.append(relative)
+            file_states.append((relative, before, after))
+        if paths != sorted(paths):
+            raise Refusal(f"TRANSITION_PATH_ORDER:{transition_id}")
+        if paths != observed_paths:
+            continue
+        mismatch = None
+        for relative, before, after in file_states:
+            for side, commit, expected in (
+                ("before", base_sha, before), ("after", event_sha, after)
+            ):
+                raw = git_tree_bytes(repo, commit, relative)
+                if bool(expected["present"]) != (raw is not None):
+                    mismatch = (
+                        f"REGISTERED_TRANSITION_{side.upper()}_PRESENCE:"
+                        f"{transition_id}:{relative}"
+                    )
+                    break
+                if raw is not None and (
+                    len(raw) != expected["byte_length"]
+                    or hashlib.sha256(raw).hexdigest() != expected["sha256"]
+                ):
+                    mismatch = (
+                        f"REGISTERED_TRANSITION_{side.upper()}_BYTES:"
+                        f"{transition_id}:{relative}"
+                    )
+                    break
+            if mismatch is not None:
+                break
+        if mismatch is not None:
+            byte_mismatches.append(mismatch)
+            continue
+        matched.append(transition_id)
+    if not matched and byte_mismatches:
+        raise Refusal(
+            "REGISTERED_TRANSITION_NO_EXACT_MATCH:" + ":".join(byte_mismatches)
+        )
+    if len(matched) != 1:
+        raise Refusal(
+            "CONTROL_CHANGE_SET:"
+            f"registered_transition_matches={matched}:changed={observed_paths}"
+        )
+    return matched[0]
 
 
 def workflow_text(repo: Path, relative: Path) -> str:
@@ -270,17 +461,17 @@ def validate(
     except UnicodeError as exc:
         raise Refusal("CHANGED_PATH_UTF8") from exc
     observed = set(changed)
-    if observed != ALLOWED_CONTROL_PATHS:
-        raise Refusal(
-            "CONTROL_CHANGE_SET:"
-            f"missing={sorted(ALLOWED_CONTROL_PATHS - observed)}:"
-            f"extra={sorted(observed - ALLOWED_CONTROL_PATHS)}"
+    transition_id = None
+    if observed == ALLOWED_CONTROL_PATHS:
+        upgrade = workflow_text(repo, UPGRADE_WORKFLOW)
+        validate_upgrade_workflow(upgrade, commit)
+        validate_legacy_workflow(workflow_text(repo, LEGACY_WORKFLOW))
+        if regular_bytes(repo, CAPABILITY) != expected_capability(commit):
+            raise Refusal("BOOTSTRAP_CAPABILITY_BYTES_NOT_APPROVED")
+    else:
+        transition_id = validate_registered_transition(
+            repo, base_sha, event_sha, authority_root, changed
         )
-    upgrade = workflow_text(repo, UPGRADE_WORKFLOW)
-    validate_upgrade_workflow(upgrade, commit)
-    validate_legacy_workflow(workflow_text(repo, LEGACY_WORKFLOW))
-    if regular_bytes(repo, CAPABILITY) != expected_capability(commit):
-        raise Refusal("BOOTSTRAP_CAPABILITY_BYTES_NOT_APPROVED")
     return {
         "schema_version": "rea.newsletter.control-upgrade-validation.v2",
         "verdict": "PASS",
@@ -290,6 +481,7 @@ def validate(
         "event_sha": event_sha,
         "authority_commit": commit,
         "changed": sorted(changed),
+        "registered_transition": transition_id,
         "candidate_code_executed": False,
         "mutation_authorized": False,
     }
