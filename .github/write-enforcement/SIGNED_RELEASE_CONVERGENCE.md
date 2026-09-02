@@ -107,6 +107,21 @@ contract continues to refuse the extra installed source. The adapter includes
 the current govML C1-C3 hermetic test and Python-source surfaces, but it neither
 creates a manifest nor freezes, issues, installs, or activates an authority.
 
+The REA population-264 successor is
+`research-enforcement-activation-generation-5-population-264-v1`. It preserves
+the 261-member adapter byte-for-byte and adds exactly the three govML sources
+that the consumer bootstrap (`managed_inventory_bootstrap.py`
+`AUTHENTICATED_CONTROL_SOURCES`) requires as signed control members but the
+261 contract never registered: `scripts/request_hosted_external_judge_authority.py`,
+`scripts/external_judge_authority_lifecycle_self_test.py`, and
+`scripts/gen_infrastructure_index.py`. Without them a converged consumer
+refuses `CONTROL_CLOSURE_MEMBER_ABSENT` against the engine's own manifest. Its
+dedicated `--control-closure-successor` builder selector requires the 261
+population plus these three control members; the 261 contract continues to
+refuse them. The govML hermetic surface adds `tests/test_s131_convergence.py`,
+which exercises the nine-source closure predicate. Registration neither creates
+a manifest nor freezes, issues, installs, or activates an authority.
+
 The s165 AML route is registered as
 `adversarial-ml-landscape-generation-5-population-259-v1`. Its Moonshots
 hermetic surface covers the one-time committed `PENDING_SIGNED_BUNDLE` genesis

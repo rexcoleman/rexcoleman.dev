@@ -79,6 +79,17 @@ builder contract that requires exact hosted-principal-plus-rebase membership.
 It also carries the current govML C1-C3 source/test surface so a later source
 plan validates the population it would actually freeze. This registration
 does not build, freeze, issue, install, or activate generation 5.
+The control-closure successor is registered separately as
+`research-enforcement-activation-generation-5-population-264-v1`. It derives
+from the 261 adapter without changing it and adds the three govML
+`AUTHENTICATED_CONTROL_SOURCES` rows the consumer bootstrap requires as signed
+members (`scripts/request_hosted_external_judge_authority.py`,
+`scripts/external_judge_authority_lifecycle_self_test.py`,
+`scripts/gen_infrastructure_index.py`) as members 262-264, selected by the
+distinct `--control-closure-successor` builder contract. The 261 manifest
+refused `CONTROL_CLOSURE_MEMBER_ABSENT` under its own consumer because those
+rows were absent. This registration does not build, freeze, issue, install, or
+activate generation 5.
 
 A population change always gets a new stable
 adapter identity; the 251- and 255-member adapters remain
@@ -109,7 +120,7 @@ not merge, tag, approve, issue, install, or prove a target project green.
 
 ## Cross-generation inventory and reconciliation
 
-The inventory has 32 closed rows spanning s88, s127, s131, s132, s149, s153,
+The inventory has 33 closed rows spanning s88, s127, s131, s132, s149, s153,
 s154, s155, s157, s165, s169, s170, s173, s180, and s188 in govML and
 rexcoleman.dev. Each row names a stable identity, remote
 repository/default branch, path, session generation, kind, semantic discovery
