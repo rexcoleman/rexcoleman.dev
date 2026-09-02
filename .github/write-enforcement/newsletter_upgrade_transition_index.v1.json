@@ -1,0 +1,49 @@
+{
+  "schema_version": "rea.newsletter.control-transition-index.v1",
+  "repository": "rexcoleman/newsletter",
+  "transitions": [
+    {
+      "transition_id": "s188-curated-newsletter-authority-v1",
+      "purpose": "Bind each newsletter artifact to one deterministic registered authority tuple and its complete brief/FINDINGS closure.",
+      "files": [
+        {
+          "path": ".github/integrity/newsletter/control-manifest.json",
+          "before": {
+            "present": true,
+            "byte_length": 716,
+            "sha256": "e2ae720735c70bdf73f954ee42a018cd5d11eee19cf8c5248a162f2c3ee71fb6"
+          },
+          "after": {
+            "present": true,
+            "byte_length": 716,
+            "sha256": "b4d350f5ff2bf03cf9332bbcf4437164c525bc131642cfa70258c984664f0a19"
+          }
+        },
+        {
+          "path": ".github/integrity/newsletter/validate_newsletter_commit.py",
+          "before": {
+            "present": true,
+            "byte_length": 17989,
+            "sha256": "88b19d3d7ba865e5a533dfff368a1c9c2fe4610d40e8c63f46ae6d80b9f7db73"
+          },
+          "after": {
+            "present": true,
+            "byte_length": 21018,
+            "sha256": "6981c3aaf0c2c2eea6c155609608fa2f52fc1e4fbce674c382a9a467283a63c0"
+          }
+        },
+        {
+          "path": "tests/test_s188_curated_authority.py",
+          "before": {
+            "present": false
+          },
+          "after": {
+            "present": true,
+            "byte_length": 7216,
+            "sha256": "aec0a67169676a9392ff02e1d90990d39e8418ae3f9f465abcd7c3ef3730ffd5"
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -1,4 +1,5 @@
 import importlib.util
+import hashlib
 import json
 import subprocess
 from pathlib import Path
@@ -110,6 +111,7 @@ def test_exact_two_path_bootstrap_passes_without_candidate_execution(tmp_path):
     assert result["raw_exit"] == 0
     assert result["authority_commit"] == authority
     assert result["changed"] == sorted(validator.ALLOWED_CONTROL_PATHS)
+    assert result["registered_transition"] is None
     assert result["candidate_code_executed"] is False
     assert result["mutation_authorized"] is False
 
@@ -175,3 +177,113 @@ def test_expected_capability_binds_exact_authority_commit():
     )
     assert loaded["candidate_self_bootstraps"] is True
     assert loaded["candidate_code_executed"] is False
+
+
+def registered_candidate(tmp_path: Path):
+    root = tmp_path / "registered-newsletter"
+    root.mkdir()
+    git(root, "init", "-q")
+    git(root, "config", "user.email", "s188-fixture@example.invalid")
+    git(root, "config", "user.name", "s188 validator fixture")
+    before = {
+        ".github/integrity/newsletter/control-manifest.json": b"before manifest\n",
+        ".github/integrity/newsletter/validate_newsletter_commit.py": b"before validator\n",
+    }
+    after = {
+        ".github/integrity/newsletter/control-manifest.json": b"after manifest\n",
+        ".github/integrity/newsletter/validate_newsletter_commit.py": b"after validator\n",
+        "tests/test_s188_curated_authority.py": b"faithful and planted tests\n",
+    }
+    for relative, raw in before.items():
+        write(root, relative, raw)
+    git(root, "add", ".")
+    git(root, "commit", "-q", "-m", "base")
+    base = git(root, "rev-parse", "HEAD")
+    for relative, raw in after.items():
+        write(root, relative, raw)
+    git(root, "add", ".")
+    git(root, "commit", "-q", "-m", "registered transition")
+    head = git(root, "rev-parse", "HEAD")
+
+    def state(raw: bytes):
+        return {
+            "present": True,
+            "byte_length": len(raw),
+            "sha256": hashlib.sha256(raw).hexdigest(),
+        }
+
+    files = []
+    for relative in sorted(after):
+        files.append({
+            "path": relative,
+            "before": state(before[relative]) if relative in before else {
+                "present": False,
+            },
+            "after": state(after[relative]),
+        })
+    transition = {
+        "transition_id": "s188-fixture-v1",
+        "purpose": "Exercise exact before and after byte authority.",
+        "files": files,
+    }
+    return root, base, head, sorted(after), transition
+
+
+def test_registered_transition_accepts_only_exact_before_and_after_bytes(tmp_path):
+    root, base, head, changed, transition = registered_candidate(tmp_path)
+    assert validator.validate_registered_transition(
+        root, base, head, REPO_ROOT, changed, transitions=[transition]
+    ) == "s188-fixture-v1"
+
+
+@pytest.mark.parametrize("side", ["before", "after"])
+def test_registered_transition_refuses_digest_divergence(tmp_path, side):
+    root, base, head, changed, transition = registered_candidate(tmp_path)
+    transition["files"][0][side]["sha256"] = "0" * 64
+    with pytest.raises(
+        validator.Refusal,
+        match=f"REGISTERED_TRANSITION_{side.upper()}_BYTES",
+    ):
+        validator.validate_registered_transition(
+            root, base, head, REPO_ROOT, changed, transitions=[transition]
+        )
+
+
+def test_registered_transition_refuses_extra_path_and_ambiguous_tuple(tmp_path):
+    root, base, head, changed, transition = registered_candidate(tmp_path)
+    with pytest.raises(validator.Refusal, match="CONTROL_CHANGE_SET"):
+        validator.validate_registered_transition(
+            root, base, head, REPO_ROOT, changed + ["newsletter.md"],
+            transitions=[transition],
+        )
+    duplicate = json.loads(json.dumps(transition))
+    duplicate["transition_id"] = "s188-fixture-v2"
+    with pytest.raises(validator.Refusal, match="CONTROL_CHANGE_SET"):
+        validator.validate_registered_transition(
+            root, base, head, REPO_ROOT, changed,
+            transitions=[transition, duplicate],
+        )
+
+
+def test_s188_index_binds_exact_c6_three_file_transition():
+    transitions = validator.load_transition_index(REPO_ROOT)
+    assert len(transitions) == 1
+    transition = transitions[0]
+    assert transition["transition_id"] == "s188-curated-newsletter-authority-v1"
+    assert [entry["path"] for entry in transition["files"]] == [
+        ".github/integrity/newsletter/control-manifest.json",
+        ".github/integrity/newsletter/validate_newsletter_commit.py",
+        "tests/test_s188_curated_authority.py",
+    ]
+    assert transition["files"][2]["before"] == {"present": False}
+    assert transition["files"][2]["after"]["sha256"] == (
+        "aec0a67169676a9392ff02e1d90990d39e8418ae3f9f465abcd7c3ef3730ffd5"
+    )
+
+
+def test_transition_index_duplicate_keys_refuse():
+    with pytest.raises(validator.Refusal, match="TRANSITION_INDEX_DUPLICATE_KEY"):
+        json.loads(
+            '{"schema_version":"x","schema_version":"y"}',
+            object_pairs_hook=validator._reject_duplicate_keys,
+        )
