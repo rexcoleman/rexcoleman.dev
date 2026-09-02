@@ -1,0 +1,363 @@
+{
+  "advisory_output_can_authorize": false,
+  "authority_subject": {
+    "findings_commit": "3649994e86d8c75cfd2a86cb779c95e7a0ecae87",
+    "findings_sha256": "124222d43784c2dd6936342713422f64bb571cb112732045ae815d071412d529"
+  },
+  "decision_states": [
+    "ADMIT",
+    "REFUSE"
+  ],
+  "default": "REFUSE",
+  "frozen_foundation_commit": "3649994e86d8c75cfd2a86cb779c95e7a0ecae87",
+  "linkedin_human_handoff": {
+    "generation_claim_fidelity_required": true,
+    "per_claim_brief_required": true,
+    "residual": "HUMAN_PASTE_NOT_MACHINE_ENFORCED",
+    "ruling": "R7-A"
+  },
+  "live_target_binding": {
+    "binding_rule": "A live write effect is admissible only where the request's route_id carries binding_status BOUND in the bound live-target policy AND the named registered observer re-derives live_target_identity_sha256 offline from the live system at request time.  A nominal destination label never certifies a target.  Every other route_id is REFUSE under its recorded reason code.  There is no permissive outcome.",
+    "blocking_path": "deterministic",
+    "bound_route_ids": [
+      "PUB-01A",
+      "PUB-01B",
+      "PUB-01C",
+      "PUB-02",
+      "PUB-03"
+    ],
+    "default": "REFUSE",
+    "human_review_can_authorize": false,
+    "llm_can_authorize": false,
+    "policy_byte_length": 11942,
+    "policy_id": "nga-s5-bounded-live-target-policy",
+    "policy_schema_version": "rea.write.live-target-policy.v1",
+    "policy_sha256": "4d13683902a4f1f0872acf37288a5f66df9cccb1d49d1a2ac09755eadb2d2d03",
+    "refused_route_ids": [
+      "BLG-01",
+      "BLG-02",
+      "BLG-03",
+      "BLG-04",
+      "BLG-05",
+      "BLG-06",
+      "BLG-07",
+      "BLG-08",
+      "BLG-09",
+      "BLG-10",
+      "DST-01",
+      "DST-02",
+      "DST-03",
+      "DST-04",
+      "DST-05A",
+      "DST-05B",
+      "DST-06",
+      "DST-07",
+      "DST-08",
+      "DST-09",
+      "DST-10",
+      "DST-11",
+      "PUB-04",
+      "RPT-01"
+    ],
+    "relative_path": "write_integrity/policy/live_target_policy_v1.json",
+    "route_count": 29,
+    "rows": [
+      {
+        "binding_status": "REFUSE",
+        "live_target_identity_sha256": null,
+        "nominal_destination": "blog://gen-blog-post",
+        "observer": null,
+        "refuse_reason_code": "LIVE_TARGET_NOT_IN_BOUNDED_SCOPE",
+        "route_id": "BLG-01",
+        "surface": "blog"
+      },
+      {
+        "binding_status": "REFUSE",
+        "live_target_identity_sha256": null,
+        "nominal_destination": "blog://paper-analysis",
+        "observer": null,
+        "refuse_reason_code": "LIVE_TARGET_NOT_IN_BOUNDED_SCOPE",
+        "route_id": "BLG-02",
+        "surface": "blog"
+      },
+      {
+        "binding_status": "REFUSE",
+        "live_target_identity_sha256": null,
+        "nominal_destination": "blog://methodology-overview",
+        "observer": null,
+        "refuse_reason_code": "LIVE_TARGET_NOT_IN_BOUNDED_SCOPE",
+        "route_id": "BLG-03",
+        "surface": "blog"
+      },
+      {
+        "binding_status": "REFUSE",
+        "live_target_identity_sha256": null,
+        "nominal_destination": "blog://experiment-learning",
+        "observer": null,
+        "refuse_reason_code": "LIVE_TARGET_NOT_IN_BOUNDED_SCOPE",
+        "route_id": "BLG-04",
+        "surface": "blog"
+      },
+      {
+        "binding_status": "REFUSE",
+        "live_target_identity_sha256": null,
+        "nominal_destination": "blog://market-signal",
+        "observer": null,
+        "refuse_reason_code": "LIVE_TARGET_NOT_IN_BOUNDED_SCOPE",
+        "route_id": "BLG-05",
+        "surface": "blog"
+      },
+      {
+        "binding_status": "REFUSE",
+        "live_target_identity_sha256": null,
+        "nominal_destination": "blog://content-remediation",
+        "observer": null,
+        "refuse_reason_code": "LIVE_TARGET_NOT_IN_BOUNDED_SCOPE",
+        "route_id": "BLG-06",
+        "surface": "blog"
+      },
+      {
+        "binding_status": "REFUSE",
+        "live_target_identity_sha256": null,
+        "nominal_destination": "blog://govml-publish-content",
+        "observer": null,
+        "refuse_reason_code": "LIVE_TARGET_NOT_IN_BOUNDED_SCOPE",
+        "route_id": "BLG-07",
+        "surface": "blog"
+      },
+      {
+        "binding_status": "REFUSE",
+        "live_target_identity_sha256": null,
+        "nominal_destination": "blog://rexcoleman-dev-publish",
+        "observer": null,
+        "refuse_reason_code": "LIVE_TARGET_NOT_IN_BOUNDED_SCOPE",
+        "route_id": "BLG-08",
+        "surface": "blog"
+      },
+      {
+        "binding_status": "REFUSE",
+        "live_target_identity_sha256": null,
+        "nominal_destination": "deploy://rexcoleman.dev/main",
+        "observer": null,
+        "refuse_reason_code": "LIVE_TARGET_NOT_IN_BOUNDED_SCOPE",
+        "route_id": "BLG-09",
+        "surface": "blog"
+      },
+      {
+        "binding_status": "REFUSE",
+        "live_target_identity_sha256": null,
+        "nominal_destination": "deploy://rexcoleman.dev/workflow-dispatch",
+        "observer": null,
+        "refuse_reason_code": "LIVE_TARGET_NOT_IN_BOUNDED_SCOPE",
+        "route_id": "BLG-10",
+        "surface": "blog"
+      },
+      {
+        "binding_status": "REFUSE",
+        "live_target_identity_sha256": null,
+        "nominal_destination": "distribution://kit",
+        "observer": null,
+        "refuse_reason_code": "LIVE_TARGET_NOT_IN_BOUNDED_SCOPE",
+        "route_id": "DST-01",
+        "surface": "distribution"
+      },
+      {
+        "binding_status": "REFUSE",
+        "live_target_identity_sha256": null,
+        "nominal_destination": "distribution://rex-cross-post",
+        "observer": null,
+        "refuse_reason_code": "LIVE_TARGET_NOT_IN_BOUNDED_SCOPE",
+        "route_id": "DST-02",
+        "surface": "distribution"
+      },
+      {
+        "binding_status": "REFUSE",
+        "live_target_identity_sha256": null,
+        "nominal_destination": "distribution://queue",
+        "observer": null,
+        "refuse_reason_code": "LIVE_TARGET_NOT_IN_BOUNDED_SCOPE",
+        "route_id": "DST-03",
+        "surface": "distribution"
+      },
+      {
+        "binding_status": "REFUSE",
+        "live_target_identity_sha256": null,
+        "nominal_destination": "distribution://batch",
+        "observer": null,
+        "refuse_reason_code": "LIVE_TARGET_NOT_IN_BOUNDED_SCOPE",
+        "route_id": "DST-04",
+        "surface": "distribution"
+      },
+      {
+        "binding_status": "REFUSE",
+        "live_target_identity_sha256": null,
+        "nominal_destination": "distribution://review/approve",
+        "observer": null,
+        "refuse_reason_code": "LIVE_TARGET_NOT_IN_BOUNDED_SCOPE",
+        "route_id": "DST-05A",
+        "surface": "distribution"
+      },
+      {
+        "binding_status": "REFUSE",
+        "live_target_identity_sha256": null,
+        "nominal_destination": "distribution://review/edit",
+        "observer": null,
+        "refuse_reason_code": "LIVE_TARGET_NOT_IN_BOUNDED_SCOPE",
+        "route_id": "DST-05B",
+        "surface": "distribution"
+      },
+      {
+        "binding_status": "REFUSE",
+        "live_target_identity_sha256": null,
+        "nominal_destination": "record://distribution/posted",
+        "observer": null,
+        "refuse_reason_code": "LIVE_TARGET_NOT_IN_BOUNDED_SCOPE",
+        "route_id": "DST-06",
+        "surface": "distribution"
+      },
+      {
+        "binding_status": "REFUSE",
+        "live_target_identity_sha256": null,
+        "nominal_destination": "distribution://engagement-draft",
+        "observer": null,
+        "refuse_reason_code": "LIVE_TARGET_NOT_IN_BOUNDED_SCOPE",
+        "route_id": "DST-07",
+        "surface": "distribution"
+      },
+      {
+        "binding_status": "REFUSE",
+        "live_target_identity_sha256": null,
+        "nominal_destination": "api://buffer/createPost",
+        "observer": null,
+        "refuse_reason_code": "LIVE_TARGET_REQUIRES_PLATFORM_READ",
+        "route_id": "DST-08",
+        "surface": "distribution"
+      },
+      {
+        "binding_status": "REFUSE",
+        "live_target_identity_sha256": null,
+        "nominal_destination": "api://buffer/dry-run-fallback",
+        "observer": null,
+        "refuse_reason_code": "LIVE_TARGET_REQUIRES_PLATFORM_READ",
+        "route_id": "DST-09",
+        "surface": "distribution"
+      },
+      {
+        "binding_status": "REFUSE",
+        "live_target_identity_sha256": null,
+        "nominal_destination": "human-handoff://linkedin-or-channel-ui",
+        "observer": null,
+        "refuse_reason_code": "LIVE_TARGET_NOT_MACHINE_DERIVABLE",
+        "route_id": "DST-10",
+        "surface": "distribution"
+      },
+      {
+        "binding_status": "REFUSE",
+        "live_target_identity_sha256": null,
+        "nominal_destination": "record://newsletter/issue-published",
+        "observer": null,
+        "refuse_reason_code": "LIVE_TARGET_NOT_IN_BOUNDED_SCOPE",
+        "route_id": "DST-11",
+        "surface": "distribution"
+      },
+      {
+        "binding_status": "BOUND",
+        "live_target_identity_sha256": "29fdf4f3777db662d3158412aa8a1f4194edcab2025ea11d8bf97d562d6b937e",
+        "nominal_destination": "publication://newsletter/linkedin",
+        "observer": "git_worktree_publication_root_v1",
+        "refuse_reason_code": null,
+        "route_id": "PUB-01A",
+        "surface": "publication"
+      },
+      {
+        "binding_status": "BOUND",
+        "live_target_identity_sha256": "29fdf4f3777db662d3158412aa8a1f4194edcab2025ea11d8bf97d562d6b937e",
+        "nominal_destination": "publication://newsletter/substack",
+        "observer": "git_worktree_publication_root_v1",
+        "refuse_reason_code": null,
+        "route_id": "PUB-01B",
+        "surface": "publication"
+      },
+      {
+        "binding_status": "BOUND",
+        "live_target_identity_sha256": "29fdf4f3777db662d3158412aa8a1f4194edcab2025ea11d8bf97d562d6b937e",
+        "nominal_destination": "publication://newsletter/blog",
+        "observer": "git_worktree_publication_root_v1",
+        "refuse_reason_code": null,
+        "route_id": "PUB-01C",
+        "surface": "publication"
+      },
+      {
+        "binding_status": "BOUND",
+        "live_target_identity_sha256": "29fdf4f3777db662d3158412aa8a1f4194edcab2025ea11d8bf97d562d6b937e",
+        "nominal_destination": "publication://newsletter/image-brief",
+        "observer": "git_worktree_publication_root_v1",
+        "refuse_reason_code": null,
+        "route_id": "PUB-02",
+        "surface": "publication"
+      },
+      {
+        "binding_status": "BOUND",
+        "live_target_identity_sha256": "c8efaab3d6036f2cc777bb208e896939ded3428e6c649089141b909b2af8518f",
+        "nominal_destination": "git://newsletter/origin",
+        "observer": "git_remote_repository_v1",
+        "refuse_reason_code": null,
+        "route_id": "PUB-03",
+        "surface": "publication"
+      },
+      {
+        "binding_status": "REFUSE",
+        "live_target_identity_sha256": null,
+        "nominal_destination": "human-handoff://linkedin-or-channel-ui",
+        "observer": null,
+        "refuse_reason_code": "LIVE_TARGET_NOT_MACHINE_DERIVABLE",
+        "route_id": "PUB-04",
+        "surface": "publication"
+      },
+      {
+        "binding_status": "REFUSE",
+        "live_target_identity_sha256": null,
+        "nominal_destination": "report://governed-artifact",
+        "observer": null,
+        "refuse_reason_code": "LIVE_TARGET_NOT_IN_BOUNDED_SCOPE",
+        "route_id": "RPT-01",
+        "surface": "report"
+      }
+    ],
+    "runtime_entrypoint": "write_integrity.policy.live_target_lib.require_bound_live_target",
+    "schema_version": "rea.claim-admission-policy.live-target-binding.v1",
+    "source_route_class_authority_map_sha256": "ad8118eee8ff6836cfec545da386926a75463e3e2d4e0935e11244d87c24cb53",
+    "source_row_registry_sha256": "472fd523badf52a8d3dbfa6b3a5d1c1c9fb65196c01708edee0c39cd657d09b3",
+    "status": "FROZEN"
+  },
+  "mandatory_refusals": [
+    "unmapped or unknown claim",
+    "strengthened or changed proposition",
+    "paraphrase without FINDINGS-authored proposition and mapping",
+    "qualified-review or human-review input",
+    "missing or mismatched authority subject",
+    "no-evaluation or advisory-only result",
+    "live write target whose route_id is not BOUND in the bound live-target policy, or whose observer-derived live target identity does not equal the bound digest"
+  ],
+  "mapping_rules": [
+    {
+      "decision": "ADMIT",
+      "mapping_kind": "EXACT_FINDINGS_PROPOSITION",
+      "requirements": [
+        "claim_id exists in frozen registry",
+        "candidate proposition UTF-8 bytes equal registry proposition_utf8 bytes",
+        "registry subject equals independently resolved FINDINGS subject"
+      ]
+    },
+    {
+      "decision": "ADMIT_ONLY_IF_EXPLICIT",
+      "mapping_kind": "FINDINGS_AUTHORIZED_MAPPING",
+      "requirements": [
+        "claim_id exists in frozen registry",
+        "candidate proposition and exact mapping tuple both occur in that record's authorized_mappings"
+      ]
+    }
+  ],
+  "qualified_review_in_deterministic_path": false,
+  "schema_version": "rea.claim-admission-policy.v1"
+}
