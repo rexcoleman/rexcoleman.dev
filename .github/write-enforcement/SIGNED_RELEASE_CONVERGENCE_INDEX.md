@@ -27,8 +27,10 @@ The active registry contains the original REA authority adapter, its s155
 registration successor, the Band C M1/row-26 257-member successor, the W2
 project-bundle basis-resolution successor, its derived-authority-generator
 successor, the two s157 dependent-project adapters for NGA and RER, their
-population-257 and population-259 successors, and the two s189 population-264
-dependent adapters for AML and ABLL. The s165 population-259 AML dependent
+population-257, population-259 and population-260 successors, the two s189
+population-264 dependent adapters for AML and ABLL, and the two s195
+population-264 dependent adapters for NGA and RER that complete the
+generation-5 dependent set. The s165 population-259 AML dependent
 adapter is registered but `retired`. The population-259 identities
 bind the PR 759 Moonshots build roles plus both govML role checklists. A
 population-preserving s169 hardening successor is registered as
@@ -174,3 +176,32 @@ name the repository that exists; `agent_boundary_learning_landscape` keeps its
 underscored identity because that is its real remote. Both reuse the registered
 engine, adapter schema v2, and focused test file, so neither adds a
 cross-generation inventory row.
+
+Two s195 population-264 dependent rows complete the generation-5 dependent set:
+`newsletter-generation-architecture-generation-5-population-264-v1` and
+`research-engine-release-generation-5-population-264-v1`. They exist because the
+registered successor binding
+(`research_enforcement_activation/scripts/s157_dependent_successor_propagation.py`)
+targets exactly these two dependents and derives its expectation from the named
+adapter's `expected_member_count`. While their newest adapters stopped at
+population-260 and the installed bundle had moved to 264, that binding refused
+`RENEWAL_POPULATION_REFUSED installed=264;expected=260` on every hourly renewal,
+which is a correct refusal reporting a real gap rather than a defect in the
+binding. Both new rows derive their signed-authority plan from the 264
+control-closure successor without changing it — all nine authority-shared fields
+are asserted equal to
+`research-enforcement-activation-generation-5-population-264-v1`.
+
+Unlike the two landscape rows, these two keep their own dependent routes rather
+than the landscape literal: NGA closes over `main` with the `F09` refusal, and
+RER closes over **`master`** with the `AUTHORITY_LAPSED` refusal, each carried
+forward from that dependent's own population-260 predecessor. The four
+parametrized population-264 dependent tests are generic over the adapter, so
+both new rows inherit hermetic execution, evidence and source-root poststate,
+planted route-drift refusal on all six route fields, and population-identity
+drift refusal. Their population-260 predecessors are deliberately left `active`:
+the closed-index test pins those two identifiers as active, and retiring them to
+mirror the AML supersession would have required editing that assertion, which is
+not a change an added route may make. Both reuse the registered engine, adapter
+schema v2, and focused test file, so neither adds a cross-generation inventory
+row.

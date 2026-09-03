@@ -35,7 +35,14 @@ POPULATION_261_ADAPTER = ROOT / "adapters/research_enforcement_activation.popula
 POPULATION_264_ADAPTER = ROOT / "adapters/research_enforcement_activation.population-264-v1.json"
 AML_264_ADAPTER = ROOT / "adapters/adversarial_ml_landscape.population-264-v1.json"
 ABLL_264_ADAPTER = ROOT / "adapters/agent_boundary_learning_landscape.population-264-v1.json"
-POPULATION_264_DEPENDENT_ADAPTERS = (AML_264_ADAPTER, ABLL_264_ADAPTER)
+NGA_264_ADAPTER = ROOT / "adapters/newsletter_generation_architecture.population-264-v1.json"
+RER_264_ADAPTER = ROOT / "adapters/research_engine_release.population-264-v1.json"
+POPULATION_264_DEPENDENT_ADAPTERS = (
+    AML_264_ADAPTER,
+    ABLL_264_ADAPTER,
+    NGA_264_ADAPTER,
+    RER_264_ADAPTER,
+)
 INDEX = ROOT / "signed_release_convergence_index.json"
 INVENTORY = ROOT / "signed_release_convergence_inventory.json"
 DOC = ROOT / "SIGNED_RELEASE_CONVERGENCE.md"
@@ -561,6 +568,49 @@ def test_population_264_dependent_adapters_bind_real_remotes_and_authority():
             "rexcoleman/agent_boundary_learning_landscape",
         ),
     }
+    # s195: the two remaining generation-5 dependents. They carry their OWN
+    # default_branch and named_refusal (RER is `master`/AUTHORITY_LAPSED, NGA is
+    # `main`/F09), so they are asserted separately from the landscape pair rather
+    # than folded into its literal route, which is main/GOVERNANCE_ENGINE_REF_MISMATCH.
+    route_overrides = {
+        NGA_264_ADAPTER: (
+            "newsletter-generation-architecture-generation-5-population-264-v1",
+            "newsletter_generation_architecture",
+            "rexcoleman/newsletter_generation_architecture",
+            "main",
+            "F09",
+        ),
+        RER_264_ADAPTER: (
+            "research-engine-release-generation-5-population-264-v1",
+            "research_engine_release",
+            "rexcoleman/research_engine_release",
+            "master",
+            "AUTHORITY_LAPSED",
+        ),
+    }
+    for path, (adapter_id, project_id, repository, branch, refusal) in (
+        route_overrides.items()
+    ):
+        value = tool.load_adapter(path)
+        assert value["schema_version"] == tool.DEPENDENT_ADAPTER_SCHEMA
+        assert value["adapter_id"] == adapter_id
+        assert value["expected_member_count"] == 264
+        assert value["manifest_builder_flag"] == "--control-closure-successor"
+        for field in (
+            "authority_generation", "boundaries", "expected_member_count",
+            "manifest_builder", "manifest_builder_flag", "manifest_path",
+            "repositories", "ruleset_id", "ruleset_repository",
+        ):
+            assert value[field] == authority[field]
+        assert value["dependent_project"] == {
+            "project_id": project_id,
+            "repository": repository,
+            "default_branch": branch,
+            "runner_path": "scripts/run_gates.sh",
+            "preflight_arguments": ["--engine-preflight"],
+            "required_source": "SIGNED_BUNDLE",
+            "named_refusal": refusal,
+        }
     for path, (adapter_id, project_id, repository) in expected.items():
         value = tool.load_adapter(path)
         assert value["schema_version"] == tool.DEPENDENT_ADAPTER_SCHEMA
@@ -948,6 +998,8 @@ def test_index_is_closed_and_resolves_every_registered_adapter():
             "research-enforcement-activation-generation-5-population-264-v1",
             "adversarial-ml-landscape-generation-5-population-264-v1",
             "agent-boundary-learning-landscape-generation-5-population-264-v1",
+            "newsletter-generation-architecture-generation-5-population-264-v1",
+            "research-engine-release-generation-5-population-264-v1",
     ]
     status = {row["adapter_id"]: row["status"] for row in value["adapters"]}
     assert {
@@ -998,6 +1050,8 @@ def test_index_refuses_duplicate_unknown_retired_and_traversing_rows(
             POPULATION_264_ADAPTER,
             AML_264_ADAPTER,
             ABLL_264_ADAPTER,
+            NGA_264_ADAPTER,
+            RER_264_ADAPTER,
         ):
         shutil.copyfile(adapter_path, adapters / adapter_path.name)
     shutil.copyfile(WORKFLOW, tmp_path / "workflows" / WORKFLOW.name)
