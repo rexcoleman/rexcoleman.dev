@@ -33,6 +33,9 @@ S170_HOSTED_PRINCIPAL_OWNERSHIP_ADAPTER = ROOT / "adapters/research_enforcement_
 S173_AUTHENTICATED_HEAD_REBASE_ADAPTER = ROOT / "adapters/research_enforcement_activation.s173-authenticated-head-rebase-v1.json"
 POPULATION_261_ADAPTER = ROOT / "adapters/research_enforcement_activation.population-261-v1.json"
 POPULATION_264_ADAPTER = ROOT / "adapters/research_enforcement_activation.population-264-v1.json"
+AML_264_ADAPTER = ROOT / "adapters/adversarial_ml_landscape.population-264-v1.json"
+ABLL_264_ADAPTER = ROOT / "adapters/agent_boundary_learning_landscape.population-264-v1.json"
+POPULATION_264_DEPENDENT_ADAPTERS = (AML_264_ADAPTER, ABLL_264_ADAPTER)
 INDEX = ROOT / "signed_release_convergence_index.json"
 INVENTORY = ROOT / "signed_release_convergence_inventory.json"
 DOC = ROOT / "SIGNED_RELEASE_CONVERGENCE.md"
@@ -543,6 +546,250 @@ def test_impact_selector_binds_control_closure_flag_to_264_contract():
     }
 
 
+def test_population_264_dependent_adapters_bind_real_remotes_and_authority():
+    """Exact target identity: each successor names the remote that exists."""
+    authority = tool.load_adapter(POPULATION_264_ADAPTER)
+    expected = {
+        AML_264_ADAPTER: (
+            "adversarial-ml-landscape-generation-5-population-264-v1",
+            "adversarial-ml-landscape",
+            "rexcoleman/adversarial-ml-landscape",
+        ),
+        ABLL_264_ADAPTER: (
+            "agent-boundary-learning-landscape-generation-5-population-264-v1",
+            "agent_boundary_learning_landscape",
+            "rexcoleman/agent_boundary_learning_landscape",
+        ),
+    }
+    for path, (adapter_id, project_id, repository) in expected.items():
+        value = tool.load_adapter(path)
+        assert value["schema_version"] == tool.DEPENDENT_ADAPTER_SCHEMA
+        assert value["adapter_id"] == adapter_id
+        assert value["expected_member_count"] == 264
+        assert value["manifest_builder_flag"] == "--control-closure-successor"
+        for field in (
+            "authority_generation", "boundaries", "expected_member_count",
+            "manifest_builder", "manifest_builder_flag", "manifest_path",
+            "repositories", "ruleset_id", "ruleset_repository",
+        ):
+            assert value[field] == authority[field]
+        assert value["dependent_project"] == {
+            "project_id": project_id,
+            "repository": repository,
+            "default_branch": "main",
+            "runner_path": "scripts/run_gates.sh",
+            "preflight_arguments": ["--engine-preflight"],
+            "required_source": "SIGNED_BUNDLE",
+            "named_refusal": "GOVERNANCE_ENGINE_REF_MISMATCH",
+        }
+        tests = {row["repository"]: row["paths"] for row in value["hermetic_tests"]}
+        assert set(tests) == {
+            "rexcoleman.dev", "govML", "Moonshots_Career_Thesis_v2",
+            "research_enforcement_activation",
+        }
+        assert "tests/test_s131_convergence.py" in tests["govML"]
+        assert (
+            "tests/test_s139_convergence_authority.py"
+            in tests["Moonshots_Career_Thesis_v2"]
+        )
+        sources = {
+            row["repository"]: row["paths"]
+            for row in value["system_python_sources"]
+        }
+        for source in (
+            "scripts/request_hosted_external_judge_authority.py",
+            "scripts/external_judge_authority_lifecycle_self_test.py",
+            "scripts/gen_infrastructure_index.py",
+        ):
+            assert source in sources["govML"]
+        assert (
+            "scripts/scaffold_research_project.py"
+            in sources["Moonshots_Career_Thesis_v2"]
+        )
+
+
+def test_population_264_dependent_successors_do_not_collide_with_predecessor():
+    """The retired 259 AML identity keeps its own bytes and its own remote."""
+    retired = tool.load_adapter(AML_259_ADAPTER)
+    successor = tool.load_adapter(AML_264_ADAPTER)
+    assert retired["adapter_id"] != successor["adapter_id"]
+    assert retired["dependent_project"]["repository"] == (
+        "rexcoleman/adversarial_ml_landscape"
+    )
+    assert successor["dependent_project"]["repository"] == (
+        "rexcoleman/adversarial-ml-landscape"
+    )
+    index = tool.load_index(INDEX)
+    status = {row["adapter_id"]: row["status"] for row in index["adapters"]}
+    assert status[retired["adapter_id"]] == "retired"
+    assert status[successor["adapter_id"]] == "active"
+
+
+@pytest.mark.parametrize("adapter_path", POPULATION_264_DEPENDENT_ADAPTERS)
+def test_population_264_dependent_adapter_hermetic_execution(
+    tmp_path, monkeypatch, adapter_path
+):
+    """Hermetic execution: registered sources compile under the minimal env."""
+    mapping = roots(tmp_path / adapter_path.stem)
+    for path in mapping.values():
+        path.mkdir(parents=True)
+    adapter = tool.load_adapter(adapter_path)
+    total = 0
+    for row in adapter["system_python_sources"]:
+        for item in row["paths"]:
+            target = mapping[row["repository"]] / item
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_text("value = 1\n")
+            total += 1
+    adapter["hermetic_tests"] = []
+    calls = []
+
+    class Completed:
+        stdout = ""
+        stderr = ""
+
+    def planted_run(argv, **kwargs):
+        calls.append((argv, kwargs))
+        return Completed()
+
+    monkeypatch.setattr(tool, "run", planted_run)
+    monkeypatch.setattr(tool, "pytest_interpreter", lambda: "/usr/bin/python3")
+    result = tool.hermetic_snapshot(adapter, mapping)
+    assert len(result) == total
+    assert all(row["name"] == "system-python-compile" for row in result)
+    assert all(row[0][0] == "/usr/bin/python3" for row in calls)
+    assert all(row[1]["env"] == tool.hermetic_environment() for row in calls)
+    env = tool.hermetic_environment()
+    assert not any(
+        name in env
+        for name in ("GH_TOKEN", "REA_BUNDLE_READ_TOKEN", "SSH_AUTH_SOCK")
+    )
+
+    absent = tool.load_adapter(adapter_path)
+    absent["hermetic_tests"] = []
+    missing = mapping["govML"] / "scripts/gen_infrastructure_index.py"
+    missing.unlink()
+    with pytest.raises(tool.Refusal, match="SYSTEM_PYTHON_SOURCE_ABSENT"):
+        tool.hermetic_snapshot(absent, mapping)
+
+
+@pytest.mark.parametrize("adapter_path", POPULATION_264_DEPENDENT_ADAPTERS)
+def test_population_264_dependent_adapter_evidence_and_source_root_poststate(
+    tmp_path, monkeypatch, adapter_path
+):
+    """Durable contract evidence plus an unchanged source-root poststate."""
+    adapter = tool.load_adapter(adapter_path)
+    evidence = tmp_path / (adapter_path.stem + "-evidence")
+    result = build_result(member_count=264)
+    tool.receipt(evidence, "manifest-a", result)
+    tool.receipt(evidence, "manifest-b", result)
+    contract = tool.contract_snapshot(adapter, evidence, "plan", None)
+    assert contract["dependent_project"] == adapter["dependent_project"]
+    assert contract["member_count"] == 264
+    assert contract["remote_mutation"] is False
+    assert contract["owner_action"] is False
+    assert contract["deterministic"] is True
+    stored = json.loads(
+        (evidence / "receipts" / "manifest-b.json").read_text()
+    )
+    assert stored["result"]["member_count"] == 264
+    assert stored["result_sha256"] == tool.sha256(tool.canonical(result))
+
+    mapping = roots(tmp_path / adapter_path.stem)
+    expected_roots = [{"logical_name": name} for name in sorted(mapping)]
+    tool.receipt(evidence, "roots", expected_roots)
+    monkeypatch.setattr(tool, "root_snapshot", lambda *_args: expected_roots)
+    poststate = tool.poststate_snapshot(adapter, mapping, evidence, None)
+    assert poststate == {
+        "roots_unchanged": True,
+        "remote_mutation": False,
+        "root_count": 5,
+    }
+    monkeypatch.setattr(
+        tool, "root_snapshot", lambda *_args: [{"logical_name": "drifted"}]
+    )
+    with pytest.raises(tool.Refusal, match="ROOT_POSTSTATE_DRIFT"):
+        tool.poststate_snapshot(adapter, mapping, evidence, None)
+
+
+def test_aml_population_264_successor_refuses_the_nonexistent_underscore_remote(
+    tmp_path,
+):
+    """The defect the successor repairs: rexcoleman/adversarial_ml_landscape
+    does not resolve, and the loader refuses it under the real project id."""
+    value = json.loads(AML_264_ADAPTER.read_text())
+    assert value["dependent_project"]["repository"] == (
+        "rexcoleman/adversarial-ml-landscape"
+    )
+    value["dependent_project"]["repository"] = (
+        "rexcoleman/adversarial_ml_landscape"
+    )
+    target = tmp_path / "underscore-remote.json"
+    target.write_text(json.dumps(value))
+    with pytest.raises(
+        tool.Refusal, match="DEPENDENT_PROJECT_REPOSITORY_REFUSED"
+    ):
+        tool.load_adapter(target)
+
+    swapped = json.loads(AML_264_ADAPTER.read_text())
+    swapped["dependent_project"]["project_id"] = "adversarial_ml_landscape"
+    swapped_target = tmp_path / "underscore-project-id.json"
+    swapped_target.write_text(json.dumps(swapped))
+    with pytest.raises(
+        tool.Refusal, match="DEPENDENT_PROJECT_REPOSITORY_REFUSED"
+    ):
+        tool.load_adapter(swapped_target)
+
+
+@pytest.mark.parametrize("adapter_path", POPULATION_264_DEPENDENT_ADAPTERS)
+@pytest.mark.parametrize(
+    ("field", "planted", "reason"),
+    [
+        ("repository", "rexcoleman/newsletter", "DEPENDENT_PROJECT_REPOSITORY_REFUSED"),
+        ("default_branch", "develop", "DEPENDENT_PROJECT_DEFAULT_BRANCH_REFUSED"),
+        ("runner_path", "scripts/other.sh", "DEPENDENT_PROJECT_RUNNER_REFUSED"),
+        ("preflight_arguments", ["--no-verify"], "DEPENDENT_PROJECT_PREFLIGHT_REFUSED"),
+        ("required_source", "SHARED_CHECKOUT", "DEPENDENT_PROJECT_SOURCE_REFUSED"),
+        ("named_refusal", "engine_ref_mismatch", "DEPENDENT_PROJECT_REFUSAL_ID_REFUSED"),
+    ],
+)
+def test_population_264_dependent_adapter_refuses_planted_route_drift(
+    tmp_path, adapter_path, field, planted, reason
+):
+    """Refusal: every dependent route field is closed, not advisory."""
+    value = copy.deepcopy(json.loads(adapter_path.read_text()))
+    value["dependent_project"][field] = planted
+    target = tmp_path / (adapter_path.stem + "-" + field + ".json")
+    target.write_text(json.dumps(value))
+    with pytest.raises(tool.Refusal, match=reason):
+        tool.load_adapter(target)
+
+
+@pytest.mark.parametrize("adapter_path", POPULATION_264_DEPENDENT_ADAPTERS)
+def test_population_264_dependent_adapter_refuses_population_identity_drift(
+    tmp_path, adapter_path
+):
+    """The suffix count and expected_member_count may not diverge."""
+    value = json.loads(adapter_path.read_text())
+    value["expected_member_count"] = 261
+    target = tmp_path / (adapter_path.stem + "-count.json")
+    target.write_text(json.dumps(value))
+    with pytest.raises(
+        tool.Refusal, match="DEPENDENT_PROJECT_ADAPTER_ID_REFUSED"
+    ):
+        tool.load_adapter(target)
+
+    foreign = tool.load_adapter(adapter_path)
+    evidence = tmp_path / (adapter_path.stem + "-foreign-evidence")
+    (evidence / "receipts").mkdir(parents=True)
+    result = dict(build_result())
+    result["member_count"] = 261
+    for name in ("manifest-a.json", "manifest-b.json"):
+        (evidence / "receipts" / name).write_text(json.dumps({"result": result}))
+    with pytest.raises(tool.Refusal, match="BUILT_MANIFEST_CONTRACT_REFUSED"):
+        tool.contract_snapshot(foreign, evidence, "plan", None)
+
+
 @pytest.mark.parametrize(
     ("field", "planted", "reason"),
     [
@@ -605,6 +852,7 @@ def test_dependent_adapter_contract_evidence_binds_target_and_poststate(
             NGA_ADAPTER, RER_ADAPTER, NGA_257_ADAPTER, RER_257_ADAPTER,
             NGA_259_ADAPTER, RER_259_ADAPTER,
             NGA_260_ADAPTER, RER_260_ADAPTER, AML_259_ADAPTER,
+            AML_264_ADAPTER, ABLL_264_ADAPTER,
     ]
 )
 def test_dependent_adapter_resume_preserves_refusal_and_evidence(
@@ -698,8 +946,27 @@ def test_index_is_closed_and_resolves_every_registered_adapter():
             "research-enforcement-activation-generation-5-s173-authenticated-head-rebase-v1",
             "research-enforcement-activation-generation-5-population-261-v1",
             "research-enforcement-activation-generation-5-population-264-v1",
+            "adversarial-ml-landscape-generation-5-population-264-v1",
+            "agent-boundary-learning-landscape-generation-5-population-264-v1",
     ]
+    status = {row["adapter_id"]: row["status"] for row in value["adapters"]}
+    assert {
+        adapter_id for adapter_id, item in status.items() if item == "retired"
+    } == {"adversarial-ml-landscape-generation-5-population-259-v1"}
     for adapter_id in identifiers:
+        if status[adapter_id] == "retired":
+            # The identifier is withdrawn from selection, never deleted: the
+            # row and its adapter bytes stay auditable.
+            with pytest.raises(tool.Refusal, match="INDEX_ADAPTER_RETIRED"):
+                tool.resolve_adapter(INDEX, adapter_id)
+            row = next(
+                item for item in value["adapters"]
+                if item["adapter_id"] == adapter_id
+            )
+            assert tool.load_adapter(
+                INDEX.parent / row["path"]
+            )["adapter_id"] == adapter_id
+            continue
         path = tool.resolve_adapter(INDEX, adapter_id)
         assert tool.load_adapter(path)["adapter_id"] == adapter_id
 
@@ -729,6 +996,8 @@ def test_index_refuses_duplicate_unknown_retired_and_traversing_rows(
             S173_AUTHENTICATED_HEAD_REBASE_ADAPTER,
             POPULATION_261_ADAPTER,
             POPULATION_264_ADAPTER,
+            AML_264_ADAPTER,
+            ABLL_264_ADAPTER,
         ):
         shutil.copyfile(adapter_path, adapters / adapter_path.name)
     shutil.copyfile(WORKFLOW, tmp_path / "workflows" / WORKFLOW.name)
@@ -1216,6 +1485,14 @@ def test_list_adapters_and_indexed_execution_selection(monkeypatch, capsys, tmp_
     )
     assert (
         "adversarial-ml-landscape-generation-5-population-259-v1"
+        "\tretired\t" in listed
+    )
+    assert (
+        "adversarial-ml-landscape-generation-5-population-264-v1"
+        "\tactive\t" in listed
+    )
+    assert (
+        "agent-boundary-learning-landscape-generation-5-population-264-v1"
         "\tactive\t" in listed
     )
     assert (
@@ -1248,6 +1525,33 @@ def test_list_adapters_and_indexed_execution_selection(monkeypatch, capsys, tmp_
         "--plan",
     ]) == 0
     assert captured["adapter"] == S173_AUTHENTICATED_HEAD_REBASE_ADAPTER
+
+    for adapter_id, expected in (
+        (
+            "adversarial-ml-landscape-generation-5-population-264-v1",
+            AML_264_ADAPTER,
+        ),
+        (
+            "agent-boundary-learning-landscape-generation-5-population-264-v1",
+            ABLL_264_ADAPTER,
+        ),
+    ):
+        captured.clear()
+        assert tool.main([
+            "--adapter-id", adapter_id,
+            "--state", str(tmp_path / (adapter_id + "-state.json")),
+            "--evidence-dir", str(tmp_path / (adapter_id + "-evidence")),
+            "--plan",
+        ]) == 0
+        assert captured["adapter"] == expected
+
+    assert tool.main([
+        "--adapter-id", "adversarial-ml-landscape-generation-5-population-259-v1",
+        "--state", str(tmp_path / "retired-state.json"),
+        "--evidence-dir", str(tmp_path / "retired-evidence"),
+        "--plan",
+    ]) == 2
+    assert "INDEX_ADAPTER_RETIRED" in capsys.readouterr().err
 
 
 def test_cli_refuses_ambiguous_or_missing_adapter_selection(capsys, tmp_path):
