@@ -122,12 +122,31 @@ refuse them. The govML hermetic surface adds `tests/test_s131_convergence.py`,
 which exercises the nine-source closure predicate. Registration neither creates
 a manifest nor freezes, issues, installs, or activates an authority.
 
-The s165 AML route is registered as
+The s165 AML route was registered as
 `adversarial-ml-landscape-generation-5-population-259-v1`. Its Moonshots
 hermetic surface covers the one-time committed `PENDING_SIGNED_BUNDLE` genesis
 binding: only authenticated signed-bundle bytes provide the immutable govML
 commit, an installer refusal restores the original governance bytes exactly,
-and the dependent landing remains a separate later step.
+and the dependent landing remains a separate later step. That row is now
+`retired`: its `dependent_project.repository` named
+`rexcoleman/adversarial_ml_landscape`, which does not resolve. The real remote
+is `rexcoleman/adversarial-ml-landscape`. Its successor is
+`adversarial-ml-landscape-generation-5-population-264-v1`. The identifier is
+retained and never reused.
+
+The two s189 population-264 dependent routes are registered as
+`adversarial-ml-landscape-generation-5-population-264-v1` and
+`agent-boundary-learning-landscape-generation-5-population-264-v1`. Both close
+over the control-closure population of 264 members, the
+`--control-closure-successor` builder selector, the project-owned
+`scripts/run_gates.sh --engine-preflight` acceptance surface, the required
+`SIGNED_BUNDLE` source, and the named `GOVERNANCE_ENGINE_REF_MISMATCH` refusal
+their byte-identical runners raise when the observed governance engine ref
+differs from the signed bundle ref. Because the loader derives the dependent
+repository as `rexcoleman/<project_id>`, the AML successor's `project_id` is
+the hyphenated `adversarial-ml-landscape`, which is what makes it name the
+repository that actually exists. Registration plans these bytes; it does not
+build, freeze, issue, install, or activate generation 5.
 
 The s169 hardening set uses the registered population-preserving successor
 `research-enforcement-activation-generation-5-s169-hardening-v1`. It closes

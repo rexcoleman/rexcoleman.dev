@@ -27,8 +27,9 @@ The active registry contains the original REA authority adapter, its s155
 registration successor, the Band C M1/row-26 257-member successor, the W2
 project-bundle basis-resolution successor, its derived-authority-generator
 successor, the two s157 dependent-project adapters for NGA and RER, their
-population-257 and population-259 successors, and the s165 population-259 AML
-dependent adapter. The population-259 identities
+population-257 and population-259 successors, and the two s189 population-264
+dependent adapters for AML and ABLL. The s165 population-259 AML dependent
+adapter is registered but `retired`. The population-259 identities
 bind the PR 759 Moonshots build roles plus both govML role checklists. A
 population-preserving s169 hardening successor is registered as
 `research-enforcement-activation-generation-5-s169-hardening-v1`. It binds
@@ -152,3 +153,24 @@ The second s165 row registers the population-259
 `PENDING_SIGNED_BUNDLE` sentinel to the authenticated bundle's exact govML
 commit, requires refusal rollback to the original governance bytes, and retains
 the dependent project's own post-issuance runner as the acceptance surface.
+That row's index status is now `retired` and its successor is
+`adversarial-ml-landscape-generation-5-population-264-v1`. The adapter named
+`rexcoleman/adversarial_ml_landscape` as the dependent repository; that
+repository does not resolve, and the real remote is
+`rexcoleman/adversarial-ml-landscape`. `retired` is the only withdrawal status
+the closed index row schema admits, so it carries the supersession. The
+identifier is retained, not deleted, and a retired row refuses selection.
+
+Two s189 population-264 dependent rows register
+`adversarial-ml-landscape-generation-5-population-264-v1` and
+`agent-boundary-learning-landscape-generation-5-population-264-v1`. Both derive
+their signed-authority plan from the 264 control-closure successor without
+changing it, and each closes over its own real remote, `main` default branch,
+`scripts/run_gates.sh` runner, `--engine-preflight` argument, required
+`SIGNED_BUNDLE` source, and the `GOVERNANCE_ENGINE_REF_MISMATCH` refusal. The
+loader derives the dependent repository from `project_id`, so the AML successor
+uses the hyphenated `adversarial-ml-landscape` project identity in order to
+name the repository that exists; `agent_boundary_learning_landscape` keeps its
+underscored identity because that is its real remote. Both reuse the registered
+engine, adapter schema v2, and focused test file, so neither adds a
+cross-generation inventory row.
