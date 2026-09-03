@@ -94,8 +94,7 @@
       "adapter_id": "research-enforcement-activation-generation-5-population-261-v1",
       "path": "adapters/research_enforcement_activation.population-261-v1.json",
       "status": "active"
-    }
-,
+    },
     {
       "adapter_id": "research-enforcement-activation-generation-5-population-264-v1",
       "path": "adapters/research_enforcement_activation.population-264-v1.json",
@@ -109,6 +108,16 @@
     {
       "adapter_id": "agent-boundary-learning-landscape-generation-5-population-264-v1",
       "path": "adapters/agent_boundary_learning_landscape.population-264-v1.json",
+      "status": "active"
+    },
+    {
+      "adapter_id": "newsletter-generation-architecture-generation-5-population-264-v1",
+      "path": "adapters/newsletter_generation_architecture.population-264-v1.json",
+      "status": "active"
+    },
+    {
+      "adapter_id": "research-engine-release-generation-5-population-264-v1",
+      "path": "adapters/research_engine_release.population-264-v1.json",
       "status": "active"
     }
   ],
