@@ -119,6 +119,21 @@
       "adapter_id": "research-engine-release-generation-5-population-264-v1",
       "path": "adapters/research_engine_release.population-264-v1.json",
       "status": "active"
+    },
+    {
+      "adapter_id": "newsletter-hybrid-path-generation-5-population-264-v1",
+      "path": "adapters/newsletter_hybrid_path.population-264-v1.json",
+      "status": "active"
+    },
+    {
+      "adapter_id": "newsletter-generation-5-population-264-v1",
+      "path": "adapters/newsletter.population-264-v1.json",
+      "status": "active"
+    },
+    {
+      "adapter_id": "rexcoleman.dev-generation-5-population-264-v1",
+      "path": "adapters/rexcoleman.dev.population-264-v1.json",
+      "status": "active"
     }
   ],
   "documentation": "SIGNED_RELEASE_CONVERGENCE.md",

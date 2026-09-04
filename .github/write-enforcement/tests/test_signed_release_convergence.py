@@ -37,11 +37,20 @@ AML_264_ADAPTER = ROOT / "adapters/adversarial_ml_landscape.population-264-v1.js
 ABLL_264_ADAPTER = ROOT / "adapters/agent_boundary_learning_landscape.population-264-v1.json"
 NGA_264_ADAPTER = ROOT / "adapters/newsletter_generation_architecture.population-264-v1.json"
 RER_264_ADAPTER = ROOT / "adapters/research_engine_release.population-264-v1.json"
+# s198: the three publication-surface dependents (report / blog / publication /
+# distribution). Each is a three-field derivation of ABLL_264_ADAPTER, so each
+# carries the same main/GOVERNANCE_ENGINE_REF_MISMATCH route as the landscape pair.
+NHP_264_ADAPTER = ROOT / "adapters/newsletter_hybrid_path.population-264-v1.json"
+NEWSLETTER_264_ADAPTER = ROOT / "adapters/newsletter.population-264-v1.json"
+REXDEV_264_ADAPTER = ROOT / "adapters/rexcoleman.dev.population-264-v1.json"
 POPULATION_264_DEPENDENT_ADAPTERS = (
     AML_264_ADAPTER,
     ABLL_264_ADAPTER,
     NGA_264_ADAPTER,
     RER_264_ADAPTER,
+    NHP_264_ADAPTER,
+    NEWSLETTER_264_ADAPTER,
+    REXDEV_264_ADAPTER,
 )
 INDEX = ROOT / "signed_release_convergence_index.json"
 INVENTORY = ROOT / "signed_release_convergence_inventory.json"
@@ -567,6 +576,21 @@ def test_population_264_dependent_adapters_bind_real_remotes_and_authority():
             "agent_boundary_learning_landscape",
             "rexcoleman/agent_boundary_learning_landscape",
         ),
+        NHP_264_ADAPTER: (
+            "newsletter-hybrid-path-generation-5-population-264-v1",
+            "newsletter_hybrid_path",
+            "rexcoleman/newsletter_hybrid_path",
+        ),
+        NEWSLETTER_264_ADAPTER: (
+            "newsletter-generation-5-population-264-v1",
+            "newsletter",
+            "rexcoleman/newsletter",
+        ),
+        REXDEV_264_ADAPTER: (
+            "rexcoleman.dev-generation-5-population-264-v1",
+            "rexcoleman.dev",
+            "rexcoleman/rexcoleman.dev",
+        ),
     }
     # s195: the two remaining generation-5 dependents. They carry their OWN
     # default_branch and named_refusal (RER is `master`/AUTHORITY_LAPSED, NGA is
@@ -795,7 +819,11 @@ def test_aml_population_264_successor_refuses_the_nonexistent_underscore_remote(
 @pytest.mark.parametrize(
     ("field", "planted", "reason"),
     [
-        ("repository", "rexcoleman/newsletter", "DEPENDENT_PROJECT_REPOSITORY_REFUSED"),
+        # s198: the repository plant is DERIVED in the body from each adapter's
+        # own project_id, never a literal. A literal plant over a growing registry
+        # goes stale the moment the planted repository becomes a real dependent,
+        # which is exactly what happened to `rexcoleman/newsletter`.
+        ("repository", None, "DEPENDENT_PROJECT_REPOSITORY_REFUSED"),
         ("default_branch", "develop", "DEPENDENT_PROJECT_DEFAULT_BRANCH_REFUSED"),
         ("runner_path", "scripts/other.sh", "DEPENDENT_PROJECT_RUNNER_REFUSED"),
         ("preflight_arguments", ["--no-verify"], "DEPENDENT_PROJECT_PREFLIGHT_REFUSED"),
@@ -808,6 +836,10 @@ def test_population_264_dependent_adapter_refuses_planted_route_drift(
 ):
     """Refusal: every dependent route field is closed, not advisory."""
     value = copy.deepcopy(json.loads(adapter_path.read_text()))
+    if field == "repository" and planted is None:
+        planted = "rexcoleman/%s-drift-not-a-registered-dependent" % (
+            value["dependent_project"]["project_id"],
+        )
     value["dependent_project"][field] = planted
     target = tmp_path / (adapter_path.stem + "-" + field + ".json")
     target.write_text(json.dumps(value))
@@ -903,6 +935,7 @@ def test_dependent_adapter_contract_evidence_binds_target_and_poststate(
             NGA_259_ADAPTER, RER_259_ADAPTER,
             NGA_260_ADAPTER, RER_260_ADAPTER, AML_259_ADAPTER,
             AML_264_ADAPTER, ABLL_264_ADAPTER,
+            NHP_264_ADAPTER, NEWSLETTER_264_ADAPTER, REXDEV_264_ADAPTER,
     ]
 )
 def test_dependent_adapter_resume_preserves_refusal_and_evidence(
@@ -1000,6 +1033,9 @@ def test_index_is_closed_and_resolves_every_registered_adapter():
             "agent-boundary-learning-landscape-generation-5-population-264-v1",
             "newsletter-generation-architecture-generation-5-population-264-v1",
             "research-engine-release-generation-5-population-264-v1",
+            "newsletter-hybrid-path-generation-5-population-264-v1",
+            "newsletter-generation-5-population-264-v1",
+            "rexcoleman.dev-generation-5-population-264-v1",
     ]
     status = {row["adapter_id"]: row["status"] for row in value["adapters"]}
     assert {
@@ -1052,6 +1088,9 @@ def test_index_refuses_duplicate_unknown_retired_and_traversing_rows(
             ABLL_264_ADAPTER,
             NGA_264_ADAPTER,
             RER_264_ADAPTER,
+            NHP_264_ADAPTER,
+            NEWSLETTER_264_ADAPTER,
+            REXDEV_264_ADAPTER,
         ):
         shutil.copyfile(adapter_path, adapters / adapter_path.name)
     shutil.copyfile(WORKFLOW, tmp_path / "workflows" / WORKFLOW.name)
@@ -1588,6 +1627,18 @@ def test_list_adapters_and_indexed_execution_selection(monkeypatch, capsys, tmp_
         (
             "agent-boundary-learning-landscape-generation-5-population-264-v1",
             ABLL_264_ADAPTER,
+        ),
+        (
+            "newsletter-hybrid-path-generation-5-population-264-v1",
+            NHP_264_ADAPTER,
+        ),
+        (
+            "newsletter-generation-5-population-264-v1",
+            NEWSLETTER_264_ADAPTER,
+        ),
+        (
+            "rexcoleman.dev-generation-5-population-264-v1",
+            REXDEV_264_ADAPTER,
         ),
     ):
         captured.clear()
