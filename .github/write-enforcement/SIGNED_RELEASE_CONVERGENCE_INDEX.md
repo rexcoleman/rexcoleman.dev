@@ -94,6 +94,21 @@ refused `CONTROL_CLOSURE_MEMBER_ABSENT` under its own consumer because those
 rows were absent. This registration does not build, freeze, issue, install, or
 activate generation 5.
 
+Three population-264 dependent adapters register the publication surfaces named
+by the cycle's 2026-07-11 amendment - the report, blog, publication and
+distribution boundary where claims actually reach readers:
+`newsletter-hybrid-path-generation-5-population-264-v1`,
+`newsletter-generation-5-population-264-v1` and
+`rexcoleman.dev-generation-5-population-264-v1`. They derive from the s189/s195
+dependent-adapter contract without changing it: the five-root signed-authority
+plan, the 264-member control-closure population, the hermetic suites and the
+boundaries are identical, and the three per-project fields - `adapter_id`,
+`dependent_project.project_id` and `dependent_project.repository` - are the only
+divergence. Registration plans these identities; it does not build, freeze,
+issue, install, enrol or arm any of the three repositories, and in particular it
+does not arm a commit boundary on `newsletter` or `rexcoleman.dev`, which carry
+live publication traffic.
+
 A population change always gets a new stable
 adapter identity; the 251- and 255-member adapters remain
 auditable without being silently redefined. The dependent adapters use schema
