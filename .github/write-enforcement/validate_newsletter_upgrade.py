@@ -14,7 +14,13 @@ from pathlib import Path
 
 
 CHECKOUT_PIN = "11bd71901bbe5b1630ceea73d27597364c9af683"
-TARGET_AUTHORITY_PIN = "71c7835246171126ab657fba28fad649172c345d"
+# Generation-5 authority. Moonshots e86a3c4e pins rexcoleman.dev
+# verify-write-enforcement.yml@13f6efd2 (control_sha 13f6efd2), the
+# generation-5 verifier that expects the 11-artifact PUBLIC_ARTIFACTS set
+# including predecessor_write_enforcement_attestation.json. The superseded
+# 71c78352 pinned the generation-4 verifier c68062541f, which refuses the
+# live manifest with WEA_WRONG_BUNDLE: authority_generation.
+TARGET_AUTHORITY_PIN = "e86a3c4ebeec7a1f5cf4cc3c3e849a978a096a54"
 LEGACY_WORKFLOW = Path(".github/workflows/newsletter-integrity.yml")
 UPGRADE_WORKFLOW = Path(".github/workflows/newsletter-upgrade-integrity.yml")
 CAPABILITY = Path(".github/integrity/newsletter/bootstrap-capability.json")
