@@ -48,6 +48,17 @@ TARGET_WORKFLOW = LEGACY_WORKFLOW.replace(
     validator.TARGET_AUTHORITY_PIN,
 )
 
+# Literal pins, deliberately NOT derived from validator.TARGET_AUTHORITY_PIN, so
+# that reverting the constant makes the accept case below fail.
+GENERATION_5_AUTHORITY_PIN = "e86a3c4ebeec7a1f5cf4cc3c3e849a978a096a54"
+GENERATION_4_AUTHORITY_PIN = "71c7835246171126ab657fba28fad649172c345d"
+
+
+def legacy_pinned_to(commit: str) -> str:
+    return LEGACY_WORKFLOW.replace(
+        "44e61952b101aacb222091f04c4cf728b5ec3f04", commit
+    )
+
 
 def git(root: Path, *args: str) -> str:
     return subprocess.run(
@@ -158,6 +169,44 @@ def test_superseded_ten_artifact_control_pin_refuses():
     )
     with pytest.raises(validator.Refusal, match="LEGACY_REUSABLE_WORKFLOW_PIN"):
         validator.validate_legacy_workflow(obsolete)
+
+
+def test_generation_five_authority_pin_is_the_registered_upgrade_target():
+    """The only accepted destination is Moonshots e86a3c4e.
+
+    e86a3c4e pins rexcoleman.dev verify-write-enforcement.yml@13f6efd2 with
+    control_sha 13f6efd2 -- the generation-5 verifier, the only one that passes
+    the live 11-artifact issuance. Asserted against a literal so a regression of
+    validator.TARGET_AUTHORITY_PIN fails here rather than silently redefining
+    what "the target" means.
+    """
+    assert validator.TARGET_AUTHORITY_PIN == GENERATION_5_AUTHORITY_PIN
+    assert (
+        validator.validate_legacy_workflow(
+            legacy_pinned_to(GENERATION_5_AUTHORITY_PIN)
+        )
+        is None
+    )
+
+
+def test_superseded_generation_four_authority_pin_refuses():
+    """71c78352 pinned the generation-4 verifier c68062541f, which refuses the
+    live manifest with WEA_WRONG_BUNDLE: authority_generation."""
+    with pytest.raises(validator.Refusal, match="LEGACY_REUSABLE_WORKFLOW_PIN"):
+        validator.validate_legacy_workflow(
+            legacy_pinned_to(GENERATION_4_AUTHORITY_PIN)
+        )
+
+
+def test_bootstrap_accepts_only_the_generation_five_pinned_legacy_control(tmp_path):
+    root, base, head, _authority = candidate(tmp_path)
+    assert validate(root, base, head)["verdict"] == "PASS"
+    accepted = (root / str(validator.LEGACY_WORKFLOW)).read_text(encoding="utf-8")
+    assert (
+        "rexcoleman/Moonshots_Career_Thesis/.github/workflows/"
+        f"newsletter-integrity-authority.yml@{GENERATION_5_AUTHORITY_PIN}"
+    ) in accepted
+    assert GENERATION_4_AUTHORITY_PIN not in accepted
 
 
 def test_wrong_repository_and_checkout_identity_refuse(tmp_path):
