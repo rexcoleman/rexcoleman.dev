@@ -302,7 +302,10 @@ def environment_policy(name: str) -> dict:
             {"name": value.get("name"), "type": value.get("type")}
             for value in (values or []) if isinstance(value, dict)
         ]
-        if normalized != [{"name": "main", "type": "branch"}]:
+        expected = [{"name": "main", "type": "branch"}]
+        if name == ENV_RENEWAL:
+            expected.append({"name": "rea-wea-generation-*", "type": "tag"})
+        if normalized != expected:
             raise Refusal("ENVIRONMENT_BRANCH_POLICY_REFUSED:%s" % name)
     return row
 

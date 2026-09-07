@@ -170,6 +170,30 @@ def test_non_tty_refuses(monkeypatch):
         tool.ensure_identity(True)
 
 
+def test_renewal_policy_requires_main_and_generation_tag(monkeypatch):
+    environment = {
+        "id": 1,
+        "protection_rules": [{"type": "branch_policy"}],
+        "deployment_branch_policy": {
+            "protected_branches": False, "custom_branch_policies": True,
+        },
+    }
+    policies = {
+        "branch_policies": [
+            {"name": "main", "type": "branch"},
+            {"name": "rea-wea-generation-*", "type": "tag"},
+        ],
+    }
+    monkeypatch.setattr(
+        tool, "gh_json",
+        lambda argv: policies if "deployment-branch-policies" in argv[-1] else environment,
+    )
+    assert tool.environment_policy(tool.ENV_RENEWAL) == environment
+    policies["branch_policies"].pop()
+    with pytest.raises(tool.Refusal, match="ENVIRONMENT_BRANCH_POLICY_REFUSED"):
+        tool.environment_policy(tool.ENV_RENEWAL)
+
+
 def test_changed_deployed_source_refuses(monkeypatch, tmp_path):
     commit_file = tmp_path / "DEPLOYED_COMMIT"
     commit_file.write_text("a" * 40 + "\n", encoding="ascii")
