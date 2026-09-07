@@ -78,6 +78,14 @@ env:
   # either module without moving its pin here refuses every run.
   RENEWAL_CONTRACT_SHA256: 8e4d360fc34b89f912de823a9b530cccf21cb868406e16994e3da011456500de
   ARTIFACT_CONTRACT_SHA256: a5747846904bf082643ca0f740d1fe3673c7331385e7d9f51424b90e933cbd65
+  # s210 governed-read credential lane.  The minter is byte-identical to the
+  # signed govML template copy, and this workflow asserts that identity against
+  # repos/govML once the frozen repositories are on disk.  These pins bind both
+  # modules to this workflow for the window before the 266-member re-freeze
+  # makes them signed members in their own right, and permanently give the two
+  # jobs that never reach the frozen checkout a binding of their own.
+  GOVERNED_READ_MINTER_SHA256: 229ce6b172da80e092f93262fc442a1c6099811c125e44e854fc0a12269e9fcf
+  GOVERNED_READ_SELECTOR_SHA256: 6668b7c1115d18a2d71bd17ceff6628163f97d4a106e4e4581f0835fb9954718
 
 jobs:
   preflight-predecessor:
@@ -113,7 +121,9 @@ jobs:
           set -euo pipefail
           test "$(sha256sum repo/.github/write-enforcement/renewal_contract.py | cut -d' ' -f1)" = "$RENEWAL_CONTRACT_SHA256"
           test "$(sha256sum repo/.github/write-enforcement/artifact_contract.py | cut -d' ' -f1)" = "$ARTIFACT_CONTRACT_SHA256"
-          echo "UNFROZEN_MODULE_PIN_PASS renewal_contract=$RENEWAL_CONTRACT_SHA256 artifact_contract=$ARTIFACT_CONTRACT_SHA256"
+          test "$(sha256sum repo/.github/write-enforcement/github_app_installation_token.py | cut -d' ' -f1)" = "$GOVERNED_READ_MINTER_SHA256"
+          test "$(sha256sum repo/.github/write-enforcement/select_governed_read_credential.py | cut -d' ' -f1)" = "$GOVERNED_READ_SELECTOR_SHA256"
+          echo "UNFROZEN_MODULE_PIN_PASS renewal_contract=$RENEWAL_CONTRACT_SHA256 artifact_contract=$ARTIFACT_CONTRACT_SHA256 governed_read_minter=$GOVERNED_READ_MINTER_SHA256 governed_read_selector=$GOVERNED_READ_SELECTOR_SHA256"
       - name: Refuse an unrecognised dispatch mode
         env:
           MODE: ${{ inputs.mode }}
@@ -220,6 +230,31 @@ jobs:
         with:
           path: repo
           persist-credentials: false
+      - name: Bind the governed read credential modules to this workflow
+        run: |
+          set -euo pipefail
+          test "$(sha256sum repo/.github/write-enforcement/github_app_installation_token.py | cut -d' ' -f1)" = "$GOVERNED_READ_MINTER_SHA256"
+          test "$(sha256sum repo/.github/write-enforcement/select_governed_read_credential.py | cut -d' ' -f1)" = "$GOVERNED_READ_SELECTOR_SHA256"
+          echo "GOVERNED_READ_MODULE_PIN_PASS minter=$GOVERNED_READ_MINTER_SHA256 selector=$GOVERNED_READ_SELECTOR_SHA256"
+      - name: Select the governed read credential under custody precedence
+        env:
+          GOVML_REA_READ_APP_ID: ${{ secrets.GOVML_REA_READ_APP_ID }}
+          GOVML_REA_READ_APP_PRIVATE_KEY_B64: ${{ secrets.GOVML_REA_READ_APP_PRIVATE_KEY_B64 }}
+          REA_BUNDLE_READ_TOKEN: ${{ secrets.REA_BUNDLE_READ_TOKEN }}
+        run: |
+          set -euo pipefail
+          # seal_downstream exists to install its payload as a LONG-LIVED
+          # downstream repository Actions secret.  Custody states the minted
+          # installation token is never stored as a repository secret, and it
+          # expires in about an hour, so --legacy-only refuses the App route
+          # here rather than sealing a credential that is dead on arrival.  A
+          # PARTIAL App pair still refuses; it never downgrades.  This job
+          # checks out no foreign repository and executes no checked-out code,
+          # so nothing untrusted runs and no token file is materialized: the
+          # seal step below keeps the unchanged environment route.
+          python3 repo/.github/write-enforcement/select_governed_read_credential.py \
+            --minter repo/.github/write-enforcement/github_app_installation_token.py \
+            --legacy-only --check
       - name: Seal protected bundle token to exact downstream public key
         env:
           REA_BUNDLE_READ_TOKEN: ${{ secrets.REA_BUNDLE_READ_TOKEN }}
@@ -342,6 +377,14 @@ jobs:
           path: repos/rexcoleman.dev
           fetch-depth: 0
           persist-credentials: false
+      - name: Bind unfrozen authority-bearing modules to this workflow
+        run: |
+          set -euo pipefail
+          test "$(sha256sum repos/rexcoleman.dev/.github/write-enforcement/renewal_contract.py | cut -d' ' -f1)" = "$RENEWAL_CONTRACT_SHA256"
+          test "$(sha256sum repos/rexcoleman.dev/.github/write-enforcement/artifact_contract.py | cut -d' ' -f1)" = "$ARTIFACT_CONTRACT_SHA256"
+          test "$(sha256sum repos/rexcoleman.dev/.github/write-enforcement/github_app_installation_token.py | cut -d' ' -f1)" = "$GOVERNED_READ_MINTER_SHA256"
+          test "$(sha256sum repos/rexcoleman.dev/.github/write-enforcement/select_governed_read_credential.py | cut -d' ' -f1)" = "$GOVERNED_READ_SELECTOR_SHA256"
+          echo "UNFROZEN_MODULE_PIN_PASS renewal_contract=$RENEWAL_CONTRACT_SHA256 artifact_contract=$ARTIFACT_CONTRACT_SHA256 governed_read_minter=$GOVERNED_READ_MINTER_SHA256 governed_read_selector=$GOVERNED_READ_SELECTOR_SHA256"
       - name: Preflight hosted toolchain
         run: |
           set -euo pipefail
@@ -392,10 +435,59 @@ jobs:
             --key-id "$KEY_ID" --public-key-sha256 "$PUBLIC_KEY_SHA256" \
             --ciphertext-sha256 "$CIPHERTEXT_SHA256" --run-id "$TRANSFER_RUN_ID" \
             --workflow-ref "$GITHUB_REF" --workflow-sha "$GITHUB_SHA"
-      - name: Checkout frozen repositories
+      - name: Select the governed read credential under custody precedence
         env:
+          GOVML_REA_READ_APP_ID: ${{ secrets.GOVML_REA_READ_APP_ID }}
+          GOVML_REA_READ_APP_PRIVATE_KEY_B64: ${{ secrets.GOVML_REA_READ_APP_PRIVATE_KEY_B64 }}
           REA_BUNDLE_READ_TOKEN: ${{ secrets.REA_BUNDLE_READ_TOKEN }}
-        run: python3 repos/rexcoleman.dev/.github/write-enforcement/checkout_manifest.py repos/rexcoleman.dev/.github/write-enforcement/frozen_bundle_manifest.generation-5.json repos
+        run: |
+          set -euo pipefail
+          umask 077
+          # Custody precedence, implemented by the selector, not by this file:
+          # a COMPLETE GOVML_REA_READ_APP_ID / GOVML_REA_READ_APP_PRIVATE_KEY_B64
+          # pair mints one short-lived installation token and wins even when
+          # the compatibility name is still configured; a PARTIAL pair refuses
+          # rather than downgrading; only a wholly absent pair falls back to the
+          # deprecated REA_BUNDLE_READ_TOKEN label; nothing present refuses.
+          python3 repos/rexcoleman.dev/.github/write-enforcement/select_governed_read_credential.py \
+            --minter repos/rexcoleman.dev/.github/write-enforcement/github_app_installation_token.py \
+            --output "$RUNNER_TEMP/governed-read-credential"
+          test "$(stat -c '%a' "$RUNNER_TEMP/governed-read-credential")" = 600
+      - name: Checkout frozen repositories
+        run: |
+          set -euo pipefail
+          python3 repos/rexcoleman.dev/.github/write-enforcement/checkout_manifest.py \
+            repos/rexcoleman.dev/.github/write-enforcement/frozen_bundle_manifest.generation-5.json \
+            repos --token-file "$RUNNER_TEMP/governed-read-credential"
+      - name: Remove the governed read credential before any checked-out code runs
+        run: |
+          set -euo pipefail
+          # Custody requires the file to be gone before untrusted gate code
+          # runs.  The step above is the LAST step in this job that needs the
+          # credential and the FIRST that puts foreign repository bytes on
+          # disk, so removal belongs immediately after it -- ahead of the
+          # minter drift assertion (which only hashes those bytes) and well
+          # ahead of every later step that reads or executes bytes from
+          # the checked-out workspace.
+          rm -f "$RUNNER_TEMP/governed-read-credential"
+          test ! -e "$RUNNER_TEMP/governed-read-credential"
+          echo "GOVERNED_READ_CREDENTIAL_REMOVED=true"
+      - name: Prove this workflow's minter matches the signed govML copy
+        run: |
+          set -euo pipefail
+          # The minter now exists in three places (govML template, REA install,
+          # this repository).  A silent divergence would be invisible to the
+          # 266-member manifest until the next freeze, so the workflow that
+          # DEPENDS on the minter asserts the identity itself, on the exact
+          # frozen govML commit it just checked out.
+          workflow_copy="$(sha256sum repos/rexcoleman.dev/.github/write-enforcement/github_app_installation_token.py | cut -d' ' -f1)"
+          govml_copy="$(sha256sum repos/govML/templates/build/enforcement/github_app_installation_token.py | cut -d' ' -f1)"
+          if [ "$workflow_copy" != "$govml_copy" ]; then
+            echo "REFUSED GOVERNED_READ_MINTER_DRIFT: workflow copy $workflow_copy != govML copy $govml_copy" >&2
+            exit 3
+          fi
+          test "$workflow_copy" = "$GOVERNED_READ_MINTER_SHA256"
+          echo "GOVERNED_READ_MINTER_DRIFT_PASS sha256=$workflow_copy sources=3"
       - name: Fetch protected ruleset
         env:
           GH_TOKEN: ${{ secrets.REA_RULESET_READ_TOKEN }}
@@ -547,7 +639,9 @@ jobs:
           set -euo pipefail
           test "$(sha256sum repo/.github/write-enforcement/renewal_contract.py | cut -d' ' -f1)" = "$RENEWAL_CONTRACT_SHA256"
           test "$(sha256sum repo/.github/write-enforcement/artifact_contract.py | cut -d' ' -f1)" = "$ARTIFACT_CONTRACT_SHA256"
-          echo "UNFROZEN_MODULE_PIN_PASS renewal_contract=$RENEWAL_CONTRACT_SHA256 artifact_contract=$ARTIFACT_CONTRACT_SHA256"
+          test "$(sha256sum repo/.github/write-enforcement/github_app_installation_token.py | cut -d' ' -f1)" = "$GOVERNED_READ_MINTER_SHA256"
+          test "$(sha256sum repo/.github/write-enforcement/select_governed_read_credential.py | cut -d' ' -f1)" = "$GOVERNED_READ_SELECTOR_SHA256"
+          echo "UNFROZEN_MODULE_PIN_PASS renewal_contract=$RENEWAL_CONTRACT_SHA256 artifact_contract=$ARTIFACT_CONTRACT_SHA256 governed_read_minter=$GOVERNED_READ_MINTER_SHA256 governed_read_selector=$GOVERNED_READ_SELECTOR_SHA256"
       - name: Refuse an owner-supplied predecessor pin in renewal mode
         env:
           PREDECESSOR_RUN_ID: ${{ inputs.predecessor_run_id }}
@@ -744,11 +838,62 @@ jobs:
           set -euo pipefail
           test "$(sha256sum repos/rexcoleman.dev/.github/write-enforcement/renewal_contract.py | cut -d' ' -f1)" = "$RENEWAL_CONTRACT_SHA256"
           test "$(sha256sum repos/rexcoleman.dev/.github/write-enforcement/artifact_contract.py | cut -d' ' -f1)" = "$ARTIFACT_CONTRACT_SHA256"
-          echo "UNFROZEN_MODULE_PIN_PASS renewal_contract=$RENEWAL_CONTRACT_SHA256 artifact_contract=$ARTIFACT_CONTRACT_SHA256"
-      - name: Checkout frozen repositories
+          test "$(sha256sum repos/rexcoleman.dev/.github/write-enforcement/github_app_installation_token.py | cut -d' ' -f1)" = "$GOVERNED_READ_MINTER_SHA256"
+          test "$(sha256sum repos/rexcoleman.dev/.github/write-enforcement/select_governed_read_credential.py | cut -d' ' -f1)" = "$GOVERNED_READ_SELECTOR_SHA256"
+          echo "UNFROZEN_MODULE_PIN_PASS renewal_contract=$RENEWAL_CONTRACT_SHA256 artifact_contract=$ARTIFACT_CONTRACT_SHA256 governed_read_minter=$GOVERNED_READ_MINTER_SHA256 governed_read_selector=$GOVERNED_READ_SELECTOR_SHA256"
+      - name: Select the governed read credential under custody precedence
         env:
+          GOVML_REA_READ_APP_ID: ${{ secrets.GOVML_REA_READ_APP_ID }}
+          GOVML_REA_READ_APP_PRIVATE_KEY_B64: ${{ secrets.GOVML_REA_READ_APP_PRIVATE_KEY_B64 }}
           REA_BUNDLE_READ_TOKEN: ${{ secrets.REA_BUNDLE_READ_TOKEN }}
-        run: python3 repos/rexcoleman.dev/.github/write-enforcement/checkout_manifest.py repos/rexcoleman.dev/.github/write-enforcement/frozen_bundle_manifest.generation-5.json repos
+        run: |
+          set -euo pipefail
+          umask 077
+          # Custody precedence, implemented by the selector, not by this file:
+          # a COMPLETE GOVML_REA_READ_APP_ID / GOVML_REA_READ_APP_PRIVATE_KEY_B64
+          # pair mints one short-lived installation token and wins even when
+          # the compatibility name is still configured; a PARTIAL pair refuses
+          # rather than downgrading; only a wholly absent pair falls back to the
+          # deprecated REA_BUNDLE_READ_TOKEN label; nothing present refuses.
+          python3 repos/rexcoleman.dev/.github/write-enforcement/select_governed_read_credential.py \
+            --minter repos/rexcoleman.dev/.github/write-enforcement/github_app_installation_token.py \
+            --output "$RUNNER_TEMP/governed-read-credential"
+          test "$(stat -c '%a' "$RUNNER_TEMP/governed-read-credential")" = 600
+      - name: Checkout frozen repositories
+        run: |
+          set -euo pipefail
+          python3 repos/rexcoleman.dev/.github/write-enforcement/checkout_manifest.py \
+            repos/rexcoleman.dev/.github/write-enforcement/frozen_bundle_manifest.generation-5.json \
+            repos --token-file "$RUNNER_TEMP/governed-read-credential"
+      - name: Remove the governed read credential before any checked-out code runs
+        run: |
+          set -euo pipefail
+          # Custody requires the file to be gone before untrusted gate code
+          # runs.  The step above is the LAST step in this job that needs the
+          # credential and the FIRST that puts foreign repository bytes on
+          # disk, so removal belongs immediately after it -- ahead of the
+          # minter drift assertion (which only hashes those bytes) and well
+          # ahead of every later step that reads or executes bytes from
+          # the checked-out workspace.
+          rm -f "$RUNNER_TEMP/governed-read-credential"
+          test ! -e "$RUNNER_TEMP/governed-read-credential"
+          echo "GOVERNED_READ_CREDENTIAL_REMOVED=true"
+      - name: Prove this workflow's minter matches the signed govML copy
+        run: |
+          set -euo pipefail
+          # The minter now exists in three places (govML template, REA install,
+          # this repository).  A silent divergence would be invisible to the
+          # 266-member manifest until the next freeze, so the workflow that
+          # DEPENDS on the minter asserts the identity itself, on the exact
+          # frozen govML commit it just checked out.
+          workflow_copy="$(sha256sum repos/rexcoleman.dev/.github/write-enforcement/github_app_installation_token.py | cut -d' ' -f1)"
+          govml_copy="$(sha256sum repos/govML/templates/build/enforcement/github_app_installation_token.py | cut -d' ' -f1)"
+          if [ "$workflow_copy" != "$govml_copy" ]; then
+            echo "REFUSED GOVERNED_READ_MINTER_DRIFT: workflow copy $workflow_copy != govML copy $govml_copy" >&2
+            exit 3
+          fi
+          test "$workflow_copy" = "$GOVERNED_READ_MINTER_SHA256"
+          echo "GOVERNED_READ_MINTER_DRIFT_PASS sha256=$workflow_copy sources=3"
       - name: Fetch protected ruleset
         env:
           GH_TOKEN: ${{ secrets.REA_RULESET_READ_TOKEN }}

@@ -134,6 +134,11 @@
       "adapter_id": "rexcoleman.dev-generation-5-population-264-v1",
       "path": "adapters/rexcoleman.dev.population-264-v1.json",
       "status": "active"
+    },
+    {
+      "adapter_id": "research-enforcement-activation-generation-5-s210-governed-read-credential-v1",
+      "path": "adapters/research_enforcement_activation.s210-governed-read-credential-v1.json",
+      "status": "active"
     }
   ],
   "documentation": "SIGNED_RELEASE_CONVERGENCE.md",

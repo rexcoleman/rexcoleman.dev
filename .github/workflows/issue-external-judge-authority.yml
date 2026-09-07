@@ -33,17 +33,68 @@ jobs:
       GOVML_ISSUER_COMMIT: ${{ vars.GOVML_EXTERNAL_JUDGE_ISSUER_COMMIT }}
       GOVML_ISSUER_SHA256: ${{ vars.GOVML_EXTERNAL_JUDGE_ISSUER_SHA256 }}
       GOVML_EXTERNAL_JUDGE_APPROVING_PUBLIC_KEY_SHA256: ${{ vars.GOVML_EXTERNAL_JUDGE_APPROVING_PUBLIC_KEY_SHA256 }}
+      # s210: the same two governed-read modules the issuer workflow pins.
+      GOVERNED_READ_MINTER_SHA256: 229ce6b172da80e092f93262fc442a1c6099811c125e44e854fc0a12269e9fcf
+      GOVERNED_READ_SELECTOR_SHA256: 6668b7c1115d18a2d71bd17ceff6628163f97d4a106e4e4581f0835fb9954718
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           persist-credentials: false
+      - name: Bind the governed read credential modules and refuse an unset issuer pin
+        run: |
+          set -euo pipefail
+          test "$(sha256sum .github/write-enforcement/github_app_installation_token.py | cut -d' ' -f1)" = "$GOVERNED_READ_MINTER_SHA256"
+          test "$(sha256sum .github/write-enforcement/select_governed_read_credential.py | cut -d' ' -f1)" = "$GOVERNED_READ_SELECTOR_SHA256"
+          # The only run of this workflow (33394886672, 2026-08-31) executed
+          # with all three repository variables EMPTY.  An empty ref made the
+          # checkout below ask for a default branch instead of the registered
+          # commit; refuse before the checkout rather than after it.
+          if [[ ! "$GOVML_ISSUER_COMMIT" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "REFUSED GOVML_ISSUER_COMMIT_UNSET: repository variable" >&2
+            echo "GOVML_EXTERNAL_JUDGE_ISSUER_COMMIT is empty or not a 40-hex" >&2
+            echo "commit.  Set it, GOVML_EXTERNAL_JUDGE_ISSUER_SHA256 and" >&2
+            echo "GOVML_EXTERNAL_JUDGE_APPROVING_PUBLIC_KEY_SHA256 before dispatch." >&2
+            exit 3
+          fi
+          echo "GOVERNED_READ_MODULE_PIN_PASS minter=$GOVERNED_READ_MINTER_SHA256 selector=$GOVERNED_READ_SELECTOR_SHA256"
+      - name: Select the governed read credential under custody precedence
+        id: governed_read
+        env:
+          GOVML_REA_READ_APP_ID: ${{ secrets.GOVML_REA_READ_APP_ID }}
+          GOVML_REA_READ_APP_PRIVATE_KEY_B64: ${{ secrets.GOVML_REA_READ_APP_PRIVATE_KEY_B64 }}
+          REA_BUNDLE_READ_TOKEN: ${{ secrets.REA_BUNDLE_READ_TOKEN }}
+        run: |
+          set -euo pipefail
+          umask 077
+          # rexcoleman/govML is private and this job's default GITHUB_TOKEN is
+          # scoped to rexcoleman.dev, which is why the checkout below returned
+          # "Not Found" on 2026-08-31.  Mint through the SAME custody
+          # precedence the issuer workflow uses; introduce no new long-lived
+          # secret name.
+          python3 .github/write-enforcement/select_governed_read_credential.py \
+            --minter .github/write-enforcement/github_app_installation_token.py \
+            --output "$RUNNER_TEMP/governed-read-credential"
+          test "$(stat -c '%a' "$RUNNER_TEMP/governed-read-credential")" = 600
+          credential="$(cat "$RUNNER_TEMP/governed-read-credential")"
+          echo "::add-mask::$credential"
+          printf 'token=%s\n' "$credential" >> "$GITHUB_OUTPUT"
       - name: Checkout the exact registered govML issuer
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           repository: rexcoleman/govML
           ref: ${{ env.GOVML_ISSUER_COMMIT }}
+          token: ${{ steps.governed_read.outputs.token }}
           path: govml
           persist-credentials: false
+      - name: Remove the governed read credential before any checked-out code runs
+        run: |
+          set -euo pipefail
+          # The next step executes govml/scripts/issue_external_judge_authority.py
+          # -- checked-out code from another repository.  Custody requires the
+          # credential file to be gone before that happens.
+          rm -f "$RUNNER_TEMP/governed-read-credential"
+          test ! -e "$RUNNER_TEMP/governed-read-credential"
+          echo "GOVERNED_READ_CREDENTIAL_REMOVED=true"
       - name: Bind protected workflow and issuer source
         run: |
           set -euo pipefail
