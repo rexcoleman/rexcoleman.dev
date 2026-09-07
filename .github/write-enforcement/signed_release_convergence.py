@@ -221,6 +221,7 @@ def load_adapter(path: Path):
         "--hosted-external-judge-principal",
         "--authenticated-head-rebase-successor",
         "--control-closure-successor",
+        "--governed-read-credential-successor",
     }:
         raise Refusal("MANIFEST_BUILDER_FLAG_REFUSED")
     if not isinstance(value["ruleset_id"], int) or isinstance(
@@ -607,6 +608,9 @@ def impact_snapshot(adapter, roots, root_rows):
             "authenticated_head_rebase_successor_members"
         ),
         "--control-closure-successor": "control_closure_successor_members",
+        "--governed-read-credential-successor": (
+            "governed_read_credential_successor_members"
+        ),
     }[adapter["manifest_builder_flag"]]
     expected = member_contract(rex_root, selector_name)
     by_subject = {}

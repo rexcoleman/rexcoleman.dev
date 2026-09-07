@@ -19,7 +19,24 @@ on:
       REA_WEA_READ_TOKEN:
         required: true
       REA_BUNDLE_READ_TOKEN:
+        # Still REQUIRED, deliberately.  Relaxing it would let a caller supply
+        # neither route and discover that at run time instead of at dispatch.
         required: true
+      # s210 governed read credential.  Both are OPTIONAL, which is what makes
+      # this migration backward compatible: a reusable workflow only sees the
+      # secrets a caller declares, so these two names had to be added here for
+      # the App route to be reachable at all, and adding OPTIONAL secrets does
+      # not change what an existing caller must supply.  The one real caller,
+      # rexcoleman/Moonshots_Career_Thesis .github/workflows/
+      # newsletter-integrity-authority.yml, is pinned at
+      # 13f6efd2cbd402496d955d6b89f4263685bcce11 and passes only the two names
+      # above, so it keeps working byte-for-byte unchanged and simply never
+      # selects the App route.  Activating it needs a caller change and two pin
+      # moves, which are ordered publication work and are not done here.
+      GOVML_REA_READ_APP_ID:
+        required: false
+      GOVML_REA_READ_APP_PRIVATE_KEY_B64:
+        required: false
 
 permissions:
   contents: read
@@ -65,10 +82,9 @@ jobs:
           assert serialization.load_pem_public_key(encoded, backend=default_backend())
           print("PYTHON_ED25519_BACKEND_READY")
           PY
-      - name: Obtain remote-issued WEA and frozen members
+      - name: Obtain remote-issued WEA
         env:
           GH_TOKEN: ${{ secrets.REA_WEA_READ_TOKEN }}
-          REA_BUNDLE_READ_TOKEN: ${{ secrets.REA_BUNDLE_READ_TOKEN }}
           RUN_ID: ${{ inputs.issuance_run_id }}
         run: |
           set -euo pipefail
@@ -77,9 +93,60 @@ jobs:
           gh run download "$RUN_ID" --repo rexcoleman/rexcoleman.dev \
             --name "rea-write-enforcement-attestation-$RUN_ID" --dir issuance
           (cd issuance && sha256sum -c SHA256SUMS)
-          unset GH_TOKEN
-          python3 repos/rexcoleman.dev/.github/write-enforcement/checkout_manifest.py \
-            issuance/enforcement_bundle_manifest.json repos
+      - name: Select the governed read credential under custody precedence
+        env:
+          GOVML_REA_READ_APP_ID: ${{ secrets.GOVML_REA_READ_APP_ID }}
+          GOVML_REA_READ_APP_PRIVATE_KEY_B64: ${{ secrets.GOVML_REA_READ_APP_PRIVATE_KEY_B64 }}
+          REA_BUNDLE_READ_TOKEN: ${{ secrets.REA_BUNDLE_READ_TOKEN }}
+        run: |
+          set -euo pipefail
+          umask 077
+          # This workflow verifies a HISTORICAL attestation: it checks out
+          # rexcoleman.dev at the caller's control_sha and runs THAT commit's
+          # own checkout and verification scripts.  The one real caller
+          # passes control_sha 13f6efd2cbd402496d955d6b89f4263685bcce11, which
+          # predates the governed lane, so the selector is simply not on disk
+          # there.  Version-negotiate on what the pinned control commit
+          # actually contains rather than breaking verification of every
+          # attestation issued before this change.  This grants no new
+          # authority: whoever chooses control_sha already chooses the
+          # verification code this job executes.
+          selector=repos/rexcoleman.dev/.github/write-enforcement/select_governed_read_credential.py
+          minter=repos/rexcoleman.dev/.github/write-enforcement/github_app_installation_token.py
+          if [ -f "$selector" ] && [ -f "$minter" ]; then
+            # Present means binding: the selector's exit decides, and there is
+            # no fallback past it.  A PARTIAL App pair fails this step.
+            python3 "$selector" --minter "$minter" \
+              --output "$RUNNER_TEMP/governed-read-credential"
+            test "$(stat -c '%a' "$RUNNER_TEMP/governed-read-credential")" = 600
+            printf 'governed\n' > "$RUNNER_TEMP/governed-read-route"
+          else
+            printf 'compatibility\n' > "$RUNNER_TEMP/governed-read-route"
+            echo "GOVERNED_READ_LANE_ABSENT_AT_CONTROL_SHA control_sha=${{ inputs.control_sha }}"
+            echo "Using the unchanged REA_BUNDLE_READ_TOKEN environment route."
+          fi
+      - name: Checkout frozen members
+        env:
+          REA_BUNDLE_READ_TOKEN: ${{ secrets.REA_BUNDLE_READ_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ "$(cat "$RUNNER_TEMP/governed-read-route")" = governed ]; then
+            python3 repos/rexcoleman.dev/.github/write-enforcement/checkout_manifest.py \
+              issuance/enforcement_bundle_manifest.json repos \
+              --token-file "$RUNNER_TEMP/governed-read-credential"
+          else
+            python3 repos/rexcoleman.dev/.github/write-enforcement/checkout_manifest.py \
+              issuance/enforcement_bundle_manifest.json repos
+          fi
+      - name: Remove the governed read credential before any checked-out code runs
+        run: |
+          set -euo pipefail
+          # The step above is the last one that needs the credential and the
+          # first that puts foreign repository bytes on disk; the next step
+          # reads and executes that workspace.
+          rm -f "$RUNNER_TEMP/governed-read-credential"
+          test ! -e "$RUNNER_TEMP/governed-read-credential"
+          echo "GOVERNED_READ_CREDENTIAL_REMOVED=true"
       - name: Verify and report exact WEA tuple
         env:
           SURFACE: ${{ inputs.surface }}

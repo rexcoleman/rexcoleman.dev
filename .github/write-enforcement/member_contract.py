@@ -793,6 +793,33 @@ CONTROL_CLOSURE_ADDITIONAL_MEMBERS = {
 }
 
 
+# s210 (kc-80) closes the governed-project read credential.  The frozen
+# checkout is the FIRST thing every issuance and renewal run does, and until
+# now it could only authenticate with an expiring personal access token, whose
+# lapse froze the entire portfolio.  The primary route is a read-only GitHub
+# App: `github_app_installation_token.py` mints one short-lived installation
+# token per run, and `select_governed_read_credential.py` implements the
+# custody precedence (complete App pair wins; PARTIAL pair refuses rather than
+# downgrading; only a wholly absent pair falls back to the deprecated
+# compatibility label).  Both run on the hosted runner BEFORE the authenticated
+# checkout succeeds, so they must be members of the rexcoleman.dev population
+# rather than of govML: at that moment rexcoleman.dev is the only source on
+# disk.  The minter is byte-identical to the signed govML template copy and the
+# issuer workflow asserts that identity against repos/govML on every run.
+# Keep them in a fourth successor layer: the 260-, 261- and 264-member
+# contracts must continue to refuse these additional subjects.
+GOVERNED_READ_CREDENTIAL_ADDITIONAL_MEMBERS = {
+    "governed-read-credential-app-minter": (
+        "rexcoleman.dev",
+        ".github/write-enforcement/github_app_installation_token.py",
+    ),
+    "governed-read-credential-selector": (
+        "rexcoleman.dev",
+        ".github/write-enforcement/select_governed_read_credential.py",
+    ),
+}
+
+
 def successor_members():
     value = dict(EXPECTED_MEMBERS)
     overlap = set(value) & set(SUCCESSOR_ADDITIONAL_MEMBERS)
@@ -872,6 +899,29 @@ def validate_control_closure_member_ids(observed) -> None:
         )
 
 
+def governed_read_credential_successor_members():
+    value = control_closure_successor_members()
+    overlap = set(value) & set(GOVERNED_READ_CREDENTIAL_ADDITIONAL_MEMBERS)
+    if overlap:
+        raise ValueError(
+            "governed-read-credential member id collision: %s" % sorted(overlap)
+        )
+    value.update(GOVERNED_READ_CREDENTIAL_ADDITIONAL_MEMBERS)
+    if len(set(value.values())) != len(value):
+        raise ValueError("governed-read-credential member subject collision")
+    return value
+
+
+def validate_governed_read_credential_member_ids(observed) -> None:
+    expected = set(governed_read_credential_successor_members())
+    actual = set(observed)
+    if actual != expected:
+        raise ValueError(
+            "governed-read-credential member set refused:missing=%s:extra=%s"
+            % (sorted(expected - actual), sorted(actual - expected))
+        )
+
+
 def production_members_for_manifest(manifest, baseline=None):
     """Select the exact closed set for one known generation; never a subset."""
     rows = manifest.get("members") if isinstance(manifest, dict) else None
@@ -888,6 +938,8 @@ def production_members_for_manifest(manifest, baseline=None):
     rebase_successor.update(AUTHENTICATED_HEAD_REBASE_ADDITIONAL_MEMBERS)
     control_successor = dict(rebase_successor)
     control_successor.update(CONTROL_CLOSURE_ADDITIONAL_MEMBERS)
+    governed_read_successor = dict(control_successor)
+    governed_read_successor.update(GOVERNED_READ_CREDENTIAL_ADDITIONAL_MEMBERS)
     generation = manifest.get("authority_generation") if isinstance(manifest, dict) else None
     if generation is None and baseline is not None:
         # Unit-level byte/membership checks historically pass a reduced explicit
@@ -900,7 +952,9 @@ def production_members_for_manifest(manifest, baseline=None):
         return base
     if generation == AUTHORITY_GENERATION:
         return (
-            control_successor
+            governed_read_successor
+            if observed & set(GOVERNED_READ_CREDENTIAL_ADDITIONAL_MEMBERS)
+            else control_successor
             if observed & set(CONTROL_CLOSURE_ADDITIONAL_MEMBERS)
             else rebase_successor
             if observed & set(AUTHENTICATED_HEAD_REBASE_ADDITIONAL_MEMBERS)

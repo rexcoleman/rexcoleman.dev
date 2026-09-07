@@ -109,6 +109,27 @@ issue, install, enrol or arm any of the three repositories, and in particular it
 does not arm a commit boundary on `newsletter` or `rexcoleman.dev`, which carry
 live publication traffic.
 
+The governed-read-credential successor is registered as
+`research-enforcement-activation-generation-5-s210-governed-read-credential-v1`.
+It derives from the 264 adapter without changing it. Every issuance and renewal
+run begins by checking out the four frozen repositories, and until now that
+checkout could only authenticate with an expiring personal access token; when
+that token lapsed the whole portfolio froze on `WEA_EXPIRED` with no registered
+path back. The adapter adds the two rexcoleman.dev modules that replace it as
+members 265 and 266 - `.github/write-enforcement/github_app_installation_token.py`,
+byte-identical to the signed govML template copy, and
+`.github/write-enforcement/select_governed_read_credential.py`, which
+implements the custody precedence - and selects the distinct
+`--governed-read-credential-successor` builder contract, so the 260-, 261- and
+264-member contracts continue to refuse these two subjects. They live in the
+rexcoleman.dev population rather than in govML because they run on the hosted
+runner BEFORE the authenticated checkout succeeds, when rexcoleman.dev is the
+only source on disk; the issuer workflow closes the resulting three-copy drift
+loop by asserting the minter against `repos/govML` on every run. This
+registration does not build, freeze, issue, install, or activate generation 5,
+and it does not create the GitHub App, which is an owner act behind the owner's
+GitHub session.
+
 A population change always gets a new stable
 adapter identity; the 251- and 255-member adapters remain
 auditable without being silently redefined. The dependent adapters use schema

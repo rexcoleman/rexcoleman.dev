@@ -43,6 +43,9 @@ RER_264_ADAPTER = ROOT / "adapters/research_engine_release.population-264-v1.jso
 NHP_264_ADAPTER = ROOT / "adapters/newsletter_hybrid_path.population-264-v1.json"
 NEWSLETTER_264_ADAPTER = ROOT / "adapters/newsletter.population-264-v1.json"
 REXDEV_264_ADAPTER = ROOT / "adapters/rexcoleman.dev.population-264-v1.json"
+S210_GOVERNED_READ_ADAPTER = ROOT / (
+    "adapters/research_enforcement_activation.s210-governed-read-credential-v1.json"
+)
 POPULATION_264_DEPENDENT_ADAPTERS = (
     AML_264_ADAPTER,
     ABLL_264_ADAPTER,
@@ -1036,6 +1039,7 @@ def test_index_is_closed_and_resolves_every_registered_adapter():
             "newsletter-hybrid-path-generation-5-population-264-v1",
             "newsletter-generation-5-population-264-v1",
             "rexcoleman.dev-generation-5-population-264-v1",
+            "research-enforcement-activation-generation-5-s210-governed-read-credential-v1",
     ]
     status = {row["adapter_id"]: row["status"] for row in value["adapters"]}
     assert {
@@ -1091,6 +1095,7 @@ def test_index_refuses_duplicate_unknown_retired_and_traversing_rows(
             NHP_264_ADAPTER,
             NEWSLETTER_264_ADAPTER,
             REXDEV_264_ADAPTER,
+            S210_GOVERNED_READ_ADAPTER,
         ):
         shutil.copyfile(adapter_path, adapters / adapter_path.name)
     shutil.copyfile(WORKFLOW, tmp_path / "workflows" / WORKFLOW.name)
@@ -1673,3 +1678,80 @@ def test_cli_refuses_ambiguous_or_missing_adapter_selection(capsys, tmp_path):
         *common,
     ]) == 2
     assert "ADAPTER_SELECTION_CONFLICT" in capsys.readouterr().err
+
+
+# --------------------------------------------------------------------------
+# s210: the governed-read-credential successor.
+# --------------------------------------------------------------------------
+MEMBER_CONTRACT_SPEC = importlib.util.spec_from_file_location(
+    "s210_member_contract", ROOT / "member_contract.py"
+)
+MEMBER_CONTRACT = importlib.util.module_from_spec(MEMBER_CONTRACT_SPEC)
+assert MEMBER_CONTRACT_SPEC.loader
+MEMBER_CONTRACT_SPEC.loader.exec_module(MEMBER_CONTRACT)
+
+
+def test_s210_governed_read_adapter_is_a_population_266_successor():
+    value = tool.load_adapter(S210_GOVERNED_READ_ADAPTER)
+    assert value["adapter_id"] == (
+        "research-enforcement-activation-generation-5-s210-governed-read-credential-v1"
+    )
+    assert value["schema_version"] == tool.ADAPTER_SCHEMA
+    assert "dependent_project" not in value
+    assert value["authority_generation"] == 5
+    assert value["expected_member_count"] == 266
+    assert value["manifest_builder_flag"] == "--governed-read-credential-successor"
+    assert value["manifest_path"] == (
+        ".github/write-enforcement/frozen_bundle_manifest.generation-5.json"
+    )
+    # It derives from the 264 adapter and changes only what it must.
+    base = tool.load_adapter(POPULATION_264_ADAPTER)
+    for field in ("repositories", "ruleset_id", "ruleset_repository", "boundaries",
+                  "manifest_builder", "manifest_path", "authority_generation"):
+        assert value[field] == base[field], field
+    rexdev = next(
+        row for row in value["hermetic_tests"] if row["repository"] == "rexcoleman.dev"
+    )
+    assert (
+        ".github/write-enforcement/tests/test_s210_governed_read_credential.py"
+        in rexdev["paths"]
+    )
+
+
+def test_s210_member_contract_adds_exactly_two_rexcoleman_dev_subjects():
+    base = set(MEMBER_CONTRACT.control_closure_successor_members())
+    successor = MEMBER_CONTRACT.governed_read_credential_successor_members()
+    assert len(base) == 264
+    assert len(successor) == 266
+    added = {member_id: successor[member_id] for member_id in set(successor) - base}
+    assert added == {
+        "governed-read-credential-app-minter": (
+            "rexcoleman.dev",
+            ".github/write-enforcement/github_app_installation_token.py",
+        ),
+        "governed-read-credential-selector": (
+            "rexcoleman.dev",
+            ".github/write-enforcement/select_governed_read_credential.py",
+        ),
+    }
+    # The earlier contracts must keep REFUSING these subjects, in both directions.
+    with pytest.raises(ValueError, match="governed-read-credential member set refused"):
+        MEMBER_CONTRACT.validate_governed_read_credential_member_ids(base)
+    with pytest.raises(ValueError, match="control-closure member set refused"):
+        MEMBER_CONTRACT.validate_control_closure_member_ids(successor)
+
+
+def test_s210_builder_flag_is_admitted_and_an_unknown_flag_still_refuses(tmp_path):
+    value = json.loads(S210_GOVERNED_READ_ADAPTER.read_text())
+    planted = tmp_path / "planted.json"
+    value["manifest_builder_flag"] = "--not-a-registered-contract"
+    planted.write_text(json.dumps(value))
+    with pytest.raises(tool.Refusal, match="MANIFEST_BUILDER_FLAG_REFUSED"):
+        tool.load_adapter(planted)
+
+
+def test_s210_impact_snapshot_resolves_the_new_member_contract(tmp_path):
+    """The engine's flag->selector map must know the new contract by name."""
+    adapter = tool.load_adapter(S210_GOVERNED_READ_ADAPTER)
+    expected = tool.member_contract(ROOT.parents[1], "governed_read_credential_successor_members")
+    assert len(expected) == adapter["expected_member_count"]

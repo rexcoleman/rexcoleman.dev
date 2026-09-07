@@ -81,10 +81,69 @@ rotation is part of the primary route.
 deprecated compatibility labels for already-provisioned project read paths.
 They are selected only when the complete App pair is absent. A partial App pair
 refuses instead of downgrading, and a complete App pair takes precedence even
-when compatibility names remain configured. Existing rexcoleman.dev issuance
-and renewal jobs that still name `REA_BUNDLE_READ_TOKEN` remain legacy
-consumers until their own separately validated migration; this custody update
-does not rename, delete, or silently reinterpret those secrets.
+when compatibility names remain configured.
+
+### What s210 migrated, and what is still owed
+
+The rexcoleman.dev issuance and renewal jobs are no longer legacy consumers by
+default. `.github/write-enforcement/select_governed_read_credential.py`
+implements the precedence above and is wired into all three sites that consumed
+`REA_BUNDLE_READ_TOKEN` in `issue-write-enforcement-attestation.yml`, into the
+`rexcoleman/govML` checkout in `issue-external-judge-authority.yml` that had no
+`token:` at all, and into the reusable consumer verifier
+`verify-write-enforcement.yml`. The two jobs that check out the frozen repositories
+(`issue-wea`, `renew-wea`) run the selector to a `$RUNNER_TEMP` mode-0600 file,
+pass it to `checkout_manifest.py --token-file`, and delete it in the step
+immediately after the checkout, ahead of every step that reads or executes
+checked-out bytes. `seal_downstream` is the deliberate exception: it exists to
+install its payload as a long-lived downstream repository Actions secret, which
+is exactly what a minted installation token must never become, so the selector
+runs there with `--legacy-only` and REFUSES when a complete App pair is present
+rather than sealing a credential that expires in about an hour. A partial pair
+refuses everywhere. The minter is installed at
+`.github/write-enforcement/github_app_installation_token.py` because it must
+run before the authenticated checkout, when this repository is the only source
+on the runner; it is byte-identical to the signed govML template copy and the
+issuer workflow asserts that identity against `repos/govML` on every run.
+Neither the token nor a digest of one is printed by any of it.
+
+Three things are still owed and none of them is this migration's to do.
+
+1. **The App does not exist yet.** `GOVML_REA_READ_APP_ID` and
+   `GOVML_REA_READ_APP_PRIVATE_KEY_B64` are unset in every scope, so today the
+   selector still resolves the deprecated compatibility route and the freeze
+   still turns on that expiring token. Creating and installing the App is an
+   owner act behind the owner's GitHub session; the checked rail at
+   `owner_rails/kc80_github_app/app_rail.sh` walks it and installs the pair
+   locally without truncating any other name in `~/.config/govml/env`. The two
+   names then have to reach the repository as secrets before any run selects the
+   App route.
+2. **The freeze and re-issuance are separate.** The two new modules are
+   registered as members 265 and 266 by the
+   `research-enforcement-activation-generation-5-s210-governed-read-credential-v1`
+   adapter and the `--governed-read-credential-successor` builder contract, but
+   no manifest has been built, no bundle has been frozen, and no attestation has
+   been re-issued.
+3. **`verify-write-enforcement.yml` carries the lane but cannot yet select it.**
+   The reusable consumer verifier now runs the same selector, takes the token
+   from a mode-0600 file, and deletes it before it verifies. The migration is
+   backward compatible by construction: `REA_WEA_READ_TOKEN` and
+   `REA_BUNDLE_READ_TOKEN` stay `required: true`, and the two App names are
+   declared `required: false`, which is additive for every caller. It has
+   exactly one caller, three repositories deep and commit-pinned at each hop -
+   `newsletter/.github/workflows/newsletter-integrity.yml` calls
+   `Moonshots .../newsletter-integrity-authority.yml@179b7d30`, which calls this
+   workflow `@13f6efd2` and passes `control_sha: 13f6efd2` as well. That control
+   commit predates the selector, so the job version-negotiates on what the pinned
+   control checkout actually contains: modules present means the selector is
+   binding and there is no fallback past it, modules absent means the unchanged
+   environment route. Selecting the App route needs a caller change and two pin
+   moves; both are ordered publication work and neither was done here. This
+   matters because that chain gates the newsletter claim-fidelity validator
+   behind `needs: write-enforcement`, i.e. behind the same expiring credential.
+
+This update does not rename, delete, or silently reinterpret any existing
+secret.
 
 ## Owner acts
 
