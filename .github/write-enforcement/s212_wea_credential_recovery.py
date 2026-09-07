@@ -904,7 +904,9 @@ def main(argv: list[str] | None = None) -> int:
             return hosted_probe(args.hosted_probe, args.probe_nonce or "")
         if args.probe_nonce:
             raise Refusal("PROBE_NONCE_WITHOUT_HOSTED_PROBE_REFUSED")
-        result = apply() if args.apply else preflight(active_write_probe=False)
+        # The named preflight proves the reversible write/delete capability too;
+        # apply binds and repeats this exact readiness gate before any real write.
+        result = apply() if args.apply else preflight(active_write_probe=True)
     except Refusal as exc:
         print("S212_WEA_RECOVERY_REFUSED reason=" + str(exc))
         return 3
