@@ -49,10 +49,14 @@ precondition, not repository cleanliness inferred from `git status`.
    place the public digest and exact govML issuer commit/digest as variables,
    and use Azure VM Run Command to replace the root-owned public key with an
    exact predecessor backup and rollback path. The broken local sudo route is
-   never used.
+   never used. Azure CLI process success is insufficient: the rail requires an
+   exact script-bound success sentinel from inside the guest because Azure has
+   been measured returning `ProvisioningState/succeeded` for a guest `exit 41`.
 6. Repeat the hosted probe. Completion requires the App route and legacy pair
    to pass at issuer and renewal, and the App route plus principal package to
-   pass at approver.
+   pass at approver. It then independently re-reads the approver public-digest
+   variable and requires the local root-owned public key to have that exact
+   digest before completion can be reported.
 
 If a PAT must be minted, the rail directs Rex to a classic PAT with `repo`
 scope and **No expiration**. Fine-grained tokens are deliberately disfavored
@@ -76,6 +80,10 @@ because GitHub caps them at 366 days, recreating the expiry incident.
 - Approver principal variables and secret are deleted on a pre-commit failure.
   If the Azure public-key replacement occurred, its exact root-owned predecessor
   is restored through the same Azure mechanism.
+- An Azure Run Command outer exit zero or `ProvisioningState/succeeded` without
+  the script-bound in-guest sentinel is `AZURE_RUN_COMMAND_GUEST_REFUSED`.
+  Hosted principal success alone cannot close the transaction because the
+  hosted runner cannot observe the fixed local public-key path.
 - Every external subprocess has a timeout. The hosted probe has a 15-minute
   ceiling, enough for the one required issuer deployment approval; timeout is
   a refusal, not permission to continue.

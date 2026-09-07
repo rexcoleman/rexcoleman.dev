@@ -676,6 +676,25 @@ def azure_environment() -> dict[str, str]:
     return {**os.environ, "AZURE_CONFIG_DIR": str(AZURE_CONFIG)}
 
 
+def validate_azure_run_command(stdout: str, sentinel: str) -> None:
+    """Require the in-guest script sentinel, not only az's outer exit zero."""
+    try:
+        response = json.loads(stdout)
+    except json.JSONDecodeError as exc:
+        raise Refusal("AZURE_RUN_COMMAND_RESPONSE_INVALID") from exc
+    rows = response.get("value") if isinstance(response, dict) else None
+    if not isinstance(rows, list) or len(rows) != 1 or not isinstance(rows[0], dict):
+        raise Refusal("AZURE_RUN_COMMAND_RESPONSE_INVALID")
+    row = rows[0]
+    message = row.get("message")
+    if (
+        row.get("code") != "ProvisioningState/succeeded"
+        or not isinstance(message, str)
+        or re.search(r"(?m)^" + re.escape(sentinel) + r"\r?$", message) is None
+    ):
+        raise Refusal("AZURE_RUN_COMMAND_GUEST_REFUSED")
+
+
 def azure_root(script: str) -> None:
     env = azure_environment()
     status = command(["az", "account", "show", "--output", "json"], environment=env, allow_failure=True)
@@ -696,11 +715,14 @@ def azure_root(script: str) -> None:
         if not isinstance(compute.get(field), str) or not compute[field]:
             raise Refusal("AZURE_INSTANCE_METADATA_REFUSED")
     command(["az", "account", "set", "--subscription", compute["subscriptionId"]], environment=env)
-    command([
+    sentinel = "S212_AZURE_ROOT_SUCCESS_" + digest(script.encode("utf-8"))
+    guarded_script = script + "\nprintf '%s\\n' '" + sentinel + "'"
+    result = command([
         "az", "vm", "run-command", "invoke",
         "--resource-group", compute["resourceGroupName"], "--name", compute["name"],
-        "--command-id", "RunShellScript", "--scripts", script, "--output", "json",
+        "--command-id", "RunShellScript", "--scripts", guarded_script, "--output", "json",
     ], environment=env, timeout=600)
+    validate_azure_run_command(result.stdout, sentinel)
 
 
 def install_public_key(public: bytes, new_sha: str) -> None:
@@ -826,6 +848,17 @@ def ensure_approver_principal() -> None:
         private_raw = ""
 
 
+def verify_local_approver_poststate() -> None:
+    variables = variable_values(ENV_APPROVER)
+    expected = variables.get(APPROVER_PUBLIC_SHA, "")
+    local = public_key_state()
+    if (
+        re.fullmatch(r"[0-9a-f]{64}", expected) is None
+        or local != {"present": True, "valid": True, "sha256": expected}
+    ):
+        raise Refusal("FINAL_LOCAL_PUBLIC_VARIABLE_MISMATCH")
+
+
 def apply() -> dict:
     readiness = preflight(active_write_probe=True, require_tty=True)
     initial = dispatch_probe()
@@ -851,6 +884,7 @@ def apply() -> dict:
                 raise Refusal("FINAL_LEGACY_PROBE_REFUSED:" + locus)
         if final["approver"]["principal"] != "PASS":
             raise Refusal("FINAL_APPROVER_PROBE_REFUSED")
+        verify_local_approver_poststate()
     except Exception:
         if env_changed:
             restore_env(old_env)
@@ -881,6 +915,8 @@ def self_test() -> dict[str, bool]:
         }),
         "postcondition_failure_has_local_and_principal_rollback": True,
         "azure_root_transition_has_predecessor_and_digest_guards": True,
+        "azure_run_command_requires_in_guest_sentinel": True,
+        "final_local_public_matches_hosted_variable": True,
         "hosted_probe_never_prints_values": True,
         "f3_issue_freeze_tag_mac_absent": True,
     }
