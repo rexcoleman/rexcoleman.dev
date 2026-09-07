@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import importlib.util
+import json
 from pathlib import Path
 import subprocess
 import sys
@@ -67,6 +68,7 @@ def test_apply_orders_preflight_and_reuse_probe_before_any_prompt_or_write():
     assert body.index("dispatch_probe()") < body.index("prompt_pat_pair()")
     assert body.index("prompt_pat_pair()") < body.index("place_legacy_pair(")
     assert body.index("obtain_app_pair()") < body.index("place_app_pair(")
+    assert body.rindex("dispatch_probe()") < body.index("verify_local_approver_poststate()")
 
 
 def test_partial_app_pair_refuses_without_fallback(monkeypatch):
@@ -156,6 +158,92 @@ def test_public_install_failure_drives_safe_transition_rollback(monkeypatch):
         tool.ensure_approver_principal()
     assert deleted == [True]
     assert len(rolled_back) == 1
+
+
+def test_azure_outer_success_without_guest_sentinel_refuses():
+    # Captured shape from a real nonmutating `exit 41` Run Command: az exited
+    # zero and Azure said provisioning succeeded, but the guest never reached
+    # the rail-owned success sentinel.
+    captured = json.dumps({
+        "value": [{
+            "code": "ProvisioningState/succeeded",
+            "displayStatus": "Provisioning succeeded",
+            "level": "Info",
+            "message": "Enable succeeded: \n[stdout]\n\n[stderr]\n",
+            "time": None,
+        }],
+    })
+    with pytest.raises(tool.Refusal, match="AZURE_RUN_COMMAND_GUEST_REFUSED"):
+        tool.validate_azure_run_command(captured, "S212_AZURE_ROOT_SUCCESS_planted")
+
+
+def test_azure_guest_success_requires_exact_full_line_sentinel():
+    sentinel = "S212_AZURE_ROOT_SUCCESS_" + "a" * 64
+    response = json.dumps({
+        "value": [{
+            "code": "ProvisioningState/succeeded",
+            "message": "Enable succeeded: \n[stdout]\n" + sentinel + "\n\n[stderr]\n",
+        }],
+    })
+    tool.validate_azure_run_command(response, sentinel)
+    with pytest.raises(tool.Refusal, match="AZURE_RUN_COMMAND_GUEST_REFUSED"):
+        tool.validate_azure_run_command(response.replace(sentinel, sentinel + "-suffix"), sentinel)
+
+
+def test_azure_root_appends_and_validates_script_bound_sentinel(monkeypatch):
+    script = "exit 0"
+    sentinel = "S212_AZURE_ROOT_SUCCESS_" + tool.digest(script.encode("utf-8"))
+    seen = []
+
+    class Metadata:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            return False
+
+        def read(self):
+            return json.dumps({
+                "subscriptionId": "sub", "resourceGroupName": "rg", "name": "vm",
+            }).encode("utf-8")
+
+    def fake_command(argv, **_kwargs):
+        seen.append(argv)
+        if argv[:3] == ["az", "account", "show"]:
+            return SimpleNamespace(returncode=0, stdout="{}", stderr="")
+        if argv[:3] == ["az", "account", "set"]:
+            return SimpleNamespace(returncode=0, stdout="", stderr="")
+        assert argv[:4] == ["az", "vm", "run-command", "invoke"]
+        guarded = argv[argv.index("--scripts") + 1]
+        assert guarded.startswith(script + "\n")
+        assert sentinel in guarded
+        return SimpleNamespace(returncode=0, stdout=json.dumps({
+            "value": [{
+                "code": "ProvisioningState/succeeded",
+                "message": "Enable succeeded: \n[stdout]\n" + sentinel + "\n\n[stderr]\n",
+            }],
+        }), stderr="")
+
+    monkeypatch.setattr(tool, "azure_environment", lambda: {})
+    monkeypatch.setattr(tool, "urlopen", lambda *_args, **_kwargs: Metadata())
+    monkeypatch.setattr(tool, "command", fake_command)
+    tool.azure_root(script)
+    assert len(seen) == 3
+
+
+def test_final_local_public_must_equal_hosted_variable(monkeypatch):
+    monkeypatch.setattr(tool, "variable_values", lambda _environment: {
+        tool.APPROVER_PUBLIC_SHA: "a" * 64,
+    })
+    monkeypatch.setattr(tool, "public_key_state", lambda: {
+        "present": True, "valid": True, "sha256": "b" * 64,
+    })
+    with pytest.raises(tool.Refusal, match="FINAL_LOCAL_PUBLIC_VARIABLE_MISMATCH"):
+        tool.verify_local_approver_poststate()
+    monkeypatch.setattr(tool, "public_key_state", lambda: {
+        "present": True, "valid": True, "sha256": "a" * 64,
+    })
+    tool.verify_local_approver_poststate()
 
 
 def test_wrong_repository_set_is_a_refusal(monkeypatch):
