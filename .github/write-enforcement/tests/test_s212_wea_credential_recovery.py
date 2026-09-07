@@ -36,6 +36,17 @@ def test_self_test_and_python_syntax():
     assert '"second_pat_failure_has_zero_writes": true' in result.stdout
 
 
+def test_named_preflight_exercises_reversible_write_delete_probe(monkeypatch, capsys):
+    calls = []
+    monkeypatch.setattr(
+        tool, "preflight",
+        lambda **kwargs: calls.append(kwargs) or {"status": "READY"},
+    )
+    assert tool.main(["--preflight"]) == 0
+    assert calls == [{"active_write_probe": True}]
+    assert "S212_WEA_RECOVERY_PREFLIGHT_PASS" in capsys.readouterr().out
+
+
 def test_owner_wrapper_is_no_argument_tty_bound_and_apply_only():
     raw = WRAPPER.read_text(encoding="utf-8")
     assert "[[ $# -ne 0 ]]" in raw
