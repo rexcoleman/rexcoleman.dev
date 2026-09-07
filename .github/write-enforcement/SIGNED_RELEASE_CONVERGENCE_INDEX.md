@@ -130,6 +130,15 @@ registration does not build, freeze, issue, install, or activate generation 5,
 and it does not create the GitHub App, which is an owner act behind the owner's
 GitHub session.
 
+The s212 recovery successor is registered in the cross-generation inventory as
+three inseparable surfaces: the no-argument transaction engine, the hosted
+non-disclosing credential probe, and their focused planted-polarity tests. It
+converges the legacy issuer/renewal pair, the exact five-repository GitHub App
+pair at issuer/renewal/approver, and the hosted approving principal plus its
+root-owned public half. It ends at credential readiness: F3, issuance, freeze,
+tagging, and every Mac surface remain outside this rail. The source and
+operating contract are documented in `WEA_CREDENTIAL_RECOVERY.md`.
+
 A population change always gets a new stable
 adapter identity; the 251- and 255-member adapters remain
 auditable without being silently redefined. The dependent adapters use schema
@@ -159,9 +168,9 @@ not merge, tag, approve, issue, install, or prove a target project green.
 
 ## Cross-generation inventory and reconciliation
 
-The inventory has 33 closed rows spanning s88, s127, s131, s132, s149, s153,
+The inventory has 36 closed rows spanning s88, s127, s131, s132, s149, s153,
 s154, s155, s157, s165, s169, s170, s173, s180, and s188 in govML and
-rexcoleman.dev. Each row names a stable identity, remote
+s212 in rexcoleman.dev. Each row names a stable identity, remote
 repository/default branch, path, session generation, kind, semantic discovery
 markers, and the tested properties it supplies. The six required properties
 are hermetic execution, identity binding, resume, refusal, poststate, and

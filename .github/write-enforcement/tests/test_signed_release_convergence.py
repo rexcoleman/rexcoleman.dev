@@ -1143,7 +1143,7 @@ def test_index_refuses_duplicate_unknown_retired_and_traversing_rows(
 
 def test_cross_generation_inventory_is_closed_and_covers_six_properties():
     value = tool.load_cross_generation_inventory(INVENTORY)
-    assert len(value["entries"]) == 33
+    assert len(value["entries"]) == 36
     assert {row["repository"] for row in value["entries"]} == {
         "govML", "rexcoleman.dev",
     }
