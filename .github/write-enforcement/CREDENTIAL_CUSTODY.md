@@ -83,7 +83,7 @@ They are selected only when the complete App pair is absent. A partial App pair
 refuses instead of downgrading, and a complete App pair takes precedence even
 when compatibility names remain configured.
 
-### What s210 migrated, and what is still owed
+### What s210 migrated, and the s212 recovery successor
 
 The rexcoleman.dev issuance and renewal jobs are no longer legacy consumers by
 default. `.github/write-enforcement/select_governed_read_credential.py`
@@ -107,17 +107,25 @@ on the runner; it is byte-identical to the signed govML template copy and the
 issuer workflow asserts that identity against `repos/govML` on every run.
 Neither the token nor a digest of one is printed by any of it.
 
-Three things are still owed and none of them is this migration's to do.
+The s210 implementation intentionally left live enrollment to a later owner
+transition. The registered s212 whole-arc successor is
+`.github/write-enforcement/s212_wea_credential_recovery.sh`, documented in
+`WEA_CREDENTIAL_RECOVERY.md`. It first probes the write-only hosted values in
+their actual environments, then reuses or replaces them, provisions and proves
+the exact five-repository App through the current pinned minter, and establishes
+the hosted approver principal plus the fixed root-owned public half. The durable
+row is deployed only after these source bytes land on protected `main`.
+
+Three state facts remain distinct:
 
 1. **The App does not exist yet.** `GOVML_REA_READ_APP_ID` and
    `GOVML_REA_READ_APP_PRIVATE_KEY_B64` are unset in every scope, so today the
    selector still resolves the deprecated compatibility route and the freeze
    still turns on that expiring token. Creating and installing the App is an
-   owner act behind the owner's GitHub session; the checked rail at
-   `owner_rails/kc80_github_app/app_rail.sh` walks it and installs the pair
-   locally without truncating any other name in `~/.config/govml/env`. The two
-   names then have to reach the repository as secrets before any run selects the
-   App route.
+   owner act behind the owner's GitHub session. The s212 rail performs that
+   browser handhold and atomically installs the pair locally without truncating
+   any other name in `~/.config/govml/env`, then places it at issuer, renewal,
+   and hosted-approver environments and proves it from the hosted runners.
 2. **The freeze and re-issuance are separate.** The two new modules are
    registered as members 265 and 266 by the
    `research-enforcement-activation-generation-5-s210-governed-read-credential-v1`
