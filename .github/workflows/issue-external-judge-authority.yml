@@ -25,7 +25,38 @@ defaults:
     shell: bash
 
 jobs:
+  bind-dispatch-principal:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 1
+    steps:
+      - name: Bind exclusive hosted approving principal
+        env:
+          DISPATCH_GITHUB_ACTOR_ID: ${{ github.actor_id }}
+          DISPATCH_GITHUB_ACTOR: ${{ github.actor }}
+          DISPATCH_GITHUB_TRIGGERING_ACTOR: ${{ github.triggering_actor }}
+          DISPATCH_GITHUB_SENDER_TYPE: ${{ github.event.sender.type }}
+          REQUIRED_GITHUB_ACTOR_ID: "313448611"
+          REGISTERED_APP_ACTOR_ID: ${{ vars.GOVML_EXTERNAL_JUDGE_APP_ACTOR_ID }}
+        run: |
+          set -euo pipefail
+          refuse() {
+            echo "EXTERNAL_JUDGE_APPROVING_PRINCIPAL_REFUSED reason=$1" >&2
+            exit 1
+          }
+          [[ "$DISPATCH_GITHUB_ACTOR_ID" =~ ^[1-9][0-9]*$ ]] || refuse actor_id_malformed
+          if [[ "$DISPATCH_GITHUB_ACTOR_ID" == "$REQUIRED_GITHUB_ACTOR_ID" ]]; then
+            echo "EXTERNAL_JUDGE_APPROVING_PRINCIPAL_PASS class=human actor_id=$DISPATCH_GITHUB_ACTOR_ID"
+            exit 0
+          fi
+          [[ "${REGISTERED_APP_ACTOR_ID:-}" =~ ^[1-9][0-9]*$ ]] || refuse app_principal_unregistered
+          [[ "$DISPATCH_GITHUB_ACTOR_ID" == "$REGISTERED_APP_ACTOR_ID" ]] || refuse actor_id_unbound
+          [[ "${DISPATCH_GITHUB_SENDER_TYPE:-}" == "Bot" ]] || refuse sender_type_not_bot
+          [[ "${DISPATCH_GITHUB_ACTOR:-}" == *"[bot]" ]] || refuse actor_login_not_bot
+          [[ "${DISPATCH_GITHUB_TRIGGERING_ACTOR:-}" == "${DISPATCH_GITHUB_ACTOR:-}" ]] || refuse triggering_actor_mismatch
+          echo "EXTERNAL_JUDGE_APPROVING_PRINCIPAL_PASS class=registered-app actor_id=$DISPATCH_GITHUB_ACTOR_ID actor=$DISPATCH_GITHUB_ACTOR"
+
   issue:
+    needs: bind-dispatch-principal
     environment: govml-external-judge-approver
     runs-on: ubuntu-24.04
     timeout-minutes: 5

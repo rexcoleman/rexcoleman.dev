@@ -40,14 +40,34 @@ def validate_path(value: str) -> None:
         raise SystemExit(f"REFUSE(INVENTORY_PATH_INVALID): {value}")
 
 
-def main() -> int:
+def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--index", type=Path, required=True)
+    parser.add_argument("--inventory", type=Path)
+    parser.add_argument(
+        "--index",
+        dest="legacy_index",
+        type=Path,
+        help="deprecated alias for --inventory",
+    )
     parser.add_argument("--repo", action="append", required=True,
                         help="repository_id=/clean/repository/root")
     parser.add_argument("--json-out", type=Path)
-    args = parser.parse_args()
-    value = json.loads(args.index.read_text(encoding="utf-8"))
+    args = parser.parse_args(argv)
+    if args.inventory and args.legacy_index:
+        raise SystemExit("REFUSE(INVENTORY_ARGUMENT_AMBIGUOUS)")
+    inventory_path = args.inventory or args.legacy_index
+    if inventory_path is None:
+        raise SystemExit("REFUSE(INVENTORY_ARGUMENT_REQUIRED): use --inventory")
+    value = json.loads(inventory_path.read_text(encoding="utf-8"))
+    if "adapters" in value and "repositories" not in value:
+        raise SystemExit(
+            "REFUSE(INVENTORY_FILE_REQUIRED): use "
+            "signed_release_convergence_inventory.json, not "
+            "signed_release_convergence_index.json"
+        )
+    for required in ("repositories", "entries"):
+        if required not in value:
+            raise SystemExit(f"REFUSE(INVENTORY_FIELD_MISSING): {required}")
     roots = {}
     for item in args.repo:
         repository, separator, raw_root = item.partition("=")

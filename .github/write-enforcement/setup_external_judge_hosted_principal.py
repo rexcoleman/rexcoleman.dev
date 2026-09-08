@@ -21,9 +21,10 @@ from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
 
-REPOSITORY = "rexcoleman/govML"
+REPOSITORY = "rexcoleman/rexcoleman.dev"
 REX_REPOSITORY = Path(__file__).resolve().parents[2]
 PAYLOAD_PATHS = (
+    ".github/workflows/issue-external-judge-authority.yml",
     ".github/write-enforcement/setup_external_judge_hosted_principal.py",
     ".github/write-enforcement/setup_external_judge_hosted_principal.sh",
     ".github/write-enforcement/rea_s169_external_judge_principal_owner_row.txt",
@@ -33,6 +34,7 @@ SECRET_NAME = "GOVML_EXTERNAL_JUDGE_APPROVING_PRIVATE_KEY_PEM"
 PUBLIC_SHA_VARIABLE = "GOVML_EXTERNAL_JUDGE_APPROVING_PUBLIC_KEY_SHA256"
 ISSUER_COMMIT_VARIABLE = "GOVML_EXTERNAL_JUDGE_ISSUER_COMMIT"
 ISSUER_SHA_VARIABLE = "GOVML_EXTERNAL_JUDGE_ISSUER_SHA256"
+APP_ACTOR_ID_VARIABLE = "GOVML_EXTERNAL_JUDGE_APP_ACTOR_ID"
 STATE_VARIABLE = "GOVML_EXTERNAL_JUDGE_SETUP_STATE"
 PUBLIC_KEY_PATH = Path(
     "/home/azureuser/ml-governance-templates/config/"
@@ -50,6 +52,7 @@ ISSUER_PATH = "scripts/issue_external_judge_authority.py"
 WORKFLOW_PATH = ".github/workflows/issue-external-judge-authority.yml"
 APPROVING_LOGIN = "rexcoleman-ci"
 APPROVING_ID = 313448611
+APP_ACTOR_ID = "326242229"
 EXACT_DEPLOYMENT_POLICY = {
     "protected_branches": False,
     "custom_branch_policies": True,
@@ -546,6 +549,7 @@ def expected_pending_state(
             PUBLIC_SHA_VARIABLE: public_sha256,
             ISSUER_COMMIT_VARIABLE: binding[0],
             ISSUER_SHA_VARIABLE: binding[1],
+            APP_ACTOR_ID_VARIABLE: APP_ACTOR_ID,
         }
     )
 
@@ -576,6 +580,7 @@ def partial_values(
         PUBLIC_SHA_VARIABLE: public_sha256,
         ISSUER_COMMIT_VARIABLE: issuer_commit,
         ISSUER_SHA_VARIABLE: issuer_sha256,
+        APP_ACTOR_ID_VARIABLE: APP_ACTOR_ID,
     }.items())
 
 
@@ -701,6 +706,7 @@ def completed_postmark_state(state: dict, local: dict, binding: tuple[str, str])
             PUBLIC_SHA_VARIABLE: public_sha,
             ISSUER_COMMIT_VARIABLE: binding[0],
             ISSUER_SHA_VARIABLE: binding[1],
+            APP_ACTOR_ID_VARIABLE: APP_ACTOR_ID,
         }
         and isinstance(public_sha, str)
         and re.fullmatch(r"[0-9a-f]{64}", public_sha) is not None

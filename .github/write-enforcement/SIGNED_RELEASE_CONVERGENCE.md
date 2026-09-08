@@ -31,6 +31,12 @@ for the s155 closed research-type registration authority. The direct
 `--adapter` path remains compatible, while `--list-adapters` validates and
 prints the current registry.
 
+Worked discovery command from this directory:
+
+```
+python3 signed_release_convergence.py --list-adapters
+```
+
 Band C's M1 and hardening-row-26 population uses the registered successor
 `--adapter-id research-enforcement-activation-generation-5-band-c-m1-v1`.
 It closes over 257 members, adds the signed profile-local producer validator
@@ -168,6 +174,12 @@ fetched govML and rexcoleman.dev roots. That inventory preserves the reusable
 s88/s127/s131/s132/s149 mechanisms and proof suites alongside this s153 engine,
 so current work starts from the already-tested hermetic, identity, resume,
 refusal, poststate, and evidence contracts.
+
+Worked inventory command from this directory:
+
+```
+python3 enumerate_signed_release_convergence.py --inventory signed_release_convergence_inventory.json --repo govML=/path/to/clean/govML --repo rexcoleman.dev=/path/to/clean/rexcoleman.dev --json-out /tmp/signed-release-convergence-enumeration.json
+```
 
 Run `python3 signed_release_convergence.py --self-test` for the isolated
 determinism, receipt-drift, path, environment, and atomic-state battery.
