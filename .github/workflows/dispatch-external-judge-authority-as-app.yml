@@ -1,0 +1,42 @@
+name: Dispatch external judge authority as App
+run-name: App external judge dispatch ${{ inputs.request_sha256 }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      request_b64:
+        description: Base64 of the exact non-secret create-request bytes
+        required: true
+        type: string
+      request_sha256:
+        description: SHA-256 of the exact decoded create-request bytes
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: govml-external-judge-app-dispatch
+  cancel-in-progress: false
+
+jobs:
+  dispatch:
+    environment: govml-external-judge-approver
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    env:
+      GOVML_REA_READ_APP_ID: ${{ secrets.GOVML_REA_READ_APP_ID }}
+      GOVML_REA_READ_APP_PRIVATE_KEY_B64: ${{ secrets.GOVML_REA_READ_APP_PRIVATE_KEY_B64 }}
+      REQUEST_B64: ${{ inputs.request_b64 }}
+      REQUEST_SHA256: ${{ inputs.request_sha256 }}
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - name: Attempt exact govML workflow dispatch as the App
+        run: |
+          set -euo pipefail
+          PYTHONDONTWRITEBYTECODE=1 python3 .github/write-enforcement/dispatch_external_judge_as_app.py \
+            --request-b64 "$REQUEST_B64" \
+            --request-sha256 "$REQUEST_SHA256"
