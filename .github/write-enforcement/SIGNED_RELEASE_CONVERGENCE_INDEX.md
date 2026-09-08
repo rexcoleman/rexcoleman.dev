@@ -23,6 +23,18 @@ the normal route. `--list-adapters` validates the complete index and every
 adapter before printing the registered rows. Unknown, duplicate, retired,
 traversing, missing, mismatched, or extra-field rows refuse.
 
+Worked adapter discovery from this directory:
+
+```
+python3 signed_release_convergence.py --list-adapters
+```
+
+Worked adapter planning invocation from this directory:
+
+```
+python3 signed_release_convergence.py --adapter-id research-enforcement-activation-generation-5-population-264-v1 --plan --state /tmp/rea-src-state.json --output-root /tmp/rea-src-plan --root research_enforcement_activation=/path/to/research_enforcement_activation --root govML=/path/to/govML --root Moonshots_Career_Thesis_v2=/path/to/Moonshots_Career_Thesis_v2 --root newsletter=/path/to/newsletter --root rexcoleman.dev=/path/to/rexcoleman.dev
+```
+
 The active registry contains the original REA authority adapter, its s155
 registration successor, the Band C M1/row-26 257-member successor, the W2
 project-bundle basis-resolution successor, its derived-authority-generator
@@ -185,6 +197,12 @@ missing row or delta above five percent is nonzero. This is the required
 preflight before adding a new convergence implementation. Reuse a registered
 engine/adapter/test/evidence row, and add a row only when no existing mechanism
 covers the requirement.
+
+Worked inventory enumeration from this directory:
+
+```
+python3 enumerate_signed_release_convergence.py --inventory signed_release_convergence_inventory.json --repo govML=/path/to/clean/govML --repo rexcoleman.dev=/path/to/clean/rexcoleman.dev --json-out /tmp/signed-release-convergence-enumeration.json
+```
 
 The s165 row registers `rehearse_generation5_ruleset_revert.py`. It reuses the
 generation-5 manifest builder, derives all five immutable member commits from

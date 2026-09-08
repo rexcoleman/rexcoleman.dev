@@ -99,8 +99,9 @@ def test_setup_self_test_and_fixed_one_time_contract() -> None:
     assert "private_raw = \"\"" in source
     assert "per_issuance_human_steps\": 0" in source
     assert "payload_binding()" in source
-    assert tool.REPOSITORY == "rexcoleman/govML"
+    assert tool.REPOSITORY == "rexcoleman/rexcoleman.dev"
     assert tool.APPROVING_ID == 313448611
+    assert tool.APP_ACTOR_ID == "326242229"
     assert tool.EXACT_BRANCH_POLICIES == [{"name": "main", "type": "branch"}]
     assert "ln \\\"$stage\\\"" in source
     assert "PENDING_PUBLIC_KEY_MISMATCH_REFUSED" in source
@@ -190,6 +191,7 @@ def install_fake_transition(monkeypatch: pytest.MonkeyPatch, tool, failure: str 
             tool.PUBLIC_SHA_VARIABLE: public_sha,
             tool.ISSUER_COMMIT_VARIABLE: binding[0],
             tool.ISSUER_SHA_VARIABLE: binding[1],
+            tool.APP_ACTOR_ID_VARIABLE: tool.APP_ACTOR_ID,
         }
         remote["secrets"] = {tool.SECRET_NAME}
 
@@ -399,6 +401,7 @@ def test_pending_interruption_is_recovered_before_fresh_transition(
             tool.PUBLIC_SHA_VARIABLE: "c" * 64,
             tool.ISSUER_COMMIT_VARIABLE: "a" * 40,
             tool.ISSUER_SHA_VARIABLE: "b" * 64,
+            tool.APP_ACTOR_ID_VARIABLE: tool.APP_ACTOR_ID,
         },
         "secrets": {tool.SECRET_NAME},
     })
@@ -425,6 +428,7 @@ def test_pending_mismatched_public_key_hard_refuses_without_recovery_mutation(
             tool.PUBLIC_SHA_VARIABLE: "c" * 64,
             tool.ISSUER_COMMIT_VARIABLE: "a" * 40,
             tool.ISSUER_SHA_VARIABLE: "b" * 64,
+            tool.APP_ACTOR_ID_VARIABLE: tool.APP_ACTOR_ID,
         },
         "secrets": {tool.SECRET_NAME},
     })
@@ -462,6 +466,7 @@ def test_remote_pending_state_drift_refuses_delete_without_mutation(
             tool.PUBLIC_SHA_VARIABLE: public_sha,
             tool.ISSUER_COMMIT_VARIABLE: binding[0],
             tool.ISSUER_SHA_VARIABLE: binding[1],
+            tool.APP_ACTOR_ID_VARIABLE: tool.APP_ACTOR_ID,
         },
         "secrets": {tool.SECRET_NAME},
     }
@@ -480,7 +485,7 @@ def test_remote_pending_state_drift_refuses_delete_without_mutation(
     assert calls == []
 
 
-@pytest.mark.parametrize("boundary", range(6))
+@pytest.mark.parametrize("boundary", range(7))
 def test_each_partial_configuration_boundary_is_attributed_and_rolled_back(
     monkeypatch: pytest.MonkeyPatch, boundary: int,
 ) -> None:
@@ -524,8 +529,8 @@ def test_each_partial_configuration_boundary_is_attributed_and_rolled_back(
         if arguments[:3] == ["gh", "secret", "set"]:
             remote["secrets"].add(tool.SECRET_NAME)
             mutations.append("secret")
-            if boundary == 5:
-                raise tool.SetupRefusal("PLANTED_CONFIG_BOUNDARY_5")
+            if boundary == 6:
+                raise tool.SetupRefusal("PLANTED_CONFIG_BOUNDARY_6")
             return SimpleNamespace(returncode=0, stdout="", stderr="")
         if "DELETE" in arguments:
             mutations.append("delete")
