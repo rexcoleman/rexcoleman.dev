@@ -46,6 +46,7 @@ REXDEV_264_ADAPTER = ROOT / "adapters/rexcoleman.dev.population-264-v1.json"
 S210_GOVERNED_READ_ADAPTER = ROOT / (
     "adapters/research_enforcement_activation.s210-governed-read-credential-v1.json"
 )
+POPULATION_265_ADAPTER = ROOT / "adapters/research_enforcement_activation.population-265-v1.json"
 POPULATION_264_DEPENDENT_ADAPTERS = (
     AML_264_ADAPTER,
     ABLL_264_ADAPTER,
@@ -1032,6 +1033,7 @@ def test_index_is_closed_and_resolves_every_registered_adapter():
             "research-enforcement-activation-generation-5-s173-authenticated-head-rebase-v1",
             "research-enforcement-activation-generation-5-population-261-v1",
             "research-enforcement-activation-generation-5-population-264-v1",
+            "research-enforcement-activation-generation-5-population-265-v1",
             "adversarial-ml-landscape-generation-5-population-264-v1",
             "agent-boundary-learning-landscape-generation-5-population-264-v1",
             "newsletter-generation-architecture-generation-5-population-264-v1",
@@ -1095,8 +1097,9 @@ def test_index_refuses_duplicate_unknown_retired_and_traversing_rows(
             NHP_264_ADAPTER,
             NEWSLETTER_264_ADAPTER,
             REXDEV_264_ADAPTER,
-            S210_GOVERNED_READ_ADAPTER,
-        ):
+                S210_GOVERNED_READ_ADAPTER,
+                POPULATION_265_ADAPTER,
+            ):
         shutil.copyfile(adapter_path, adapters / adapter_path.name)
     shutil.copyfile(WORKFLOW, tmp_path / "workflows" / WORKFLOW.name)
 
@@ -1754,4 +1757,56 @@ def test_s210_impact_snapshot_resolves_the_new_member_contract(tmp_path):
     """The engine's flag->selector map must know the new contract by name."""
     adapter = tool.load_adapter(S210_GOVERNED_READ_ADAPTER)
     expected = tool.member_contract(ROOT.parents[1], "governed_read_credential_successor_members")
+    assert len(expected) == adapter["expected_member_count"]
+
+
+def test_s220_pre_commit_boundary_adapter_is_a_population_265_successor():
+    value = tool.load_adapter(POPULATION_265_ADAPTER)
+    assert value["adapter_id"] == (
+        "research-enforcement-activation-generation-5-population-265-v1"
+    )
+    assert value["schema_version"] == tool.ADAPTER_SCHEMA
+    assert "dependent_project" not in value
+    assert value["authority_generation"] == 5
+    assert value["expected_member_count"] == 265
+    assert value["manifest_builder_flag"] == "--pre-commit-boundary-successor"
+    assert value["manifest_path"] == (
+        ".github/write-enforcement/frozen_bundle_manifest.generation-5.json"
+    )
+    base = tool.load_adapter(POPULATION_264_ADAPTER)
+    for field in (
+        "repositories",
+        "ruleset_id",
+        "ruleset_repository",
+        "boundaries",
+        "manifest_builder",
+        "manifest_path",
+        "authority_generation",
+    ):
+        assert value[field] == base[field], field
+    govml = next(row for row in value["system_python_sources"] if row["repository"] == "govML")
+    assert "templates/build/enforcement/pre_commit_boundary_receipt.py" in govml["paths"]
+
+
+def test_s220_member_contract_adds_pre_commit_boundary_receipt_helper():
+    base = set(MEMBER_CONTRACT.control_closure_successor_members())
+    successor = MEMBER_CONTRACT.pre_commit_boundary_successor_members()
+    assert len(base) == 264
+    assert len(successor) == 265
+    added = {member_id: successor[member_id] for member_id in set(successor) - base}
+    assert added == {
+        "pre-commit-boundary-receipt-helper": (
+            "govML",
+            "templates/build/enforcement/pre_commit_boundary_receipt.py",
+        )
+    }
+    with pytest.raises(ValueError, match="pre-commit-boundary member set refused"):
+        MEMBER_CONTRACT.validate_pre_commit_boundary_member_ids(base)
+    with pytest.raises(ValueError, match="control-closure member set refused"):
+        MEMBER_CONTRACT.validate_control_closure_member_ids(successor)
+
+
+def test_s220_impact_snapshot_resolves_pre_commit_boundary_contract():
+    adapter = tool.load_adapter(POPULATION_265_ADAPTER)
+    expected = tool.member_contract(ROOT.parents[1], "pre_commit_boundary_successor_members")
     assert len(expected) == adapter["expected_member_count"]
