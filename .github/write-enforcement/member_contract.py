@@ -819,6 +819,17 @@ GOVERNED_READ_CREDENTIAL_ADDITIONAL_MEMBERS = {
     ),
 }
 
+# s220 closes the installed population for the pre-commit boundary receipt
+# helper introduced by the signed research-integrity hook.  The managed
+# inventory installs this helper into governed projects, so the release manifest
+# must sign the immutable govML template source before any bundle can be built.
+PRE_COMMIT_BOUNDARY_ADDITIONAL_MEMBERS = {
+    "pre-commit-boundary-receipt-helper": (
+        "govML",
+        "templates/build/enforcement/pre_commit_boundary_receipt.py",
+    ),
+}
+
 
 def successor_members():
     value = dict(EXPECTED_MEMBERS)
@@ -922,6 +933,29 @@ def validate_governed_read_credential_member_ids(observed) -> None:
         )
 
 
+def pre_commit_boundary_successor_members():
+    value = governed_read_credential_successor_members()
+    overlap = set(value) & set(PRE_COMMIT_BOUNDARY_ADDITIONAL_MEMBERS)
+    if overlap:
+        raise ValueError(
+            "pre-commit-boundary member id collision: %s" % sorted(overlap)
+        )
+    value.update(PRE_COMMIT_BOUNDARY_ADDITIONAL_MEMBERS)
+    if len(set(value.values())) != len(value):
+        raise ValueError("pre-commit-boundary member subject collision")
+    return value
+
+
+def validate_pre_commit_boundary_member_ids(observed) -> None:
+    expected = set(pre_commit_boundary_successor_members())
+    actual = set(observed)
+    if actual != expected:
+        raise ValueError(
+            "pre-commit-boundary member set refused:missing=%s:extra=%s"
+            % (sorted(expected - actual), sorted(actual - expected))
+        )
+
+
 def production_members_for_manifest(manifest, baseline=None):
     """Select the exact closed set for one known generation; never a subset."""
     rows = manifest.get("members") if isinstance(manifest, dict) else None
@@ -940,6 +974,8 @@ def production_members_for_manifest(manifest, baseline=None):
     control_successor.update(CONTROL_CLOSURE_ADDITIONAL_MEMBERS)
     governed_read_successor = dict(control_successor)
     governed_read_successor.update(GOVERNED_READ_CREDENTIAL_ADDITIONAL_MEMBERS)
+    pre_commit_successor = dict(governed_read_successor)
+    pre_commit_successor.update(PRE_COMMIT_BOUNDARY_ADDITIONAL_MEMBERS)
     generation = manifest.get("authority_generation") if isinstance(manifest, dict) else None
     if generation is None and baseline is not None:
         # Unit-level byte/membership checks historically pass a reduced explicit
@@ -952,7 +988,9 @@ def production_members_for_manifest(manifest, baseline=None):
         return base
     if generation == AUTHORITY_GENERATION:
         return (
-            governed_read_successor
+            pre_commit_successor
+            if observed & set(PRE_COMMIT_BOUNDARY_ADDITIONAL_MEMBERS)
+            else governed_read_successor
             if observed & set(GOVERNED_READ_CREDENTIAL_ADDITIONAL_MEMBERS)
             else control_successor
             if observed & set(CONTROL_CLOSURE_ADDITIONAL_MEMBERS)

@@ -33,6 +33,7 @@ from member_contract import (
     grouped_members,
     hosted_principal_successor_members,
     normalize_ruleset,
+    pre_commit_boundary_successor_members,
     staged_nonproduction_members,
     successor_members,
     validate_managed_live_member_aliases,
@@ -40,6 +41,7 @@ from member_contract import (
     validate_authenticated_head_rebase_member_ids,
     validate_control_closure_member_ids,
     validate_governed_read_credential_member_ids,
+    validate_pre_commit_boundary_member_ids,
 )
 
 MEMBERS = grouped_members()
@@ -349,6 +351,7 @@ def main() -> int:
     parser.add_argument("--authenticated-head-rebase-successor", action="store_true")
     parser.add_argument("--control-closure-successor", action="store_true")
     parser.add_argument("--governed-read-credential-successor", action="store_true")
+    parser.add_argument("--pre-commit-boundary-successor", action="store_true")
     for name in MEMBERS:
         slug = name.lower().replace("_", "-").replace(".", "-")
         parser.add_argument("--root-" + slug, dest="root_" + name.lower().replace(".", "_"),
@@ -361,11 +364,14 @@ def main() -> int:
         args.authenticated_head_rebase_successor,
         args.control_closure_successor,
         args.governed_read_credential_successor,
+        args.pre_commit_boundary_successor,
     ))
     if selected_contracts > 1:
         raise ValueError("staged and successor contracts are mutually exclusive")
     expected_members = (
         staged_nonproduction_members() if args.staged_nonproduction
+        else pre_commit_boundary_successor_members()
+        if args.pre_commit_boundary_successor
         else governed_read_credential_successor_members()
         if args.governed_read_credential_successor
         else control_closure_successor_members()
@@ -385,6 +391,8 @@ def main() -> int:
         validate_control_closure_member_ids(expected_members)
     if args.governed_read_credential_successor:
         validate_governed_read_credential_member_ids(expected_members)
+    if args.pre_commit_boundary_successor:
+        validate_pre_commit_boundary_member_ids(expected_members)
     synthetic_contract = (
         not args.staged_nonproduction and MEMBERS != grouped_members()
     )
@@ -410,6 +418,7 @@ def main() -> int:
         or args.authenticated_head_rebase_successor
         or args.control_closure_successor
         or args.governed_read_credential_successor
+        or args.pre_commit_boundary_successor
         or args.staged_nonproduction
     )
     authority_generation = (
