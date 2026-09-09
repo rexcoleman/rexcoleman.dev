@@ -1,7 +1,7 @@
 {
-  "adapter_id": "research-enforcement-activation-generation-5-population-267-v1",
+  "adapter_id": "research-enforcement-activation-generation-5-population-265-v1",
   "authority_generation": 5,
-  "expected_member_count": 267,
+  "expected_member_count": 265,
   "boundaries": {
     "anti_spin": "not-applicable-deterministic",
     "bcs_partition": "forbidden",
@@ -10,7 +10,7 @@
   },
   "hermetic_tests": [
     {
-      "name": "rexdev-s220-pre-commit-boundary-population-267",
+      "name": "rexdev-s220-pre-commit-boundary-population-265",
       "paths": [
         ".github/write-enforcement/tests/test_artifact_contract.py",
         ".github/write-enforcement/tests/test_build_frozen_manifest.py",
@@ -21,7 +21,6 @@
         ".github/write-enforcement/tests/test_renewal_workflow.py",
         ".github/write-enforcement/tests/test_s169_hosted_external_judge_principal.py",
         ".github/write-enforcement/tests/test_s170_owner_arc.py",
-        ".github/write-enforcement/tests/test_s210_governed_read_credential.py",
         ".github/write-enforcement/tests/test_signed_release_convergence.py",
         "tests/test_s111_signed_runtime_members.py"
       ],
@@ -116,8 +115,6 @@
         ".github/write-enforcement/independent_review.py",
         ".github/write-enforcement/setup_external_judge_hosted_principal.py",
         ".github/write-enforcement/populate_rea_s170_govml_credentials.py",
-        ".github/write-enforcement/github_app_installation_token.py",
-        ".github/write-enforcement/select_governed_read_credential.py",
         ".github/write-enforcement/checkout_manifest.py",
         ".github/write-enforcement/credential_custody.py"
       ],

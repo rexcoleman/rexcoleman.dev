@@ -934,7 +934,7 @@ def validate_governed_read_credential_member_ids(observed) -> None:
 
 
 def pre_commit_boundary_successor_members():
-    value = governed_read_credential_successor_members()
+    value = control_closure_successor_members()
     overlap = set(value) & set(PRE_COMMIT_BOUNDARY_ADDITIONAL_MEMBERS)
     if overlap:
         raise ValueError(
@@ -974,7 +974,7 @@ def production_members_for_manifest(manifest, baseline=None):
     control_successor.update(CONTROL_CLOSURE_ADDITIONAL_MEMBERS)
     governed_read_successor = dict(control_successor)
     governed_read_successor.update(GOVERNED_READ_CREDENTIAL_ADDITIONAL_MEMBERS)
-    pre_commit_successor = dict(governed_read_successor)
+    pre_commit_successor = dict(control_successor)
     pre_commit_successor.update(PRE_COMMIT_BOUNDARY_ADDITIONAL_MEMBERS)
     generation = manifest.get("authority_generation") if isinstance(manifest, dict) else None
     if generation is None and baseline is not None:
