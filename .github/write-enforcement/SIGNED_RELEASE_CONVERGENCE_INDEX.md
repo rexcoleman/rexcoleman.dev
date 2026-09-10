@@ -32,7 +32,7 @@ python3 signed_release_convergence.py --list-adapters
 Worked adapter planning invocation from this directory:
 
 ```
-python3 signed_release_convergence.py --adapter-id research-enforcement-activation-generation-5-population-264-v1 --plan --state /tmp/rea-src-state.json --output-root /tmp/rea-src-plan --root research_enforcement_activation=/path/to/research_enforcement_activation --root govML=/path/to/govML --root Moonshots_Career_Thesis_v2=/path/to/Moonshots_Career_Thesis_v2 --root newsletter=/path/to/newsletter --root rexcoleman.dev=/path/to/rexcoleman.dev
+python3 signed_release_convergence.py --adapter-id research-enforcement-activation-generation-5-population-273-v1 --plan --state /tmp/rea-src-state.json --evidence-dir /tmp/rea-src-plan --root research_enforcement_activation=/path/to/research_enforcement_activation --root govML=/path/to/govML --root Moonshots_Career_Thesis_v2=/path/to/Moonshots_Career_Thesis_v2 --root newsletter=/path/to/newsletter --root rexcoleman.dev=/path/to/rexcoleman.dev
 ```
 
 The active registry contains the original REA authority adapter, its s155
@@ -150,6 +150,15 @@ pair at issuer/renewal/approver, and the hosted approving principal plus its
 root-owned public half. It ends at credential readiness: F3, issuance, freeze,
 tagging, and every Mac surface remain outside this rail. The source and
 operating contract are documented in `WEA_CREDENTIAL_RECOVERY.md`.
+
+The s226 population-273 successor is registered as
+`research-enforcement-activation-generation-5-population-273-v1`. It derives
+from the population-265 pre-commit-boundary successor and adds the eight
+govML construction-completeness fixture evidence subjects that became managed
+install members when PR #186 made the honest construction fixture discriminate
+by exit code. The old population-265 adapter remains auditable, but the active
+reissue plan uses the 273-member contract so the frozen manifest cannot omit
+bytes that `managed_enforcement_inventory.py` installs.
 
 A population change always gets a new stable
 adapter identity; the 251- and 255-member adapters remain

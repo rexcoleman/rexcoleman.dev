@@ -128,6 +128,16 @@ refuse them. The govML hermetic surface adds `tests/test_s131_convergence.py`,
 which exercises the nine-source closure predicate. Registration neither creates
 a manifest nor freezes, issues, installs, or activates an authority.
 
+The REA population-273 successor is
+`research-enforcement-activation-generation-5-population-273-v1`. It preserves
+the population-265 pre-commit-boundary successor and adds the eight govML
+construction-completeness fixture evidence files that
+`managed_enforcement_inventory.py` now installs for the research-build profile.
+Without those signed subjects the manifest builder refuses because the
+installed population contains unsigned managed bytes. The adapter plans the
+reissue to the freeze line only: no issuance, install, tag, approval, or REA
+design freeze is performed by the convergence planner.
+
 The s165 AML route was registered as
 `adversarial-ml-landscape-generation-5-population-259-v1`. Its Moonshots
 hermetic surface covers the one-time committed `PENDING_SIGNED_BUNDLE` genesis

@@ -100,11 +100,16 @@
       "path": "adapters/research_enforcement_activation.population-264-v1.json",
       "status": "active"
     },
-    {
-      "adapter_id": "research-enforcement-activation-generation-5-population-265-v1",
-      "path": "adapters/research_enforcement_activation.population-265-v1.json",
-      "status": "active"
-    },
+        {
+            "adapter_id": "research-enforcement-activation-generation-5-population-265-v1",
+            "path": "adapters/research_enforcement_activation.population-265-v1.json",
+            "status": "active"
+        },
+        {
+            "adapter_id": "research-enforcement-activation-generation-5-population-273-v1",
+            "path": "adapters/research_enforcement_activation.population-273-v1.json",
+            "status": "active"
+        },
     {
       "adapter_id": "adversarial-ml-landscape-generation-5-population-264-v1",
       "path": "adapters/adversarial_ml_landscape.population-264-v1.json",
