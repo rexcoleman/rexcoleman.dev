@@ -2,19 +2,13 @@
   "assertion": "COMMIT_PREFLIGHT_PASS",
   "caller": "git-pre-commit",
   "changed_paths": [
-    ".githooks/pre-commit",
-    ".github/workflows/artifact-integrity.yml",
-    ".github/write-enforcement/CREDENTIAL_CUSTODY.md",
-    "scripts/ci_exact_commit_integrity.py",
-    "scripts/pre_commit_boundary_receipt.py",
-    "tests/__init__.py",
-    "tests/test_ci_exact_commit_integrity.py"
+    ".github/write-enforcement/frozen_bundle_manifest.generation-5.json"
   ],
-  "changed_paths_count": 7,
-  "changed_paths_sha256": "ed3c850aecde03c9f39731bdf265e7633624a682ce9adfeb44e07e197a417067",
+  "changed_paths_count": 1,
+  "changed_paths_sha256": "0e50f527ad13467749dcd58967b714e8b6e5b0b91970adfa7dab4bae4ff957de",
   "mode": "commit-preflight",
-  "parent_head": "00afece33bed4b0b986ab97f960ac83f0313cec9",
-  "run_id": "pre-commit-2aa6ebc6c1370157b17fee59",
+  "parent_head": "891f02c8914b9e68ca33977cc5671b256702a882",
+  "run_id": "pre-commit-2ec4dd6b34bfa728a98bcbb1",
   "schema_version": "rea.pre-commit-boundary.v1",
-  "utc_asserted_at": "2026-09-10T22:27:41Z"
+  "utc_asserted_at": "2026-09-10T23:05:04Z"
 }
