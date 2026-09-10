@@ -84,7 +84,7 @@ env:
   # modules to this workflow for the window before the 266-member re-freeze
   # makes them signed members in their own right, and permanently give the two
   # jobs that never reach the frozen checkout a binding of their own.
-  GOVERNED_READ_MINTER_SHA256: 229ce6b172da80e092f93262fc442a1c6099811c125e44e854fc0a12269e9fcf
+  GOVERNED_READ_MINTER_SHA256: fe3fce9b118a894be399c01e340967438a61e994eb90c24e6381e0db167477b7
   GOVERNED_READ_SELECTOR_SHA256: 6668b7c1115d18a2d71bd17ceff6628163f97d4a106e4e4581f0835fb9954718
 
 jobs:
