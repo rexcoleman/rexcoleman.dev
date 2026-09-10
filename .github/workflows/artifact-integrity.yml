@@ -1,0 +1,95 @@
+name: artifact-integrity
+
+# Ported from research_enforcement_activation/.github/workflows/artifact-integrity.yml.
+# Ruleset 19768000 on `main` requires exactly these two status contexts.
+# rexcoleman.dev commits are manifest-only planner commits, so the boundary
+# predicate is receipt-binding only: the authored commit must carry a
+# .governance/pre_commit_boundary.json receipt whose parent and changeset
+# match the commit being checked.
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  # No __pycache__ ignore exists in this tree; bytecode written by the test
+  # step would otherwise dirty the exact checkout and refuse the evidence step.
+  PYTHONDONTWRITEBYTECODE: "1"
+
+jobs:
+  pre-commit-boundary:
+    name: pre-commit-boundary-asserted
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check out the authored commit
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Assert pre-commit boundary ran for authored commit
+        env:
+          EXPECTED_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          set -euo pipefail
+          VERIFY_RC=0
+          python3 scripts/pre_commit_boundary_receipt.py verify \
+            --project-dir "$GITHUB_WORKSPACE" \
+            --expected-head "$EXPECTED_HEAD" || VERIFY_RC=$?
+          if [ "$VERIFY_RC" -eq 0 ]; then
+            exit 0
+          fi
+          if [ "$EVENT_NAME" != "push" ]; then
+            exit "$VERIFY_RC"
+          fi
+          # A GitHub merge commit carries no receipt of its own; the authored
+          # commit is its second parent. Check that commit out so the receipt
+          # verifier binds against the head it was recorded for.
+          PARENTS="$(git show -s --format=%P "$EXPECTED_HEAD")"
+          set -- $PARENTS
+          if [ "$#" -ne 2 ]; then
+            exit "$VERIFY_RC"
+          fi
+          EXPECTED_HEAD="$2"
+          git checkout -q "$EXPECTED_HEAD"
+          python3 scripts/pre_commit_boundary_receipt.py verify \
+            --project-dir "$GITHUB_WORKSPACE" \
+            --expected-head "$EXPECTED_HEAD"
+
+  exact-commit:
+    name: artifact-integrity-exact-commit
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check out the exact event commit
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          # The prose-binding gate compares the exact event commit with its
+          # first parent and resolves explicitly declared local commit
+          # citations. A bounded depth can hide either object, so the proof
+          # needs history.
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Run faithful and planted exact-commit tests
+        run: |
+          set -euo pipefail
+          python3 -m unittest tests.test_ci_exact_commit_integrity -v
+
+      - name: Emit exact-commit integrity evidence
+        env:
+          EXPECTED_HEAD: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          python3 scripts/ci_exact_commit_integrity.py \
+            --project-dir "$GITHUB_WORKSPACE" \
+            --expected-head "$EXPECTED_HEAD"

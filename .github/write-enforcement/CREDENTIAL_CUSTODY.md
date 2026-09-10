@@ -235,6 +235,8 @@ deletes the newly created secret and verifies absence. The Coach can dispatch
 and approve both exact issuer deployments through the registered transition;
 there is no credential-paste or key-generation owner step.
 
+Every clone of this repository must set `git config core.hooksPath .githooks` so the managed pre-commit hook records the commit-bound `.governance/pre_commit_boundary.json` receipt that the required `pre-commit-boundary-asserted` check on `main` verifies.
+
 ## Running the checker
 
 ```

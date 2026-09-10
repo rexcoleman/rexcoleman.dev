@@ -1,0 +1,20 @@
+{
+  "assertion": "COMMIT_PREFLIGHT_PASS",
+  "caller": "git-pre-commit",
+  "changed_paths": [
+    ".githooks/pre-commit",
+    ".github/workflows/artifact-integrity.yml",
+    ".github/write-enforcement/CREDENTIAL_CUSTODY.md",
+    "scripts/ci_exact_commit_integrity.py",
+    "scripts/pre_commit_boundary_receipt.py",
+    "tests/__init__.py",
+    "tests/test_ci_exact_commit_integrity.py"
+  ],
+  "changed_paths_count": 7,
+  "changed_paths_sha256": "ed3c850aecde03c9f39731bdf265e7633624a682ce9adfeb44e07e197a417067",
+  "mode": "commit-preflight",
+  "parent_head": "00afece33bed4b0b986ab97f960ac83f0313cec9",
+  "run_id": "pre-commit-2aa6ebc6c1370157b17fee59",
+  "schema_version": "rea.pre-commit-boundary.v1",
+  "utc_asserted_at": "2026-09-10T22:27:41Z"
+}
