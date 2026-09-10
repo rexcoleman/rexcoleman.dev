@@ -828,6 +828,38 @@ PRE_COMMIT_BOUNDARY_ADDITIONAL_MEMBERS = {
         "govML",
         "templates/build/enforcement/pre_commit_boundary_receipt.py",
     ),
+    "construction-completeness-evidence-ac-b-attestation": (
+        "govML",
+        "templates/build/enforcement/construction_completeness_fixtures/evidence/ac_b_attestation_A5.py",
+    ),
+    "construction-completeness-evidence-self-test-checklist": (
+        "govML",
+        "templates/build/enforcement/construction_completeness_fixtures/evidence/checklists/self_test.checklist",
+    ),
+    "construction-completeness-evidence-composite-quality-block": (
+        "govML",
+        "templates/build/enforcement/construction_completeness_fixtures/evidence/composite_quality_block_A1.sh",
+    ),
+    "construction-completeness-evidence-manifest-required": (
+        "govML",
+        "templates/build/enforcement/construction_completeness_fixtures/evidence/construction_manifest_required_A2.py",
+    ),
+    "construction-completeness-evidence-depth-verdict-aware": (
+        "govML",
+        "templates/build/enforcement/construction_completeness_fixtures/evidence/depth_gate_verdict_aware_A3.sh",
+    ),
+    "construction-completeness-evidence-labeled-corpus": (
+        "govML",
+        "templates/build/enforcement/construction_completeness_fixtures/evidence/labeled_corpus.json",
+    ),
+    "construction-completeness-evidence-precheck-substantive": (
+        "govML",
+        "templates/build/enforcement/construction_completeness_fixtures/evidence/precheck_substantive_A4.json",
+    ),
+    "construction-completeness-evidence-agent-pre-check-runner": (
+        "govML",
+        "templates/build/enforcement/construction_completeness_fixtures/evidence/scripts/agent_pre_check_runner.sh",
+    ),
 }
 
 

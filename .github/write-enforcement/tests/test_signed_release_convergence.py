@@ -47,6 +47,7 @@ S210_GOVERNED_READ_ADAPTER = ROOT / (
     "adapters/research_enforcement_activation.s210-governed-read-credential-v1.json"
 )
 POPULATION_265_ADAPTER = ROOT / "adapters/research_enforcement_activation.population-265-v1.json"
+POPULATION_273_ADAPTER = ROOT / "adapters/research_enforcement_activation.population-273-v1.json"
 POPULATION_264_DEPENDENT_ADAPTERS = (
     AML_264_ADAPTER,
     ABLL_264_ADAPTER,
@@ -1034,6 +1035,7 @@ def test_index_is_closed_and_resolves_every_registered_adapter():
             "research-enforcement-activation-generation-5-population-261-v1",
             "research-enforcement-activation-generation-5-population-264-v1",
             "research-enforcement-activation-generation-5-population-265-v1",
+            "research-enforcement-activation-generation-5-population-273-v1",
             "adversarial-ml-landscape-generation-5-population-264-v1",
             "agent-boundary-learning-landscape-generation-5-population-264-v1",
             "newsletter-generation-architecture-generation-5-population-264-v1",
@@ -1099,6 +1101,7 @@ def test_index_refuses_duplicate_unknown_retired_and_traversing_rows(
             REXDEV_264_ADAPTER,
                 S210_GOVERNED_READ_ADAPTER,
                 POPULATION_265_ADAPTER,
+                POPULATION_273_ADAPTER,
             ):
         shutil.copyfile(adapter_path, adapters / adapter_path.name)
     shutil.copyfile(WORKFLOW, tmp_path / "workflows" / WORKFLOW.name)
@@ -1760,15 +1763,15 @@ def test_s210_impact_snapshot_resolves_the_new_member_contract(tmp_path):
     assert len(expected) == adapter["expected_member_count"]
 
 
-def test_s220_pre_commit_boundary_adapter_is_a_population_265_successor():
-    value = tool.load_adapter(POPULATION_265_ADAPTER)
+def test_s226_pre_commit_boundary_adapter_is_a_population_273_successor():
+    value = tool.load_adapter(POPULATION_273_ADAPTER)
     assert value["adapter_id"] == (
-        "research-enforcement-activation-generation-5-population-265-v1"
+        "research-enforcement-activation-generation-5-population-273-v1"
     )
     assert value["schema_version"] == tool.ADAPTER_SCHEMA
     assert "dependent_project" not in value
     assert value["authority_generation"] == 5
-    assert value["expected_member_count"] == 265
+    assert value["expected_member_count"] == 273
     assert value["manifest_builder_flag"] == "--pre-commit-boundary-successor"
     assert value["manifest_path"] == (
         ".github/write-enforcement/frozen_bundle_manifest.generation-5.json"
@@ -1788,17 +1791,49 @@ def test_s220_pre_commit_boundary_adapter_is_a_population_265_successor():
     assert "templates/build/enforcement/pre_commit_boundary_receipt.py" in govml["paths"]
 
 
-def test_s220_member_contract_adds_pre_commit_boundary_receipt_helper():
+def test_s226_member_contract_adds_pre_commit_boundary_and_fixture_evidence():
     base = set(MEMBER_CONTRACT.control_closure_successor_members())
     successor = MEMBER_CONTRACT.pre_commit_boundary_successor_members()
     assert len(base) == 264
-    assert len(successor) == 265
+    assert len(successor) == 273
     added = {member_id: successor[member_id] for member_id in set(successor) - base}
     assert added == {
         "pre-commit-boundary-receipt-helper": (
             "govML",
             "templates/build/enforcement/pre_commit_boundary_receipt.py",
-        )
+        ),
+        "construction-completeness-evidence-ac-b-attestation": (
+            "govML",
+            "templates/build/enforcement/construction_completeness_fixtures/evidence/ac_b_attestation_A5.py",
+        ),
+        "construction-completeness-evidence-self-test-checklist": (
+            "govML",
+            "templates/build/enforcement/construction_completeness_fixtures/evidence/checklists/self_test.checklist",
+        ),
+        "construction-completeness-evidence-composite-quality-block": (
+            "govML",
+            "templates/build/enforcement/construction_completeness_fixtures/evidence/composite_quality_block_A1.sh",
+        ),
+        "construction-completeness-evidence-manifest-required": (
+            "govML",
+            "templates/build/enforcement/construction_completeness_fixtures/evidence/construction_manifest_required_A2.py",
+        ),
+        "construction-completeness-evidence-depth-verdict-aware": (
+            "govML",
+            "templates/build/enforcement/construction_completeness_fixtures/evidence/depth_gate_verdict_aware_A3.sh",
+        ),
+        "construction-completeness-evidence-labeled-corpus": (
+            "govML",
+            "templates/build/enforcement/construction_completeness_fixtures/evidence/labeled_corpus.json",
+        ),
+        "construction-completeness-evidence-precheck-substantive": (
+            "govML",
+            "templates/build/enforcement/construction_completeness_fixtures/evidence/precheck_substantive_A4.json",
+        ),
+        "construction-completeness-evidence-agent-pre-check-runner": (
+            "govML",
+            "templates/build/enforcement/construction_completeness_fixtures/evidence/scripts/agent_pre_check_runner.sh",
+        ),
     }
     with pytest.raises(ValueError, match="pre-commit-boundary member set refused"):
         MEMBER_CONTRACT.validate_pre_commit_boundary_member_ids(base)
@@ -1807,6 +1842,6 @@ def test_s220_member_contract_adds_pre_commit_boundary_receipt_helper():
 
 
 def test_s220_impact_snapshot_resolves_pre_commit_boundary_contract():
-    adapter = tool.load_adapter(POPULATION_265_ADAPTER)
+    adapter = tool.load_adapter(POPULATION_273_ADAPTER)
     expected = tool.member_contract(ROOT.parents[1], "pre_commit_boundary_successor_members")
     assert len(expected) == adapter["expected_member_count"]
