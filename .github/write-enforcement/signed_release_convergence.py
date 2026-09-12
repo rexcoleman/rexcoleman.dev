@@ -734,6 +734,10 @@ def hermetic_snapshot(adapter, roots):
                     "stderr_sha256": sha256(completed.stderr.encode("utf-8")),
                 }
             )
+    # roots comes from parse_roots and the preceding authenticated roots phase.
+    # Bind cross-repository fixtures to that exact source, never ambient HOME or
+    # a session-specific checkout. This variable carries no credential.
+    test_env = dict(env, GOVML_TEST_SOURCE_ROOT=str(roots["govML"]))
     for row in adapter["hermetic_tests"]:
         root = roots[row["repository"]]
         for path in row["paths"]:
@@ -743,7 +747,7 @@ def hermetic_snapshot(adapter, roots):
             completed = run(
                 [pytest_python, "-m", "pytest", "-q"] + row["paths"],
                 cwd=root,
-                env=env,
+                env=test_env,
                 timeout=1200,
             )
         except Refusal as exc:

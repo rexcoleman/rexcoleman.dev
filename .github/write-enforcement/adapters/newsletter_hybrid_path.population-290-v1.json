@@ -57,7 +57,8 @@
         "tests/test_s113_external_judge_execution.py",
         "tests/test_s229_normal_hosted_flow.py",
         "tests/test_s229_write_order.py",
-        "tests/test_s229_enrollment_inheritance.py"
+        "tests/test_s229_enrollment_inheritance.py",
+        "tests/test_s189_runner_digest_pin_binding.py"
       ],
       "repository": "govML"
     },
@@ -79,7 +80,9 @@
         "tests/test_s145_materialize_enforcement_workspace.py",
         "tests/test_s145_renewal_consumer.py",
         "tests/test_s151_blind_harness_antispin.py",
-        "tests/test_s229_registered_research_repositories.py"
+        "tests/test_s229_registered_research_repositories.py",
+        "tests/test_s157_dependent_successor_propagation.py",
+        "tests/test_s157_renewal_successor_binding.py"
       ],
       "repository": "research_enforcement_activation"
     }
