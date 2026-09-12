@@ -1864,9 +1864,33 @@ def test_durable_history_adapter_derives_complete_union_and_required_tests():
     assert {'.github/write-enforcement/tests/test_durable_attestation_history.py',
             '.github/write-enforcement/tests/test_publish_public_attestation.py',
             '.github/write-enforcement/tests/test_renewal_history_scheduler.py',
-            'tests/test_s145_renewal_consumer.py','tests/test_wea_renewal_health.py'} <= tests
+            'tests/test_s145_renewal_consumer.py','tests/test_wea_renewal_health.py',
+            'tests/test_s189_runner_digest_pin_binding.py',
+            'tests/test_s157_dependent_successor_propagation.py',
+            'tests/test_s157_renewal_successor_binding.py'} <= tests
     for path in DURABLE_ADAPTERS[1:]:
         dependent=tool.load_adapter(path)
         for field in ('expected_member_count','manifest_builder_flag','hermetic_tests','system_python_sources'):
             assert dependent[field]==authority[field]
         assert dependent['dependent_project']['required_source']=='SIGNED_BUNDLE'
+
+
+def test_hermetic_cross_repository_fixture_uses_configured_root(tmp_path, monkeypatch):
+    adapter=tool.load_adapter(DURABLE_ADAPTERS[0])
+    mapping=roots(tmp_path)
+    adapter['system_python_sources']=[]
+    adapter['hermetic_tests']=[{'name':'fixture-source', 'repository':'Moonshots_Career_Thesis_v2', 'paths':['tests/test_fixture.py']}]
+    target=mapping['Moonshots_Career_Thesis_v2']/'tests/test_fixture.py'
+    target.parent.mkdir(parents=True);target.write_text('def test_fixture(): pass\n')
+    monkeypatch.setenv('GOVML_TEST_SOURCE_ROOT','/planted/ambient/wrong-source')
+    monkeypatch.setenv('GH_TOKEN','fixture-must-not-forward')
+    monkeypatch.setattr(tool,'pytest_interpreter',lambda:'/usr/bin/python3')
+    calls=[]
+    def capture(argv,**kwargs):
+        calls.append((argv,kwargs))
+        return type('Completed',(),{'stdout':'','stderr':''})()
+    monkeypatch.setattr(tool,'run',capture)
+    tool.hermetic_snapshot(adapter,mapping)
+    assert len(calls)==1
+    assert calls[0][1]['env']==dict(tool.hermetic_environment(),GOVML_TEST_SOURCE_ROOT=str(mapping['govML']))
+    assert calls[0][1]['cwd']==mapping['Moonshots_Career_Thesis_v2']
