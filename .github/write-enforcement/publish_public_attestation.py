@@ -75,6 +75,7 @@ def gh_api(path, *, method="GET", body=None, allow_not_found=False):
         stderr=subprocess.PIPE,
         text=True,
         check=False,
+        env=history.transport_environment(github=True),
     )
     if allow_not_found and completed.returncode and (
         "HTTP 404" in completed.stderr or '"status":"404"' in completed.stderr
@@ -246,6 +247,7 @@ def publish(args) -> str:
         "files": dict(sorted(files.items())),
     }
     entries = []
+    history.publication_admission('packet')
     for name in sorted(EXPECTED_FILES):
         entries.append({
             "path": "%s/%s" % (packet_path, name),
@@ -287,6 +289,7 @@ def publish(args) -> str:
     tag_sha = tag_object.get("sha") if isinstance(tag_object, dict) else None
     if not isinstance(tag_sha, str) or HEX40.fullmatch(tag_sha) is None:
         raise Refusal("PUBLIC_TAG_CREATE_REFUSED")
+    history.publication_admission('packet')
     gh_api(
         "repos/%s/git/refs" % REPOSITORY,
         method="POST",
@@ -324,7 +327,7 @@ def main(argv=None):
         return REFUSAL_EXIT
     try:
         head = publish(args)
-    except Refusal as exc:
+    except (Refusal, history.Refusal) as exc:
         print("REFUSED %s" % exc, file=sys.stderr)
         print("secret_bytes_printed=false", file=sys.stderr)
         return REFUSAL_EXIT
