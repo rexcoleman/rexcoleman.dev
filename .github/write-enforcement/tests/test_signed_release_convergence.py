@@ -67,6 +67,11 @@ SPEC = importlib.util.spec_from_file_location("signed_release_convergence", SOUR
 assert SPEC and SPEC.loader
 tool = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(tool)
+DURABLE_COUNT = len(tool.member_contract(ROOT.parents[1], "durable_history_successor_members"))
+DURABLE_ADAPTERS = tuple(ROOT / f"adapters/{name}.population-{DURABLE_COUNT}-v1.json" for name in (
+    "research_enforcement_activation", "adversarial_ml_landscape", "agent_boundary_learning_landscape",
+    "newsletter_hybrid_path", "newsletter_generation_architecture", "research_engine_release"))
+
 
 
 def roots(tmp_path):
@@ -1044,7 +1049,9 @@ def test_index_is_closed_and_resolves_every_registered_adapter():
             "newsletter-generation-5-population-264-v1",
             "rexcoleman.dev-generation-5-population-264-v1",
             "research-enforcement-activation-generation-5-s210-governed-read-credential-v1",
-    ]
+    ] + [f"{name}-generation-5-population-{DURABLE_COUNT}-v1" for name in (
+        "research-enforcement-activation", "adversarial-ml-landscape", "agent-boundary-learning-landscape",
+        "newsletter-hybrid-path", "newsletter-generation-architecture", "research-engine-release")]
     status = {row["adapter_id"]: row["status"] for row in value["adapters"]}
     assert {
         adapter_id for adapter_id, item in status.items() if item == "retired"
@@ -1103,6 +1110,8 @@ def test_index_refuses_duplicate_unknown_retired_and_traversing_rows(
                 POPULATION_265_ADAPTER,
                 POPULATION_273_ADAPTER,
             ):
+        shutil.copyfile(adapter_path, adapters / adapter_path.name)
+    for adapter_path in DURABLE_ADAPTERS:
         shutil.copyfile(adapter_path, adapters / adapter_path.name)
     shutil.copyfile(WORKFLOW, tmp_path / "workflows" / WORKFLOW.name)
 
@@ -1845,3 +1854,19 @@ def test_s220_impact_snapshot_resolves_pre_commit_boundary_contract():
     adapter = tool.load_adapter(POPULATION_273_ADAPTER)
     expected = tool.member_contract(ROOT.parents[1], "pre_commit_boundary_successor_members")
     assert len(expected) == adapter["expected_member_count"]
+
+
+def test_durable_history_adapter_derives_complete_union_and_required_tests():
+    authority=tool.load_adapter(DURABLE_ADAPTERS[0])
+    assert authority['expected_member_count']==DURABLE_COUNT
+    assert authority['manifest_builder_flag']=='--durable-history-successor'
+    tests={p for row in authority['hermetic_tests'] for p in row['paths']}
+    assert {'.github/write-enforcement/tests/test_durable_attestation_history.py',
+            '.github/write-enforcement/tests/test_publish_public_attestation.py',
+            '.github/write-enforcement/tests/test_renewal_history_scheduler.py',
+            'tests/test_s145_renewal_consumer.py','tests/test_wea_renewal_health.py'} <= tests
+    for path in DURABLE_ADAPTERS[1:]:
+        dependent=tool.load_adapter(path)
+        for field in ('expected_member_count','manifest_builder_flag','hermetic_tests','system_python_sources'):
+            assert dependent[field]==authority[field]
+        assert dependent['dependent_project']['required_source']=='SIGNED_BUNDLE'

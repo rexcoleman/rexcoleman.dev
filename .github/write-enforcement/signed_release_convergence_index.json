@@ -100,16 +100,16 @@
       "path": "adapters/research_enforcement_activation.population-264-v1.json",
       "status": "active"
     },
-        {
-            "adapter_id": "research-enforcement-activation-generation-5-population-265-v1",
-            "path": "adapters/research_enforcement_activation.population-265-v1.json",
-            "status": "active"
-        },
-        {
-            "adapter_id": "research-enforcement-activation-generation-5-population-273-v1",
-            "path": "adapters/research_enforcement_activation.population-273-v1.json",
-            "status": "active"
-        },
+    {
+      "adapter_id": "research-enforcement-activation-generation-5-population-265-v1",
+      "path": "adapters/research_enforcement_activation.population-265-v1.json",
+      "status": "active"
+    },
+    {
+      "adapter_id": "research-enforcement-activation-generation-5-population-273-v1",
+      "path": "adapters/research_enforcement_activation.population-273-v1.json",
+      "status": "active"
+    },
     {
       "adapter_id": "adversarial-ml-landscape-generation-5-population-264-v1",
       "path": "adapters/adversarial_ml_landscape.population-264-v1.json",
@@ -148,6 +148,36 @@
     {
       "adapter_id": "research-enforcement-activation-generation-5-s210-governed-read-credential-v1",
       "path": "adapters/research_enforcement_activation.s210-governed-read-credential-v1.json",
+      "status": "active"
+    },
+    {
+      "adapter_id": "research-enforcement-activation-generation-5-population-290-v1",
+      "path": "adapters/research_enforcement_activation.population-290-v1.json",
+      "status": "active"
+    },
+    {
+      "adapter_id": "adversarial-ml-landscape-generation-5-population-290-v1",
+      "path": "adapters/adversarial_ml_landscape.population-290-v1.json",
+      "status": "active"
+    },
+    {
+      "adapter_id": "agent-boundary-learning-landscape-generation-5-population-290-v1",
+      "path": "adapters/agent_boundary_learning_landscape.population-290-v1.json",
+      "status": "active"
+    },
+    {
+      "adapter_id": "newsletter-hybrid-path-generation-5-population-290-v1",
+      "path": "adapters/newsletter_hybrid_path.population-290-v1.json",
+      "status": "active"
+    },
+    {
+      "adapter_id": "newsletter-generation-architecture-generation-5-population-290-v1",
+      "path": "adapters/newsletter_generation_architecture.population-290-v1.json",
+      "status": "active"
+    },
+    {
+      "adapter_id": "research-engine-release-generation-5-population-290-v1",
+      "path": "adapters/research_engine_release.population-290-v1.json",
       "status": "active"
     }
   ],

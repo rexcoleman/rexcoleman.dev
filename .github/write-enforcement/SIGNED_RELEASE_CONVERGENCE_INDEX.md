@@ -32,7 +32,7 @@ python3 signed_release_convergence.py --list-adapters
 Worked adapter planning invocation from this directory:
 
 ```
-python3 signed_release_convergence.py --adapter-id research-enforcement-activation-generation-5-population-273-v1 --plan --state /tmp/rea-src-state.json --evidence-dir /tmp/rea-src-plan --root research_enforcement_activation=/path/to/research_enforcement_activation --root govML=/path/to/govML --root Moonshots_Career_Thesis_v2=/path/to/Moonshots_Career_Thesis_v2 --root newsletter=/path/to/newsletter --root rexcoleman.dev=/path/to/rexcoleman.dev
+python3 signed_release_convergence.py --adapter-id research-enforcement-activation-generation-5-population-290-v1 --plan --state /tmp/rea-src-state.json --evidence-dir /tmp/rea-src-plan --root research_enforcement_activation=/path/to/research_enforcement_activation --root govML=/path/to/govML --root Moonshots_Career_Thesis_v2=/path/to/Moonshots_Career_Thesis_v2 --root newsletter=/path/to/newsletter --root rexcoleman.dev=/path/to/rexcoleman.dev
 ```
 
 The active registry contains the original REA authority adapter, its s155
@@ -277,3 +277,21 @@ mirror the AML supersession would have required editing that assertion, which is
 not a change an added route may make. Both reuse the registered engine, adapter
 schema v2, and focused test file, so neither adds a cross-generation inventory
 row.
+
+## s229 durable history and enrollment successor
+
+The indexed authority adapter `research-enforcement-activation-generation-5-population-290-v1`
+selects `--durable-history-successor`. Its 290 members are derived from the
+closed union in `durable_history_successor_members`, including the historical
+pre-commit population, governed App credential members, durable signed-run
+history, independent trust-root copy, runtime transaction/health machinery and
+enrollment inheritance. Publisher, history, scheduler, health, interruption and
+enrollment tests are explicit hermetic inputs. The prior273contract is preserved.
+
+Matching newpopulation adapters preserve the exact routes of AML, ABL, NHP,
+NGA and RER. Static propagation must select these new identities before a new
+population is installed; leaving an oldcount adapter in place correctly refuses.
+A new adapter does not enroll, approve or mutate any dependent. Future enrolled
+repository discovery remains independently revalidated and cannot grant authority.
+See [DURABLE_ATTESTATION_HISTORY.md](DURABLE_ATTESTATION_HISTORY.md) for initial
+backfill ordering and what the source tests do not prove.

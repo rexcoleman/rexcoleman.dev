@@ -223,6 +223,7 @@ def load_adapter(path: Path):
         "--control-closure-successor",
         "--governed-read-credential-successor",
         "--pre-commit-boundary-successor",
+        "--durable-history-successor",
     }:
         raise Refusal("MANIFEST_BUILDER_FLAG_REFUSED")
     if not isinstance(value["ruleset_id"], int) or isinstance(
@@ -613,6 +614,7 @@ def impact_snapshot(adapter, roots, root_rows):
             "governed_read_credential_successor_members"
         ),
         "--pre-commit-boundary-successor": "pre_commit_boundary_successor_members",
+        "--durable-history-successor": "durable_history_successor_members",
     }[adapter["manifest_builder_flag"]]
     expected = member_contract(rex_root, selector_name)
     by_subject = {}

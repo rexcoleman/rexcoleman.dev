@@ -173,7 +173,7 @@ def install_fake_transition(monkeypatch: pytest.MonkeyPatch, tool, failure: str 
     monkeypatch.setattr(tool, "gh_login", lambda: events.append("gh-login"))
     monkeypatch.setattr(tool, "refresh_govml", lambda: events.append("refresh"))
     monkeypatch.setattr(tool, "issuer_binding", lambda: binding)
-    monkeypatch.setattr(tool, "remote_state", lambda: remote.copy() | {
+    monkeypatch.setattr(tool, "remote_state", lambda: {**remote,
         "variables": dict(remote["variables"]), "secrets": set(remote["secrets"]),
     })
     monkeypatch.setattr(tool, "local_public_state", lambda: dict(local))
@@ -473,7 +473,7 @@ def test_remote_pending_state_drift_refuses_delete_without_mutation(
     drift = {
         "environment": exact_environment(tool),
         "branch_policies": list(tool.EXACT_BRANCH_POLICIES),
-        "variables": dict(exact["variables"]) | {tool.STATE_VARIABLE: "complete:" + public_sha},
+        "variables": {**exact["variables"], tool.STATE_VARIABLE: "complete:" + public_sha},
         "secrets": {tool.SECRET_NAME},
     }
     rows = iter([exact, drift])

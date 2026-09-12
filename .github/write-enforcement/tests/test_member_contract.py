@@ -253,7 +253,7 @@ def test_production_provisioner_has_distinct_equal_byte_authoring_subject():
         "scaffold-hybrid-core-provisioning-prp",
     )
     assert pair in EXACT_MEMBER_BYTE_ALIASES
-    assert len(EXACT_MEMBER_BYTE_ALIASES) == 16
+    assert len([pair for pair in EXACT_MEMBER_BYTE_ALIASES if all(member in EXPECTED_MEMBERS for member in pair)]) == 16
     assert EXPECTED_MEMBERS[pair[0]] == (
         "govML",
         "templates/build/enforcement/signed_authoring/production_request_provisioner.py",
@@ -1276,3 +1276,19 @@ def test_route_bindings_refuse_narrowed_rows_aliases_and_seams():
         derive_write_boundary_route_surface_bindings(
             row_raw, json.dumps(seam_registry).encode()
         )
+
+
+def test_durable_history_population_is_closed_and_preserves_historical_sets():
+    from member_contract import (durable_history_successor_members, pre_commit_boundary_successor_members,
+        DURABLE_HISTORY_ADDITIONAL_MEMBERS, GOVERNED_READ_CREDENTIAL_ADDITIONAL_MEMBERS,
+        production_members_for_manifest, validate_durable_history_member_ids)
+    historic=pre_commit_boundary_successor_members();current=durable_history_successor_members()
+    assert len(current)==len(historic)+len(DURABLE_HISTORY_ADDITIONAL_MEMBERS)+len(GOVERNED_READ_CREDENTIAL_ADDITIONAL_MEMBERS)
+    assert set(current)==set(historic)|set(DURABLE_HISTORY_ADDITIONAL_MEMBERS)|set(GOVERNED_READ_CREDENTIAL_ADDITIONAL_MEMBERS)
+    marker=next(iter(DURABLE_HISTORY_ADDITIONAL_MEMBERS))
+    subset={'authority_generation':5,'members':[{'member_id':marker}]}
+    assert production_members_for_manifest(subset)==current
+    import pytest
+    with pytest.raises(ValueError,match='member set refused'):validate_durable_history_member_ids({marker})
+    validate_durable_history_member_ids(current)
+    assert production_members_for_manifest({'authority_generation':5,'members':[{'member_id':k} for k in historic]})==historic

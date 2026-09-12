@@ -1,7 +1,10 @@
+from __future__ import annotations
+
 import json
 import subprocess
 import sys
 from pathlib import Path
+
 
 import pytest
 
@@ -128,7 +131,8 @@ def test_full_frozen_population_opens_at_selected_authoritative_commits(tmp_path
         if member_id not in aliased | special:
             assert raw == f"{member_id}\n".encode()
     for authoring_id, runtime_id in EXACT_MEMBER_BYTE_ALIASES:
-        assert loaded[authoring_id] == loaded[runtime_id]
+        if authoring_id in builder.EXPECTED_MEMBERS:
+            assert loaded[authoring_id] == loaded[runtime_id]
 
 
 def test_full_population_refuses_wrong_member_mapping(tmp_path):

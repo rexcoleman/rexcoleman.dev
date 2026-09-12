@@ -6,6 +6,8 @@ import importlib.util
 import json
 from pathlib import Path
 from types import SimpleNamespace
+from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+from cryptography.hazmat.primitives import serialization
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -36,6 +38,15 @@ def packet(tmp_path, run_id=77, predecessor_sha=None):
     (root / "enforcement_bundle_manifest.json").write_text(
         json.dumps({"authority_generation": 5}), encoding="ascii"
     )
+    key=Ed25519PrivateKey.from_private_bytes(bytes(range(32)))
+    public=key.public_key().public_bytes(serialization.Encoding.PEM,serialization.PublicFormat.SubjectPublicKeyInfo)
+    (root / "trusted_wea_public.pem").write_bytes(public)
+    payload={k: "c"*64 for k in tool.history.LIVE_FIELDS-{"signature"}}
+    payload.update(schema_version="rea.write.wea.live.v2",purpose="LIVE_ENFORCEMENT",state="ENFORCING",issuer=tool.history.ISSUER,authority_epoch=7,predecessor_wea_digest=predecessor_sha)
+    payload.update(issued_at="2020-01-01T00:00:00Z",not_before="2020-01-01T00:00:00Z",expires_at="2020-01-02T00:00:00Z")
+    signed_digest=sha(tool.history.canonical(payload))
+    payload["signature"]={"algorithm":"ed25519","signed_digest":signed_digest,"value":base64.b64encode(key.sign(bytes.fromhex(signed_digest))).decode()}
+    (root / "write_enforcement_attestation.json").write_bytes(tool.history.canonical(payload))
     wea_sha = sha((root / "write_enforcement_attestation.json").read_bytes())
     (root / "issuance_receipt.json").write_text(json.dumps({
         "workflow_run_id": run_id,
@@ -54,7 +65,7 @@ def packet(tmp_path, run_id=77, predecessor_sha=None):
 
 def args(root, run_id=77, predecessor_sha=None):
     return SimpleNamespace(
-        issuance=str(root), run_id=run_id,
+        issuance=str(root), run_id=run_id, trusted_public_key=str(root / "trusted_wea_public.pem"),
         workflow_ref="refs/tags/rea-wea-generation-5-fixture",
         workflow_sha="a" * 40,
         genesis_predecessor_wea_sha256=predecessor_sha,
@@ -131,7 +142,7 @@ def test_genesis_publish_is_unique_path_pointer_and_nonforced_ref(tmp_path, monk
         raise AssertionError(path)
 
     monkeypatch.setattr(tool, "gh_api", fake_api)
-    monkeypatch.setattr(tool, "successful_packet_tags", lambda rows: [])
+    monkeypatch.setattr(tool, "successful_packet_tags", lambda rows, trusted_key: [])
     pointer_holder = {}
 
     def fake_content(path, commit):
@@ -174,7 +185,7 @@ def test_existing_branch_requires_monotonic_run_and_exact_predecessor(tmp_path, 
     }
     prior["files"]["write_enforcement_attestation.json"] = "e" * 64
     monkeypatch.setattr(tool, "packet_tags", lambda: [(77, head)])
-    monkeypatch.setattr(tool, "successful_packet_tags", lambda _rows: [(77, head, prior)])
+    monkeypatch.setattr(tool, "successful_packet_tags", lambda _rows, trusted_key: [(77, head, prior)])
     monkeypatch.setattr(tool, "gh_api", lambda *_a, **_k: (_ for _ in ()).throw(
         AssertionError("API reached after chain mismatch")
     ))
@@ -186,49 +197,23 @@ def test_existing_branch_requires_monotonic_run_and_exact_predecessor(tmp_path, 
         raise AssertionError("wrong predecessor chain accepted")
 
 
-def test_failed_public_packet_tag_is_not_a_successor_predecessor(monkeypatch):
-    prior = {
-        "workflow_run_id": 77,
-        "workflow_sha": "a" * 40,
-        "workflow_ref": "refs/tags/rea-wea-generation-5-fixture",
-    }
-    monkeypatch.setattr(tool, "read_prior", lambda _commit: prior)
-    monkeypatch.setattr(tool, "gh_api", lambda path, **_kwargs: {
-        "id": 77, "event": "workflow_dispatch", "status": "completed",
-        "conclusion": "failure", "head_sha": "a" * 40,
-        "head_branch": "rea-wea-generation-5-fixture",
-    } if "/actions/runs/77" in path else (_ for _ in ()).throw(
-        AssertionError(path)
-    ))
-    assert tool.successful_packet_tags([(77, "b" * 40)]) == []
+def test_publisher_uses_only_durable_success_rows(monkeypatch):
+    prior={"workflow_run_id":78,"files":{"write_enforcement_attestation.json":"a"*64}}
+    rows=[{"record":{"run_id":77,"packet_commit":"b"*40,"conclusion":"failure"},"packet":{"pointer":{}}},
+          {"record":{"run_id":78,"packet_commit":"c"*40,"conclusion":"success"},"packet":{"pointer":prior}}]
+    monkeypatch.setattr(tool.history,"GitObjects",lambda: object())
+    monkeypatch.setattr(tool.history,"scan",lambda api,key: rows)
+    monkeypatch.setattr(tool,"gh_api",lambda *a,**kw: (_ for _ in ()).throw(AssertionError("retention API reached")))
+    assert tool.successful_packet_tags([(77,"b"*40),(78,"c"*40)],b'key')==[(78,"c"*40,prior)]
 
 
-def test_successful_public_packet_requires_exact_artifact(monkeypatch):
-    prior = {
-        "workflow_run_id": 77,
-        "workflow_sha": "a" * 40,
-        "workflow_ref": "refs/tags/rea-wea-generation-5-fixture",
-    }
-    monkeypatch.setattr(tool, "read_prior", lambda _commit: prior)
-
-    def fake_api(path, **_kwargs):
-        if path.endswith("/actions/runs/77"):
-            return {
-                "id": 77, "event": "workflow_dispatch", "status": "completed",
-                "conclusion": "success", "head_sha": "a" * 40,
-                "head_branch": "rea-wea-generation-5-fixture",
-            }
-        if path.endswith("/actions/runs/77/artifacts"):
-            return {"artifacts": []}
-        raise AssertionError(path)
-
-    monkeypatch.setattr(tool, "gh_api", fake_api)
-    try:
-        tool.successful_packet_tags([(77, "b" * 40)])
-    except tool.Refusal as exc:
-        assert str(exc) == "PUBLIC_PREDECESSOR_ARTIFACT_REFUSED"
-    else:
-        raise AssertionError("successful prior without artifact admitted")
+def test_publisher_refuses_unfinalized_tail(monkeypatch):
+    monkeypatch.setattr(tool.history,"GitObjects",lambda: object())
+    def unknown(api,key): raise tool.history.Refusal('unfinalized_packet_run_77')
+    monkeypatch.setattr(tool.history,"scan",unknown)
+    import pytest
+    with pytest.raises(tool.history.Refusal,match='unfinalized'):
+        tool.successful_packet_tags([(77,"b"*40)],b'key')
 
 
 def test_main_absent_job_token_refuses_before_api(tmp_path, monkeypatch, capsys):
@@ -238,6 +223,7 @@ def test_main_absent_job_token_refuses_before_api(tmp_path, monkeypatch, capsys)
         AssertionError("API reached")
     ))
     rc = tool.main([
+        "--trusted-public-key", str(root / "trusted_wea_public.pem"),
         "--issuance", str(root), "--run-id", "77",
         "--workflow-ref", "refs/tags/rea-wea-generation-5-fixture",
         "--workflow-sha", "a" * 40,

@@ -1,4 +1,5 @@
 name: Issue write enforcement attestation
+run-name: WEA ${{ inputs.mode }}
 
 on:
   workflow_dispatch:
@@ -25,6 +26,7 @@ on:
           - public_retry
           - seal_downstream
           - renew
+          - history_finalize
       predecessor_run_id:
         description: Workflow run containing the exact authenticated WEA being replaced
         required: false
@@ -71,6 +73,8 @@ defaults:
     shell: bash
 
 env:
+  DURABLE_HISTORY_SHA256: aa358d9eb78357782d12df3614b4aafae80af139a727e3f193f7917b167d54b1
+  DURABLE_HISTORY_PUBLIC_KEY_SHA256: 69654455a16e7627ccbc3a6ea2bcaeaa20efbe8ca09ed772cd372434e0732b02
   # Authority-bearing modules that are NOT members of the frozen bundle and so
   # are not covered by issue_wea.py's BUNDLE_MEMBER_BYTES_MISMATCH check.  This
   # workflow file IS a frozen member (remote-issuer-workflow), so pinning their
@@ -89,7 +93,7 @@ env:
 
 jobs:
   preflight-predecessor:
-    if: inputs.mode != 'renew'
+    if: inputs.mode != 'renew' && inputs.mode != 'history_finalize'
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
@@ -120,6 +124,8 @@ jobs:
         run: |
           set -euo pipefail
           test "$(sha256sum repo/.github/write-enforcement/renewal_contract.py | cut -d' ' -f1)" = "$RENEWAL_CONTRACT_SHA256"
+          test "$(sha256sum repo/.github/write-enforcement/durable_attestation_history.py | cut -d' ' -f1)" = "$DURABLE_HISTORY_SHA256"
+          test "$(sha256sum repo/.github/write-enforcement/trusted_wea_public.pem | cut -d' ' -f1)" = "$DURABLE_HISTORY_PUBLIC_KEY_SHA256"
           test "$(sha256sum repo/.github/write-enforcement/artifact_contract.py | cut -d' ' -f1)" = "$ARTIFACT_CONTRACT_SHA256"
           test "$(sha256sum repo/.github/write-enforcement/github_app_installation_token.py | cut -d' ' -f1)" = "$GOVERNED_READ_MINTER_SHA256"
           test "$(sha256sum repo/.github/write-enforcement/select_governed_read_credential.py | cut -d' ' -f1)" = "$GOVERNED_READ_SELECTOR_SHA256"
@@ -142,31 +148,9 @@ jobs:
           set -euo pipefail
           [[ "$PREDECESSOR_RUN_ID" =~ ^[1-9][0-9]*$ ]]
           [[ "$PREDECESSOR_WEA_SHA256" =~ ^[0-9a-f]{64}$ ]]
-          gh run view "$PREDECESSOR_RUN_ID" --repo rexcoleman/rexcoleman.dev \
-            --json databaseId,event,workflowName,status,conclusion,url > predecessor-run.json
-          python3 - "$PREDECESSOR_RUN_ID" predecessor-run.json <<'PY'
-          import json, sys
-          run_id = int(sys.argv[1]); value = json.load(open(sys.argv[2]))
-          assert value == {
-              "databaseId": run_id, "event": "workflow_dispatch",
-              "workflowName": "Issue write enforcement attestation",
-              "status": "completed", "conclusion": "success",
-              "url": f"https://github.com/rexcoleman/rexcoleman.dev/actions/runs/{run_id}",
-          }
-          PY
-          gh api "repos/rexcoleman/rexcoleman.dev/actions/runs/$PREDECESSOR_RUN_ID/artifacts" > predecessor-artifacts.json
-          python3 - "$PREDECESSOR_RUN_ID" predecessor-artifacts.json <<'PY'
-          import json, sys
-          run_id = int(sys.argv[1]); value = json.load(open(sys.argv[2]))
-          name = f"rea-write-enforcement-attestation-{run_id}"
-          rows = [row for row in value["artifacts"] if row["name"] == name]
-          assert len(rows) == 1 and rows[0]["expired"] is False
-          assert rows[0]["workflow_run"]["id"] == run_id
-          PY
-          mkdir predecessor
-          gh run download "$PREDECESSOR_RUN_ID" --repo rexcoleman/rexcoleman.dev \
-            --name "rea-write-enforcement-attestation-$PREDECESSOR_RUN_ID" \
-            --dir predecessor
+          python3 repo/.github/write-enforcement/durable_attestation_history.py export \
+            --trusted-public-key repo/.github/write-enforcement/trusted_wea_public.pem \
+            --run-id "$PREDECESSOR_RUN_ID" --destination predecessor > predecessor-history.json
           # A predecessor is evidence produced under the contract in force at
           # ITS generation, not this one.  Bind the receipt to the owner-pinned
           # attestation bytes FIRST, so the generation marker cannot be swapped
@@ -381,6 +365,8 @@ jobs:
         run: |
           set -euo pipefail
           test "$(sha256sum repos/rexcoleman.dev/.github/write-enforcement/renewal_contract.py | cut -d' ' -f1)" = "$RENEWAL_CONTRACT_SHA256"
+          test "$(sha256sum repos/rexcoleman.dev/.github/write-enforcement/durable_attestation_history.py | cut -d' ' -f1)" = "$DURABLE_HISTORY_SHA256"
+          test "$(sha256sum repos/rexcoleman.dev/.github/write-enforcement/trusted_wea_public.pem | cut -d' ' -f1)" = "$DURABLE_HISTORY_PUBLIC_KEY_SHA256"
           test "$(sha256sum repos/rexcoleman.dev/.github/write-enforcement/artifact_contract.py | cut -d' ' -f1)" = "$ARTIFACT_CONTRACT_SHA256"
           test "$(sha256sum repos/rexcoleman.dev/.github/write-enforcement/github_app_installation_token.py | cut -d' ' -f1)" = "$GOVERNED_READ_MINTER_SHA256"
           test "$(sha256sum repos/rexcoleman.dev/.github/write-enforcement/select_governed_read_credential.py | cut -d' ' -f1)" = "$GOVERNED_READ_SELECTOR_SHA256"
@@ -575,6 +561,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           python3 repos/rexcoleman.dev/.github/write-enforcement/publish_public_attestation.py \
+            --trusted-public-key repos/rexcoleman.dev/.github/write-enforcement/trusted_wea_public.pem \
             --issuance issuance \
             --run-id "${{ github.run_id }}" \
             --workflow-ref "${{ github.ref }}" \
@@ -638,6 +625,8 @@ jobs:
         run: |
           set -euo pipefail
           test "$(sha256sum repo/.github/write-enforcement/renewal_contract.py | cut -d' ' -f1)" = "$RENEWAL_CONTRACT_SHA256"
+          test "$(sha256sum repo/.github/write-enforcement/durable_attestation_history.py | cut -d' ' -f1)" = "$DURABLE_HISTORY_SHA256"
+          test "$(sha256sum repo/.github/write-enforcement/trusted_wea_public.pem | cut -d' ' -f1)" = "$DURABLE_HISTORY_PUBLIC_KEY_SHA256"
           test "$(sha256sum repo/.github/write-enforcement/artifact_contract.py | cut -d' ' -f1)" = "$ARTIFACT_CONTRACT_SHA256"
           test "$(sha256sum repo/.github/write-enforcement/github_app_installation_token.py | cut -d' ' -f1)" = "$GOVERNED_READ_MINTER_SHA256"
           test "$(sha256sum repo/.github/write-enforcement/select_governed_read_credential.py | cut -d' ' -f1)" = "$GOVERNED_READ_SELECTOR_SHA256"
@@ -660,69 +649,12 @@ jobs:
           THIS_RUN_ID: ${{ github.run_id }}
         run: |
           set -euo pipefail
-          gh run list --repo rexcoleman/rexcoleman.dev \
-            --workflow issue-write-enforcement-attestation.yml \
-            --status success --limit 100 \
-            --json databaseId,event,status,conclusion,workflowName > runs.json
-          # The registered rule: the newest COMPLETED SUCCESSFUL run of this
-          # workflow, other than this one.  Run ids are monotonic, so "newest"
-          # cannot be forged backwards.  No run, commit or actor is named.
-          python3 - runs.json "$THIS_RUN_ID" <<'PY' > predecessor_run_id.txt
-          import json, sys
-          runs = json.load(open(sys.argv[1])); this_run = int(sys.argv[2])
-          candidates = [
-              int(row["databaseId"]) for row in runs
-              if row.get("workflowName") == "Issue write enforcement attestation"
-              and row.get("status") == "completed"
-              and row.get("conclusion") == "success"
-              and row.get("event") == "workflow_dispatch"
-              and int(row["databaseId"]) != this_run
-          ]
-          if not candidates:
-              print("REFUSED RENEWAL_NO_PREDECESSOR_RUN: no successful prior run",
-                    file=sys.stderr)
-              raise SystemExit(3)
-          print(max(candidates))
-          PY
-          PREDECESSOR_RUN_ID="$(cat predecessor_run_id.txt)"
-          [[ "$PREDECESSOR_RUN_ID" =~ ^[1-9][0-9]*$ ]]
-          echo "RENEWAL_PREDECESSOR_DISCOVERED run_id=$PREDECESSOR_RUN_ID rule=newest_successful_run"
+          python3 repo/.github/write-enforcement/durable_attestation_history.py export \
+            --trusted-public-key repo/.github/write-enforcement/trusted_wea_public.pem \
+            --destination predecessor > predecessor-history.json
+          PREDECESSOR_RUN_ID="$(python3 -c 'import json; print(json.load(open("predecessor-history.json"))["run_id"])')"
+          test "$PREDECESSOR_RUN_ID" != "$THIS_RUN_ID"
           printf 'predecessor_run_id=%s\n' "$PREDECESSOR_RUN_ID" >> "$GITHUB_OUTPUT"
-          # Refusing when the NEWEST run has no downloadable attestation is what
-          # stops a silent rollback onto an older epoch once the newest artifact
-          # ages out of retention.  Falling back to an older run would fork the
-          # chain; this refuses instead.
-          gh api "repos/rexcoleman/rexcoleman.dev/actions/runs/$PREDECESSOR_RUN_ID/artifacts" > predecessor-artifacts.json
-          python3 - "$PREDECESSOR_RUN_ID" predecessor-artifacts.json <<'PY'
-          import json, sys
-          run_id = int(sys.argv[1]); value = json.load(open(sys.argv[2]))
-          name = f"rea-write-enforcement-attestation-{run_id}"
-          rows = [row for row in value["artifacts"] if row["name"] == name]
-          if len(rows) != 1 or rows[0]["expired"] is not False \
-                  or rows[0]["workflow_run"]["id"] != run_id:
-              print("REFUSED RENEWAL_PREDECESSOR_ARTIFACT_UNAVAILABLE: "
-                    f"run={run_id} matches={len(rows)}", file=sys.stderr)
-              raise SystemExit(3)
-          PY
-          gh run view "$PREDECESSOR_RUN_ID" --repo rexcoleman/rexcoleman.dev \
-            --json databaseId,event,workflowName,status,conclusion,url > predecessor-run.json
-          python3 - "$PREDECESSOR_RUN_ID" predecessor-run.json <<'PY'
-          import json, sys
-          run_id = int(sys.argv[1]); value = json.load(open(sys.argv[2]))
-          assert value == {
-              "databaseId": run_id, "event": "workflow_dispatch",
-              "workflowName": "Issue write enforcement attestation",
-              "status": "completed", "conclusion": "success",
-              "url": f"https://github.com/rexcoleman/rexcoleman.dev/actions/runs/{run_id}",
-          }
-          PY
-          mkdir predecessor
-          gh run download "$PREDECESSOR_RUN_ID" --repo rexcoleman/rexcoleman.dev \
-            --name "rea-write-enforcement-attestation-$PREDECESSOR_RUN_ID" \
-            --dir predecessor
-          # Identical to the owner path from here down, except that the digest
-          # is DERIVED from the downloaded bytes instead of being pinned by a
-          # human, and is then required to agree with the packet's own receipt.
           python3 repo/.github/write-enforcement/artifact_contract.py \
             --table repo/.github/write-enforcement/artifact_contract_versions.json \
             check-predecessor --packet predecessor
@@ -837,6 +769,8 @@ jobs:
         run: |
           set -euo pipefail
           test "$(sha256sum repos/rexcoleman.dev/.github/write-enforcement/renewal_contract.py | cut -d' ' -f1)" = "$RENEWAL_CONTRACT_SHA256"
+          test "$(sha256sum repos/rexcoleman.dev/.github/write-enforcement/durable_attestation_history.py | cut -d' ' -f1)" = "$DURABLE_HISTORY_SHA256"
+          test "$(sha256sum repos/rexcoleman.dev/.github/write-enforcement/trusted_wea_public.pem | cut -d' ' -f1)" = "$DURABLE_HISTORY_PUBLIC_KEY_SHA256"
           test "$(sha256sum repos/rexcoleman.dev/.github/write-enforcement/artifact_contract.py | cut -d' ' -f1)" = "$ARTIFACT_CONTRACT_SHA256"
           test "$(sha256sum repos/rexcoleman.dev/.github/write-enforcement/github_app_installation_token.py | cut -d' ' -f1)" = "$GOVERNED_READ_MINTER_SHA256"
           test "$(sha256sum repos/rexcoleman.dev/.github/write-enforcement/select_governed_read_credential.py | cut -d' ' -f1)" = "$GOVERNED_READ_SELECTOR_SHA256"
@@ -1012,8 +946,43 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           python3 repos/rexcoleman.dev/.github/write-enforcement/publish_public_attestation.py \
+            --trusted-public-key repos/rexcoleman.dev/.github/write-enforcement/trusted_wea_public.pem \
             --issuance issuance \
             --run-id "${{ github.run_id }}" \
             --workflow-ref "${{ github.ref }}" \
             --workflow-sha "${{ github.sha }}" \
             --genesis-predecessor-wea-sha256 "${{ needs.renew-preflight.outputs.predecessor_wea_sha256 }}"
+
+  # This run attests only COMPLETED prior runs. It never signs its own outcome,
+  # issues a WEA, changes capability or uses an additional approving principal.
+  history-finalize:
+    if: inputs.mode == 'history_finalize'
+    permissions:
+      contents: write
+      actions: read
+    environment: rea-write-enforcement-renewal
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          path: repo
+          persist-credentials: false
+      - name: Bind durable history verifier and independent public trust root
+        run: |
+          set -euo pipefail
+          test "$(sha256sum repo/.github/write-enforcement/durable_attestation_history.py | cut -d' ' -f1)" = "$DURABLE_HISTORY_SHA256"
+          test "$(sha256sum repo/.github/write-enforcement/trusted_wea_public.pem | cut -d' ' -f1)" = "$DURABLE_HISTORY_PUBLIC_KEY_SHA256"
+      - name: Finalize authenticated completed prior issuer dispositions
+        env:
+          GH_TOKEN: ${{ github.token }}
+          WEA_KEY_B64: ${{ secrets.REA_WEA_ED25519_PRIVATE_KEY_B64 }}
+        run: |
+          set -euo pipefail
+          test -n "$WEA_KEY_B64"
+          umask 077
+          trap 'rm -f "$RUNNER_TEMP/history-private.pem"' EXIT
+          printf '%s' "$WEA_KEY_B64" | base64 --decode > "$RUNNER_TEMP/history-private.pem"
+          unset WEA_KEY_B64
+          python3 repo/.github/write-enforcement/durable_attestation_history.py finalize \
+            --trusted-public-key repo/.github/write-enforcement/trusted_wea_public.pem \
+            --private-key "$RUNNER_TEMP/history-private.pem"
