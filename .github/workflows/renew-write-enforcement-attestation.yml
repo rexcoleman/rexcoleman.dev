@@ -46,167 +46,31 @@ defaults:
 jobs:
   dispatch-renewal:
     runs-on: ubuntu-24.04
-    timeout-minutes: 25
+    # Two wall-clock finalizer waits (30m each), renewal dispatch/outcome
+    # waits (5m+15m), plus bounded Git reads and setup. A timeout is failure;
+    # separately dispatched issuer/finalizer writes continue independently.
+    timeout-minutes: 120
     steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - name: Finalize interrupted prior history and resolve authenticated head
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF" = refs/heads/main
+          python3 .github/write-enforcement/renewal_history_scheduler.py prepare
       - name: Resolve the generation tag the current authority was issued from
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          # verify_hosted_wea.py's REF_PREFIX refuses any issuer run whose own
-          # workflow_ref does not start with refs/tags/rea-wea-generation-<N>-.
-          # Dispatching this renewal on --ref main can therefore never pass the
-          # issuer's own hosted self-check: it is not an intermittent failure,
-          # it is structurally impossible.  This step resolves the immutable
-          # tag ref the CURRENTLY ENFORCED authority was actually issued from,
-          # so the renewal reuses that same ref instead of main.
-          #
-          # A generation is not one tag: repeated manual attempts leave many
-          # rea-wea-generation-<N>-<hex> tags behind for the same N (generation
-          # 4 alone carries 7 as of 2026-08-07).  "Exactly one tag exists" is
-          # therefore not a usable disambiguator.  What IS well-defined and
-          # forge-proof -- the same registered-rule idiom the issuer workflow
-          # already uses one job over to discover its predecessor WEA, because
-          # GitHub run ids are monotonic and never tie -- is: the ref of the
-          # newest completed:success workflow_dispatch run of the issuer
-          # workflow which also has exactly one live, identity-bound
-          # rea-write-enforcement-attestation-<run-id> artifact, restricted to
-          # runs whose ref actually has the required tag shape.  A successful
-          # seal_downstream run has the same workflow and tag shape but never
-          # has that artifact; it is not an issued, consumer-installable
-          # authority and must not become the renewal ref.
-          gh run list --repo rexcoleman/rexcoleman.dev \
-            --workflow issue-write-enforcement-attestation.yml \
-            --status success --event workflow_dispatch --limit 100 \
-            --json databaseId,headBranch,headSha > successful-issuer-runs.json
-          python3 - successful-issuer-runs.json <<'PY' > generation-candidates.tsv
-          import json
-          import re
-          import sys
-
-          rows = json.load(open(sys.argv[1]))
-          canonical = re.compile(r"^rea-wea-generation-[0-9]+-[0-9a-f]{12}$")
-          historical = {"rea-wea-generation-4-bdbaa8d0756"}
-          candidates = [
-              row for row in rows
-              if (
-                  canonical.fullmatch(row.get("headBranch") or "")
-                  or (row.get("headBranch") or "") in historical
-              )
-              and re.fullmatch(r"[0-9a-f]{40}", row.get("headSha") or "")
-          ]
-          if not candidates:
-              print(
-                  "REFUSED RENEWAL_NO_GENERATION_TAG_ISSUED: no successful "
-                  "workflow_dispatch run of the issuer workflow has ever run "
-                  "on a rea-wea-generation-<N>-<hex> tag.  Refusing rather "
-                  "than falling back to main.",
-                  file=sys.stderr,
-              )
-              raise SystemExit(3)
-          for row in candidates:
-              print(row["databaseId"], row["headBranch"], row["headSha"], sep="\t")
-          PY
-          : > issuance-candidates.jsonl
-          while IFS=$'\t' read -r candidate_id candidate_ref candidate_sha; do
-            if ! gh api \
-              "repos/rexcoleman/rexcoleman.dev/actions/runs/$candidate_id/artifacts?per_page=100" \
-              > "artifacts-$candidate_id.json"; then
-              echo "REFUSED RENEWAL_ARTIFACT_QUERY_REFUSED: run_id=$candidate_id" >&2
-              exit 3
-            fi
-            python3 - "$candidate_id" "$candidate_ref" "$candidate_sha" \
-              "artifacts-$candidate_id.json" <<'PY' >> issuance-candidates.jsonl
-          import json
-          import sys
-
-          run_id = int(sys.argv[1])
-          ref = sys.argv[2]
-          sha = sys.argv[3]
-          value = json.load(open(sys.argv[4]))
-          rows = value.get("artifacts") if isinstance(value, dict) else None
-          total = value.get("total_count") if isinstance(value, dict) else None
-          if (not isinstance(rows, list) or not isinstance(total, int)
-                  or isinstance(total, bool) or total != len(rows) or total > 100):
-              print(
-                  f"REFUSED RENEWAL_ARTIFACT_RESPONSE_REFUSED: run_id={run_id}",
-                  file=sys.stderr,
-              )
-              raise SystemExit(3)
-          expected = f"rea-write-enforcement-attestation-{run_id}"
-          # Expired Actions artifacts are tombstone records, not live
-          # candidates.  They must not poison an otherwise valid issuance or
-          # prevent the resolver from continuing to an older live issuance.
-          named = [row for row in rows if isinstance(row, dict)
-                   and row.get("name") == expected]
-          malformed_named = [row for row in named
-                             if row.get("expired") is not True
-                             and row.get("expired") is not False]
-          if malformed_named:
-              print(
-                  f"REFUSED RENEWAL_ARTIFACT_RESPONSE_REFUSED: run_id={run_id}",
-                  file=sys.stderr,
-              )
-              raise SystemExit(3)
-          live_named = [row for row in named if row.get("expired") is False]
-          if not live_named:
-              raise SystemExit(0)
-          valid = [
-              row for row in live_named
-              if row.get("workflow_run", {}).get("id") == run_id
-              and row.get("workflow_run", {}).get("head_branch") == ref
-              and row.get("workflow_run", {}).get("head_sha") == sha
-          ]
-          if len(live_named) != 1 or len(valid) != 1:
-              print(
-                  f"REFUSED RENEWAL_ISSUANCE_ARTIFACT_IDENTITY_REFUSED: run_id={run_id}",
-                  file=sys.stderr,
-              )
-              raise SystemExit(3)
-          print(json.dumps({"databaseId": run_id, "headBranch": ref,
-                            "headSha": sha}, sort_keys=True, separators=(",", ":")))
-          PY
-          done < generation-candidates.tsv
-          python3 - issuance-candidates.jsonl <<'PY' > generation-ref.txt
-          import json
-          import sys
-
-          rows = [json.loads(line) for line in open(sys.argv[1]) if line.strip()]
-          if not rows:
-              print(
-                  "REFUSED RENEWAL_NO_ISSUED_AUTHORITY: no successful tagged "
-                  "issuer run has one live identity-bound WEA artifact; "
-                  "refusing rather than selecting a non-issuance mode.",
-                  file=sys.stderr,
-              )
-              raise SystemExit(3)
-          newest_id = max(row["databaseId"] for row in rows)
-          tied = [row for row in rows if row["databaseId"] == newest_id]
-          if len(tied) != 1:
-              print(
-                  "REFUSED RENEWAL_GENERATION_TAG_AMBIGUOUS: "
-                  f"{len(tied)} successful runs tied for newest at id "
-                  f"{newest_id}; refusing rather than guessing which ref is "
-                  "current.",
-                  file=sys.stderr,
-              )
-              raise SystemExit(3)
-          print(tied[0]["headBranch"])
-          print(tied[0]["headSha"])
-          print(tied[0]["databaseId"])
-          PY
-          test "$(wc -l < generation-ref.txt)" = 3
-          generation_ref="$(sed -n '1p' generation-ref.txt)"
-          generation_head_sha="$(sed -n '2p' generation-ref.txt)"
-          generation_run_id="$(sed -n '3p' generation-ref.txt)"
-          if [[ ! "$generation_ref" =~ ^rea-wea-generation-[0-9]+-[0-9a-f]{12}$ ]] && \
-             [ "$generation_ref" != "rea-wea-generation-4-bdbaa8d0756" ]; then
-            echo "REFUSED RENEWAL_GENERATION_TAG_SHAPE_REFUSED: $generation_ref" >&2
-            exit 3
-          fi
-          [[ "$generation_head_sha" =~ ^[0-9a-f]{40}$ ]]
-          [[ "$generation_run_id" =~ ^[0-9]+$ ]]
-
+          python3 .github/write-enforcement/durable_attestation_history.py resolve \
+            --trusted-public-key .github/write-enforcement/trusted_wea_public.pem > durable-head.json
+          generation_ref="$(python3 -c 'import json; print(json.load(open("durable-head.json"))["workflow_ref"][len("refs/tags/"):])')"
+          generation_head_sha="$(python3 -c 'import json; print(json.load(open("durable-head.json"))["workflow_sha"])')"
+          generation_run_id="$(python3 -c 'import json; print(json.load(open("durable-head.json"))["run_id"])')"
           # Re-resolve the live remote ref after selecting the authenticated
           # successful run.  An annotated tag's ref points to a tag object, so
           # peel exactly one tag object and require its target to be a commit.
@@ -303,3 +167,10 @@ jobs:
           # is what makes an unattended failure visible before the authority
           # expires, rather than after a scaffold refuses.
           test "$state" = "completed:success"
+      - name: Finalize completed renewal before declaring scheduler success
+        if: always() && env.RENEWAL_RUN_ID != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          python3 .github/write-enforcement/renewal_history_scheduler.py prepare

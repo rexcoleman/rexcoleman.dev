@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import importlib.util
 import sys
+from contextlib import ExitStack
 from pathlib import Path
 from unittest import mock
 
@@ -194,11 +195,11 @@ def test_issuer_refuses_tampered_signed_runtime_member(tmp_path, member_id):
         "sha256": hashlib.sha256(raw + b"tampered").hexdigest(),
         "byte_length": len(raw),
     }
-    with (
-        mock.patch.object(issue_wea, "EXPECTED_MEMBERS", {member_id: (repository, path)}),
-        mock.patch.object(issue_wea, "committed_bytes", return_value=raw),
-        pytest.raises(ValueError, match=f"member mismatch: {member_id}"),
-    ):
+    with ExitStack() as contexts:
+        contexts.enter_context(mock.patch.object(
+            issue_wea, "EXPECTED_MEMBERS", {member_id: (repository, path)}))
+        contexts.enter_context(mock.patch.object(issue_wea, "committed_bytes", return_value=raw))
+        contexts.enter_context(pytest.raises(ValueError, match=f"member mismatch: {member_id}"))
         issue_wea.verify_members(
             {
                 "required_member_classes": sorted(REQUIRED_CLASSES),

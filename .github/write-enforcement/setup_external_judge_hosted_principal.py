@@ -785,7 +785,7 @@ def apply() -> dict:
         return preflight()
     pending = str(state["variables"].get(STATE_VARIABLE, "")).startswith("pending:")
     if pending:
-        pending_sha = str(state["variables"].get(STATE_VARIABLE, "")).removeprefix("pending:")
+        pending_sha = str(state["variables"].get(STATE_VARIABLE, ""))[len("pending:"):]
         if re.fullmatch(r"[0-9a-f]{64}", pending_sha) is None:
             raise SetupRefusal("PENDING_PUBLIC_KEY_DIGEST_REFUSED")
         backup = predecessor_backup_state()

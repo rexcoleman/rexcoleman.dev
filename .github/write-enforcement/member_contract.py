@@ -988,6 +988,44 @@ def validate_pre_commit_boundary_member_ids(observed) -> None:
         )
 
 
+# s229 successor closes durable successful-run history and enrolled source
+# inheritance. Historical closed populations stay unchanged; selecting any new
+# subject requires the complete new union, never a subset of the repair.
+DURABLE_HISTORY_ADDITIONAL_MEMBERS = {
+    "durable-attestation-history": ("govML", "templates/build/enforcement/durable_attestation_history.py"),
+    "remote-durable-attestation-history": ("rexcoleman.dev", ".github/write-enforcement/durable_attestation_history.py"),
+    "rea-durable-attestation-history": ("research_enforcement_activation", "scripts/durable_attestation_history.py"),
+    "remote-history-independent-public-key": ("rexcoleman.dev", ".github/write-enforcement/trusted_wea_public.pem"),
+    "renewal-history-scheduler": ("rexcoleman.dev", ".github/write-enforcement/renewal_history_scheduler.py"),
+    "durable-renewal-consumer": ("research_enforcement_activation", "scripts/s145_renewal_consumer.py"),
+    "registered-research-repositories": ("research_enforcement_activation", "scripts/registered_research_repositories.py"),
+    "durable-renewal-cron": ("research_enforcement_activation", "scripts/s145_renewal_cron.sh"),
+    "renewal-health-observer": ("Moonshots_Career_Thesis_v2", "scripts/check_wea_renewal_health.py"),
+    "governed-app-token-minter-template": ("govML", "templates/build/enforcement/github_app_installation_token.py"),
+    "authenticated-app-tools": ("govML", "templates/build/enforcement/authenticated_app_tools.py"),
+    "repository-app-probe": ("govML", "templates/build/enforcement/repository_app_probe.py"),
+    "repository-secret-enrollment": ("govML", "templates/build/enforcement/repository_secret_enrollment.py"),
+    "research-integrity-pre-push": ("govML", "templates/build/enforcement/research_integrity_pre_push.sh"),
+    "hosted-landscape-judge-runner": ("govML", "scripts/run_hosted_landscape_judge.py"),
+}
+
+
+def durable_history_successor_members():
+    value = pre_commit_boundary_successor_members()
+    for extension in (GOVERNED_READ_CREDENTIAL_ADDITIONAL_MEMBERS, DURABLE_HISTORY_ADDITIONAL_MEMBERS):
+        if set(value) & set(extension):
+            raise ValueError("durable history member id collision")
+        value.update(extension)
+    if len(set(value.values())) != len(value):
+        raise ValueError("durable history member subject collision")
+    return value
+
+
+def validate_durable_history_member_ids(observed):
+    if set(observed) != set(durable_history_successor_members()):
+        raise ValueError("durable history member set refused")
+
+
 def production_members_for_manifest(manifest, baseline=None):
     """Select the exact closed set for one known generation; never a subset."""
     rows = manifest.get("members") if isinstance(manifest, dict) else None
@@ -1008,6 +1046,9 @@ def production_members_for_manifest(manifest, baseline=None):
     governed_read_successor.update(GOVERNED_READ_CREDENTIAL_ADDITIONAL_MEMBERS)
     pre_commit_successor = dict(control_successor)
     pre_commit_successor.update(PRE_COMMIT_BOUNDARY_ADDITIONAL_MEMBERS)
+    durable_successor = dict(pre_commit_successor)
+    durable_successor.update(GOVERNED_READ_CREDENTIAL_ADDITIONAL_MEMBERS)
+    durable_successor.update(DURABLE_HISTORY_ADDITIONAL_MEMBERS)
     generation = manifest.get("authority_generation") if isinstance(manifest, dict) else None
     if generation is None and baseline is not None:
         # Unit-level byte/membership checks historically pass a reduced explicit
@@ -1020,7 +1061,9 @@ def production_members_for_manifest(manifest, baseline=None):
         return base
     if generation == AUTHORITY_GENERATION:
         return (
-            pre_commit_successor
+            durable_successor
+            if observed & set(DURABLE_HISTORY_ADDITIONAL_MEMBERS)
+            else pre_commit_successor
             if observed & set(PRE_COMMIT_BOUNDARY_ADDITIONAL_MEMBERS)
             else governed_read_successor
             if observed & set(GOVERNED_READ_CREDENTIAL_ADDITIONAL_MEMBERS)
@@ -1039,6 +1082,8 @@ def production_members_for_manifest(manifest, baseline=None):
 # distinct (repository, path) subjects; equality is checked by both builder and
 # issuer before any authority is created.
 EXACT_MEMBER_BYTE_ALIASES = (
+    ("durable-attestation-history", "remote-durable-attestation-history"),
+    ("durable-attestation-history", "rea-durable-attestation-history"),
     ("production-request-provisioner", "scaffold-hybrid-core-provisioning-prp"),
     ("atomic-consumer", "scaffold-hybrid-core-atomic-consumer"),
     ("route-runtime-mount", "scaffold-hybrid-core-runtime-mount"),

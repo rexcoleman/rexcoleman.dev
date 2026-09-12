@@ -290,3 +290,12 @@ fresh post-revert ruleset JSON file, requires `bypass_actors: []`, derives the
 five immutable commits from the frozen manifest, reuses
 `build_frozen_manifest.py`, and requires two byte-identical builds with all 259
 member rows unchanged. It stages evidence only and performs no remote mutation.
+
+## Durable history successor
+
+The s229 successor uses the explicit `--durable-history-successor` closed contract.
+Historical populations remain auditable. [DURABLE_ATTESTATION_HISTORY.md](DURABLE_ATTESTATION_HISTORY.md)
+defines signed completed-run backfill, finite-retention refusal, same-principal
+finalization, scheduler recovery, runtime journaling and truthful health. The
+indexed adapter includes the production publisher and these transition tests.
+Registration and a green source plan do not issue authority or prove live adoption.
