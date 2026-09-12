@@ -20,6 +20,7 @@ import subprocess
 import sys
 from pathlib import Path
 from datetime import datetime, timedelta, timezone
+from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey, Ed25519PrivateKey
 
@@ -91,7 +92,7 @@ def object_value(raw):
 
 def key_from(raw):
     try:
-        key = serialization.load_pem_public_key(raw)
+        key = serialization.load_pem_public_key(raw, backend=default_backend())
     except (TypeError, ValueError):
         raise Refusal('trusted_key_invalid') from None
     if not isinstance(key, Ed25519PublicKey):
@@ -571,15 +572,32 @@ def verify_record(raw, item, previous, trusted_key):
 def completed_run(api,item):
     run=api.api('actions/runs/'+str(item['run_id']))
     receipt=item['receipt']
-    if (not isinstance(run,dict) or run.get('id')!=item['run_id']
+    workflow_path='.github/workflows/issue-write-enforcement-attestation.yml'
+    if (not isinstance(run,dict) or type(run.get('id')) is not int
+            or run['id']!=item['run_id'] or run['id'] < 1
             or run.get('event')!='workflow_dispatch'
-            or run.get('name')!='Issue write enforcement attestation'
-            or run.get('path')!='.github/workflows/issue-write-enforcement-attestation.yml'
+            or run.get('path')!=workflow_path
             or run.get('head_sha')!=receipt['workflow_sha']
             or run.get('head_branch')!=receipt['workflow_ref'][len('refs/tags/'):]
-            or run.get('run_attempt')!=receipt['workflow_run_attempt']
+            or type(run.get('run_attempt')) is not int or run['run_attempt'] < 1
+            or run['run_attempt']!=receipt['workflow_run_attempt']
+            or type(run.get('workflow_id')) is not int or run['workflow_id'] < 1
             or run.get('status')!='completed' or run.get('conclusion') not in FAILURES|{'success'}):
         raise Refusal('completed_run_identity_or_outcome')
+    # REST run.name is the dynamic run-name expression, not workflow identity.
+    # Resolve this run's actual workflow object only while finalizing metadata;
+    # certified historical records never depend on this mutable API again.
+    cache=getattr(api,'completed_workflow_cache',None)
+    if cache is None:
+        cache={};api.completed_workflow_cache=cache
+    workflow_id=run['workflow_id']
+    if workflow_id not in cache:
+        workflow=api.api('actions/workflows/'+str(workflow_id))
+        if (not isinstance(workflow,dict) or type(workflow.get('id')) is not int
+                or workflow['id']!=workflow_id or workflow.get('path')!=workflow_path
+                or workflow.get('name')!='Issue write enforcement attestation'):
+            raise Refusal('completed_workflow_identity')
+        cache[workflow_id]=workflow
     return run['conclusion']
 
 def scan(api,trusted_key,private_key=None,*,finalizer_ref_only=False):
@@ -684,7 +702,7 @@ def main(argv=None):
                     or GENERATION_REF.fullmatch(os.environ.get('GITHUB_REF','')) is None
                     or args.private_key is None):
                 raise Refusal('finalizer_hosted_identity_required')
-            private=serialization.load_pem_private_key(args.private_key.read_bytes(),password=None)
+            private=serialization.load_pem_private_key(args.private_key.read_bytes(),password=None,backend=default_backend())
             if not isinstance(private,Ed25519PrivateKey) or private.public_key().public_bytes(
                     serialization.Encoding.PEM,serialization.PublicFormat.SubjectPublicKeyInfo)!=trusted:
                 raise Refusal('finalizer_key_mismatch')

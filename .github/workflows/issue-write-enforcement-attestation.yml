@@ -73,7 +73,7 @@ defaults:
     shell: bash
 
 env:
-  DURABLE_HISTORY_SHA256: 3354464fe10663012983a3d5435a5afcbf0d5d5432a580879dd055b2c626cf7c
+  DURABLE_HISTORY_SHA256: a77a6c8a95429bd1235a87aa8045f63a9686ea7882d99cc3385d0d32887945f9
   DURABLE_HISTORY_PUBLIC_KEY_SHA256: 69654455a16e7627ccbc3a6ea2bcaeaa20efbe8ca09ed772cd372434e0732b02
   # Authority-bearing modules that are NOT members of the frozen bundle and so
   # are not covered by issue_wea.py's BUNDLE_MEMBER_BYTES_MISMATCH check.  This

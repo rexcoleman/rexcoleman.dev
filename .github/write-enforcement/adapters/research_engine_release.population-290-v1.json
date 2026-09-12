@@ -1,13 +1,24 @@
 {
   "adapter_id": "research-engine-release-generation-5-population-290-v1",
   "authority_generation": 5,
-  "expected_member_count": 290,
   "boundaries": {
     "anti_spin": "not-applicable-deterministic",
     "bcs_partition": "forbidden",
     "owner_rail": "irreducible-human-only",
     "remote_mutation": "forbidden"
   },
+  "dependent_project": {
+    "default_branch": "master",
+    "named_refusal": "AUTHORITY_LAPSED",
+    "preflight_arguments": [
+      "--engine-preflight"
+    ],
+    "project_id": "research_engine_release",
+    "repository": "rexcoleman/research_engine_release",
+    "required_source": "SIGNED_BUNDLE",
+    "runner_path": "scripts/run_gates.sh"
+  },
+  "expected_member_count": 290,
   "hermetic_tests": [
     {
       "name": "s229-rexcoleman-dev-durable-history-and-enrollment",
@@ -58,7 +69,8 @@
         "tests/test_s229_normal_hosted_flow.py",
         "tests/test_s229_write_order.py",
         "tests/test_s229_enrollment_inheritance.py",
-        "tests/test_s189_runner_digest_pin_binding.py"
+        "tests/test_s189_runner_digest_pin_binding.py",
+        "tests/test_s229_type_derived_applicability.py"
       ],
       "repository": "govML"
     },
@@ -82,7 +94,9 @@
         "tests/test_s151_blind_harness_antispin.py",
         "tests/test_s229_registered_research_repositories.py",
         "tests/test_s157_dependent_successor_propagation.py",
-        "tests/test_s157_renewal_successor_binding.py"
+        "tests/test_s157_renewal_successor_binding.py",
+        "tests/test_s229_runtime_source_closure.py",
+        "tests/test_s190_resolver_ephemeral_roots.py"
       ],
       "repository": "research_enforcement_activation"
     }
@@ -119,6 +133,7 @@
   ],
   "ruleset_id": 19564990,
   "ruleset_repository": "rexcoleman/newsletter",
+  "schema_version": "rea.signed-release-convergence-adapter.v2",
   "system_python_sources": [
     {
       "paths": [
@@ -182,17 +197,5 @@
       ],
       "repository": "research_enforcement_activation"
     }
-  ],
-  "schema_version": "rea.signed-release-convergence-adapter.v2",
-  "dependent_project": {
-    "project_id": "research_engine_release",
-    "repository": "rexcoleman/research_engine_release",
-    "default_branch": "master",
-    "runner_path": "scripts/run_gates.sh",
-    "preflight_arguments": [
-      "--engine-preflight"
-    ],
-    "required_source": "SIGNED_BUNDLE",
-    "named_refusal": "AUTHORITY_LAPSED"
-  }
+  ]
 }
