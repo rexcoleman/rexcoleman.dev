@@ -34,6 +34,30 @@ all new tags. A separately fetched poststate must contain each exact signed byte
 sequence. Local unpushed refs cannot prove publication. Interrupted publication is
 settled by immutable remote bytes; conflicting records are never forced or replaced.
 
+Before the authoritative push, publication admission reads the current Actions
+run and attempt, the unique active job's actual start time, and the literal job
+timeout in the immutable workflow at that run's commit. History finalization
+explicitly declares 360 minutes and requires 900 seconds remaining. Packet
+publication in each 20-minute issuer job requires 300 seconds remaining, checked
+before object creation and again immediately before creating its public tag ref.
+Missing, ambiguous, future-dated or exhausted job timing refuses before the write.
+Elapsed time includes earlier job steps, not just the publisher process lifetime.
+The existing Actions-read permission supplies this evidence; no new grant is used.
+Admission emits a nonterminal stderr record binding the actual numeric job id,
+run/attempt, workflow commit and measured allowance. Final publication/resolver
+stdout keeps its existing schema. Publisher GitHub children receive only the
+scoped GitHub token and the shared explicit runtime environment allowlist.
+
+These reserves are operational allowances, not finite network latency guarantees.
+The atomic push has no client kill timeout. Automatic supersession is disabled,
+but platform deadlines, manual cancellation and crashes still exist. A killed
+observer cannot claim success; the next invocation must establish the exact remote
+outcome. Atomic Git ref updates constrain partial publication, not remote durability
+under every failure or guaranteed receipt of acknowledgment. Cold/warm local tests
+include initial Git fetch and final resolution with synthetic signed packets and
+injected Actions GET data. They do not establish hosted GitHub timing. Preserve
+that boundary when using the measurements to assess the declared job budget.
+
 Normal `resolve` and `export` require the complete packet population to have signed
 dispositions. They refuse an unknown tail instead of silently selecting older
 success. `successful_rebase_rows` supplies only certified successful edges to the

@@ -10,6 +10,34 @@ from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 spec=importlib.util.spec_from_file_location('history',Path(__file__).resolve().parents[1]/'durable_attestation_history.py')
 h=importlib.util.module_from_spec(spec);spec.loader.exec_module(h)
 
+def budget_fixture(monkeypatch, module=h, job='history-finalize', age=0):
+    """Only Actions GET data is injected; production admission stays executable."""
+    values = {'GITHUB_ACTIONS':'true','GITHUB_REPOSITORY':module.REPOSITORY,
+              'GITHUB_EVENT_NAME':'workflow_dispatch','GITHUB_JOB':job,
+              'GITHUB_RUN_ID':'700','GITHUB_RUN_ATTEMPT':'1','GITHUB_SHA':'a'*40,
+              'GITHUB_REF':'refs/tags/rea-wea-generation-5-123456abcdef'}
+    for name,value in values.items():monkeypatch.setenv(name,value)
+    class API:
+        def __init__(self):
+            self.calls=[]
+            self.run={'id':700,'run_attempt':1,'head_sha':'a'*40,
+                'head_branch':'rea-wea-generation-5-123456abcdef','event':'workflow_dispatch',
+                'status':'in_progress','conclusion':None,'path':'.github/workflows/issue-write-enforcement-attestation.yml'}
+            started=module.datetime.now(module.timezone.utc)-module.timedelta(seconds=age)
+            self.jobs=[{'id':7001,'name':job,'run_id':700,'head_sha':'a'*40,'status':'in_progress',
+                        'conclusion':None,'started_at':started.strftime('%Y-%m-%dT%H:%M:%SZ')}]
+            self.workflow=(Path(__file__).resolve().parents[2]/'workflows/issue-write-enforcement-attestation.yml').read_bytes()
+        def api(self,path):
+            self.calls.append(path)
+            if path=='actions/runs/700':return self.run
+            assert path=='actions/runs/700/attempts/1/jobs?per_page=100&page=1'
+            return {'total_count':len(self.jobs),'jobs':self.jobs}
+        def content(self,commit,path):
+            assert commit=='a'*40 and path=='.github/workflows/issue-write-enforcement-attestation.yml'
+            self.calls.append('workflow@'+commit);return self.workflow
+    api=API();monkeypatch.setattr(module,'GitHub',lambda:api)
+    return api
+
 class Memory:
     def __init__(self):
         self.packet_refs={}; self.history_refs={}; self.contents={};self.runs={}
@@ -139,6 +167,7 @@ def test_packet_member_corruption_refuses_before_signing(fixture):
 
 
 def test_git_object_publication_atomic_and_idempotent(tmp_path,monkeypatch):
+    budget_fixture(monkeypatch)
     import subprocess
     klass=h.GitObjects
     remote=tmp_path/'remote.git';local=tmp_path/'local.git';reader=tmp_path/'reader.git'
@@ -166,6 +195,7 @@ def test_git_object_publication_atomic_and_idempotent(tmp_path,monkeypatch):
 
 
 def test_git_failed_push_does_not_self_certify_local_refs(tmp_path,monkeypatch):
+    budget_fixture(monkeypatch)
     import subprocess
     klass=h.GitObjects
     paths=[tmp_path/n for n in ('remote.git','local.git','reader.git')]
@@ -237,6 +267,7 @@ def test_124_row_backfill_metadata_request_budget_and_retention_free_warm_read()
 
 def test_124_packet_actual_git_transport_roundtrip(tmp_path,monkeypatch):
     """Actual objects/tags, metadata backfill, atomic push, fresh independent read."""
+    budget_fixture(monkeypatch)
     import subprocess
     import time
     klass=h.GitObjects
@@ -285,13 +316,22 @@ def test_124_packet_actual_git_transport_roundtrip(tmp_path,monkeypatch):
         if not (readerpath/'config').read_text().find('[remote "origin"]')>=0:obj.git(['remote','add','origin',str(remote)])
         obj.refresh();return obj
     monkeypatch.setattr(h,'GitObjects',fresh);monkeypatch.setenv('GH_TOKEN','fixture-token-not-a-credential')
-    start=time.monotonic();h.scan(store,public,public_key);store.flush();cold=time.monotonic()-start
+    # Time the complete cold operation from a new empty Git store, including
+    # initial fetch, admission GET fixtures, atomic write and final resolution.
+    start=time.monotonic()
+    coldpath=tmp_path/'cold.git'
+    subprocess.run(['git','init','--bare',str(coldpath)],check=True,capture_output=True)
+    coldstore=klass(coldpath);coldstore.git(['remote','add','origin',str(remote)])
+    coldstore.refresh();coldstore.api=metadata_api
+    h.scan(coldstore,public,public_key);coldstore.flush();h.resolve(coldstore,public)
+    cold=time.monotonic()-start
     assert len(metadata)==124
+    start=time.monotonic()
     reader=fresh();reader.api=lambda *a,**k: (_ for _ in ()).throw(AssertionError('retained API reached'))
-    start=time.monotonic();result,_=h.resolve(reader,public);warm=time.monotonic()-start
+    result,_=h.resolve(reader,public);warm=time.monotonic()-start
     assert result['run_id']==223 and result['history_rows']==124
     assert len(reader.refs(h.HISTORY_PREFIX))==124
-    print('124_REAL_GIT metadata_get_cold=124 metadata_get_warm=0 certificate_atomic_pushes=1 cold_local_seconds=%.6f warm_local_seconds=%.6f'%(cold,warm))
+    print('124_REAL_GIT metadata_get_cold=124 metadata_get_warm=0 certificate_atomic_pushes=1 initial_fetch_included=true final_resolution_included=true admission_metadata=injected cold_local_seconds=%.6f warm_local_seconds=%.6f'%(cold,warm))
 
 
 @pytest.mark.parametrize('plant',['missing','changed'])
@@ -336,3 +376,58 @@ def test_actual_historical_source_identities_are_exact_reader_only():
             planted=copy.deepcopy(receipt)
             planted[field]=planted[field]+1 if type(planted[field]) is int else planted[field][:-1]+('0' if planted[field][-1]!='0' else '1')
             assert not h.packet_source_identity(planted), field
+
+
+@pytest.mark.parametrize('job,kind', [('history-finalize','history'),('issue-wea','packet'),('renew-wea','packet')])
+def test_publication_budget_uses_actual_job_age_and_immutable_declared_timeout(monkeypatch,capsys,job,kind):
+    api=budget_fixture(monkeypatch,job=job,age=30)
+    result=h.publication_admission(kind)
+    assert result['declared_seconds']==(21600 if kind=='history' else 1200)
+    assert 30 <= result['elapsed_seconds'] < 40
+    assert result['reserve_seconds']==(900 if kind=='history' else 300)
+    import json
+    captured=capsys.readouterr()
+    assert captured.out=='' and json.loads(captured.err)==result
+    assert result['job_id']==7001 and result['workflow_sha']=='a'*40
+    assert api.calls==['actions/runs/700','workflow@'+'a'*40,'actions/runs/700/attempts/1/jobs?per_page=100&page=1']
+
+
+@pytest.mark.parametrize('plant', ['old','future','duplicate','missing_start','wrong_sha','wrong_attempt',
+                                    'wrong_run','completed','missing_timeout','expression_timeout','ambient_timeout',
+                                    'missing_run_conclusion','missing_job_conclusion','completed_run_conclusion',
+                                    'job_attempt_contradiction','job_attempt_bool','run_attempt_bool'])
+def test_publication_budget_refuses_unknown_or_exhausted_timing(monkeypatch,plant):
+    api=budget_fixture(monkeypatch,age=21000 if plant in {'old','ambient_timeout'} else 0)
+    if plant=='future': api.jobs[0]['started_at']='2999-01-01T00:00:00Z'
+    if plant=='duplicate':api.jobs.append(dict(api.jobs[0]))
+    if plant=='missing_start':api.jobs[0].pop('started_at')
+    if plant=='wrong_sha':api.jobs[0]['head_sha']='b'*40
+    if plant=='wrong_attempt':api.run['run_attempt']=2
+    if plant=='wrong_run':api.jobs[0]['run_id']=701
+    if plant=='completed':api.jobs[0]['status']='completed'
+    if plant=='missing_timeout':api.workflow=api.workflow.replace(b'    timeout-minutes: 360\n',b'')
+    if plant=='expression_timeout':api.workflow=api.workflow.replace(b'    timeout-minutes: 360',b'    timeout-minutes: ${{ env.BUDGET }}')
+    if plant=='ambient_timeout':monkeypatch.setenv('FOUNDATION_JOB_TIMEOUT_MINUTES','999999')
+    if plant=='missing_run_conclusion':api.run.pop('conclusion')
+    if plant=='missing_job_conclusion':api.jobs[0].pop('conclusion')
+    if plant=='completed_run_conclusion':api.run['conclusion']='success'
+    if plant=='job_attempt_contradiction':api.jobs[0]['run_attempt']=2
+    if plant=='job_attempt_bool':api.jobs[0]['run_attempt']=True
+    if plant=='run_attempt_bool':api.run['run_attempt']=True
+    with pytest.raises(h.Refusal,match='publication_budget_'):h.publication_admission('history')
+
+
+def test_history_actual_flush_refuses_exhausted_budget_before_remote_write(tmp_path,monkeypatch):
+    import subprocess
+    budget_fixture(monkeypatch,age=21000)
+    paths=[tmp_path/n for n in ('remote.git','writer.git','reader.git')]
+    for path in paths:subprocess.run(['git','init','--bare',str(path)],check=True,capture_output=True)
+    klass=h.GitObjects;store=klass(paths[1]);reader=klass(paths[2])
+    store.git(['remote','add','origin',str(paths[0])]);reader.git(['remote','add','origin',str(paths[0])])
+    tree=store.git(['mktree'],b'').strip().decode();parent=store.git(['commit-tree',tree],b'fixture parent\n').strip().decode()
+    store.publish(1,b'fixture certificate\n',parent)
+    def fresh():reader.refresh();return reader
+    monkeypatch.setattr(h,'GitObjects',fresh);monkeypatch.setenv('GH_TOKEN','fixture-not-a-credential')
+    with pytest.raises(h.Refusal,match='publication_budget_insufficient'):store.flush()
+    reader.refresh()
+    assert reader.refs(h.HISTORY_PREFIX)=={}

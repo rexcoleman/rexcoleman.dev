@@ -131,6 +131,99 @@ def authenticate_wea(raw, key):
         raise Refusal('wea_lifetime_contract') from None
     return value
 
+def publication_admission(kind, api=None):
+    """Admit a write using actual Actions job age, never a client kill timer.
+
+    These reserves are operational allowances, not network latency guarantees.
+    The signed workflow at this run's exact commit supplies the outer deadline.
+    Missing/ambiguous timing refuses before publication; remote reconciliation
+    remains necessary even after admission (cancellation and crashes can occur).
+    """
+    expected = {'history': ({'history-finalize'}, 900),
+                'packet': ({'issue-wea', 'renew-wea'}, 300)}
+    if kind not in expected:
+        raise Refusal('publication_budget_kind')
+    jobs_allowed, reserve = expected[kind]
+    job = os.environ.get('GITHUB_JOB', '')
+    run = os.environ.get('GITHUB_RUN_ID', '')
+    attempt = os.environ.get('GITHUB_RUN_ATTEMPT', '')
+    commit = os.environ.get('GITHUB_SHA', '')
+    ref = os.environ.get('GITHUB_REF', '')
+    if (os.environ.get('GITHUB_ACTIONS') != 'true'
+            or os.environ.get('GITHUB_REPOSITORY') != REPOSITORY
+            or os.environ.get('GITHUB_EVENT_NAME') != 'workflow_dispatch'
+            or job not in jobs_allowed or not re.fullmatch(r'[1-9][0-9]*', run)
+            or not re.fullmatch(r'[1-9][0-9]*', attempt)
+            or HEX40.fullmatch(commit) is None or GENERATION_REF.fullmatch(ref) is None):
+        raise Refusal('publication_budget_hosted_identity')
+    api = api or GitHub()
+    metadata = api.api('actions/runs/' + run)
+    if (not isinstance(metadata, dict) or type(metadata.get('id')) is not int
+            or type(metadata.get('run_attempt')) is not int
+            or metadata.get('id') != int(run) or metadata.get('run_attempt') != int(attempt)
+            or metadata.get('head_sha') != commit or metadata.get('head_branch') != ref[len('refs/tags/'):]
+            or metadata.get('event') != 'workflow_dispatch' or metadata.get('status') != 'in_progress'
+            or 'conclusion' not in metadata or metadata['conclusion'] is not None
+            or metadata.get('path') != '.github/workflows/issue-write-enforcement-attestation.yml'):
+        raise Refusal('publication_budget_run_identity')
+    # Read the declared timeout from the actual immutable workflow, not an
+    # ambient timeout variable, a new process start time or a copied constant.
+    workflow = api.content(commit, '.github/workflows/issue-write-enforcement-attestation.yml').decode('utf-8')
+    sections = list(re.finditer(r'^  ([a-zA-Z0-9_-]+):\s*$', workflow, re.M))
+    selected = [i for i, section in enumerate(sections) if section.group(1) == job]
+    if len(selected) != 1:
+        raise Refusal('publication_budget_workflow_job')
+    i = selected[0]
+    block = workflow[sections[i].end():sections[i+1].start() if i+1 < len(sections) else len(workflow)]
+    limits = re.findall(r'^    timeout-minutes: ([1-9][0-9]*)\s*$', block, re.M)
+    # Only literal unnamed jobs are supported by this registered workflow.
+    if len(limits) != 1 or re.search(r'^    name:', block, re.M):
+        raise Refusal('publication_budget_declared_timeout')
+    total = int(limits[0]) * 60
+    rows = []
+    page = 1
+    while True:
+        result = api.api('actions/runs/%s/attempts/%s/jobs?per_page=100&page=%s' % (run, attempt, page))
+        if not isinstance(result, dict):
+            raise Refusal('publication_budget_jobs_shape')
+        current = result.get('jobs')
+        count = result.get('total_count')
+        if (not isinstance(current, list) or not all(isinstance(row, dict) for row in current)
+                or type(count) is not int or count < 1):
+            raise Refusal('publication_budget_jobs_shape')
+        rows.extend(current)
+        if len(rows) == count:
+            break
+        if not current or len(rows) > count:
+            raise Refusal('publication_budget_jobs_population')
+        page += 1
+    selected = [row for row in rows if row.get('name') == job]
+    if len(selected) != 1:
+        raise Refusal('publication_budget_job_ambiguous')
+    current = selected[0]
+    if (type(current.get('id')) is not int or current['id'] < 1
+            or type(current.get('run_id')) is not int or current.get('run_id') != int(run)
+            or current.get('head_sha') != commit or current.get('status') != 'in_progress'
+            or 'conclusion' not in current or current['conclusion'] is not None
+            or ('run_attempt' in current and (type(current['run_attempt']) is not int
+                                             or current['run_attempt'] != int(attempt)))):
+        raise Refusal('publication_budget_job_identity')
+    try:
+        started = datetime.strptime(current['started_at'], '%Y-%m-%dT%H:%M:%SZ').replace(tzinfo=timezone.utc)
+    except (KeyError, TypeError, ValueError):
+        raise Refusal('publication_budget_job_started_at') from None
+    elapsed = (datetime.now(timezone.utc) - started).total_seconds()
+    remaining = total - elapsed
+    if elapsed < 0 or remaining < reserve:
+        raise Refusal('publication_budget_insufficient')
+    result = {'status': 'PUBLICATION_BUDGET_ADMITTED', 'budget_kind': 'operational_reserve',
+            'job': job, 'job_id': current['id'], 'run_id': int(run), 'attempt': int(attempt),
+            'workflow_sha': commit,
+            'declared_seconds': total, 'elapsed_seconds': elapsed,
+            'remaining_seconds': remaining, 'reserve_seconds': reserve}
+    print(json.dumps(result, sort_keys=True), file=sys.stderr)
+    return result
+
 class GitHub:
     """Exact repository API; no credential values in argv or diagnostics."""
     def __init__(self):
@@ -328,6 +421,7 @@ class GitObjects(GitHub):
         if not self.pending:
             return
         pending=list(self.pending)
+        publication_admission('history')
         # No force and all-or-nothing publication: no half-created remote chain.
         try:
             self.git(['push','--atomic','origin']+['refs/tags/'+HISTORY_PREFIX+str(run) for run,_ in pending],push=True)

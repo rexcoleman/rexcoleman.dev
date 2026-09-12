@@ -4,6 +4,7 @@ import base64
 import hashlib
 import importlib.util
 import json
+import pytest
 from pathlib import Path
 from types import SimpleNamespace
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
@@ -109,7 +110,10 @@ def test_contents_api_line_wrapped_base64_is_strictly_decoded(monkeypatch):
         raise AssertionError("invalid base64 alphabet admitted")
 
 
-def test_genesis_publish_is_unique_path_pointer_and_nonforced_ref(tmp_path, monkeypatch):
+@pytest.mark.parametrize('budget_plant', ['none', 'before_objects', 'before_ref'])
+def test_genesis_publish_is_unique_path_pointer_and_nonforced_ref(tmp_path, monkeypatch, budget_plant):
+    from test_durable_attestation_history import budget_fixture
+    budget = budget_fixture(monkeypatch, tool.history, 'issue-wea', 950 if budget_plant=='before_objects' else 0)
     root, predecessor_sha = packet(tmp_path)
     objects = {}
     calls = []
@@ -133,6 +137,9 @@ def test_genesis_publish_is_unique_path_pointer_and_nonforced_ref(tmp_path, monk
             return {"sha": digest}
         if path.endswith("/git/tags"):
             objects["tag"] = digest
+            if budget_plant == 'before_ref':
+                budget.jobs[0]['started_at'] = (tool.history.datetime.now(tool.history.timezone.utc)
+                    - tool.history.timedelta(seconds=950)).strftime('%Y-%m-%dT%H:%M:%SZ')
             return {"sha": digest}
         if path.endswith("/git/refs"):
             objects["head"] = body["sha"]
@@ -162,6 +169,13 @@ def test_genesis_publish_is_unique_path_pointer_and_nonforced_ref(tmp_path, monk
         return json.dumps(pointer_holder).encode("utf-8")
 
     monkeypatch.setattr(tool, "content_bytes", fake_content)
+    if budget_plant != 'none':
+        with pytest.raises(tool.history.Refusal, match='publication_budget_insufficient'):
+            tool.publish(args(root, predecessor_sha=predecessor_sha))
+        assert not any(path.endswith('/git/refs') and method=='POST' for path,method,_ in calls)
+        if budget_plant == 'before_objects':
+            assert not any(method=='POST' for _,method,_ in calls)
+        return
     assert len(tool.publish(args(root, predecessor_sha=predecessor_sha))) == 40
     tree_paths = {row["path"] for row in objects["tree"]["tree"]}
     assert tree_paths == {tool.POINTER} | {
@@ -231,3 +245,19 @@ def test_main_absent_job_token_refuses_before_api(tmp_path, monkeypatch, capsys)
     ])
     assert rc == 3
     assert "PUBLIC_PUBLISH_INPUT_REFUSED" in capsys.readouterr().err
+
+
+def test_actual_publisher_child_carries_only_scoped_github_identity(monkeypatch):
+    for name in ('OPENAI_API_KEY','ANTHROPIC_API_KEY','REA_APP_PRIVATE_KEY_B64','REA_APP_ID','SSH_AUTH_SOCK','GITHUB_TOKEN'):
+        monkeypatch.setenv(name,'fixture-unrelated-custody')
+    monkeypatch.setenv('GH_TOKEN','fixture-scoped-token')
+    calls=[]
+    def child(argv,**kwargs):
+        calls.append((argv,kwargs))
+        return SimpleNamespace(returncode=0,stdout='{"sha":"fixture"}',stderr='')
+    monkeypatch.setattr(tool.subprocess,'run',child)
+    tool.gh_api('repos/'+tool.REPOSITORY+'/git/refs',method='POST',body={'ref':'fixture'})
+    _,kwargs=calls[0]
+    assert kwargs.get('timeout') is None
+    assert kwargs['env']['GH_TOKEN']=='fixture-scoped-token'
+    assert not any(name in kwargs['env'] for name in ('OPENAI_API_KEY','ANTHROPIC_API_KEY','REA_APP_PRIVATE_KEY_B64','REA_APP_ID','SSH_AUTH_SOCK','GITHUB_TOKEN'))
