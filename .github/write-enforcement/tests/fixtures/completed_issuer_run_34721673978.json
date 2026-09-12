@@ -1,0 +1,16 @@
+{
+  "source_sha256": "4f5452e1a4ae475a4bd019279bac1f90c59f1416521b20ffe88d1100301bac12",
+  "scope": "Exact selected public REST fields from actual successful recovery run; no private logs",
+  "run": {
+    "id": 34721673978,
+    "name": "WEA capability_change_existing_secret",
+    "path": ".github/workflows/issue-write-enforcement-attestation.yml",
+    "head_sha": "dfc06cfad55746ac6d669e8047fe4839b56312ab",
+    "head_branch": "rea-wea-generation-5-dfc06cfad557",
+    "run_attempt": 1,
+    "workflow_id": 319049792,
+    "event": "workflow_dispatch",
+    "status": "completed",
+    "conclusion": "success"
+  }
+}

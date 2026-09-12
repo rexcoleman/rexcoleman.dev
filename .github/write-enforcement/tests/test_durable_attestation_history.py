@@ -1,6 +1,7 @@
 """Actual signer/reader transitions with deterministic synthetic public packets."""
 import base64
 import copy
+import json
 import importlib.util
 from pathlib import Path
 import pytest
@@ -42,6 +43,7 @@ class Memory:
     def __init__(self):
         self.packet_refs={}; self.history_refs={}; self.contents={};self.runs={}
         self.calls=[]; self.kill=None;self.member_cache={}
+        self.workflows={319049792:{'id':319049792,'path':'.github/workflows/issue-write-enforcement-attestation.yml','name':'Issue write enforcement attestation'}}
     def refs(self,prefix):
         return copy.deepcopy(self.packet_refs if prefix==h.PACKET_PREFIX else self.history_refs)
     def content(self,commit,path):
@@ -49,7 +51,7 @@ class Memory:
     def api(self,path):
         self.calls.append(('api',path))
         assert '/artifacts' not in path and not path.startswith('check')
-        return self.runs[int(path.split('/')[-1])]
+        return (self.workflows if path.startswith('actions/workflows/') else self.runs)[int(path.split('/')[-1])]
     def publish(self,run,raw,parent):
         if self.kill==run:
             self.kill=None;raise RuntimeError('planted interrupted finalizer')
@@ -93,7 +95,7 @@ def add(api,key,public,run,predecessor,conclusion='success'):
     api.contents[commit,h.POINTER]=h.canonical(pointer)
     api.contents[commit,members[-1]['path']]=workflow
     api.contents.update({(commit,packetpath+'/'+n):v for n,v in files.items()})
-    api.runs[run]={'id':run,'event':'workflow_dispatch','name':'Issue write enforcement attestation','path':members[-1]['path'],'head_sha':commit,'head_branch':ref[len('refs/tags/'):],'run_attempt':1,'status':'completed','conclusion':conclusion}
+    api.runs[run]={'id':run,'workflow_id':319049792,'event':'workflow_dispatch','name':'Issue write enforcement attestation','path':members[-1]['path'],'head_sha':commit,'head_branch':ref[len('refs/tags/'):],'run_attempt':1,'status':'completed','conclusion':conclusion}
     return files['write_enforcement_attestation.json']
 
 @pytest.fixture
@@ -122,7 +124,7 @@ def test_unknown_tail_never_falls_back(fixture):
     api,key,public=fixture;last=api.packet_refs.pop(12);h.scan(api,public,key);api.packet_refs[12]=last
     with pytest.raises(h.Refusal,match='unfinalized_packet_run_12'):h.resolve(api,public)
 
-@pytest.mark.parametrize('field,value',[('status','in_progress'),('conclusion',None),('head_sha','b'*40),('run_attempt',2),('name','Seal only'),('event','schedule')])
+@pytest.mark.parametrize('field,value',[('status','in_progress'),('conclusion',None),('head_sha','b'*40),('run_attempt',2),('path','.github/workflows/seal-only.yml'),('event','schedule')])
 def test_unverifiable_run_never_certifies(fixture,field,value):
     api,key,public=fixture;api.runs[10][field]=value
     with pytest.raises(h.Refusal,match='completed_run_identity'):h.scan(api,public,key)
@@ -212,7 +214,10 @@ def test_git_failed_push_does_not_self_certify_local_refs(tmp_path,monkeypatch):
 @pytest.mark.parametrize('route', ['public_git', 'push_git', 'metadata_api', 'scheduler'])
 def test_actual_transport_children_exclude_unrelated_custody(tmp_path, monkeypatch, route):
     import subprocess
-    import renewal_history_scheduler as scheduler
+    import sys
+    monkeypatch.setitem(sys.modules, 'durable_attestation_history', h)
+    scheduler_spec=importlib.util.spec_from_file_location('scheduler_fixture',Path(__file__).resolve().parents[1]/'renewal_history_scheduler.py')
+    scheduler=importlib.util.module_from_spec(scheduler_spec);scheduler_spec.loader.exec_module(scheduler)
     unrelated = ('ANTHROPIC_API_KEY', 'OPENAI_API_KEY', 'GEMINI_API_KEY',
                  'GOVML_REA_READ_APP_PRIVATE_KEY_B64', 'GOVML_REA_READ_APP_ID',
                  'WEA_KEY_B64', 'SSH_AUTH_SOCK', 'GIT_SSH_COMMAND', 'GIT_DIR',
@@ -258,11 +263,11 @@ def test_124_row_backfill_metadata_request_budget_and_retention_free_warm_read()
     for run in range(101,224):pred=add(api,key,public,run,pred)
     start=time.monotonic();rows=h.scan(api,public,key);cold=time.monotonic()-start
     metadata=[c for c in api.calls if c[0]=='api']
-    assert len(rows)==124 and len(metadata)==124
+    assert len(rows)==124 and len(metadata)==125
     api.runs.clear();api.calls.clear();start=time.monotonic();result,_=h.resolve(api,public);warm=time.monotonic()-start
     assert result['history_rows']==124 and result['run_id']==223
     assert not [c for c in api.calls if c[0]=='api']
-    print('124_ROW_COUNTS metadata_get_cold=124 metadata_get_warm=0 artifacts_get=0 checks_get=0 statuses_get=0 cold_fixture_seconds=%.6f warm_fixture_seconds=%.6f'%(cold,warm))
+    print('124_ROW_COUNTS run_metadata_get_cold=124 workflow_metadata_get_cold=1 metadata_get_warm=0 artifacts_get=0 checks_get=0 statuses_get=0 cold_fixture_seconds=%.6f warm_fixture_seconds=%.6f'%(cold,warm))
 
 
 def test_124_packet_actual_git_transport_roundtrip(tmp_path,monkeypatch):
@@ -308,8 +313,8 @@ def test_124_packet_actual_git_transport_roundtrip(tmp_path,monkeypatch):
     store.git(['push','origin','--tags'])
     metadata=[]
     def metadata_api(path,*args,**kwargs):
-        assert path.startswith('actions/runs/') and '/artifacts' not in path
-        metadata.append(path);return memory.runs[int(path.split('/')[-1])]
+        assert path.startswith(('actions/runs/','actions/workflows/')) and '/artifacts' not in path
+        metadata.append(path);return (memory.workflows if path.startswith('actions/workflows/') else memory.runs)[int(path.split('/')[-1])]
     store.api=metadata_api
     def fresh():
         obj=klass(readerpath)
@@ -325,13 +330,13 @@ def test_124_packet_actual_git_transport_roundtrip(tmp_path,monkeypatch):
     coldstore.refresh();coldstore.api=metadata_api
     h.scan(coldstore,public,public_key);coldstore.flush();h.resolve(coldstore,public)
     cold=time.monotonic()-start
-    assert len(metadata)==124
+    assert len(metadata)==125
     start=time.monotonic()
     reader=fresh();reader.api=lambda *a,**k: (_ for _ in ()).throw(AssertionError('retained API reached'))
     result,_=h.resolve(reader,public);warm=time.monotonic()-start
     assert result['run_id']==223 and result['history_rows']==124
     assert len(reader.refs(h.HISTORY_PREFIX))==124
-    print('124_REAL_GIT metadata_get_cold=124 metadata_get_warm=0 certificate_atomic_pushes=1 initial_fetch_included=true final_resolution_included=true admission_metadata=injected cold_local_seconds=%.6f warm_local_seconds=%.6f'%(cold,warm))
+    print('124_REAL_GIT run_metadata_get_cold=124 workflow_metadata_get_cold=1 metadata_get_warm=0 certificate_atomic_pushes=1 initial_fetch_included=true final_resolution_included=true admission_metadata=injected cold_local_seconds=%.6f warm_local_seconds=%.6f'%(cold,warm))
 
 
 @pytest.mark.parametrize('plant',['missing','changed'])
@@ -431,3 +436,32 @@ def test_history_actual_flush_refuses_exhausted_budget_before_remote_write(tmp_p
     with pytest.raises(h.Refusal,match='publication_budget_insufficient'):store.flush()
     reader.refresh()
     assert reader.refs(h.HISTORY_PREFIX)=={}
+
+
+def actual_completed_metadata():
+    return json.loads((Path(__file__).parent/'fixtures/completed_issuer_run_34721673978.json').read_text())['run']
+
+@pytest.mark.parametrize('name',['WEA capability_change_existing_secret','Issue write enforcement attestation'])
+def test_completed_identity_uses_workflow_object_not_dynamic_run_title(name):
+    run=actual_completed_metadata();run['name']=name;api=Memory();api.runs[run['id']]=run
+    item={'run_id':run['id'],'receipt':{'workflow_sha':run['head_sha'],'workflow_ref':'refs/tags/'+run['head_branch'],'workflow_run_attempt':run['run_attempt']}}
+    assert h.completed_run(api,item)=='success'
+    assert h.completed_run(api,item)=='success'
+    assert len([x for x in api.calls if x==('api','actions/workflows/'+str(run['workflow_id']))])==1
+
+@pytest.mark.parametrize('plant',['run_id','attempt','run_path','head','ref','workflow_id_bool','workflow_id_missing','workflow_object_id','workflow_path','workflow_name','outcome'])
+def test_actual_completed_metadata_wrong_workflow_or_subject_refuses(plant):
+    run=actual_completed_metadata();api=Memory();item={'run_id':run['id'],'receipt':{'workflow_sha':run['head_sha'],'workflow_ref':'refs/tags/'+run['head_branch'],'workflow_run_attempt':run['run_attempt']}}
+    if plant=='run_id':run['id']=True
+    if plant=='attempt':run['run_attempt']=True
+    if plant=='run_path':run['path']='.github/workflows/other.yml'
+    if plant=='head':run['head_sha']='0'*40
+    if plant=='ref':run['head_branch']='rea-wea-generation-5-000000000000'
+    if plant=='workflow_id_bool':run['workflow_id']=True
+    if plant=='workflow_id_missing':run.pop('workflow_id')
+    if plant=='workflow_object_id':api.workflows[319049792]['id']=319049793
+    if plant=='workflow_path':api.workflows[319049792]['path']='.github/workflows/other.yml'
+    if plant=='workflow_name':api.workflows[319049792]['name']='Other Workflow'
+    if plant=='outcome':run['conclusion']='unknown'
+    api.runs[item['run_id']]=run
+    with pytest.raises(h.Refusal,match='completed_'):h.completed_run(api,item)
