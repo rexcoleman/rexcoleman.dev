@@ -356,6 +356,12 @@ parent to the PR base SHA, and rederives the sole semantic manifest path, count,
 and path digest. The exact whole-file-set digest and manifest SHA remain
 predeclared independent inputs.
 
+The same callable route requires the active main ruleset's exact four-rule
+population, including one strict `required_status_checks` rule with create
+bypass disabled and exactly `artifact-integrity-exact-commit` plus
+`pre-commit-boundary-asserted`. Missing, extra, duplicated, non-strict, or
+misdirected required-check state refuses before a PASS record can be emitted.
+
 Historical retired REA population rows remain identity/path validated and are
 excluded from active selection. A retired lower row cannot block a coherent
 active terminal, while a retired terminal with only a lower active row refuses.

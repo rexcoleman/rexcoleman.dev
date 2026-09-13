@@ -112,7 +112,10 @@ def state(repo="rexcoleman/rexcoleman.dev"):
             "dismiss_stale_reviews_on_push": True,
             "required_review_thread_resolution": True,
             "target": "refs/heads/main",
-            "rule_types": ["deletion", "non_fast_forward", "pull_request"],
+            "rule_types": MODULE.SITE_RULE_TYPES,
+            "strict_required_status_checks_policy": True,
+            "do_not_enforce_on_create": False,
+            "required_status_check_contexts": MODULE.SITE_REQUIRED_STATUS_CONTEXTS,
         },
         "reviews": [],
     }
@@ -349,6 +352,41 @@ def test_read_state_refuses_receipt_blob_different_from_pr_file_row(monkeypatch)
         ),
         (
             lambda value: value["ruleset"].update(
+                required_status_check_contexts=["artifact-integrity-exact-commit"]
+            ),
+            "required status check contexts",
+        ),
+        (
+            lambda value: value["ruleset"].update(
+                required_status_check_contexts=(
+                    MODULE.SITE_REQUIRED_STATUS_CONTEXTS + ["extra-check"]
+                )
+            ),
+            "required status check contexts",
+        ),
+        (
+            lambda value: value["ruleset"].update(
+                required_status_check_contexts=[
+                    "artifact-integrity-exact-commit",
+                    "wrong-boundary-check",
+                ]
+            ),
+            "required status check contexts",
+        ),
+        (
+            lambda value: value["ruleset"].update(
+                strict_required_status_checks_policy=False
+            ),
+            "not strict",
+        ),
+        (
+            lambda value: value["ruleset"].update(
+                do_not_enforce_on_create=True
+            ),
+            "create bypass",
+        ),
+        (
+            lambda value: value["ruleset"].update(
                 required_review_thread_resolution=False
             ),
             "conversation resolution",
@@ -369,6 +407,118 @@ def test_rea_preflight_allows_ruleset_not_yet_installed():
         value,
         args("rexcoleman/research_enforcement_activation", mode="preflight"),
     )
+
+
+def live_site_ruleset_detail(**status_updates):
+    status_parameters = {
+        "strict_required_status_checks_policy": True,
+        "do_not_enforce_on_create": False,
+        "required_status_checks": [
+            {"context": "artifact-integrity-exact-commit"},
+            {"context": "pre-commit-boundary-asserted"},
+        ],
+    }
+    status_parameters.update(status_updates)
+    return {
+        "id": MODULE.SITE_RULESET_ID,
+        "name": "rexcoleman-dev-main-integrity",
+        "enforcement": "active",
+        "bypass_actors": [],
+        "conditions": {
+            "ref_name": {"exclude": [], "include": ["refs/heads/main"]}
+        },
+        "rules": [
+            {"type": "deletion"},
+            {"type": "non_fast_forward"},
+            {
+                "type": "pull_request",
+                "parameters": {
+                    "required_approving_review_count": 0,
+                    "dismiss_stale_reviews_on_push": True,
+                    "required_review_thread_resolution": True,
+                },
+            },
+            {"type": "required_status_checks", "parameters": status_parameters},
+        ],
+    }
+
+
+def site_ruleset_state(monkeypatch, detail):
+    def fake_api(_token, path, *_args, **_kwargs):
+        if path.endswith("/rulesets?includes_parents=false"):
+            return [{"id": MODULE.SITE_RULESET_ID}]
+        if path.endswith(f"/rulesets/{MODULE.SITE_RULESET_ID}"):
+            return detail
+        raise AssertionError(path)
+
+    monkeypatch.setattr(MODULE, "api", fake_api)
+    return MODULE.ruleset_state("fixture-token", "rexcoleman/rexcoleman.dev")
+
+
+def test_site_ruleset_state_accepts_exact_live_required_checks(monkeypatch):
+    observed = site_ruleset_state(monkeypatch, live_site_ruleset_detail())
+    assert observed == state()["ruleset"]
+
+
+@pytest.mark.parametrize(
+    "mutation,expected",
+    [
+        (
+            lambda value: value["rules"].pop(),
+            "rule population",
+        ),
+        (
+            lambda value: value["rules"].append({"type": "required_status_checks"}),
+            "rule population",
+        ),
+        (
+            lambda value: value["rules"][3]["parameters"].update(
+                required_status_checks=[
+                    {"context": "artifact-integrity-exact-commit"}
+                ]
+            ),
+            "contexts differ",
+        ),
+        (
+            lambda value: value["rules"][3]["parameters"].update(
+                required_status_checks=[
+                    {"context": "artifact-integrity-exact-commit"},
+                    {"context": "pre-commit-boundary-asserted"},
+                    {"context": "extra-check"},
+                ]
+            ),
+            "contexts differ",
+        ),
+        (
+            lambda value: value["rules"][3]["parameters"].update(
+                required_status_checks=[
+                    {"context": "artifact-integrity-exact-commit"},
+                    {"context": "wrong-boundary-check"},
+                ]
+            ),
+            "contexts differ",
+        ),
+        (
+            lambda value: value["rules"][3]["parameters"].update(
+                strict_required_status_checks_policy=False
+            ),
+            "not strict",
+        ),
+        (
+            lambda value: value["rules"][3]["parameters"].update(
+                do_not_enforce_on_create=True
+            ),
+            "create bypass",
+        ),
+    ],
+)
+def test_site_ruleset_state_refuses_required_check_drift(
+    monkeypatch, mutation, expected
+):
+    detail = live_site_ruleset_detail()
+    mutation(detail)
+    with pytest.raises(MODULE.Refusal, match=expected):
+        site_ruleset_state(monkeypatch, detail)
 
 
 FROZEN_MANIFEST = (
