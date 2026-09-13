@@ -2,23 +2,15 @@
   "assertion": "COMMIT_PREFLIGHT_PASS",
   "caller": "git-pre-commit",
   "changed_paths": [
-    ".github/workflows/issue-write-enforcement-attestation.yml",
-    ".github/write-enforcement/adapters/adversarial_ml_landscape.population-290-v1.json",
-    ".github/write-enforcement/adapters/agent_boundary_learning_landscape.population-290-v1.json",
-    ".github/write-enforcement/adapters/newsletter_generation_architecture.population-290-v1.json",
-    ".github/write-enforcement/adapters/newsletter_hybrid_path.population-290-v1.json",
-    ".github/write-enforcement/adapters/research_enforcement_activation.population-290-v1.json",
-    ".github/write-enforcement/adapters/research_engine_release.population-290-v1.json",
-    ".github/write-enforcement/artifact_contract_versions.json",
-    ".github/write-enforcement/durable_attestation_history.py",
-    ".github/write-enforcement/tests/fixtures/completed_issuer_run_34721673978.json",
-    ".github/write-enforcement/tests/test_durable_attestation_history.py"
+    ".github/write-enforcement/member_contract.py",
+    ".github/write-enforcement/tests/test_build_frozen_manifest.py",
+    ".github/write-enforcement/tests/test_member_contract.py"
   ],
-  "changed_paths_count": 11,
-  "changed_paths_sha256": "87e656f1980cd47f39ff58890fc671ac0548582ba12521e79199c0affeb49291",
+  "changed_paths_count": 3,
+  "changed_paths_sha256": "49db8182d460e01f63ac10958363150c1d801513b311f192bb94939a2a4cbb0d",
   "mode": "commit-preflight",
-  "parent_head": "427b09a282e3a1e8d9d6ace19f5fe94b76d41c82",
-  "run_id": "pre-commit-869abc076be6edd044f1ac18",
+  "parent_head": "bdf6b13ae3172b03968a65f5ee36573143a7bdac",
+  "run_id": "pre-commit-a81dbe6e4bff03ddce53195f",
   "schema_version": "rea.pre-commit-boundary.v1",
-  "utc_asserted_at": "2026-09-12T22:48:30Z"
+  "utc_asserted_at": "2026-09-13T00:28:01Z"
 }
