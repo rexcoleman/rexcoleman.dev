@@ -321,8 +321,10 @@ exact public packet and immediate predecessor in a fresh credential-free HOME,
 then requires JUnit and the pytest outcome plugin both to report zero skipped,
 xfailed, or xpassed cases. The parent must be admitted by the exact authenticated
 REA production ephemeral-root predicate; descriptor-relative packet reads bind
-the validated directory through copy and refuse parent rename/symlink swaps.
-The packet copy is explicitly fixture-only and is deleted on success or refusal;
+the validated source through copy. Held descriptors and repeated identity checks
+also bind every fixture-root, HOME, and packet-destination ancestor through
+authentication, test execution, and cleanup, refusing same-target rename/symlink
+substitution. The packet copy is explicitly fixture-only and is deleted on success or refusal;
 dependent population-next adapters retain their prior behavior because the
 field is optional and absent from their rows. A present null or open fixture
 object refuses; only complete absence selects legacy adapter behavior.

@@ -1638,6 +1638,63 @@ def test_authenticated_fixture_refuses_source_parent_swap_without_copy_or_residu
     assert not list(fixture_parent.glob(".rea-release-hermetic-*"))
 
 
+@pytest.mark.parametrize("child", ["fixture-root", "home", "destination-parent"])
+def test_authenticated_fixture_refuses_same_target_fixture_child_swap(
+    tmp_path, monkeypatch, child
+):
+    adapter, mapping, rows, ambient, authority = _fixture_inputs(
+        tmp_path, monkeypatch
+    )
+    fixture_parent = mapping["research_enforcement_activation"].parent
+    swapped = []
+
+    def authenticate_after_swap(_python, destination, _roots, _env):
+        selected = {
+            "fixture-root": destination.parents[4],
+            "home": destination.parents[3],
+            "destination-parent": destination.parents[1],
+        }[child]
+        held = selected.with_name("held-" + selected.name)
+        selected.rename(held)
+        selected.symlink_to(held.name, target_is_directory=True)
+        swapped.extend([selected, held])
+        return authority
+
+    monkeypatch.setattr(tool, "authenticate_fixture_packet", authenticate_after_swap)
+    with pytest.raises(
+        tool.Refusal, match="HERMETIC_FIXTURE_CHAIN_AFTER_AUTH_DRIFT"
+    ):
+        with tool.authenticated_hermetic_home(
+            adapter, mapping, rows, sys.executable, ambient_home=ambient
+        ):
+            pass
+    assert not list(fixture_parent.glob(".rea-release-hermetic-*"))
+    assert swapped and all(not path.exists() for path in swapped)
+
+
+def test_authenticated_fixture_refuses_same_target_child_swap_during_yield(
+    tmp_path, monkeypatch
+):
+    adapter, mapping, rows, ambient, _authority = _fixture_inputs(
+        tmp_path, monkeypatch
+    )
+    fixture_parent = mapping["research_enforcement_activation"].parent
+    swapped = []
+    with pytest.raises(
+        tool.Refusal, match="HERMETIC_FIXTURE_CHAIN_AFTER_YIELD_DRIFT"
+    ):
+        with tool.authenticated_hermetic_home(
+            adapter, mapping, rows, sys.executable, ambient_home=ambient
+        ) as fixture:
+            selected = fixture["home"] / ".local"
+            held = selected.with_name("held-local")
+            selected.rename(held)
+            selected.symlink_to(held.name, target_is_directory=True)
+            swapped.extend([selected, held])
+    assert not list(fixture_parent.glob(".rea-release-hermetic-*"))
+    assert swapped and all(not path.exists() for path in swapped)
+
+
 def test_authenticated_fixture_cleans_after_packet_auth_refusal(tmp_path, monkeypatch):
     adapter, mapping, rows, ambient, _authority = _fixture_inputs(
         tmp_path, monkeypatch

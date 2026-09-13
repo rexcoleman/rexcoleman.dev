@@ -791,6 +791,112 @@ def assert_directory_fd_identity(descriptor: int, path: Path, subject: str) -> N
         raise Refusal("%s_DRIFT:%s" % (subject, path))
 
 
+def clear_bound_directory(descriptor: int) -> None:
+    """Remove contents through a held directory without following symlinks."""
+    flags = (
+        os.O_RDONLY
+        | getattr(os, "O_DIRECTORY", 0)
+        | getattr(os, "O_CLOEXEC", 0)
+        | getattr(os, "O_NOFOLLOW", 0)
+    )
+    try:
+        for name in os.listdir(descriptor):
+            before = os.stat(name, dir_fd=descriptor, follow_symlinks=False)
+            if stat.S_ISDIR(before.st_mode):
+                child = os.open(name, flags, dir_fd=descriptor)
+                try:
+                    opened = os.fstat(child)
+                    lexical = os.stat(
+                        name, dir_fd=descriptor, follow_symlinks=False
+                    )
+                    if (
+                        not stat.S_ISDIR(opened.st_mode)
+                        or directory_identity(opened) != directory_identity(before)
+                        or directory_identity(lexical) != directory_identity(before)
+                    ):
+                        raise Refusal(
+                            "HERMETIC_FIXTURE_CLEANUP_CHILD_DRIFT:%s" % name
+                        )
+                    clear_bound_directory(child)
+                    lexical = os.stat(
+                        name, dir_fd=descriptor, follow_symlinks=False
+                    )
+                    if directory_identity(os.fstat(child)) != directory_identity(
+                        lexical
+                    ):
+                        raise Refusal(
+                            "HERMETIC_FIXTURE_CLEANUP_CHILD_DRIFT:%s" % name
+                        )
+                finally:
+                    os.close(child)
+                os.rmdir(name, dir_fd=descriptor)
+            else:
+                os.unlink(name, dir_fd=descriptor)
+        if os.listdir(descriptor):
+            raise Refusal("HERMETIC_FIXTURE_CLEANUP_CONTENTS_REMAIN")
+    except Refusal:
+        raise
+    except OSError as exc:
+        raise Refusal(
+            "HERMETIC_FIXTURE_CLEANUP_REFUSED:%s" % type(exc).__name__
+        )
+
+
+def remove_bound_directory_at(
+    parent_fd: int,
+    intended_name: str,
+    descriptor: int,
+    expected,
+):
+    """Remove the exact held directory even after a detected lexical rename."""
+    matches = []
+    try:
+        for name in os.listdir(parent_fd):
+            info = os.stat(name, dir_fd=parent_fd, follow_symlinks=False)
+            if stat.S_ISDIR(info.st_mode) and directory_identity(info) == expected:
+                matches.append(name)
+        if len(matches) != 1:
+            raise Refusal(
+                "HERMETIC_FIXTURE_CLEANUP_IDENTITY_REFUSED:matches=%s"
+                % sorted(matches)
+            )
+        actual_name = matches[0]
+        if actual_name != intended_name:
+            try:
+                lexical = os.stat(
+                    intended_name, dir_fd=parent_fd, follow_symlinks=False
+                )
+            except FileNotFoundError:
+                lexical = None
+            if lexical is not None:
+                if not stat.S_ISLNK(lexical.st_mode):
+                    raise Refusal(
+                        "HERMETIC_FIXTURE_CLEANUP_LEXICAL_REFUSED:%s"
+                        % intended_name
+                    )
+                os.unlink(intended_name, dir_fd=parent_fd)
+        observed = os.stat(actual_name, dir_fd=parent_fd, follow_symlinks=False)
+        if not stat.S_ISDIR(observed.st_mode) or directory_identity(observed) != expected:
+            raise Refusal("HERMETIC_FIXTURE_CLEANUP_DRIFT:%s" % actual_name)
+        if directory_identity(os.fstat(descriptor)) != expected:
+            raise Refusal("HERMETIC_FIXTURE_CLEANUP_DESCRIPTOR_DRIFT")
+        clear_bound_directory(descriptor)
+        observed = os.stat(actual_name, dir_fd=parent_fd, follow_symlinks=False)
+        if not stat.S_ISDIR(observed.st_mode) or directory_identity(observed) != expected:
+            raise Refusal("HERMETIC_FIXTURE_CLEANUP_DRIFT:%s" % actual_name)
+        os.rmdir(actual_name, dir_fd=parent_fd)
+        for name in os.listdir(parent_fd):
+            info = os.stat(name, dir_fd=parent_fd, follow_symlinks=False)
+            if stat.S_ISDIR(info.st_mode) and directory_identity(info) == expected:
+                raise Refusal("HERMETIC_FIXTURE_CLEANUP_INCOMPLETE:%s" % name)
+    except Refusal:
+        raise
+    except OSError as exc:
+        raise Refusal(
+            "HERMETIC_FIXTURE_CLEANUP_REFUSED:%s" % type(exc).__name__
+        )
+
+
 class DirectoryChain:
     def __init__(self, rows):
         self.rows = tuple(rows)
@@ -802,6 +908,9 @@ class DirectoryChain:
     def validate(self, subject: str) -> None:
         for path, descriptor in self.rows:
             assert_directory_fd_identity(descriptor, path, subject)
+
+    def extended(self, path: Path, descriptor: int):
+        return DirectoryChain(self.rows + ((path, descriptor),))
 
 
 @contextlib.contextmanager
@@ -1165,6 +1274,8 @@ def authenticated_hermetic_home(
         fixture_root = parent / fixture_name
         fixture_fd = None
         opened_fds = []
+        fixture_chain = None
+        fixture_root_identity = None
         try:
             try:
                 flags = (
@@ -1173,19 +1284,25 @@ def authenticated_hermetic_home(
                     | getattr(os, "O_CLOEXEC", 0)
                     | getattr(os, "O_NOFOLLOW", 0)
                 )
+                created_root = os.stat(
+                    fixture_name, dir_fd=parent_fd, follow_symlinks=False
+                )
+                if not stat.S_ISDIR(created_root.st_mode):
+                    raise Refusal("HERMETIC_FIXTURE_ROOT_CREATE_DRIFT")
+                fixture_root_identity = directory_identity(created_root)
                 fixture_fd = os.open(fixture_name, flags, dir_fd=parent_fd)
                 opened_fds.append(fixture_fd)
-                assert_directory_fd_identity(
-                    fixture_fd, fixture_root, "HERMETIC_FIXTURE_ROOT"
-                )
+                if directory_identity(os.fstat(fixture_fd)) != fixture_root_identity:
+                    raise Refusal("HERMETIC_FIXTURE_ROOT_OPEN_DRIFT")
+                fixture_chain = parent_chain.extended(fixture_root, fixture_fd)
+                fixture_chain.validate("HERMETIC_FIXTURE_CHAIN_AFTER_ROOT_CREATE")
                 os.fchmod(fixture_fd, 0o700)
                 mkdir_at("home", mode=0o700, dir_fd=fixture_fd)
                 home_fd = os.open("home", flags, dir_fd=fixture_fd)
                 opened_fds.append(home_fd)
                 home = fixture_root / "home"
-                assert_directory_fd_identity(
-                    home_fd, home, "HERMETIC_FIXTURE_HOME"
-                )
+                fixture_chain = fixture_chain.extended(home, home_fd)
+                fixture_chain.validate("HERMETIC_FIXTURE_CHAIN_AFTER_HOME_CREATE")
                 destination = home
                 destination_fd = home_fd
                 for part in PUBLIC_PACKET_RELATIVE.parts:
@@ -1193,10 +1310,12 @@ def authenticated_hermetic_home(
                     child_fd = os.open(part, flags, dir_fd=destination_fd)
                     opened_fds.append(child_fd)
                     destination /= part
-                    assert_directory_fd_identity(
-                        child_fd, destination, "HERMETIC_PACKET_DESTINATION"
+                    fixture_chain = fixture_chain.extended(destination, child_fd)
+                    fixture_chain.validate(
+                        "HERMETIC_FIXTURE_CHAIN_AFTER_DESTINATION_CREATE"
                     )
                     destination_fd = child_fd
+                fixture_chain.validate("HERMETIC_FIXTURE_CHAIN_BEFORE_COPY")
                 for name in sorted(packet):
                     write_exclusive_at(destination_fd, name, packet[name])
                     if (
@@ -1206,42 +1325,49 @@ def authenticated_hermetic_home(
                         != packet[name]
                     ):
                         raise Refusal("HERMETIC_PACKET_COPY_DRIFT:%s" % name)
-                assert_directory_fd_identity(
-                    destination_fd, destination, "HERMETIC_PACKET_DESTINATION"
-                )
-                parent_chain.validate("HERMETIC_FIXTURE_PARENT")
+                fixture_chain.validate("HERMETIC_FIXTURE_CHAIN_AFTER_COPY")
                 env = dict(
                     hermetic_environment(),
                     HOME=str(home),
                     GOVML_TEST_SOURCE_ROOT=str(roots["govML"]),
                 )
+                fixture_chain.validate("HERMETIC_FIXTURE_CHAIN_BEFORE_AUTH")
                 authority = authenticate_fixture_packet(
                     pytest_python, destination, roots, env
                 )
-                assert_directory_fd_identity(
-                    destination_fd, destination, "HERMETIC_PACKET_DESTINATION"
-                )
-                parent_chain.validate("HERMETIC_FIXTURE_PARENT")
+                fixture_chain.validate("HERMETIC_FIXTURE_CHAIN_AFTER_AUTH")
                 authority["fixture_only"] = True
+                fixture_chain.validate("HERMETIC_FIXTURE_CHAIN_BEFORE_YIELD")
                 yield {
                     "root": fixture_root,
                     "home": home,
                     "env": env,
                     "packet_authority": authority,
                 }
+                fixture_chain.validate("HERMETIC_FIXTURE_CHAIN_AFTER_YIELD")
             except OSError as exc:
                 raise Refusal(
                     "HERMETIC_FIXTURE_BUILD_REFUSED:%s" % type(exc).__name__
                 )
         finally:
-            for descriptor in reversed(opened_fds):
-                os.close(descriptor)
+            active_failure = sys.exc_info()[0] is not None
+            cleanup_identity_failure = None
+            if fixture_chain is not None:
+                try:
+                    fixture_chain.validate("HERMETIC_FIXTURE_CHAIN_BEFORE_CLEANUP")
+                except Refusal as exc:
+                    cleanup_identity_failure = exc
             try:
-                shutil.rmtree(fixture_name, dir_fd=parent_fd)
-            except OSError as exc:
-                raise Refusal(
-                    "HERMETIC_FIXTURE_CLEANUP_REFUSED:%s" % type(exc).__name__
+                if fixture_root_identity is None:
+                    raise Refusal("HERMETIC_FIXTURE_CLEANUP_IDENTITY_ABSENT")
+                remove_bound_directory_at(
+                    parent_fd, fixture_name, fixture_fd, fixture_root_identity
                 )
+            finally:
+                for descriptor in reversed(opened_fds):
+                    os.close(descriptor)
+            if cleanup_identity_failure is not None and not active_failure:
+                raise cleanup_identity_failure
 
 
 def audited_pytest(pytest_python, row, root, fixture):
