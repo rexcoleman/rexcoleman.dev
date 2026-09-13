@@ -279,9 +279,35 @@ def _candidate_roots() -> dict[str, Path]:
     }
     if any(not os.environ.get(variable) for variable in names.values()):
         pytest.skip("exact S131 five-root integration environment not supplied")
-    roots = {name: Path(os.environ[variable]).resolve()
-             for name, variable in names.items()}
-    assert len(roots) == 5 and all(root.is_dir() for root in roots.values())
+    roots = {}
+    for name, variable in names.items():
+        lexical = Path(os.environ[variable])
+        assert lexical.is_absolute()
+        assert lexical.is_dir() and not lexical.is_symlink()
+        root = lexical.resolve(strict=True)
+        assert root == lexical
+        status = subprocess.run(
+            [
+                "/usr/bin/git", "-c", "core.fsmonitor=false",
+                "-c", "core.hooksPath=/dev/null", "-C", str(root),
+                "status", "--porcelain=v1", "--untracked-files=all",
+            ],
+            check=True,
+            capture_output=True,
+            env={
+                "PATH": "/usr/bin:/bin",
+                "HOME": "/nonexistent/s131-five-root",
+                "GIT_CONFIG_NOSYSTEM": "1",
+                "GIT_CONFIG_GLOBAL": "/dev/null",
+                "GIT_CONFIG_SYSTEM": "/dev/null",
+                "GIT_TERMINAL_PROMPT": "0",
+                "LC_ALL": "C",
+                "LANG": "C",
+            },
+        )
+        assert status.stdout == b"", (name, status.stdout)
+        roots[name] = root
+    assert len(roots) == 5
     return roots
 
 
@@ -298,7 +324,8 @@ def _materialize_candidate_subjects(
 ) -> dict[str, Path]:
     tmp_path.mkdir(parents=True)
     roots = {}
-    for repository, specs in builder.MEMBERS.items():
+    current = contract.final_runtime_rollout_successor_members()
+    for repository, specs in contract.group_member_contract(current).items():
         root = tmp_path / repository
         root.mkdir()
         subprocess.run(["git", "-C", str(root), "init", "-q"], check=True)
@@ -337,7 +364,7 @@ def _materialize_candidate_subjects(
                 destination.chmod(0o755)
         _commit(root, "exact candidate subjects")
         roots[repository] = root
-    assert set(roots) == set(contract.grouped_members())
+    assert set(roots) == set(contract.group_member_contract(current))
     return roots
 
 
@@ -354,11 +381,15 @@ def _ruleset(path: Path) -> None:
     }), encoding="utf-8")
 
 
-def _run_five_root_builder(monkeypatch, roots, ruleset, output):
+def _run_five_root_builder(
+    monkeypatch, roots, ruleset, output, *, terminal=True,
+):
     arguments = [
         "build_frozen_manifest.py", "--output", str(output),
         "--ruleset-json", str(ruleset),
     ]
+    if terminal:
+        arguments.append("--final-runtime-rollout-successor")
     for repository in builder.MEMBERS:
         slug = repository.lower().replace("_", "-").replace(".", "-")
         arguments.extend(["--root-" + slug, str(roots[repository])])
@@ -377,26 +408,41 @@ def test_exact_five_candidate_roots_close_installed_runtime_population(
     _ruleset(ruleset)
     monkeypatch.setattr(builder, "verify_remote_reachability", lambda *_: None)
 
+    old_flag = tmp_path / "old-flag" / contract.GENERATION_MANIFEST_NAME
+    old_flag.parent.mkdir()
+    with pytest.raises(ValueError, match="generation-4 manifest path must end"):
+        _run_five_root_builder(
+            monkeypatch, roots, ruleset, old_flag, terminal=False,
+        )
+    assert not old_flag.exists()
+
     honest = tmp_path / "honest" / contract.GENERATION_MANIFEST_NAME
     honest.parent.mkdir()
     assert _run_five_root_builder(monkeypatch, roots, ruleset, honest) == 0
-    assert len(json.loads(honest.read_bytes())["members"]) == 244
+    current = contract.final_runtime_rollout_successor_members()
+    assert len(json.loads(honest.read_bytes())["members"]) == len(current) == 291
 
     destination, subjects = next(iter(
         contract.EXPECTED_EMITTER_RUNTIME_INSTALLATIONS.items()
     ))
     removed_subject = tuple(subjects["installed"])
-    reduced = dict(builder.EXPECTED_MEMBERS)
+    reduced = dict(current)
     removed_id = next(member_id for member_id, subject in reduced.items()
                       if subject == removed_subject)
     del reduced[removed_id]
-    monkeypatch.setattr(builder, "EXPECTED_MEMBERS", reduced)
-    with pytest.raises(ValueError, match="unsigned installed runtime path"):
+    monkeypatch.setattr(
+        builder, "final_runtime_rollout_successor_members", lambda: reduced,
+    )
+    with pytest.raises(ValueError, match="final runtime rollout member set refused"):
         _run_five_root_builder(
             monkeypatch, roots, ruleset,
             tmp_path / "unsigned" / contract.GENERATION_MANIFEST_NAME,
         )
-    monkeypatch.setattr(builder, "EXPECTED_MEMBERS", contract.EXPECTED_MEMBERS)
+    monkeypatch.setattr(
+        builder,
+        "final_runtime_rollout_successor_members",
+        contract.final_runtime_rollout_successor_members,
+    )
 
     govml = roots["govML"]
     installed_path = govml / removed_subject[1]

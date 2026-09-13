@@ -310,6 +310,14 @@ population-next adapters select `--final-runtime-rollout-successor`, compile the
 new entrypoint, and run its focused packet, strict-subset, old/mixed closure,
 transitive-pin, exchange, recovery, and live-fence tests.
 
+The primary adapter also runs the S131 five-root builder case. The convergence
+engine supplies its five already-authenticated source roots through the closed
+child environment; the case derives and materializes the terminal contract,
+requires the final-runtime successor selector to produce all 291 members, and
+plants the historical no-selector invocation as a pre-output refusal. The
+adapter's structural zero-skip rule makes absence of any root a refusal rather
+than an accepted integration skip.
+
 Only the primary REA population-next adapter declares the optional
 `authenticated-public-packet-home` hermetic fixture. After the roots phase it
 remeasures every authenticated source root, copies the exact eleven public

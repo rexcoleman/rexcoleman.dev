@@ -305,6 +305,13 @@ the immutable population-290 contract because the only added signed subject is
 `final-runtime-rollout` at
 `research_enforcement_activation/scripts/s231_final_runtime_rollout.py`.
 
+The primary population adapter additionally registers the runnable S131
+five-root manifest-builder case. `signed_release_convergence.py` passes the five
+already-authenticated roots through its closed hermetic environment, and the
+test requires both terminal-successor acceptance and historical-selector
+refusal. Missing root bindings cannot degrade to an accepted skip because the
+adapter enforces a structurally zero-skip JUnit result.
+
 The REA operator procedure is
 `research_enforcement_activation/docs/s231_final_runtime_rollout.md`.  Before
 freeze, only its packet-shaped fixture contract runs.  After issuance, the exact

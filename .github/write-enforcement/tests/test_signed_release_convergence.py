@@ -99,6 +99,25 @@ def roots(tmp_path):
     }
 
 
+def test_hermetic_source_root_environment_requires_exact_five_roots(tmp_path):
+    mapping = roots(tmp_path)
+    assert tool.hermetic_source_root_environment(mapping) == {
+        "S131_ROOT_REA": str(mapping["research_enforcement_activation"]),
+        "S131_ROOT_GOVML": str(mapping["govML"]),
+        "S131_ROOT_MOONSHOTS": str(mapping["Moonshots_Career_Thesis_v2"]),
+        "S131_ROOT_NEWSLETTER": str(mapping["newsletter"]),
+        "S131_ROOT_REX": str(mapping["rexcoleman.dev"]),
+        "GOVML_TEST_SOURCE_ROOT": str(mapping["govML"]),
+    }
+    missing = dict(mapping)
+    missing.pop("newsletter")
+    with pytest.raises(tool.Refusal, match="HERMETIC_SOURCE_ROOT_SET_REFUSED"):
+        tool.hermetic_source_root_environment(missing)
+    extra = dict(mapping, planted=tmp_path / "planted")
+    with pytest.raises(tool.Refusal, match="HERMETIC_SOURCE_ROOT_SET_REFUSED"):
+        tool.hermetic_source_root_environment(extra)
+
+
 def fixture_adapter():
     return tool.load_adapter(FINAL_RUNTIME_ADAPTERS[0])
 
@@ -2432,6 +2451,7 @@ def test_final_runtime_rollout_adapters_derive_population_and_preserve_290():
     tests = {path for row in authority["hermetic_tests"] for path in row["paths"]}
     sources = {path for row in authority["system_python_sources"] for path in row["paths"]}
     assert "tests/test_s231_final_runtime_rollout.py" in tests
+    assert ".github/write-enforcement/tests/test_s131_convergence.py" in tests
     assert "scripts/s231_final_runtime_rollout.py" in sources
     for old, new in zip(DURABLE_ADAPTERS, FINAL_RUNTIME_ADAPTERS):
         prior = tool.load_adapter(old)
@@ -2451,6 +2471,9 @@ def test_hermetic_cross_repository_fixture_uses_configured_root(tmp_path, monkey
     target=mapping['Moonshots_Career_Thesis_v2']/'tests/test_fixture.py'
     target.parent.mkdir(parents=True);target.write_text('def test_fixture(): pass\n')
     monkeypatch.setenv('GOVML_TEST_SOURCE_ROOT','/planted/ambient/wrong-source')
+    for variable in ('S131_ROOT_REA', 'S131_ROOT_GOVML', 'S131_ROOT_MOONSHOTS',
+                     'S131_ROOT_NEWSLETTER', 'S131_ROOT_REX'):
+        monkeypatch.setenv(variable, '/planted/ambient/wrong-source')
     monkeypatch.setenv('GH_TOKEN','fixture-must-not-forward')
     monkeypatch.setattr(tool,'pytest_interpreter',lambda:'/usr/bin/python3')
     calls=[]
@@ -2460,5 +2483,7 @@ def test_hermetic_cross_repository_fixture_uses_configured_root(tmp_path, monkey
     monkeypatch.setattr(tool,'run',capture)
     tool.hermetic_snapshot(adapter,mapping)
     assert len(calls)==1
-    assert calls[0][1]['env']==dict(tool.hermetic_environment(),GOVML_TEST_SOURCE_ROOT=str(mapping['govML']))
+    assert calls[0][1]['env']==dict(
+        tool.hermetic_environment(), **tool.hermetic_source_root_environment(mapping)
+    )
     assert calls[0][1]['cwd']==mapping['Moonshots_Career_Thesis_v2']
