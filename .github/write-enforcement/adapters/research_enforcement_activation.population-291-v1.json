@@ -23,6 +23,7 @@
         ".github/write-enforcement/tests/test_credential_custody.py",
         ".github/write-enforcement/tests/test_generation2_bundle.py",
         ".github/write-enforcement/tests/test_independent_review.py",
+        ".github/write-enforcement/tests/test_s131_convergence.py",
         ".github/write-enforcement/tests/test_member_contract.py",
         ".github/write-enforcement/tests/test_renewal_workflow.py",
         ".github/write-enforcement/tests/test_s169_hosted_external_judge_principal.py",

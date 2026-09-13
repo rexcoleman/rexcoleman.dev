@@ -723,6 +723,24 @@ def hermetic_environment():
     }
 
 
+def hermetic_source_root_environment(roots):
+    names = {
+        "research_enforcement_activation": "S131_ROOT_REA",
+        "govML": "S131_ROOT_GOVML",
+        "Moonshots_Career_Thesis_v2": "S131_ROOT_MOONSHOTS",
+        "newsletter": "S131_ROOT_NEWSLETTER",
+        "rexcoleman.dev": "S131_ROOT_REX",
+    }
+    if set(roots) != set(names):
+        raise Refusal("HERMETIC_SOURCE_ROOT_SET_REFUSED")
+    result = {
+        variable: str(roots[repository])
+        for repository, variable in names.items()
+    }
+    result["GOVML_TEST_SOURCE_ROOT"] = str(roots["govML"])
+    return result
+
+
 def authenticated_builder_environment():
     """Add only a transient GitHub read token to the minimal build child."""
     token = run(["gh", "auth", "token", "--hostname", "github.com"], timeout=30)
@@ -1329,7 +1347,7 @@ def authenticated_hermetic_home(
                 env = dict(
                     hermetic_environment(),
                     HOME=str(home),
-                    GOVML_TEST_SOURCE_ROOT=str(roots["govML"]),
+                    **hermetic_source_root_environment(roots),
                 )
                 fixture_chain.validate("HERMETIC_FIXTURE_CHAIN_BEFORE_AUTH")
                 authority = authenticate_fixture_packet(
@@ -1463,7 +1481,7 @@ def hermetic_snapshot(adapter, roots, authenticated_rows=None):
         if fixture_policy is not None
         else contextlib.nullcontext(
             {
-                "env": dict(env, GOVML_TEST_SOURCE_ROOT=str(roots["govML"])),
+                "env": dict(env, **hermetic_source_root_environment(roots)),
                 "packet_authority": None,
             }
         )
