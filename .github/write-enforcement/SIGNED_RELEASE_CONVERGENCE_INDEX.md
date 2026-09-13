@@ -295,3 +295,32 @@ A new adapter does not enroll, approve or mutate any dependent. Future enrolled
 repository discovery remains independently revalidated and cannot grant authority.
 See [DURABLE_ATTESTATION_HISTORY.md](DURABLE_ATTESTATION_HISTORY.md) for initial
 backfill ordering and what the source tests do not prove.
+
+## s231 authenticated-packet rollout successor
+
+Six population-next rows preserve the established REA, AML, ABL, NHP, NGA and
+RER routes while selecting `--final-runtime-rollout-successor`.  Their count is
+the size of `final_runtime_rollout_successor_members()` and is one greater than
+the immutable population-290 contract because the only added signed subject is
+`final-runtime-rollout` at
+`research_enforcement_activation/scripts/s231_final_runtime_rollout.py`.
+
+The REA operator procedure is
+`research_enforcement_activation/docs/s231_final_runtime_rollout.md`.  Before
+freeze, only its packet-shaped fixture contract runs.  After issuance, the exact
+authenticated packet is validated into a closed execution record; the same
+packet must pass unchanged and refuse a planted mixed closure before runtime
+mutation.  The execution record binds commits, manifest/WEA digests, issuer
+run/attempt, protected tag, epoch, all members, transitive runtime relationships,
+and poststate expectations.  It is not signing, issuance, installation, or live
+health evidence.
+
+The rex identity remains the canonical two-commit freeze: signed members name
+source commit R; the reviewed manifest/pre-commit-boundary feature commit F is
+the protected tag and receipt target; fetched default M is F's tree-identical
+merge.  The rollout validator records all three and refuses a signed-member
+change in either interval, a malformed boundary receipt, or a tag not derived
+from F.
+
+The static propagation source names the five population-next dependent adapters.
+Every population-290 row remains registered and unchanged for historical audit.

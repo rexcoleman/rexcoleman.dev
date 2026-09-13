@@ -1365,3 +1365,29 @@ def test_durable_history_population_is_closed_and_preserves_historical_sets():
     with pytest.raises(ValueError,match='member set refused'):validate_durable_history_member_ids({marker})
     validate_durable_history_member_ids(current)
     assert production_members_for_manifest({'authority_generation':5,'members':[{'member_id':k} for k in historic]})==historic
+
+
+def test_final_runtime_rollout_population_is_distinct_closed_successor():
+    from member_contract import (
+        FINAL_RUNTIME_ROLLOUT_ADDITIONAL_MEMBERS,
+        durable_history_successor_members,
+        final_runtime_rollout_successor_members,
+        production_members_for_manifest,
+        validate_final_runtime_rollout_member_ids,
+    )
+    historic = durable_history_successor_members()
+    successor = final_runtime_rollout_successor_members()
+    assert len(successor) == len(historic) + 1
+    assert set(successor) == set(historic) | set(FINAL_RUNTIME_ROLLOUT_ADDITIONAL_MEMBERS)
+    assert successor["final-runtime-rollout"] == (
+        "research_enforcement_activation", "scripts/s231_final_runtime_rollout.py"
+    )
+    manifest = {
+        "authority_generation": 5,
+        "members": [{"member_id": key} for key in successor],
+    }
+    assert production_members_for_manifest(manifest) == successor
+    validate_final_runtime_rollout_member_ids(successor)
+    import pytest
+    with pytest.raises(ValueError, match="member set refused"):
+        validate_final_runtime_rollout_member_ids(historic)
