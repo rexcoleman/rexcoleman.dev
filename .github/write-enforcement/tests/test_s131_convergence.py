@@ -91,8 +91,18 @@ def test_member_population_is_complete_and_two_method_count():
         "govML", "templates/build/enforcement/artifact_integrity_production_authorities.json"
     )
     independent = load("independent_review")
+    terminal_selector = independent._terminal_successor_selector()
+    assert terminal_selector == "final_runtime_rollout_successor_members"
+    terminal = contract.final_runtime_rollout_successor_members()
+    assert len(terminal) == 291
+    assert set(successor) < set(terminal)
+    assert terminal["final-runtime-rollout"] == (
+        "research_enforcement_activation",
+        "scripts/s231_final_runtime_rollout.py",
+    )
+    assert independent.structural_members(terminal_selector) == terminal
     independently_parsed = independent.expected_members()
-    assert independently_parsed == successor
+    assert independently_parsed == terminal
 
 
 def test_authenticated_immediate_predecessor_derives_epoch(tmp_path, monkeypatch):
