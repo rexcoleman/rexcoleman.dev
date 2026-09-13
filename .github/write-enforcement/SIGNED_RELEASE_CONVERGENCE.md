@@ -363,6 +363,12 @@ predeclared canonical two-file digest and exact manifest SHA remain independent
 inputs; missing, extra, duplicate, reordered, stale-parent, or altered receipt
 states refuse.
 
+The reviewer also binds the live main ruleset's exact four-rule population.
+`required_status_checks` must be unique and strict, must not allow enforcement
+bypass on branch creation, and must name exactly `artifact-integrity-exact-commit`
+and `pre-commit-boundary-asserted`; any missing, extra, duplicate, or wrong
+context refuses.
+
 Retired historical REA population rows retain exact ID/path validation but do
 not participate in active selection. Retiring the terminal row while leaving
 only a lower active population still refuses at the terminal-selector check.

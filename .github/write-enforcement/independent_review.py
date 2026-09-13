@@ -22,6 +22,16 @@ ALLOWED_REPOSITORIES = {
     "rexcoleman/rexcoleman.dev": "main",
 }
 SITE_RULESET_ID = 19768000
+SITE_RULE_TYPES = [
+    "deletion",
+    "non_fast_forward",
+    "pull_request",
+    "required_status_checks",
+]
+SITE_REQUIRED_STATUS_CONTEXTS = [
+    "artifact-integrity-exact-commit",
+    "pre-commit-boundary-asserted",
+]
 SITE_MANIFEST = ".github/write-enforcement/frozen_bundle_manifest.generation-5.json"
 PRE_COMMIT_RECEIPT = ".governance/pre_commit_boundary.json"
 SITE_REVIEW_FILES = [SITE_MANIFEST, PRE_COMMIT_RECEIPT]
@@ -651,10 +661,16 @@ def ruleset_state(token: str, repo: str) -> dict:
     ref_name = detail.get("conditions", {}).get("ref_name", {})
     if ref_name != {"exclude": [], "include": [expected_ref]}:
         raise Refusal("branch ruleset target differs")
-    rule_types = sorted(rule.get("type") for rule in detail.get("rules", []))
-    if rule_types != ["deletion", "non_fast_forward", "pull_request"]:
+    rules = detail.get("rules", [])
+    rule_types = sorted(rule.get("type") for rule in rules)
+    expected_rule_types = (
+        SITE_RULE_TYPES
+        if repo == "rexcoleman/rexcoleman.dev"
+        else ["deletion", "non_fast_forward", "pull_request"]
+    )
+    if rule_types != expected_rule_types:
         raise Refusal("branch ruleset rule population differs")
-    pull_rules = [rule for rule in detail["rules"] if rule["type"] == "pull_request"]
+    pull_rules = [rule for rule in rules if rule["type"] == "pull_request"]
     if len(pull_rules) != 1:
         raise Refusal("ruleset does not contain exactly one pull-request rule")
     params = pull_rules[0]["parameters"]
@@ -664,7 +680,7 @@ def ruleset_state(token: str, repo: str) -> dict:
         raise Refusal("ruleset does not dismiss stale reviews")
     if not params["required_review_thread_resolution"]:
         raise Refusal("ruleset does not require conversation resolution")
-    return {
+    result = {
         "status": "ACTIVE",
         "id": detail["id"],
         "name": detail["name"],
@@ -675,6 +691,40 @@ def ruleset_state(token: str, repo: str) -> dict:
         "target": expected_ref,
         "rule_types": rule_types,
     }
+    if repo == "rexcoleman/rexcoleman.dev":
+        status_rules = [
+            rule for rule in rules if rule["type"] == "required_status_checks"
+        ]
+        if len(status_rules) != 1:
+            raise Refusal(
+                "site ruleset does not contain exactly one required-status-check rule"
+            )
+        status_params = status_rules[0].get("parameters")
+        if not isinstance(status_params, dict):
+            raise Refusal("site required-status-check parameters are malformed")
+        if status_params.get("strict_required_status_checks_policy") is not True:
+            raise Refusal("site required status checks are not strict")
+        if status_params.get("do_not_enforce_on_create") is not False:
+            raise Refusal("site required status checks permit create bypass")
+        checks = status_params.get("required_status_checks")
+        if not isinstance(checks, list) or any(
+            not isinstance(item, dict)
+            or set(item) != {"context"}
+            or not isinstance(item["context"], str)
+            for item in checks
+        ):
+            raise Refusal("site required status check contexts are malformed")
+        contexts = sorted(item["context"] for item in checks)
+        if contexts != SITE_REQUIRED_STATUS_CONTEXTS:
+            raise Refusal("site required status check contexts differ")
+        result.update(
+            {
+                "strict_required_status_checks_policy": True,
+                "do_not_enforce_on_create": False,
+                "required_status_check_contexts": contexts,
+            }
+        )
+    return result
 
 
 def read_state(token: str, args: argparse.Namespace) -> dict:
@@ -806,8 +856,20 @@ def assert_policy(state: dict, args: argparse.Namespace) -> None:
             "deletion",
             "non_fast_forward",
             "pull_request",
+            "required_status_checks",
         ]:
             raise Refusal("site ruleset rule population differs")
+        if (
+            state["ruleset"].get("strict_required_status_checks_policy")
+            is not True
+        ):
+            raise Refusal("site required status checks are not strict")
+        if state["ruleset"].get("do_not_enforce_on_create") is not False:
+            raise Refusal("site required status checks permit create bypass")
+        if state["ruleset"].get("required_status_check_contexts") != (
+            SITE_REQUIRED_STATUS_CONTEXTS
+        ):
+            raise Refusal("site required status check contexts differ")
 
 
 def run(args: argparse.Namespace) -> int:
