@@ -318,9 +318,13 @@ disposable mode-0700 HOME beside the authenticated REA root, and authenticates
 the copied packet's signed manifest and immediate predecessor chain before
 running tests. The fixture is test input only, never release acceptance or a
 durable signed root. Its closed child environment excludes ambient credentials,
-and the fixture is removed after pass or refusal. The adapter refuses source
-or root drift, packet set/symlink/identity drift, an escaping or non-real
-fixture path, and any structurally reported pytest skip, xfail, or xpass.
+and the fixture is removed after pass or refusal. The fixture parent must pass
+both the closed scratch/session-path exclusions and the authenticated REA
+production ephemeral-root predicate. Directory descriptors and relative
+`openat`/`O_NOFOLLOW` reads bind the packet source across copy, so a renamed or
+symlink-swapped parent refuses. The adapter also refuses source or root drift,
+packet set/symlink/identity drift, an escaping or non-real fixture path, and any
+structurally reported pytest skip, xfail, or xpass.
 
 The entrypoint separates pre-freeze and post-issuance authority.  Pre-freeze
 packet-shaped fixtures establish only the generic contract.  After issuance it

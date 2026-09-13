@@ -1303,6 +1303,15 @@ def test_hermetic_fixture_contract_refuses_open_or_weakened_rows(tmp_path, plant
         tool.load_adapter(target)
 
 
+def test_hermetic_fixture_contract_refuses_explicit_null(tmp_path):
+    value = json.loads(FINAL_RUNTIME_ADAPTERS[0].read_bytes())
+    value["hermetic_fixture"] = None
+    target = tmp_path / "adapter.json"
+    target.write_text(json.dumps(value), encoding="utf-8")
+    with pytest.raises(tool.Refusal, match="HERMETIC_FIXTURE_FIELDS_REFUSED"):
+        tool.load_adapter(target)
+
+
 def _fixture_inputs(tmp_path, monkeypatch):
     adapter = fixture_adapter()
     mapping = roots(tmp_path / "durable")
@@ -1312,6 +1321,9 @@ def _fixture_inputs(tmp_path, monkeypatch):
     ambient.mkdir()
     make_public_packet(ambient)
     monkeypatch.setattr(tool, "git", fixture_git)
+    monkeypatch.setattr(
+        tool, "require_durable_fixture_parent", lambda *_args, **_kwargs: None
+    )
     authority = {
         "authority_epoch": 145,
         "manifest_digest": "b" * 64,
@@ -1363,6 +1375,7 @@ def test_authenticated_fixture_refuses_packet_set_drift_without_residue(
     adapter, mapping, rows, ambient, _authority = _fixture_inputs(
         tmp_path, monkeypatch
     )
+    parent = mapping["research_enforcement_activation"].parent
     packet = ambient / tool.PUBLIC_PACKET_RELATIVE
     if plant == "missing":
         (packet / "claim_registry.json").unlink()
@@ -1384,7 +1397,7 @@ def test_authenticated_fixture_refuses_symlinked_packet_member(tmp_path, monkeyp
     member = ambient / tool.PUBLIC_PACKET_RELATIVE / "claim_registry.json"
     member.unlink()
     member.symlink_to(ambient / tool.PUBLIC_PACKET_RELATIVE / "claim_policy.json")
-    with pytest.raises(tool.Refusal, match="NONREGULAR_FILE"):
+    with pytest.raises(tool.Refusal, match="HERMETIC_PACKET_MEMBER_NONREGULAR"):
         with tool.authenticated_hermetic_home(
             adapter, mapping, rows, sys.executable, ambient_home=ambient
         ):
@@ -1432,6 +1445,44 @@ def test_authenticated_fixture_refuses_root_drift_before_packet_execution(
         ):
             pass
     assert executed == []
+
+
+def test_durable_fixture_parent_refuses_data_tmp_before_production_child(
+    tmp_path, monkeypatch
+):
+    executed = []
+    monkeypatch.setattr(tool, "run", lambda *_args, **_kwargs: executed.append(True))
+    with pytest.raises(
+        tool.Refusal, match="HERMETIC_FIXTURE_EPHEMERAL_PARENT_REFUSED"
+    ):
+        tool.require_durable_fixture_parent(
+            {"research_enforcement_activation": tmp_path}, Path("/data/tmp/fixture")
+        )
+    assert executed == []
+
+
+def test_durable_fixture_parent_requires_exact_production_allow(tmp_path, monkeypatch):
+    script = tmp_path / "scripts" / "s145_renewal_cron.sh"
+    script.parent.mkdir()
+    script.write_text("#!/bin/sh\n", encoding="ascii")
+    observed = []
+
+    def planted_run(argv, **kwargs):
+        observed.append((argv, kwargs))
+        return type("Completed", (), {"stdout": "REFUSE\n", "stderr": ""})()
+
+    monkeypatch.setattr(tool, "run", planted_run)
+    with pytest.raises(
+        tool.Refusal, match="HERMETIC_FIXTURE_PRODUCTION_PREDICATE_REFUSED"
+    ):
+        tool.require_durable_fixture_parent(
+            {"research_enforcement_activation": tmp_path}, Path("/srv/durable/rea")
+        )
+    assert observed[0][0] == [
+        str(script),
+        "--test-ephemeral-predicate",
+        "/srv/durable/rea",
+    ]
 
 
 def test_hermetic_phase_refuses_root_drift_before_candidate_compile(
@@ -1516,8 +1567,9 @@ def test_authenticated_fixture_refuses_unwritable_and_escaping_parent(
     adapter, mapping, rows, ambient, _authority = _fixture_inputs(
         tmp_path, monkeypatch
     )
+    parent = mapping["research_enforcement_activation"].parent
 
-    def unwritable(**_kwargs):
+    def unwritable(*_args, **_kwargs):
         raise OSError("planted unwritable")
 
     with pytest.raises(tool.Refusal, match="HERMETIC_FIXTURE_UNWRITABLE"):
@@ -1527,11 +1579,10 @@ def test_authenticated_fixture_refuses_unwritable_and_escaping_parent(
             rows,
             sys.executable,
             ambient_home=ambient,
-            mkdtemp=unwritable,
+            mkdir_at=unwritable,
         ):
             pass
-    escaped = tmp_path / "escaped"
-    escaped.mkdir()
+    assert not list(parent.glob(".rea-release-hermetic-*"))
     with pytest.raises(tool.Refusal, match="HERMETIC_FIXTURE_ESCAPE_REFUSED"):
         with tool.authenticated_hermetic_home(
             adapter,
@@ -1539,9 +1590,50 @@ def test_authenticated_fixture_refuses_unwritable_and_escaping_parent(
             rows,
             sys.executable,
             ambient_home=ambient,
-            mkdtemp=lambda **_kwargs: str(escaped),
+            fixture_name_factory=lambda: "../escaped",
         ):
             pass
+    assert not list(parent.glob(".rea-release-hermetic-*"))
+
+
+def test_authenticated_fixture_refuses_source_parent_swap_without_copy_or_residue(
+    tmp_path, monkeypatch
+):
+    adapter, mapping, rows, ambient, _authority = _fixture_inputs(
+        tmp_path, monkeypatch
+    )
+    source = ambient / tool.PUBLIC_PACKET_RELATIVE
+    original_parent = source.parent
+    held_parent = original_parent.with_name("held-rea-enforcement")
+    alternate_parent = tmp_path / "alternate-parent"
+    alternate = alternate_parent / source.name
+    alternate.mkdir(parents=True)
+    for name in tool.PUBLIC_PACKET_FILES:
+        (alternate / name).write_bytes(("alternate-" + name + "\n").encode("ascii"))
+    authenticated = []
+    monkeypatch.setattr(
+        tool,
+        "authenticate_fixture_packet",
+        lambda *_args, **_kwargs: authenticated.append(True),
+    )
+
+    def swap_parent():
+        original_parent.rename(held_parent)
+        original_parent.symlink_to(alternate_parent, target_is_directory=True)
+
+    fixture_parent = mapping["research_enforcement_activation"].parent
+    with pytest.raises(tool.Refusal, match="HERMETIC_PACKET_SOURCE_DRIFT"):
+        with tool.authenticated_hermetic_home(
+            adapter,
+            mapping,
+            rows,
+            sys.executable,
+            ambient_home=ambient,
+            source_opened=swap_parent,
+        ):
+            pass
+    assert authenticated == []
+    assert not list(fixture_parent.glob(".rea-release-hermetic-*"))
 
 
 def test_authenticated_fixture_cleans_after_packet_auth_refusal(tmp_path, monkeypatch):
