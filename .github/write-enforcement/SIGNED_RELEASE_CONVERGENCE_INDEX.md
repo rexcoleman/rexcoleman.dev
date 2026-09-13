@@ -315,6 +315,14 @@ run/attempt, protected tag, epoch, all members, transitive runtime relationships
 and poststate expectations.  It is not signing, issuance, installation, or live
 health evidence.
 
+The REA row alone also opts into the closed disposable-durable fixture contract.
+It revalidates the five roots from the roots-phase receipt, authenticates the
+exact public packet and immediate predecessor in a fresh credential-free HOME,
+then requires JUnit and the pytest outcome plugin both to report zero skipped,
+xfailed, or xpassed cases. The packet copy is explicitly fixture-only and is
+deleted on success or refusal; dependent population-next adapters retain their
+prior behavior because the field is optional and absent from their rows.
+
 The rex identity remains the canonical two-commit freeze: signed members name
 source commit R; the reviewed manifest/pre-commit-boundary feature commit F is
 the protected tag and receipt target; fetched default M is F's tree-identical

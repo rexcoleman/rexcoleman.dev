@@ -11,6 +11,7 @@ writes a project checkout.
 from __future__ import annotations
 
 import argparse
+import contextlib
 import hashlib
 import json
 import os
@@ -20,6 +21,7 @@ import stat
 import subprocess
 import sys
 import tempfile
+import xml.etree.ElementTree as ET
 from pathlib import Path
 
 
@@ -44,6 +46,26 @@ HEX40 = re.compile(r"[0-9a-f]{40}\Z")
 HEX64 = re.compile(r"[0-9a-f]{64}\Z")
 LOGICAL = re.compile(r"[A-Za-z0-9_.-]+\Z")
 DEFAULT_INDEX = Path(__file__).with_name("signed_release_convergence_index.json")
+HERMETIC_FIXTURE_SCHEMA = "rea.signed-release-convergence-hermetic-fixture.v1"
+PUBLIC_PACKET_RELATIVE = Path(".local/state/rea_enforcement/remote_wea")
+PUBLIC_PACKET_FILES = frozenset(
+    {
+        "SHA256SUMS",
+        "claim_policy.json",
+        "claim_registry.json",
+        "enforcement_bundle_manifest.json",
+        "hybrid_capability_authority.json",
+        "hybrid_capability_provider",
+        "issuance_receipt.json",
+        "predecessor_write_enforcement_attestation.json",
+        "runtime_mount.py",
+        "trusted_wea_public.pem",
+        "write_enforcement_attestation.json",
+    }
+)
+CREDENTIAL_SHAPED_PARTS = frozenset(
+    {".aws", ".config", ".gnupg", ".ssh", "credentials", "private", "secrets"}
+)
 
 
 class Refusal(RuntimeError):
@@ -197,6 +219,8 @@ def load_adapter(path: Path):
         "system_python_sources",
         "boundaries",
     }
+    if "hermetic_fixture" in value:
+        required.add("hermetic_fixture")
     if value.get("schema_version") == DEPENDENT_ADAPTER_SCHEMA:
         required.add("dependent_project")
     closed_dict(value, required, "ADAPTER")
@@ -313,6 +337,26 @@ def load_adapter(path: Path):
     }
     if boundaries != expected_boundaries:
         raise Refusal("BOUNDARIES_REFUSED")
+    fixture = value.get("hermetic_fixture")
+    if fixture is not None:
+        closed_dict(
+            fixture,
+            {
+                "schema_version",
+                "kind",
+                "durable_root_repository",
+                "require_zero_skips",
+            },
+            "HERMETIC_FIXTURE",
+        )
+        if (
+            fixture["schema_version"] != HERMETIC_FIXTURE_SCHEMA
+            or fixture["kind"] != "authenticated-public-packet-home"
+            or fixture["durable_root_repository"]
+            != "research_enforcement_activation"
+            or fixture["require_zero_skips"] is not True
+        ):
+            raise Refusal("HERMETIC_FIXTURE_CONTRACT_REFUSED")
     if value["schema_version"] == DEPENDENT_ADAPTER_SCHEMA:
         dependent = value["dependent_project"]
         closed_dict(
@@ -705,10 +749,349 @@ def pytest_interpreter():
     return str(resolved)
 
 
-def hermetic_snapshot(adapter, roots):
+def real_directory(path: Path, subject: str) -> Path:
+    path = Path(path)
+    if not path.is_absolute():
+        raise Refusal("%s_NOT_ABSOLUTE:%s" % (subject, path))
+    cursor = Path(path.anchor)
+    try:
+        for part in path.parts[1:]:
+            cursor /= part
+            info = cursor.lstat()
+            if stat.S_ISLNK(info.st_mode) or not stat.S_ISDIR(info.st_mode):
+                raise Refusal("%s_NONREAL_DIRECTORY:%s" % (subject, cursor))
+    except OSError as exc:
+        raise Refusal(
+            "%s_DIRECTORY_REFUSED:%s:%s" % (subject, path, type(exc).__name__)
+        )
+    if path.resolve() != path:
+        raise Refusal("%s_REALPATH_REFUSED:%s" % (subject, path))
+    return path
+
+
+def revalidate_authenticated_roots(adapter, roots, authenticated_rows):
+    if not isinstance(authenticated_rows, list):
+        raise Refusal("HERMETIC_ROOT_AUTHORITY_ABSENT")
+    expected = {row["logical_name"] for row in adapter["repositories"]}
+    by_name = {}
+    for row in authenticated_rows:
+        closed_dict(
+            row,
+            {"logical_name", "slug", "default_branch", "commit"},
+            "HERMETIC_ROOT_AUTHORITY_ROW",
+        )
+        logical = row["logical_name"]
+        if logical in by_name or logical not in expected or not HEX40.fullmatch(
+            row["commit"]
+        ):
+            raise Refusal("HERMETIC_ROOT_AUTHORITY_IDENTITY_REFUSED:%s" % logical)
+        by_name[logical] = row
+    if set(by_name) != expected:
+        raise Refusal("HERMETIC_ROOT_AUTHORITY_SET_REFUSED")
+    for repository in adapter["repositories"]:
+        logical = repository["logical_name"]
+        row = by_name[logical]
+        if (
+            row["slug"] != repository["slug"]
+            or row["default_branch"] != repository["default_branch"]
+        ):
+            raise Refusal("HERMETIC_ROOT_AUTHORITY_BINDING_REFUSED:%s" % logical)
+        root = real_directory(roots[logical], "HERMETIC_ROOT")
+        observed = git(root, "rev-parse", "HEAD")
+        if observed != row["commit"]:
+            raise Refusal(
+                "HERMETIC_ROOT_DRIFT:%s:expected=%s:observed=%s"
+                % (logical, row["commit"], observed)
+            )
+        if git(root, "status", "--porcelain=v1", "--untracked-files=all"):
+            raise Refusal("HERMETIC_ROOT_DIRTY:%s" % logical)
+
+
+def write_exclusive(path: Path, raw: bytes) -> None:
+    descriptor = None
+    try:
+        descriptor = os.open(
+            str(path),
+            os.O_WRONLY
+            | os.O_CREAT
+            | os.O_EXCL
+            | getattr(os, "O_CLOEXEC", 0)
+            | getattr(os, "O_NOFOLLOW", 0),
+            0o600,
+        )
+        with os.fdopen(descriptor, "wb") as handle:
+            descriptor = None
+            handle.write(raw)
+            handle.flush()
+            os.fsync(handle.fileno())
+    except OSError as exc:
+        raise Refusal("FIXTURE_WRITE_REFUSED:%s:%s" % (path, type(exc).__name__))
+    finally:
+        if descriptor is not None:
+            os.close(descriptor)
+
+
+PACKET_AUTH_PROGRAM = r'''import hashlib,json,sys
+from pathlib import Path
+from scripts import materialize_enforcement_workspace as materializer
+packet_root=Path(sys.argv[1])
+roots=dict(row.split("=",1) for row in sys.argv[2:])
+roots={key:Path(value) for key,value in roots.items()}
+snapshot=materializer.packet_snapshot(packet_root,"release-hermetic-fixture",allow_absent=False)
+packet=materializer.authenticate_packet(packet_root,"release-hermetic-fixture",snapshot,roots)
+predecessor=packet.members["predecessor_write_enforcement_attestation.json"]
+print(json.dumps({
+ "authority_epoch":packet.epoch,
+ "manifest_digest":packet.manifest_digest,
+ "packet_files":sorted(packet.members),
+ "predecessor_epoch":packet.status.get("predecessor_epoch"),
+ "predecessor_verified":packet.status.get("predecessor_verified"),
+ "predecessor_wea_digest":packet.status.get("predecessor_wea_digest"),
+ "predecessor_file_sha256":hashlib.sha256(predecessor).hexdigest(),
+ "verdict":packet.status.get("verdict"),
+ "wea_digest":packet.wea_digest,
+},sort_keys=True))
+'''
+
+
+PYTEST_AUDIT_PROGRAM = r'''import json,os,sys
+from pathlib import Path
+import pytest
+class Audit:
+ def __init__(self):
+  self.rows={"skipped":set(),"xfailed":set(),"xpassed":set()}
+ def pytest_terminal_summary(self,terminalreporter):
+  for outcome in self.rows:
+   for report in terminalreporter.stats.get(outcome,[]):
+    self.rows[outcome].add(report.nodeid)
+audit=Audit()
+report=Path(sys.argv[1])
+code=pytest.main(sys.argv[2:],plugins=[audit])
+payload={key:sorted(value) for key,value in audit.rows.items()}
+payload["exitstatus"]=int(code)
+fd=os.open(str(report),os.O_WRONLY|os.O_CREAT|os.O_EXCL,0o600)
+with os.fdopen(fd,"w",encoding="utf-8") as handle:
+ json.dump(payload,handle,sort_keys=True,separators=(",",":"))
+ handle.write("\n")
+raise SystemExit(code)
+'''
+
+
+def authenticate_fixture_packet(pytest_python, packet_root, roots, env):
+    root_args = ["%s=%s" % (name, roots[name]) for name in sorted(roots)]
+    completed = run(
+        [pytest_python, "-c", PACKET_AUTH_PROGRAM, str(packet_root)] + root_args,
+        cwd=roots["research_enforcement_activation"],
+        env=env,
+        timeout=300,
+    )
+    try:
+        value = json.loads(completed.stdout)
+    except ValueError:
+        raise Refusal("HERMETIC_PACKET_AUTH_OUTPUT_REFUSED")
+    closed_dict(
+        value,
+        {
+            "authority_epoch",
+            "manifest_digest",
+            "packet_files",
+            "predecessor_epoch",
+            "predecessor_verified",
+            "predecessor_wea_digest",
+            "predecessor_file_sha256",
+            "verdict",
+            "wea_digest",
+        },
+        "HERMETIC_PACKET_AUTH",
+    )
+    try:
+        manifest = json.loads(
+            regular_bytes(packet_root / "enforcement_bundle_manifest.json")
+        )
+    except ValueError:
+        raise Refusal("HERMETIC_PACKET_MANIFEST_JSON_REFUSED")
+    wea_raw = regular_bytes(packet_root / "write_enforcement_attestation.json")
+    predecessor_raw = regular_bytes(
+        packet_root / "predecessor_write_enforcement_attestation.json"
+    )
+    if (
+        not isinstance(value["authority_epoch"], int)
+        or isinstance(value["authority_epoch"], bool)
+        or value["verdict"] != "PASS"
+        or not isinstance(value["manifest_digest"], str)
+        or not HEX64.fullmatch(value["manifest_digest"] or "")
+        or not isinstance(value["wea_digest"], str)
+        or not HEX64.fullmatch(value["wea_digest"] or "")
+        or not isinstance(value["packet_files"], list)
+        or value["packet_files"] != sorted(PUBLIC_PACKET_FILES)
+        or value["manifest_digest"] != manifest.get("manifest_digest")
+        or value["wea_digest"] != sha256(wea_raw)
+        or value["predecessor_verified"] is not True
+        or not isinstance(value["predecessor_epoch"], int)
+        or isinstance(value["predecessor_epoch"], bool)
+        or value["predecessor_epoch"] != value["authority_epoch"] - 1
+        or not isinstance(value["predecessor_wea_digest"], str)
+        or not HEX64.fullmatch(value["predecessor_wea_digest"] or "")
+        or not isinstance(value["predecessor_file_sha256"], str)
+        or value["predecessor_wea_digest"] != sha256(predecessor_raw)
+        or value["predecessor_file_sha256"] != sha256(predecessor_raw)
+    ):
+        raise Refusal("HERMETIC_PACKET_AUTH_BINDING_REFUSED")
+    return value
+
+
+@contextlib.contextmanager
+def authenticated_hermetic_home(
+    adapter,
+    roots,
+    authenticated_rows,
+    pytest_python,
+    *,
+    ambient_home=None,
+    mkdtemp=tempfile.mkdtemp,
+):
+    revalidate_authenticated_roots(adapter, roots, authenticated_rows)
+    ambient = real_directory(
+        Path.home() if ambient_home is None else Path(ambient_home),
+        "HERMETIC_PACKET_HOME",
+    )
+    if CREDENTIAL_SHAPED_PARTS.intersection(PUBLIC_PACKET_RELATIVE.parts):
+        raise Refusal("HERMETIC_PACKET_CREDENTIAL_PATH_REFUSED")
+    source = real_directory(
+        ambient / PUBLIC_PACKET_RELATIVE, "HERMETIC_PACKET_SOURCE"
+    )
+    if CREDENTIAL_SHAPED_PARTS.intersection(source.parts):
+        raise Refusal("HERMETIC_PACKET_CREDENTIAL_PATH_REFUSED:%s" % source)
+    observed = {entry.name for entry in source.iterdir()}
+    if observed != PUBLIC_PACKET_FILES:
+        raise Refusal(
+            "HERMETIC_PACKET_SET_REFUSED:missing=%s:extra=%s"
+            % (
+                sorted(PUBLIC_PACKET_FILES - observed),
+                sorted(observed - PUBLIC_PACKET_FILES),
+            )
+        )
+    packet = {name: regular_bytes(source / name) for name in PUBLIC_PACKET_FILES}
+    parent = real_directory(
+        roots[adapter["hermetic_fixture"]["durable_root_repository"]].parent,
+        "HERMETIC_FIXTURE_PARENT",
+    )
+    raw_root = None
+    try:
+        try:
+            raw_root = mkdtemp(prefix=".rea-release-hermetic-", dir=str(parent))
+        except OSError as exc:
+            raise Refusal(
+                "HERMETIC_FIXTURE_UNWRITABLE:%s:%s"
+                % (parent, type(exc).__name__)
+            )
+        fixture_root = Path(raw_root)
+        if (
+            not fixture_root.is_absolute()
+            or fixture_root.parent != parent
+            or not fixture_root.name.startswith(".rea-release-hermetic-")
+        ):
+            raise Refusal("HERMETIC_FIXTURE_ESCAPE_REFUSED:%s" % fixture_root)
+        fixture_root = real_directory(fixture_root, "HERMETIC_FIXTURE_ROOT")
+        fixture_root.chmod(0o700)
+        home = fixture_root / "home"
+        home.mkdir(mode=0o700)
+        real_directory(home, "HERMETIC_FIXTURE_HOME")
+        destination = home
+        for part in PUBLIC_PACKET_RELATIVE.parts:
+            destination /= part
+            destination.mkdir(mode=0o700)
+            real_directory(destination, "HERMETIC_PACKET_DESTINATION")
+        for name in sorted(packet):
+            write_exclusive(destination / name, packet[name])
+            if regular_bytes(destination / name) != packet[name]:
+                raise Refusal("HERMETIC_PACKET_COPY_DRIFT:%s" % name)
+        env = dict(
+            hermetic_environment(),
+            HOME=str(home),
+            GOVML_TEST_SOURCE_ROOT=str(roots["govML"]),
+        )
+        authority = authenticate_fixture_packet(
+            pytest_python, destination, roots, env
+        )
+        authority["fixture_only"] = True
+        yield {
+            "root": fixture_root,
+            "home": home,
+            "env": env,
+            "packet_authority": authority,
+        }
+    finally:
+        if raw_root is not None:
+            candidate = Path(raw_root)
+            try:
+                if candidate.parent == parent and candidate.name.startswith(
+                    ".rea-release-hermetic-"
+                ):
+                    shutil.rmtree(candidate)
+            except OSError as exc:
+                raise Refusal(
+                    "HERMETIC_FIXTURE_CLEANUP_REFUSED:%s" % type(exc).__name__
+                )
+
+
+def audited_pytest(pytest_python, row, root, fixture):
+    audit_dir = fixture["root"] / "audit"
+    audit_dir.mkdir(mode=0o700, exist_ok=True)
+    report = audit_dir / (row["name"] + ".json")
+    junit = audit_dir / (row["name"] + ".xml")
+    wrapper = audit_dir / (row["name"] + ".py")
+    write_exclusive(wrapper, PYTEST_AUDIT_PROGRAM.encode("utf-8"))
+    completed = run(
+        [
+            pytest_python,
+            str(wrapper),
+            str(report),
+            "-q",
+            "-p",
+            "no:cacheprovider",
+            "--junitxml=%s" % junit,
+        ]
+        + row["paths"],
+        cwd=root,
+        env=fixture["env"],
+        timeout=1200,
+    )
+    try:
+        audit = json.loads(regular_bytes(report))
+        junit_root = ET.fromstring(regular_bytes(junit))
+    except (ValueError, ET.ParseError):
+        raise Refusal("HERMETIC_TEST_AUDIT_REFUSED:%s" % row["name"])
+    closed_dict(audit, {"exitstatus", "skipped", "xfailed", "xpassed"}, "PYTEST_AUDIT")
+    if audit["exitstatus"] != 0 or any(
+        not isinstance(audit[field], list)
+        for field in ("skipped", "xfailed", "xpassed")
+    ):
+        raise Refusal("HERMETIC_TEST_AUDIT_SHAPE_REFUSED:%s" % row["name"])
+    junit_skipped = list(junit_root.findall(".//testcase/skipped"))
+    if junit_skipped or any(audit[field] for field in ("skipped", "xfailed", "xpassed")):
+        raise Refusal(
+            "HERMETIC_TEST_NONEXECUTION_REFUSED:%s:skipped=%s:xfailed=%s:xpassed=%s"
+            % (
+                row["name"],
+                len(audit["skipped"]),
+                len(audit["xfailed"]),
+                len(audit["xpassed"]),
+            )
+        )
+    return completed, audit
+
+
+def hermetic_snapshot(adapter, roots, authenticated_rows=None):
     env = hermetic_environment()
-    pytest_python = pytest_interpreter()
     results = []
+    fixture_policy = adapter.get("hermetic_fixture")
+    # The fixture-enabled adapter consumes candidate source below.  Re-establish
+    # the root receipt before even compiling those bytes; a root that moved
+    # after the roots phase must never reach a Python child.
+    if fixture_policy is not None:
+        revalidate_authenticated_roots(adapter, roots, authenticated_rows)
+    pytest_python = pytest_interpreter()
     compile_program = (
         "import pathlib,sys;"
         "p=pathlib.Path(sys.argv[1]);"
@@ -738,26 +1121,40 @@ def hermetic_snapshot(adapter, roots):
                     "stderr_sha256": sha256(completed.stderr.encode("utf-8")),
                 }
             )
-    # roots comes from parse_roots and the preceding authenticated roots phase.
-    # Bind cross-repository fixtures to that exact source, never ambient HOME or
-    # a session-specific checkout. This variable carries no credential.
-    test_env = dict(env, GOVML_TEST_SOURCE_ROOT=str(roots["govML"]))
-    for row in adapter["hermetic_tests"]:
-        root = roots[row["repository"]]
-        for path in row["paths"]:
-            if not (root / path).is_file():
-                raise Refusal("HERMETIC_TEST_ABSENT:%s:%s" % (row["name"], path))
-        try:
-            completed = run(
-                [pytest_python, "-m", "pytest", "-q"] + row["paths"],
-                cwd=root,
-                env=test_env,
-                timeout=1200,
-            )
-        except Refusal as exc:
-            raise Refusal("HERMETIC_TEST_REFUSED:%s:%s" % (row["name"], exc))
-        results.append(
+    fixture_context = (
+        authenticated_hermetic_home(
+            adapter, roots, authenticated_rows, pytest_python
+        )
+        if fixture_policy is not None
+        else contextlib.nullcontext(
             {
+                "env": dict(env, GOVML_TEST_SOURCE_ROOT=str(roots["govML"])),
+                "packet_authority": None,
+            }
+        )
+    )
+    with fixture_context as fixture:
+        for row in adapter["hermetic_tests"]:
+            root = roots[row["repository"]]
+            for path in row["paths"]:
+                if not (root / path).is_file():
+                    raise Refusal("HERMETIC_TEST_ABSENT:%s:%s" % (row["name"], path))
+            try:
+                if fixture_policy is None:
+                    completed = run(
+                        [pytest_python, "-m", "pytest", "-q"] + row["paths"],
+                        cwd=root,
+                        env=fixture["env"],
+                        timeout=1200,
+                    )
+                    audit = None
+                else:
+                    completed, audit = audited_pytest(
+                        pytest_python, row, root, fixture
+                    )
+            except Refusal as exc:
+                raise Refusal("HERMETIC_TEST_REFUSED:%s:%s" % (row["name"], exc))
+            result = {
                 "name": row["name"],
                 "repository": row["repository"],
                 "paths": row["paths"],
@@ -765,7 +1162,10 @@ def hermetic_snapshot(adapter, roots):
                 "stdout_tail": completed.stdout[-1000:],
                 "stderr_sha256": sha256(completed.stderr.encode("utf-8")),
             }
-        )
+            if audit is not None:
+                result["pytest_audit"] = audit
+                result["packet_authority"] = fixture["packet_authority"]
+            results.append(result)
     return results
 
 
@@ -983,7 +1383,13 @@ def phase_result(phase, adapter, roots, evidence_dir, mode, baseline):
         roots_receipt = json.loads(regular_bytes(receipt_path(evidence_dir, "roots")))
         return impact_snapshot(adapter, roots, roots_receipt["result"])
     if phase == "hermetic":
-        return hermetic_snapshot(adapter, roots)
+        authenticated_rows = None
+        if adapter.get("hermetic_fixture") is not None:
+            roots_receipt = json.loads(
+                regular_bytes(receipt_path(evidence_dir, "roots"))
+            )
+            authenticated_rows = roots_receipt["result"]
+        return hermetic_snapshot(adapter, roots, authenticated_rows)
     if phase == "manifest-a":
         return build_manifest(adapter, roots, evidence_dir, "manifest-a")
     if phase == "manifest-b":

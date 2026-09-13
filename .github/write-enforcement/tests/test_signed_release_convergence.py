@@ -6,6 +6,7 @@ import json
 import os
 import shutil
 import stat
+import sys
 from pathlib import Path
 
 import pytest
@@ -96,6 +97,38 @@ def roots(tmp_path):
             "rexcoleman.dev",
         )
     }
+
+
+def fixture_adapter():
+    return tool.load_adapter(FINAL_RUNTIME_ADAPTERS[0])
+
+
+def fixture_authority_rows(adapter, commit="a" * 40):
+    return [
+        {
+            "logical_name": row["logical_name"],
+            "slug": row["slug"],
+            "default_branch": row["default_branch"],
+            "commit": commit,
+        }
+        for row in adapter["repositories"]
+    ]
+
+
+def make_public_packet(home):
+    packet = home / tool.PUBLIC_PACKET_RELATIVE
+    packet.mkdir(parents=True)
+    for name in tool.PUBLIC_PACKET_FILES:
+        (packet / name).write_bytes((name + "\n").encode("ascii"))
+    return packet
+
+
+def fixture_git(*_args):
+    if _args[1:] == ("rev-parse", "HEAD"):
+        return "a" * 40
+    if _args[1:] == ("status", "--porcelain=v1", "--untracked-files=all"):
+        return ""
+    raise AssertionError(_args)
 
 
 def contract_result():
@@ -1235,6 +1268,353 @@ def test_minimal_environment_excludes_host_and_credentials(monkeypatch):
     assert "GH_TOKEN" not in value
     assert "REA_BUNDLE_READ_TOKEN" not in value
     assert "SSH_AUTH_SOCK" not in value
+
+
+def test_population_291_declares_closed_authenticated_durable_fixture():
+    adapter = fixture_adapter()
+    assert adapter["hermetic_fixture"] == {
+        "schema_version": tool.HERMETIC_FIXTURE_SCHEMA,
+        "kind": "authenticated-public-packet-home",
+        "durable_root_repository": "research_enforcement_activation",
+        "require_zero_skips": True,
+    }
+    for path in FINAL_RUNTIME_ADAPTERS[1:]:
+        assert "hermetic_fixture" not in tool.load_adapter(path)
+
+
+@pytest.mark.parametrize(
+    "plant",
+    [
+        {},
+        {"kind": "ambient-home"},
+        {"durable_root_repository": "rexcoleman.dev"},
+        {"require_zero_skips": False},
+        {"extra": True},
+    ],
+)
+def test_hermetic_fixture_contract_refuses_open_or_weakened_rows(tmp_path, plant):
+    value = json.loads(FINAL_RUNTIME_ADAPTERS[0].read_bytes())
+    value["hermetic_fixture"].update(plant)
+    if not plant:
+        value["hermetic_fixture"].pop("schema_version")
+    target = tmp_path / "adapter.json"
+    target.write_text(json.dumps(value), encoding="utf-8")
+    with pytest.raises(tool.Refusal, match="HERMETIC_FIXTURE"):
+        tool.load_adapter(target)
+
+
+def _fixture_inputs(tmp_path, monkeypatch):
+    adapter = fixture_adapter()
+    mapping = roots(tmp_path / "durable")
+    for path in mapping.values():
+        path.mkdir(parents=True)
+    ambient = tmp_path / "ambient"
+    ambient.mkdir()
+    make_public_packet(ambient)
+    monkeypatch.setattr(tool, "git", fixture_git)
+    authority = {
+        "authority_epoch": 145,
+        "manifest_digest": "b" * 64,
+        "packet_files": sorted(tool.PUBLIC_PACKET_FILES),
+        "predecessor_epoch": 144,
+        "predecessor_verified": True,
+        "predecessor_wea_digest": "c" * 64,
+        "predecessor_file_sha256": "c" * 64,
+        "verdict": "PASS",
+        "wea_digest": "d" * 64,
+    }
+    monkeypatch.setattr(
+        tool,
+        "authenticate_fixture_packet",
+        lambda *_args, **_kwargs: dict(authority),
+    )
+    return adapter, mapping, fixture_authority_rows(adapter), ambient, authority
+
+
+def test_authenticated_fixture_home_is_closed_packet_only_and_always_cleaned(
+    tmp_path, monkeypatch
+):
+    adapter, mapping, rows, ambient, authority = _fixture_inputs(
+        tmp_path, monkeypatch
+    )
+    monkeypatch.setenv("GH_TOKEN", "must-not-cross")
+    monkeypatch.setenv("SSH_AUTH_SOCK", "/ambient/agent.sock")
+    parent = mapping["research_enforcement_activation"].parent
+    before = set(parent.glob(".rea-release-hermetic-*"))
+    with tool.authenticated_hermetic_home(
+        adapter, mapping, rows, sys.executable, ambient_home=ambient
+    ) as fixture:
+        assert fixture["packet_authority"] == dict(authority, fixture_only=True)
+        assert fixture["home"].parent == fixture["root"]
+        assert fixture["root"].parent == parent
+        assert stat.S_IMODE(fixture["root"].stat().st_mode) == 0o700
+        assert "GH_TOKEN" not in fixture["env"]
+        assert "SSH_AUTH_SOCK" not in fixture["env"]
+        copied = fixture["home"] / tool.PUBLIC_PACKET_RELATIVE
+        assert {path.name for path in copied.iterdir()} == tool.PUBLIC_PACKET_FILES
+        assert all(not path.is_symlink() and path.is_file() for path in copied.iterdir())
+    assert set(parent.glob(".rea-release-hermetic-*")) == before
+
+
+@pytest.mark.parametrize("plant", ["missing", "extra"])
+def test_authenticated_fixture_refuses_packet_set_drift_without_residue(
+    tmp_path, monkeypatch, plant
+):
+    adapter, mapping, rows, ambient, _authority = _fixture_inputs(
+        tmp_path, monkeypatch
+    )
+    packet = ambient / tool.PUBLIC_PACKET_RELATIVE
+    if plant == "missing":
+        (packet / "claim_registry.json").unlink()
+    else:
+        (packet / "credential.json").write_text("planted", encoding="ascii")
+    parent = mapping["research_enforcement_activation"].parent
+    with pytest.raises(tool.Refusal, match="HERMETIC_PACKET_SET_REFUSED"):
+        with tool.authenticated_hermetic_home(
+            adapter, mapping, rows, sys.executable, ambient_home=ambient
+        ):
+            pass
+    assert not list(parent.glob(".rea-release-hermetic-*"))
+
+
+def test_authenticated_fixture_refuses_symlinked_packet_member(tmp_path, monkeypatch):
+    adapter, mapping, rows, ambient, _authority = _fixture_inputs(
+        tmp_path, monkeypatch
+    )
+    member = ambient / tool.PUBLIC_PACKET_RELATIVE / "claim_registry.json"
+    member.unlink()
+    member.symlink_to(ambient / tool.PUBLIC_PACKET_RELATIVE / "claim_policy.json")
+    with pytest.raises(tool.Refusal, match="NONREGULAR_FILE"):
+        with tool.authenticated_hermetic_home(
+            adapter, mapping, rows, sys.executable, ambient_home=ambient
+        ):
+            pass
+
+
+def test_authenticated_fixture_refuses_credential_shaped_packet_source(
+    tmp_path, monkeypatch
+):
+    adapter, mapping, rows, _ambient, _authority = _fixture_inputs(
+        tmp_path, monkeypatch
+    )
+    ambient = tmp_path / ".ssh" / "planted-home"
+    ambient.mkdir(parents=True)
+    make_public_packet(ambient)
+    with pytest.raises(tool.Refusal, match="HERMETIC_PACKET_CREDENTIAL_PATH_REFUSED"):
+        with tool.authenticated_hermetic_home(
+            adapter, mapping, rows, sys.executable, ambient_home=ambient
+        ):
+            pass
+
+
+def test_authenticated_fixture_refuses_root_drift_before_packet_execution(
+    tmp_path, monkeypatch
+):
+    adapter, mapping, rows, ambient, _authority = _fixture_inputs(
+        tmp_path, monkeypatch
+    )
+    executed = []
+
+    def changed_git(*args):
+        if args[1:] == ("rev-parse", "HEAD"):
+            return "f" * 40
+        return fixture_git(*args)
+
+    monkeypatch.setattr(tool, "git", changed_git)
+    monkeypatch.setattr(
+        tool,
+        "authenticate_fixture_packet",
+        lambda *_args, **_kwargs: executed.append(True),
+    )
+    with pytest.raises(tool.Refusal, match="HERMETIC_ROOT_DRIFT"):
+        with tool.authenticated_hermetic_home(
+            adapter, mapping, rows, sys.executable, ambient_home=ambient
+        ):
+            pass
+    assert executed == []
+
+
+def test_hermetic_phase_refuses_root_drift_before_candidate_compile(
+    tmp_path, monkeypatch
+):
+    adapter = fixture_adapter()
+    mapping = roots(tmp_path / "durable")
+    for path in mapping.values():
+        path.mkdir(parents=True)
+    rows = fixture_authority_rows(adapter)
+    executed = []
+
+    def changed_git(*args):
+        if args[1:] == ("rev-parse", "HEAD"):
+            return "f" * 40
+        return fixture_git(*args)
+
+    monkeypatch.setattr(tool, "git", changed_git)
+    monkeypatch.setattr(tool, "run", lambda *_args, **_kwargs: executed.append(True))
+    with pytest.raises(tool.Refusal, match="HERMETIC_ROOT_DRIFT"):
+        tool.hermetic_snapshot(adapter, mapping, rows)
+    assert executed == []
+
+
+def test_authenticated_packet_refuses_non_immediate_predecessor(
+    tmp_path, monkeypatch
+):
+    packet = tmp_path / "packet"
+    packet.mkdir()
+    for name in tool.PUBLIC_PACKET_FILES:
+        (packet / name).write_bytes((name + "\n").encode("ascii"))
+    manifest_digest = "b" * 64
+    (packet / "enforcement_bundle_manifest.json").write_text(
+        json.dumps({"manifest_digest": manifest_digest}), encoding="ascii"
+    )
+    wea_raw = (packet / "write_enforcement_attestation.json").read_bytes()
+    predecessor_raw = (
+        packet / "predecessor_write_enforcement_attestation.json"
+    ).read_bytes()
+    authority = {
+        "authority_epoch": 145,
+        "manifest_digest": manifest_digest,
+        "packet_files": sorted(tool.PUBLIC_PACKET_FILES),
+        "predecessor_epoch": 143,
+        "predecessor_verified": True,
+        "predecessor_wea_digest": tool.sha256(predecessor_raw),
+        "predecessor_file_sha256": tool.sha256(predecessor_raw),
+        "verdict": "PASS",
+        "wea_digest": tool.sha256(wea_raw),
+    }
+    completed = type("Completed", (), {"stdout": json.dumps(authority)})()
+    monkeypatch.setattr(tool, "run", lambda *_args, **_kwargs: completed)
+    with pytest.raises(tool.Refusal, match="HERMETIC_PACKET_AUTH_BINDING_REFUSED"):
+        tool.authenticate_fixture_packet(
+            sys.executable,
+            packet,
+            {"research_enforcement_activation": tmp_path},
+            tool.hermetic_environment(),
+        )
+
+
+def test_authenticated_fixture_refuses_symlinked_parent(tmp_path, monkeypatch):
+    adapter, mapping, rows, ambient, _authority = _fixture_inputs(
+        tmp_path, monkeypatch
+    )
+    actual = tmp_path / "actual"
+    actual.mkdir()
+    linked = tmp_path / "linked"
+    linked.symlink_to(actual, target_is_directory=True)
+    mapping["research_enforcement_activation"] = linked / "rea"
+    (actual / "rea").mkdir()
+    with pytest.raises(tool.Refusal, match="HERMETIC_ROOT_NONREAL_DIRECTORY"):
+        with tool.authenticated_hermetic_home(
+            adapter, mapping, rows, sys.executable, ambient_home=ambient
+        ):
+            pass
+
+
+def test_authenticated_fixture_refuses_unwritable_and_escaping_parent(
+    tmp_path, monkeypatch
+):
+    adapter, mapping, rows, ambient, _authority = _fixture_inputs(
+        tmp_path, monkeypatch
+    )
+
+    def unwritable(**_kwargs):
+        raise OSError("planted unwritable")
+
+    with pytest.raises(tool.Refusal, match="HERMETIC_FIXTURE_UNWRITABLE"):
+        with tool.authenticated_hermetic_home(
+            adapter,
+            mapping,
+            rows,
+            sys.executable,
+            ambient_home=ambient,
+            mkdtemp=unwritable,
+        ):
+            pass
+    escaped = tmp_path / "escaped"
+    escaped.mkdir()
+    with pytest.raises(tool.Refusal, match="HERMETIC_FIXTURE_ESCAPE_REFUSED"):
+        with tool.authenticated_hermetic_home(
+            adapter,
+            mapping,
+            rows,
+            sys.executable,
+            ambient_home=ambient,
+            mkdtemp=lambda **_kwargs: str(escaped),
+        ):
+            pass
+
+
+def test_authenticated_fixture_cleans_after_packet_auth_refusal(tmp_path, monkeypatch):
+    adapter, mapping, rows, ambient, _authority = _fixture_inputs(
+        tmp_path, monkeypatch
+    )
+    monkeypatch.setattr(
+        tool,
+        "authenticate_fixture_packet",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(
+            tool.Refusal("PLANTED_PACKET_AUTH_REFUSAL")
+        ),
+    )
+    parent = mapping["research_enforcement_activation"].parent
+    with pytest.raises(tool.Refusal, match="PLANTED_PACKET_AUTH_REFUSAL"):
+        with tool.authenticated_hermetic_home(
+            adapter, mapping, rows, sys.executable, ambient_home=ambient
+        ):
+            pass
+    assert not list(parent.glob(".rea-release-hermetic-*"))
+
+
+@pytest.mark.parametrize(
+    ("body", "reason"),
+    [
+        ("import pytest\ndef test_case(): pytest.skip('planted')\n", "skipped=1"),
+        ("import pytest\n@pytest.mark.xfail\ndef test_case(): assert False\n", "xfailed=1"),
+        ("import pytest\n@pytest.mark.xfail\ndef test_case(): pass\n", "xpassed=1"),
+    ],
+)
+def test_audited_pytest_refuses_nonexecution_even_when_pytest_exit_is_zero(
+    tmp_path, body, reason
+):
+    root = tmp_path / "source"
+    root.mkdir()
+    test_path = root / "test_planted.py"
+    test_path.write_text(body, encoding="utf-8")
+    fixture_root = tmp_path / "fixture"
+    fixture_root.mkdir()
+    fixture = {
+        "root": fixture_root,
+        "env": dict(tool.hermetic_environment(), HOME=str(fixture_root)),
+    }
+    row = {
+        "name": "planted-nonexecution",
+        "repository": "research_enforcement_activation",
+        "paths": [test_path.name],
+    }
+    with pytest.raises(tool.Refusal, match=reason):
+        tool.audited_pytest(sys.executable, row, root, fixture)
+
+
+def test_audited_pytest_positive_has_structural_zero_counts(tmp_path):
+    root = tmp_path / "source"
+    root.mkdir()
+    (root / "test_pass.py").write_text("def test_case(): pass\n", encoding="ascii")
+    fixture_root = tmp_path / "fixture"
+    fixture_root.mkdir()
+    completed, audit = tool.audited_pytest(
+        sys.executable,
+        {
+            "name": "planted-positive",
+            "repository": "research_enforcement_activation",
+            "paths": ["test_pass.py"],
+        },
+        root,
+        {
+            "root": fixture_root,
+            "env": dict(tool.hermetic_environment(), HOME=str(fixture_root)),
+        },
+    )
+    assert completed.returncode == 0
+    assert audit == {"exitstatus": 0, "skipped": [], "xfailed": [], "xpassed": []}
 
 
 def test_builder_token_is_transient_and_only_added_to_build_child(monkeypatch):

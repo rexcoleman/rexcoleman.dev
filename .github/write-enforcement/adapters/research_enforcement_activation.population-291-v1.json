@@ -8,6 +8,12 @@
     "remote_mutation": "forbidden"
   },
   "expected_member_count": 291,
+  "hermetic_fixture": {
+    "durable_root_repository": "research_enforcement_activation",
+    "kind": "authenticated-public-packet-home",
+    "require_zero_skips": true,
+    "schema_version": "rea.signed-release-convergence-hermetic-fixture.v1"
+  },
   "hermetic_tests": [
     {
       "name": "s229-rexcoleman-dev-durable-history-and-enrollment",
