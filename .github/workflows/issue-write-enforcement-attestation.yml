@@ -278,6 +278,7 @@ jobs:
           TRANSFER_RUN_ID: ${{ inputs.sealed_transfer_run_id }}
           DOWNSTREAM_REPOSITORY: ${{ inputs.downstream_repository }}
           KEY_ID: ${{ inputs.downstream_key_id }}
+          PUBLIC_KEY_B64: ${{ inputs.downstream_public_key_b64 }}
           PUBLIC_KEY_SHA256: ${{ inputs.downstream_public_key_sha256 }}
           CIPHERTEXT_SHA256: ${{ inputs.sealed_ciphertext_sha256 }}
         run: |
@@ -285,6 +286,7 @@ jobs:
           test -z "$TRANSFER_RUN_ID"
           test -z "$DOWNSTREAM_REPOSITORY"
           test -z "$KEY_ID"
+          test -z "$PUBLIC_KEY_B64"
           test -z "$PUBLIC_KEY_SHA256"
           test -z "$CIPHERTEXT_SHA256"
           echo "NO_SEAL_CAPABILITY_PASS mode=$MODE mutation=false secret_write=false"

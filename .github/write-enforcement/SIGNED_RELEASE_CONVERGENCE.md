@@ -310,6 +310,25 @@ population-next adapters select `--final-runtime-rollout-successor`, compile the
 new entrypoint, and run its focused packet, strict-subset, old/mixed closure,
 transitive-pin, exchange, recovery, and live-fence tests.
 
+Only the primary REA population-next adapter declares the optional
+`authenticated-public-packet-home` hermetic fixture. After the roots phase it
+remeasures every authenticated source root, copies the exact eleven public
+packet members from the non-credential durable packet location into a
+disposable mode-0700 HOME beside the authenticated REA root, and authenticates
+the copied packet's signed manifest and immediate predecessor chain before
+running tests. The fixture is test input only, never release acceptance or a
+durable signed root. Its closed child environment excludes ambient credentials,
+and the fixture is removed after pass or refusal. The fixture parent must pass
+both the closed scratch/session-path exclusions and the authenticated REA
+production ephemeral-root predicate. Directory descriptors and relative
+`openat`/`O_NOFOLLOW` reads bind every lexical ancestor of both the packet source
+and disposable fixture-root/HOME/packet-destination chains. The complete chains
+are remeasured before and after copy, authentication, test execution, and safe
+cleanup, so a renamed or same-target symlink-substituted ancestor refuses. The
+adapter also refuses source or root drift, packet set/symlink/identity drift, an
+escaping or non-real fixture path, and any structurally reported pytest skip,
+xfail, or xpass.
+
 The entrypoint separates pre-freeze and post-issuance authority.  Pre-freeze
 packet-shaped fixtures establish only the generic contract.  After issuance it
 delegates signature/receipt verification to the production renewal verifier,

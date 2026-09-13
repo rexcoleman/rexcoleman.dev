@@ -2,13 +2,16 @@
   "assertion": "COMMIT_PREFLIGHT_PASS",
   "caller": "git-pre-commit",
   "changed_paths": [
-    ".github/write-enforcement/frozen_bundle_manifest.generation-5.json"
+    ".github/write-enforcement/SIGNED_RELEASE_CONVERGENCE.md",
+    ".github/write-enforcement/SIGNED_RELEASE_CONVERGENCE_INDEX.md",
+    ".github/write-enforcement/signed_release_convergence.py",
+    ".github/write-enforcement/tests/test_signed_release_convergence.py"
   ],
-  "changed_paths_count": 1,
-  "changed_paths_sha256": "0e50f527ad13467749dcd58967b714e8b6e5b0b91970adfa7dab4bae4ff957de",
+  "changed_paths_count": 4,
+  "changed_paths_sha256": "53d2f833059e2b4f9f4b745b1de71e74791e8964e7b31e4e42c9d52c7f9a35fa",
   "mode": "commit-preflight",
-  "parent_head": "512b651ad8fdd0f9cf02cd60795105775d35f7da",
-  "run_id": "pre-commit-5bb33f69617bb62afd0a92a7",
+  "parent_head": "b11c62c278855cbc16dd0ed6323c34ca031b3b8a",
+  "run_id": "pre-commit-7ae24cfbcdf0fd74d4e8f4f6",
   "schema_version": "rea.pre-commit-boundary.v1",
-  "utc_asserted_at": "2026-09-13T05:23:46Z"
+  "utc_asserted_at": "2026-09-13T09:38:05Z"
 }

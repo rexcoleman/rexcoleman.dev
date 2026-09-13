@@ -11,15 +11,19 @@ writes a project checkout.
 from __future__ import annotations
 
 import argparse
+import contextlib
+import errno
 import hashlib
 import json
 import os
 import re
+import secrets
 import shutil
 import stat
 import subprocess
 import sys
 import tempfile
+import xml.etree.ElementTree as ET
 from pathlib import Path
 
 
@@ -44,6 +48,28 @@ HEX40 = re.compile(r"[0-9a-f]{40}\Z")
 HEX64 = re.compile(r"[0-9a-f]{64}\Z")
 LOGICAL = re.compile(r"[A-Za-z0-9_.-]+\Z")
 DEFAULT_INDEX = Path(__file__).with_name("signed_release_convergence_index.json")
+HERMETIC_FIXTURE_SCHEMA = "rea.signed-release-convergence-hermetic-fixture.v1"
+PUBLIC_PACKET_RELATIVE = Path(".local/state/rea_enforcement/remote_wea")
+PUBLIC_PACKET_FILES = frozenset(
+    {
+        "SHA256SUMS",
+        "claim_policy.json",
+        "claim_registry.json",
+        "enforcement_bundle_manifest.json",
+        "hybrid_capability_authority.json",
+        "hybrid_capability_provider",
+        "issuance_receipt.json",
+        "predecessor_write_enforcement_attestation.json",
+        "runtime_mount.py",
+        "trusted_wea_public.pem",
+        "write_enforcement_attestation.json",
+    }
+)
+CREDENTIAL_SHAPED_PARTS = frozenset(
+    {".aws", ".config", ".gnupg", ".ssh", "credentials", "private", "secrets"}
+)
+EPHEMERAL_ROOTS = (Path("/tmp"), Path("/var/tmp"), Path("/dev/shm"), Path("/data/tmp"))
+SESSION_UUID = re.compile(r"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}\Z")
 
 
 class Refusal(RuntimeError):
@@ -197,6 +223,8 @@ def load_adapter(path: Path):
         "system_python_sources",
         "boundaries",
     }
+    if "hermetic_fixture" in value:
+        required.add("hermetic_fixture")
     if value.get("schema_version") == DEPENDENT_ADAPTER_SCHEMA:
         required.add("dependent_project")
     closed_dict(value, required, "ADAPTER")
@@ -313,6 +341,26 @@ def load_adapter(path: Path):
     }
     if boundaries != expected_boundaries:
         raise Refusal("BOUNDARIES_REFUSED")
+    fixture = value.get("hermetic_fixture")
+    if "hermetic_fixture" in value:
+        closed_dict(
+            fixture,
+            {
+                "schema_version",
+                "kind",
+                "durable_root_repository",
+                "require_zero_skips",
+            },
+            "HERMETIC_FIXTURE",
+        )
+        if (
+            fixture["schema_version"] != HERMETIC_FIXTURE_SCHEMA
+            or fixture["kind"] != "authenticated-public-packet-home"
+            or fixture["durable_root_repository"]
+            != "research_enforcement_activation"
+            or fixture["require_zero_skips"] is not True
+        ):
+            raise Refusal("HERMETIC_FIXTURE_CONTRACT_REFUSED")
     if value["schema_version"] == DEPENDENT_ADAPTER_SCHEMA:
         dependent = value["dependent_project"]
         closed_dict(
@@ -705,10 +753,680 @@ def pytest_interpreter():
     return str(resolved)
 
 
-def hermetic_snapshot(adapter, roots):
+def real_directory(path: Path, subject: str) -> Path:
+    path = Path(path)
+    if not path.is_absolute():
+        raise Refusal("%s_NOT_ABSOLUTE:%s" % (subject, path))
+    cursor = Path(path.anchor)
+    try:
+        for part in path.parts[1:]:
+            cursor /= part
+            info = cursor.lstat()
+            if stat.S_ISLNK(info.st_mode) or not stat.S_ISDIR(info.st_mode):
+                raise Refusal("%s_NONREAL_DIRECTORY:%s" % (subject, cursor))
+    except OSError as exc:
+        raise Refusal(
+            "%s_DIRECTORY_REFUSED:%s:%s" % (subject, path, type(exc).__name__)
+        )
+    if path.resolve() != path:
+        raise Refusal("%s_REALPATH_REFUSED:%s" % (subject, path))
+    return path
+
+
+def directory_identity(info):
+    return (info.st_dev, info.st_ino, stat.S_IFMT(info.st_mode))
+
+
+def assert_directory_fd_identity(descriptor: int, path: Path, subject: str) -> None:
+    try:
+        opened = os.fstat(descriptor)
+        lexical = path.lstat()
+    except OSError as exc:
+        raise Refusal("%s_DRIFT:%s:%s" % (subject, path, type(exc).__name__))
+    if (
+        not stat.S_ISDIR(opened.st_mode)
+        or stat.S_ISLNK(lexical.st_mode)
+        or directory_identity(opened) != directory_identity(lexical)
+    ):
+        raise Refusal("%s_DRIFT:%s" % (subject, path))
+
+
+def clear_bound_directory(descriptor: int) -> None:
+    """Remove contents through a held directory without following symlinks."""
+    flags = (
+        os.O_RDONLY
+        | getattr(os, "O_DIRECTORY", 0)
+        | getattr(os, "O_CLOEXEC", 0)
+        | getattr(os, "O_NOFOLLOW", 0)
+    )
+    try:
+        for name in os.listdir(descriptor):
+            before = os.stat(name, dir_fd=descriptor, follow_symlinks=False)
+            if stat.S_ISDIR(before.st_mode):
+                child = os.open(name, flags, dir_fd=descriptor)
+                try:
+                    opened = os.fstat(child)
+                    lexical = os.stat(
+                        name, dir_fd=descriptor, follow_symlinks=False
+                    )
+                    if (
+                        not stat.S_ISDIR(opened.st_mode)
+                        or directory_identity(opened) != directory_identity(before)
+                        or directory_identity(lexical) != directory_identity(before)
+                    ):
+                        raise Refusal(
+                            "HERMETIC_FIXTURE_CLEANUP_CHILD_DRIFT:%s" % name
+                        )
+                    clear_bound_directory(child)
+                    lexical = os.stat(
+                        name, dir_fd=descriptor, follow_symlinks=False
+                    )
+                    if directory_identity(os.fstat(child)) != directory_identity(
+                        lexical
+                    ):
+                        raise Refusal(
+                            "HERMETIC_FIXTURE_CLEANUP_CHILD_DRIFT:%s" % name
+                        )
+                finally:
+                    os.close(child)
+                os.rmdir(name, dir_fd=descriptor)
+            else:
+                os.unlink(name, dir_fd=descriptor)
+        if os.listdir(descriptor):
+            raise Refusal("HERMETIC_FIXTURE_CLEANUP_CONTENTS_REMAIN")
+    except Refusal:
+        raise
+    except OSError as exc:
+        raise Refusal(
+            "HERMETIC_FIXTURE_CLEANUP_REFUSED:%s" % type(exc).__name__
+        )
+
+
+def remove_bound_directory_at(
+    parent_fd: int,
+    intended_name: str,
+    descriptor: int,
+    expected,
+):
+    """Remove the exact held directory even after a detected lexical rename."""
+    matches = []
+    try:
+        for name in os.listdir(parent_fd):
+            info = os.stat(name, dir_fd=parent_fd, follow_symlinks=False)
+            if stat.S_ISDIR(info.st_mode) and directory_identity(info) == expected:
+                matches.append(name)
+        if len(matches) != 1:
+            raise Refusal(
+                "HERMETIC_FIXTURE_CLEANUP_IDENTITY_REFUSED:matches=%s"
+                % sorted(matches)
+            )
+        actual_name = matches[0]
+        if actual_name != intended_name:
+            try:
+                lexical = os.stat(
+                    intended_name, dir_fd=parent_fd, follow_symlinks=False
+                )
+            except FileNotFoundError:
+                lexical = None
+            if lexical is not None:
+                if not stat.S_ISLNK(lexical.st_mode):
+                    raise Refusal(
+                        "HERMETIC_FIXTURE_CLEANUP_LEXICAL_REFUSED:%s"
+                        % intended_name
+                    )
+                os.unlink(intended_name, dir_fd=parent_fd)
+        observed = os.stat(actual_name, dir_fd=parent_fd, follow_symlinks=False)
+        if not stat.S_ISDIR(observed.st_mode) or directory_identity(observed) != expected:
+            raise Refusal("HERMETIC_FIXTURE_CLEANUP_DRIFT:%s" % actual_name)
+        if directory_identity(os.fstat(descriptor)) != expected:
+            raise Refusal("HERMETIC_FIXTURE_CLEANUP_DESCRIPTOR_DRIFT")
+        clear_bound_directory(descriptor)
+        observed = os.stat(actual_name, dir_fd=parent_fd, follow_symlinks=False)
+        if not stat.S_ISDIR(observed.st_mode) or directory_identity(observed) != expected:
+            raise Refusal("HERMETIC_FIXTURE_CLEANUP_DRIFT:%s" % actual_name)
+        os.rmdir(actual_name, dir_fd=parent_fd)
+        for name in os.listdir(parent_fd):
+            info = os.stat(name, dir_fd=parent_fd, follow_symlinks=False)
+            if stat.S_ISDIR(info.st_mode) and directory_identity(info) == expected:
+                raise Refusal("HERMETIC_FIXTURE_CLEANUP_INCOMPLETE:%s" % name)
+    except Refusal:
+        raise
+    except OSError as exc:
+        raise Refusal(
+            "HERMETIC_FIXTURE_CLEANUP_REFUSED:%s" % type(exc).__name__
+        )
+
+
+class DirectoryChain:
+    def __init__(self, rows):
+        self.rows = tuple(rows)
+
+    @property
+    def fd(self):
+        return self.rows[-1][1]
+
+    def validate(self, subject: str) -> None:
+        for path, descriptor in self.rows:
+            assert_directory_fd_identity(descriptor, path, subject)
+
+    def extended(self, path: Path, descriptor: int):
+        return DirectoryChain(self.rows + ((path, descriptor),))
+
+
+@contextlib.contextmanager
+def open_real_directory_fd(path: Path, subject: str):
+    path = real_directory(path, subject)
+    flags = (
+        os.O_RDONLY
+        | getattr(os, "O_DIRECTORY", 0)
+        | getattr(os, "O_CLOEXEC", 0)
+        | getattr(os, "O_NOFOLLOW", 0)
+    )
+    rows = []
+    try:
+        cursor = Path(path.anchor)
+        descriptor = os.open(path.anchor, flags)
+        rows.append((cursor, descriptor))
+        for part in path.parts[1:]:
+            cursor /= part
+            child = os.open(part, flags, dir_fd=descriptor)
+            descriptor = child
+            rows.append((cursor, descriptor))
+        chain = DirectoryChain(rows)
+        chain.validate(subject)
+        yield chain
+    except Refusal:
+        raise
+    except OSError as exc:
+        raise Refusal("%s_OPEN_REFUSED:%s:%s" % (subject, path, type(exc).__name__))
+    finally:
+        for _path, descriptor in reversed(rows):
+            os.close(descriptor)
+
+
+def regular_bytes_at(directory_fd: int, name: str, subject: str) -> bytes:
+    if name != Path(name).name:
+        raise Refusal("%s_NAME_REFUSED:%s" % (subject, name))
+    descriptor = None
+    try:
+        descriptor = os.open(
+            name,
+            os.O_RDONLY
+            | getattr(os, "O_CLOEXEC", 0)
+            | getattr(os, "O_NOFOLLOW", 0),
+            dir_fd=directory_fd,
+        )
+        before = os.fstat(descriptor)
+        if not stat.S_ISREG(before.st_mode):
+            raise Refusal("%s_NONREGULAR:%s" % (subject, name))
+        with os.fdopen(descriptor, "rb") as handle:
+            descriptor = None
+            raw = handle.read()
+            after = os.fstat(handle.fileno())
+    except Refusal:
+        raise
+    except OSError as exc:
+        if exc.errno == errno.ELOOP:
+            raise Refusal("%s_NONREGULAR:%s" % (subject, name))
+        raise Refusal("%s_READ_REFUSED:%s:%s" % (subject, name, type(exc).__name__))
+    finally:
+        if descriptor is not None:
+            os.close(descriptor)
+    identity = lambda row: (
+        row.st_dev,
+        row.st_ino,
+        row.st_size,
+        row.st_mtime_ns,
+        row.st_mode,
+    )
+    if identity(before) != identity(after):
+        raise Refusal("%s_DRIFT:%s" % (subject, name))
+    return raw
+
+
+def write_exclusive_at(directory_fd: int, name: str, raw: bytes) -> None:
+    if name != Path(name).name:
+        raise Refusal("FIXTURE_WRITE_NAME_REFUSED:%s" % name)
+    descriptor = None
+    try:
+        descriptor = os.open(
+            name,
+            os.O_WRONLY
+            | os.O_CREAT
+            | os.O_EXCL
+            | getattr(os, "O_CLOEXEC", 0)
+            | getattr(os, "O_NOFOLLOW", 0),
+            0o600,
+            dir_fd=directory_fd,
+        )
+        with os.fdopen(descriptor, "wb") as handle:
+            descriptor = None
+            handle.write(raw)
+            handle.flush()
+            os.fsync(handle.fileno())
+    except OSError as exc:
+        raise Refusal("FIXTURE_WRITE_REFUSED:%s:%s" % (name, type(exc).__name__))
+    finally:
+        if descriptor is not None:
+            os.close(descriptor)
+
+
+def require_durable_fixture_parent(roots, parent: Path) -> None:
+    candidates = (parent, parent.resolve())
+    for candidate in candidates:
+        if any(
+            candidate == prefix or prefix in candidate.parents
+            for prefix in EPHEMERAL_ROOTS
+        ) or any(SESSION_UUID.fullmatch(part) for part in candidate.parts):
+            raise Refusal("HERMETIC_FIXTURE_EPHEMERAL_PARENT_REFUSED:%s" % parent)
+    script = roots["research_enforcement_activation"] / "scripts/s145_renewal_cron.sh"
+    completed = run(
+        [str(script), "--test-ephemeral-predicate", str(parent)],
+        cwd=roots["research_enforcement_activation"],
+        env=hermetic_environment(),
+        timeout=30,
+    )
+    if completed.stdout != "ALLOW\n" or completed.stderr:
+        raise Refusal("HERMETIC_FIXTURE_PRODUCTION_PREDICATE_REFUSED:%s" % parent)
+
+
+def revalidate_authenticated_roots(adapter, roots, authenticated_rows):
+    if not isinstance(authenticated_rows, list):
+        raise Refusal("HERMETIC_ROOT_AUTHORITY_ABSENT")
+    expected = {row["logical_name"] for row in adapter["repositories"]}
+    by_name = {}
+    for row in authenticated_rows:
+        closed_dict(
+            row,
+            {"logical_name", "slug", "default_branch", "commit"},
+            "HERMETIC_ROOT_AUTHORITY_ROW",
+        )
+        logical = row["logical_name"]
+        if logical in by_name or logical not in expected or not HEX40.fullmatch(
+            row["commit"]
+        ):
+            raise Refusal("HERMETIC_ROOT_AUTHORITY_IDENTITY_REFUSED:%s" % logical)
+        by_name[logical] = row
+    if set(by_name) != expected:
+        raise Refusal("HERMETIC_ROOT_AUTHORITY_SET_REFUSED")
+    for repository in adapter["repositories"]:
+        logical = repository["logical_name"]
+        row = by_name[logical]
+        if (
+            row["slug"] != repository["slug"]
+            or row["default_branch"] != repository["default_branch"]
+        ):
+            raise Refusal("HERMETIC_ROOT_AUTHORITY_BINDING_REFUSED:%s" % logical)
+        root = real_directory(roots[logical], "HERMETIC_ROOT")
+        observed = git(root, "rev-parse", "HEAD")
+        if observed != row["commit"]:
+            raise Refusal(
+                "HERMETIC_ROOT_DRIFT:%s:expected=%s:observed=%s"
+                % (logical, row["commit"], observed)
+            )
+        if git(root, "status", "--porcelain=v1", "--untracked-files=all"):
+            raise Refusal("HERMETIC_ROOT_DIRTY:%s" % logical)
+
+
+def write_exclusive(path: Path, raw: bytes) -> None:
+    descriptor = None
+    try:
+        descriptor = os.open(
+            str(path),
+            os.O_WRONLY
+            | os.O_CREAT
+            | os.O_EXCL
+            | getattr(os, "O_CLOEXEC", 0)
+            | getattr(os, "O_NOFOLLOW", 0),
+            0o600,
+        )
+        with os.fdopen(descriptor, "wb") as handle:
+            descriptor = None
+            handle.write(raw)
+            handle.flush()
+            os.fsync(handle.fileno())
+    except OSError as exc:
+        raise Refusal("FIXTURE_WRITE_REFUSED:%s:%s" % (path, type(exc).__name__))
+    finally:
+        if descriptor is not None:
+            os.close(descriptor)
+
+
+PACKET_AUTH_PROGRAM = r'''import hashlib,json,sys
+from pathlib import Path
+from scripts import materialize_enforcement_workspace as materializer
+packet_root=Path(sys.argv[1])
+roots=dict(row.split("=",1) for row in sys.argv[2:])
+roots={key:Path(value) for key,value in roots.items()}
+snapshot=materializer.packet_snapshot(packet_root,"release-hermetic-fixture",allow_absent=False)
+packet=materializer.authenticate_packet(packet_root,"release-hermetic-fixture",snapshot,roots)
+predecessor=packet.members["predecessor_write_enforcement_attestation.json"]
+print(json.dumps({
+ "authority_epoch":packet.epoch,
+ "manifest_digest":packet.manifest_digest,
+ "packet_files":sorted(packet.members),
+ "predecessor_epoch":packet.status.get("predecessor_epoch"),
+ "predecessor_verified":packet.status.get("predecessor_verified"),
+ "predecessor_wea_digest":packet.status.get("predecessor_wea_digest"),
+ "predecessor_file_sha256":hashlib.sha256(predecessor).hexdigest(),
+ "verdict":packet.status.get("verdict"),
+ "wea_digest":packet.wea_digest,
+},sort_keys=True))
+'''
+
+
+PYTEST_AUDIT_PROGRAM = r'''import json,os,sys
+from pathlib import Path
+import pytest
+class Audit:
+ def __init__(self):
+  self.rows={"skipped":set(),"xfailed":set(),"xpassed":set()}
+ def pytest_terminal_summary(self,terminalreporter):
+  for outcome in self.rows:
+   for report in terminalreporter.stats.get(outcome,[]):
+    self.rows[outcome].add(report.nodeid)
+audit=Audit()
+report=Path(sys.argv[1])
+code=pytest.main(sys.argv[2:],plugins=[audit])
+payload={key:sorted(value) for key,value in audit.rows.items()}
+payload["exitstatus"]=int(code)
+fd=os.open(str(report),os.O_WRONLY|os.O_CREAT|os.O_EXCL,0o600)
+with os.fdopen(fd,"w",encoding="utf-8") as handle:
+ json.dump(payload,handle,sort_keys=True,separators=(",",":"))
+ handle.write("\n")
+raise SystemExit(code)
+'''
+
+
+def authenticate_fixture_packet(pytest_python, packet_root, roots, env):
+    root_args = ["%s=%s" % (name, roots[name]) for name in sorted(roots)]
+    completed = run(
+        [pytest_python, "-c", PACKET_AUTH_PROGRAM, str(packet_root)] + root_args,
+        cwd=roots["research_enforcement_activation"],
+        env=env,
+        timeout=300,
+    )
+    try:
+        value = json.loads(completed.stdout)
+    except ValueError:
+        raise Refusal("HERMETIC_PACKET_AUTH_OUTPUT_REFUSED")
+    closed_dict(
+        value,
+        {
+            "authority_epoch",
+            "manifest_digest",
+            "packet_files",
+            "predecessor_epoch",
+            "predecessor_verified",
+            "predecessor_wea_digest",
+            "predecessor_file_sha256",
+            "verdict",
+            "wea_digest",
+        },
+        "HERMETIC_PACKET_AUTH",
+    )
+    try:
+        manifest = json.loads(
+            regular_bytes(packet_root / "enforcement_bundle_manifest.json")
+        )
+    except ValueError:
+        raise Refusal("HERMETIC_PACKET_MANIFEST_JSON_REFUSED")
+    wea_raw = regular_bytes(packet_root / "write_enforcement_attestation.json")
+    predecessor_raw = regular_bytes(
+        packet_root / "predecessor_write_enforcement_attestation.json"
+    )
+    if (
+        not isinstance(value["authority_epoch"], int)
+        or isinstance(value["authority_epoch"], bool)
+        or value["verdict"] != "PASS"
+        or not isinstance(value["manifest_digest"], str)
+        or not HEX64.fullmatch(value["manifest_digest"] or "")
+        or not isinstance(value["wea_digest"], str)
+        or not HEX64.fullmatch(value["wea_digest"] or "")
+        or not isinstance(value["packet_files"], list)
+        or value["packet_files"] != sorted(PUBLIC_PACKET_FILES)
+        or value["manifest_digest"] != manifest.get("manifest_digest")
+        or value["wea_digest"] != sha256(wea_raw)
+        or value["predecessor_verified"] is not True
+        or not isinstance(value["predecessor_epoch"], int)
+        or isinstance(value["predecessor_epoch"], bool)
+        or value["predecessor_epoch"] != value["authority_epoch"] - 1
+        or not isinstance(value["predecessor_wea_digest"], str)
+        or not HEX64.fullmatch(value["predecessor_wea_digest"] or "")
+        or not isinstance(value["predecessor_file_sha256"], str)
+        or value["predecessor_wea_digest"] != sha256(predecessor_raw)
+        or value["predecessor_file_sha256"] != sha256(predecessor_raw)
+    ):
+        raise Refusal("HERMETIC_PACKET_AUTH_BINDING_REFUSED")
+    return value
+
+
+@contextlib.contextmanager
+def authenticated_hermetic_home(
+    adapter,
+    roots,
+    authenticated_rows,
+    pytest_python,
+    *,
+    ambient_home=None,
+    source_opened=None,
+    fixture_name_factory=None,
+    mkdir_at=os.mkdir,
+):
+    revalidate_authenticated_roots(adapter, roots, authenticated_rows)
+    ambient = real_directory(
+        Path.home() if ambient_home is None else Path(ambient_home),
+        "HERMETIC_PACKET_HOME",
+    )
+    if CREDENTIAL_SHAPED_PARTS.intersection(PUBLIC_PACKET_RELATIVE.parts):
+        raise Refusal("HERMETIC_PACKET_CREDENTIAL_PATH_REFUSED")
+    source = real_directory(
+        ambient / PUBLIC_PACKET_RELATIVE, "HERMETIC_PACKET_SOURCE"
+    )
+    if CREDENTIAL_SHAPED_PARTS.intersection(source.parts):
+        raise Refusal("HERMETIC_PACKET_CREDENTIAL_PATH_REFUSED:%s" % source)
+    with open_real_directory_fd(source, "HERMETIC_PACKET_SOURCE") as source_chain:
+        source_fd = source_chain.fd
+        observed = set(os.listdir(source_fd))
+        if observed != PUBLIC_PACKET_FILES:
+            raise Refusal(
+                "HERMETIC_PACKET_SET_REFUSED:missing=%s:extra=%s"
+                % (
+                    sorted(PUBLIC_PACKET_FILES - observed),
+                    sorted(observed - PUBLIC_PACKET_FILES),
+                )
+            )
+        if source_opened is not None:
+            source_opened()
+        source_chain.validate("HERMETIC_PACKET_SOURCE")
+        packet = {
+            name: regular_bytes_at(source_fd, name, "HERMETIC_PACKET_MEMBER")
+            for name in PUBLIC_PACKET_FILES
+        }
+        if set(os.listdir(source_fd)) != PUBLIC_PACKET_FILES:
+            raise Refusal("HERMETIC_PACKET_SET_DRIFT")
+        source_chain.validate("HERMETIC_PACKET_SOURCE")
+    parent = real_directory(
+        roots[adapter["hermetic_fixture"]["durable_root_repository"]].parent,
+        "HERMETIC_FIXTURE_PARENT",
+    )
+    require_durable_fixture_parent(roots, parent)
+    if not shutil.rmtree.avoids_symlink_attacks:
+        raise Refusal("HERMETIC_FIXTURE_SAFE_CLEANUP_UNAVAILABLE")
+    name_factory = fixture_name_factory or (
+        lambda: ".rea-release-hermetic-" + secrets.token_hex(8)
+    )
+    with open_real_directory_fd(parent, "HERMETIC_FIXTURE_PARENT") as parent_chain:
+        parent_fd = parent_chain.fd
+        fixture_name = name_factory()
+        if (
+            not isinstance(fixture_name, str)
+            or not re.fullmatch(r"\.rea-release-hermetic-[0-9a-f]{16}", fixture_name)
+        ):
+            raise Refusal("HERMETIC_FIXTURE_ESCAPE_REFUSED:%s" % fixture_name)
+        try:
+            mkdir_at(fixture_name, mode=0o700, dir_fd=parent_fd)
+        except OSError as exc:
+            raise Refusal(
+                "HERMETIC_FIXTURE_UNWRITABLE:%s:%s"
+                % (parent, type(exc).__name__)
+            )
+        fixture_root = parent / fixture_name
+        fixture_fd = None
+        opened_fds = []
+        fixture_chain = None
+        fixture_root_identity = None
+        try:
+            try:
+                flags = (
+                    os.O_RDONLY
+                    | getattr(os, "O_DIRECTORY", 0)
+                    | getattr(os, "O_CLOEXEC", 0)
+                    | getattr(os, "O_NOFOLLOW", 0)
+                )
+                created_root = os.stat(
+                    fixture_name, dir_fd=parent_fd, follow_symlinks=False
+                )
+                if not stat.S_ISDIR(created_root.st_mode):
+                    raise Refusal("HERMETIC_FIXTURE_ROOT_CREATE_DRIFT")
+                fixture_root_identity = directory_identity(created_root)
+                fixture_fd = os.open(fixture_name, flags, dir_fd=parent_fd)
+                opened_fds.append(fixture_fd)
+                if directory_identity(os.fstat(fixture_fd)) != fixture_root_identity:
+                    raise Refusal("HERMETIC_FIXTURE_ROOT_OPEN_DRIFT")
+                fixture_chain = parent_chain.extended(fixture_root, fixture_fd)
+                fixture_chain.validate("HERMETIC_FIXTURE_CHAIN_AFTER_ROOT_CREATE")
+                os.fchmod(fixture_fd, 0o700)
+                mkdir_at("home", mode=0o700, dir_fd=fixture_fd)
+                home_fd = os.open("home", flags, dir_fd=fixture_fd)
+                opened_fds.append(home_fd)
+                home = fixture_root / "home"
+                fixture_chain = fixture_chain.extended(home, home_fd)
+                fixture_chain.validate("HERMETIC_FIXTURE_CHAIN_AFTER_HOME_CREATE")
+                destination = home
+                destination_fd = home_fd
+                for part in PUBLIC_PACKET_RELATIVE.parts:
+                    mkdir_at(part, mode=0o700, dir_fd=destination_fd)
+                    child_fd = os.open(part, flags, dir_fd=destination_fd)
+                    opened_fds.append(child_fd)
+                    destination /= part
+                    fixture_chain = fixture_chain.extended(destination, child_fd)
+                    fixture_chain.validate(
+                        "HERMETIC_FIXTURE_CHAIN_AFTER_DESTINATION_CREATE"
+                    )
+                    destination_fd = child_fd
+                fixture_chain.validate("HERMETIC_FIXTURE_CHAIN_BEFORE_COPY")
+                for name in sorted(packet):
+                    write_exclusive_at(destination_fd, name, packet[name])
+                    if (
+                        regular_bytes_at(
+                            destination_fd, name, "HERMETIC_PACKET_COPY"
+                        )
+                        != packet[name]
+                    ):
+                        raise Refusal("HERMETIC_PACKET_COPY_DRIFT:%s" % name)
+                fixture_chain.validate("HERMETIC_FIXTURE_CHAIN_AFTER_COPY")
+                env = dict(
+                    hermetic_environment(),
+                    HOME=str(home),
+                    GOVML_TEST_SOURCE_ROOT=str(roots["govML"]),
+                )
+                fixture_chain.validate("HERMETIC_FIXTURE_CHAIN_BEFORE_AUTH")
+                authority = authenticate_fixture_packet(
+                    pytest_python, destination, roots, env
+                )
+                fixture_chain.validate("HERMETIC_FIXTURE_CHAIN_AFTER_AUTH")
+                authority["fixture_only"] = True
+                fixture_chain.validate("HERMETIC_FIXTURE_CHAIN_BEFORE_YIELD")
+                yield {
+                    "root": fixture_root,
+                    "home": home,
+                    "env": env,
+                    "packet_authority": authority,
+                }
+                fixture_chain.validate("HERMETIC_FIXTURE_CHAIN_AFTER_YIELD")
+            except OSError as exc:
+                raise Refusal(
+                    "HERMETIC_FIXTURE_BUILD_REFUSED:%s" % type(exc).__name__
+                )
+        finally:
+            active_failure = sys.exc_info()[0] is not None
+            cleanup_identity_failure = None
+            if fixture_chain is not None:
+                try:
+                    fixture_chain.validate("HERMETIC_FIXTURE_CHAIN_BEFORE_CLEANUP")
+                except Refusal as exc:
+                    cleanup_identity_failure = exc
+            try:
+                if fixture_root_identity is None:
+                    raise Refusal("HERMETIC_FIXTURE_CLEANUP_IDENTITY_ABSENT")
+                remove_bound_directory_at(
+                    parent_fd, fixture_name, fixture_fd, fixture_root_identity
+                )
+            finally:
+                for descriptor in reversed(opened_fds):
+                    os.close(descriptor)
+            if cleanup_identity_failure is not None and not active_failure:
+                raise cleanup_identity_failure
+
+
+def audited_pytest(pytest_python, row, root, fixture):
+    audit_dir = fixture["root"] / "audit"
+    audit_dir.mkdir(mode=0o700, exist_ok=True)
+    report = audit_dir / (row["name"] + ".json")
+    junit = audit_dir / (row["name"] + ".xml")
+    wrapper = audit_dir / (row["name"] + ".py")
+    write_exclusive(wrapper, PYTEST_AUDIT_PROGRAM.encode("utf-8"))
+    completed = run(
+        [
+            pytest_python,
+            str(wrapper),
+            str(report),
+            "-q",
+            "-p",
+            "no:cacheprovider",
+            "--junitxml=%s" % junit,
+        ]
+        + row["paths"],
+        cwd=root,
+        env=fixture["env"],
+        timeout=1200,
+    )
+    try:
+        audit = json.loads(regular_bytes(report))
+        junit_root = ET.fromstring(regular_bytes(junit))
+    except (ValueError, ET.ParseError):
+        raise Refusal("HERMETIC_TEST_AUDIT_REFUSED:%s" % row["name"])
+    closed_dict(audit, {"exitstatus", "skipped", "xfailed", "xpassed"}, "PYTEST_AUDIT")
+    if audit["exitstatus"] != 0 or any(
+        not isinstance(audit[field], list)
+        for field in ("skipped", "xfailed", "xpassed")
+    ):
+        raise Refusal("HERMETIC_TEST_AUDIT_SHAPE_REFUSED:%s" % row["name"])
+    junit_skipped = list(junit_root.findall(".//testcase/skipped"))
+    if junit_skipped or any(audit[field] for field in ("skipped", "xfailed", "xpassed")):
+        raise Refusal(
+            "HERMETIC_TEST_NONEXECUTION_REFUSED:%s:skipped=%s:xfailed=%s:xpassed=%s"
+            % (
+                row["name"],
+                len(audit["skipped"]),
+                len(audit["xfailed"]),
+                len(audit["xpassed"]),
+            )
+        )
+    return completed, audit
+
+
+def hermetic_snapshot(adapter, roots, authenticated_rows=None):
     env = hermetic_environment()
-    pytest_python = pytest_interpreter()
     results = []
+    fixture_policy = adapter.get("hermetic_fixture")
+    # The fixture-enabled adapter consumes candidate source below.  Re-establish
+    # the root receipt before even compiling those bytes; a root that moved
+    # after the roots phase must never reach a Python child.
+    if fixture_policy is not None:
+        revalidate_authenticated_roots(adapter, roots, authenticated_rows)
+    pytest_python = pytest_interpreter()
     compile_program = (
         "import pathlib,sys;"
         "p=pathlib.Path(sys.argv[1]);"
@@ -738,26 +1456,40 @@ def hermetic_snapshot(adapter, roots):
                     "stderr_sha256": sha256(completed.stderr.encode("utf-8")),
                 }
             )
-    # roots comes from parse_roots and the preceding authenticated roots phase.
-    # Bind cross-repository fixtures to that exact source, never ambient HOME or
-    # a session-specific checkout. This variable carries no credential.
-    test_env = dict(env, GOVML_TEST_SOURCE_ROOT=str(roots["govML"]))
-    for row in adapter["hermetic_tests"]:
-        root = roots[row["repository"]]
-        for path in row["paths"]:
-            if not (root / path).is_file():
-                raise Refusal("HERMETIC_TEST_ABSENT:%s:%s" % (row["name"], path))
-        try:
-            completed = run(
-                [pytest_python, "-m", "pytest", "-q"] + row["paths"],
-                cwd=root,
-                env=test_env,
-                timeout=1200,
-            )
-        except Refusal as exc:
-            raise Refusal("HERMETIC_TEST_REFUSED:%s:%s" % (row["name"], exc))
-        results.append(
+    fixture_context = (
+        authenticated_hermetic_home(
+            adapter, roots, authenticated_rows, pytest_python
+        )
+        if fixture_policy is not None
+        else contextlib.nullcontext(
             {
+                "env": dict(env, GOVML_TEST_SOURCE_ROOT=str(roots["govML"])),
+                "packet_authority": None,
+            }
+        )
+    )
+    with fixture_context as fixture:
+        for row in adapter["hermetic_tests"]:
+            root = roots[row["repository"]]
+            for path in row["paths"]:
+                if not (root / path).is_file():
+                    raise Refusal("HERMETIC_TEST_ABSENT:%s:%s" % (row["name"], path))
+            try:
+                if fixture_policy is None:
+                    completed = run(
+                        [pytest_python, "-m", "pytest", "-q"] + row["paths"],
+                        cwd=root,
+                        env=fixture["env"],
+                        timeout=1200,
+                    )
+                    audit = None
+                else:
+                    completed, audit = audited_pytest(
+                        pytest_python, row, root, fixture
+                    )
+            except Refusal as exc:
+                raise Refusal("HERMETIC_TEST_REFUSED:%s:%s" % (row["name"], exc))
+            result = {
                 "name": row["name"],
                 "repository": row["repository"],
                 "paths": row["paths"],
@@ -765,7 +1497,10 @@ def hermetic_snapshot(adapter, roots):
                 "stdout_tail": completed.stdout[-1000:],
                 "stderr_sha256": sha256(completed.stderr.encode("utf-8")),
             }
-        )
+            if audit is not None:
+                result["pytest_audit"] = audit
+                result["packet_authority"] = fixture["packet_authority"]
+            results.append(result)
     return results
 
 
@@ -983,7 +1718,13 @@ def phase_result(phase, adapter, roots, evidence_dir, mode, baseline):
         roots_receipt = json.loads(regular_bytes(receipt_path(evidence_dir, "roots")))
         return impact_snapshot(adapter, roots, roots_receipt["result"])
     if phase == "hermetic":
-        return hermetic_snapshot(adapter, roots)
+        authenticated_rows = None
+        if adapter.get("hermetic_fixture") is not None:
+            roots_receipt = json.loads(
+                regular_bytes(receipt_path(evidence_dir, "roots"))
+            )
+            authenticated_rows = roots_receipt["result"]
+        return hermetic_snapshot(adapter, roots, authenticated_rows)
     if phase == "manifest-a":
         return build_manifest(adapter, roots, evidence_dir, "manifest-a")
     if phase == "manifest-b":

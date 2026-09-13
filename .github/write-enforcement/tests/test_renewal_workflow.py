@@ -8,6 +8,7 @@ Each of those is a one-line edit away from silently disappearing, so each one
 is asserted here.
 """
 
+import copy
 import hashlib
 import importlib.util
 import json
@@ -70,6 +71,25 @@ def raw_job(path, job_id):
     return "".join(lines[start:end])
 
 
+def _no_seal_step(document=None):
+    document = issuer() if document is None else document
+    step = next(
+        row
+        for row in document["jobs"]["preflight-sealed-transfer"]["steps"]
+        if row.get("name") == "Refuse seal inputs and mutation in no-seal modes"
+    )
+    assert step["env"] == {
+        "MODE": "${{ inputs.mode }}",
+        "TRANSFER_RUN_ID": "${{ inputs.sealed_transfer_run_id }}",
+        "DOWNSTREAM_REPOSITORY": "${{ inputs.downstream_repository }}",
+        "KEY_ID": "${{ inputs.downstream_key_id }}",
+        "PUBLIC_KEY_B64": "${{ inputs.downstream_public_key_b64 }}",
+        "PUBLIC_KEY_SHA256": "${{ inputs.downstream_public_key_sha256 }}",
+        "CIPHERTEXT_SHA256": "${{ inputs.sealed_ciphertext_sha256 }}",
+    }
+    return step
+
+
 def executable_lines(path):
     """The workflow with full-line comments removed."""
     return "\n".join(
@@ -117,13 +137,22 @@ def test_public_retry_is_protected_and_structurally_has_no_seal_or_secret_write(
     refusal = [row for row in preflight
                if row.get("name") == "Refuse seal inputs and mutation in no-seal modes"]
     assert len(refusal) == 1
+    assert _no_seal_step() == refusal[0]
     assert refusal[0]["if"] == (
         "inputs.mode == 'public_retry' || "
         "inputs.mode == 'capability_change_existing_secret'"
     )
-    assert all("test -z" in refusal[0]["run"] and name in refusal[0]["run"]
-               for name in ("TRANSFER_RUN_ID", "KEY_ID", "PUBLIC_KEY_SHA256",
-                            "CIPHERTEXT_SHA256"))
+    assert all(
+        f'test -z "${name}"' in refusal[0]["run"]
+        for name in (
+            "TRANSFER_RUN_ID",
+            "DOWNSTREAM_REPOSITORY",
+            "KEY_ID",
+            "PUBLIC_KEY_B64",
+            "PUBLIC_KEY_SHA256",
+            "CIPHERTEXT_SHA256",
+        )
+    )
     raw = raw_job(ISSUER, "issue-wea")
     assert "Publish authenticated packet to append-only Contents surface" in raw
     assert "secrets/REA_BUNDLE_READ_TOKEN" not in raw
@@ -142,6 +171,63 @@ def test_existing_secret_capability_change_is_protected_and_never_seals_or_mutat
     assert "inputs.mode == 'capability_change'" in issue
     assert "encrypted_value" not in issue
     assert "actions/secrets" not in issue
+
+
+def _run_no_seal_preflight(**overrides):
+    step = _no_seal_step()
+    environment = {
+        "PATH": "/usr/bin:/bin",
+        "MODE": "capability_change_existing_secret",
+        "TRANSFER_RUN_ID": "",
+        "DOWNSTREAM_REPOSITORY": "",
+        "KEY_ID": "",
+        "PUBLIC_KEY_B64": "",
+        "PUBLIC_KEY_SHA256": "",
+        "CIPHERTEXT_SHA256": "",
+    }
+    environment.update(overrides)
+    return subprocess.run(
+        ["/bin/bash", "-c", step["run"]],
+        env=environment,
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        check=False,
+    )
+
+
+def test_existing_secret_no_seal_preflight_accepts_exact_empty_transfer_inputs():
+    completed = _run_no_seal_preflight()
+    assert completed.returncode == 0
+    assert completed.stdout.strip() == (
+        "NO_SEAL_CAPABILITY_PASS mode=capability_change_existing_secret "
+        "mutation=false secret_write=false"
+    )
+    assert completed.stderr == ""
+
+
+def test_existing_secret_no_seal_preflight_refuses_nonempty_public_key_b64():
+    completed = _run_no_seal_preflight(PUBLIC_KEY_B64="cGxhbnRlZA==")
+    assert completed.returncode != 0
+    assert "NO_SEAL_CAPABILITY_PASS" not in completed.stdout
+
+
+@pytest.mark.parametrize("plant", ["missing", "misdirected"])
+def test_no_seal_contract_refuses_public_key_b64_binding_drift(plant):
+    document = copy.deepcopy(issuer())
+    step = next(
+        row
+        for row in document["jobs"]["preflight-sealed-transfer"]["steps"]
+        if row.get("name") == "Refuse seal inputs and mutation in no-seal modes"
+    )
+    if plant == "missing":
+        del step["env"]["PUBLIC_KEY_B64"]
+    else:
+        step["env"]["PUBLIC_KEY_B64"] = (
+            "${{ inputs.downstream_public_key_sha256 }}"
+        )
+    with pytest.raises(AssertionError):
+        _no_seal_step(document)
 
 
 def test_renewal_jobs_only_run_in_renewal_mode():
