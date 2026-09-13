@@ -88,6 +88,7 @@ jobs:
           PYTHONDONTWRITEBYTECODE=1 python -m pytest -q
           .github/write-enforcement/tests/test_signed_release_convergence.py
           .github/write-enforcement/tests/test_build_frozen_manifest.py
+          .github/write-enforcement/tests/test_independent_review.py
           .github/write-enforcement/tests/test_member_contract.py
           .github/write-enforcement/tests/test_s169_hosted_external_judge_principal.py
           .github/write-enforcement/tests/test_s170_owner_arc.py

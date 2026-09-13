@@ -2,18 +2,18 @@
   "assertion": "COMMIT_PREFLIGHT_PASS",
   "caller": "git-pre-commit",
   "changed_paths": [
+    ".github/workflows/independent-second-principal-review.yml",
+    ".github/workflows/signed-release-convergence.yml",
     ".github/write-enforcement/SIGNED_RELEASE_CONVERGENCE.md",
     ".github/write-enforcement/SIGNED_RELEASE_CONVERGENCE_INDEX.md",
-    ".github/write-enforcement/adapters/research_enforcement_activation.population-291-v1.json",
-    ".github/write-enforcement/signed_release_convergence.py",
-    ".github/write-enforcement/tests/test_s131_convergence.py",
-    ".github/write-enforcement/tests/test_signed_release_convergence.py"
+    ".github/write-enforcement/independent_review.py",
+    ".github/write-enforcement/tests/test_independent_review.py"
   ],
   "changed_paths_count": 6,
-  "changed_paths_sha256": "476efda8143caaabab04cd0d29240e69329c5b67e55860e34d6bb1a77d2ada4f",
+  "changed_paths_sha256": "c00c95849a7b83cda2d8fe26a9662b8e47c0ae4bccd2cbe1574266ca29c30f34",
   "mode": "commit-preflight",
-  "parent_head": "0d5bf12b48c2641659c39e2b0124c27f658f7aef",
-  "run_id": "pre-commit-1fd10e053da21b1ff0938da4",
+  "parent_head": "aab0d4dfb8bf7b8d49b09a03e2371f18e93496c1",
+  "run_id": "pre-commit-52a28154879be378ad4c59db",
   "schema_version": "rea.pre-commit-boundary.v1",
-  "utc_asserted_at": "2026-09-13T11:40:06Z"
+  "utc_asserted_at": "2026-09-13T12:28:42Z"
 }

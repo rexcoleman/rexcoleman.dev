@@ -13,6 +13,7 @@ import re
 import sys
 import urllib.error
 import urllib.request
+from datetime import datetime
 from pathlib import Path
 
 API = "https://api.github.com"
@@ -22,6 +23,9 @@ ALLOWED_REPOSITORIES = {
 }
 SITE_RULESET_ID = 19768000
 SITE_MANIFEST = ".github/write-enforcement/frozen_bundle_manifest.generation-5.json"
+PRE_COMMIT_RECEIPT = ".governance/pre_commit_boundary.json"
+SITE_REVIEW_FILES = [SITE_MANIFEST, PRE_COMMIT_RECEIPT]
+PRE_COMMIT_RECEIPT_SCHEMA = "rea.pre-commit-boundary.v1"
 POLICY = "rea-option-a-posthoc-exact-head-v2"
 MEMBER_CONTRACT = Path(__file__).with_name("member_contract.py")
 CONVERGENCE_INDEX = Path(__file__).with_name("signed_release_convergence_index.json")
@@ -55,6 +59,17 @@ class Refusal(RuntimeError):
 def canonical_digest(value: object) -> str:
     encoded = json.dumps(value, sort_keys=True, separators=(",", ":")).encode()
     return hashlib.sha256(encoded).hexdigest()
+
+
+def stable_paths_digest(paths: list[str]) -> str:
+    return hashlib.sha256(("\n".join(paths) + "\n").encode()).hexdigest()
+
+
+def git_blob_sha(raw: bytes) -> str:
+    header = f"blob {len(raw)}\0".encode("ascii")
+    # SHA-1 is the fixed Git object-name algorithm here, not a security trust
+    # digest. Keep the single positional call compatible with system Python 3.8.
+    return hashlib.sha1(header + raw).hexdigest()
 
 
 def api(token: str, path: str, method: str = "GET", body: object | None = None):
@@ -118,6 +133,86 @@ def content_bytes(token: str, repo: str, path: str, ref: str) -> bytes:
     if response.get("encoding") != "base64" or response.get("type") != "file":
         raise Refusal(f"content response for {path} is not an inline base64 file")
     return base64.b64decode(response["content"])
+
+
+def receipt_contract(raw: bytes, expected_head: str, expected_parent: str) -> dict:
+    def exact_object(pairs):
+        value = {}
+        for key, item in pairs:
+            if key in value:
+                raise Refusal("pre-commit boundary receipt contains a duplicate key")
+            value[key] = item
+        return value
+
+    try:
+        value = json.loads(raw, object_pairs_hook=exact_object)
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise Refusal(
+            f"pre-commit boundary receipt is not JSON: {type(exc).__name__}"
+        ) from exc
+    expected_keys = {
+        "assertion",
+        "caller",
+        "changed_paths",
+        "changed_paths_count",
+        "changed_paths_sha256",
+        "mode",
+        "parent_head",
+        "run_id",
+        "schema_version",
+        "utc_asserted_at",
+    }
+    if not isinstance(value, dict) or set(value) != expected_keys:
+        raise Refusal("pre-commit boundary receipt schema differs")
+    canonical = (json.dumps(value, indent=2, sort_keys=True) + "\n").encode()
+    if raw != canonical:
+        raise Refusal("pre-commit boundary receipt bytes are not canonical")
+    if re.fullmatch(r"[0-9a-f]{40}", expected_parent) is None:
+        raise Refusal("pre-commit boundary receipt parent ref differs")
+    if (
+        value["schema_version"] != PRE_COMMIT_RECEIPT_SCHEMA
+        or value["assertion"] != "COMMIT_PREFLIGHT_PASS"
+        or value["caller"] != "git-pre-commit"
+        or value["mode"] != "commit-preflight"
+        or value["parent_head"] != expected_parent
+        or value["changed_paths"] != [SITE_MANIFEST]
+        or type(value["changed_paths_count"]) is not int
+        or value["changed_paths_count"] != 1
+        or value["changed_paths_sha256"] != stable_paths_digest([SITE_MANIFEST])
+    ):
+        raise Refusal("pre-commit boundary receipt contract differs")
+    if (
+        not isinstance(value["run_id"], str)
+        or re.fullmatch(r"pre-commit-[0-9a-f]{24}", value["run_id"]) is None
+    ):
+        raise Refusal("pre-commit boundary receipt run id differs")
+    asserted_at = value["utc_asserted_at"]
+    if (
+        not isinstance(asserted_at, str)
+        or re.fullmatch(r"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z", asserted_at)
+        is None
+    ):
+        raise Refusal("pre-commit boundary receipt time differs")
+    try:
+        datetime.strptime(asserted_at, "%Y-%m-%dT%H:%M:%SZ")
+    except ValueError as exc:
+        raise Refusal("pre-commit boundary receipt time differs") from exc
+    if re.fullmatch(r"[0-9a-f]{40}", expected_head) is None:
+        raise Refusal("pre-commit boundary receipt content ref differs")
+    return {
+        "assertion": value["assertion"],
+        "caller": value["caller"],
+        "changed_paths": value["changed_paths"],
+        "changed_paths_count": value["changed_paths_count"],
+        "changed_paths_sha256": value["changed_paths_sha256"],
+        "content_ref": expected_head,
+        "mode": value["mode"],
+        "parent_head": value["parent_head"],
+        "receipt_sha256": hashlib.sha256(raw).hexdigest(),
+        "run_id": value["run_id"],
+        "schema_version": value["schema_version"],
+        "utc_asserted_at": asserted_at,
+    }
 
 
 def _member_map(value: object, subject: str) -> dict[str, tuple[str, str]]:
@@ -596,6 +691,7 @@ def read_state(token: str, args: argparse.Namespace) -> dict:
             "draft": pr["draft"],
             "author": pr["user"]["login"],
             "base": pr["base"]["ref"],
+            "base_sha": pr["base"]["sha"],
             "head_ref": pr["head"]["ref"],
             "head_sha": pr["head"]["sha"],
         },
@@ -612,10 +708,23 @@ def read_state(token: str, args: argparse.Namespace) -> dict:
         ], key=lambda item: (item["actor"], item["state"], item["commit_id"] or "")),
     }
     if args.repository == "rexcoleman/rexcoleman.dev":
-        state["manifest"] = manifest_contract(
-            content_bytes(
-                token, args.repository, SITE_MANIFEST, args.expected_head
-            )
+        manifest_raw = content_bytes(
+            token, args.repository, SITE_MANIFEST, args.expected_head
+        )
+        receipt_raw = content_bytes(
+            token, args.repository, PRE_COMMIT_RECEIPT, args.expected_head
+        )
+        receipt_rows = [
+            row for row in files if row["filename"] == PRE_COMMIT_RECEIPT
+        ]
+        if (
+            len(receipt_rows) != 1
+            or receipt_rows[0]["sha"] != git_blob_sha(receipt_raw)
+        ):
+            raise Refusal("pre-commit boundary receipt Git blob identity differs")
+        state["manifest"] = manifest_contract(manifest_raw)
+        state["receipt"] = receipt_contract(
+            receipt_raw, args.expected_head, pr["base"]["sha"]
         )
     return state
 
@@ -634,17 +743,53 @@ def assert_policy(state: dict, args: argparse.Namespace) -> None:
         raise Refusal("target pull request author is not rexcoleman")
     if pr["base"] != expected_base:
         raise Refusal(f"target base is not {expected_base}")
+    if re.fullmatch(r"[0-9a-f]{40}", pr.get("base_sha", "")) is None:
+        raise Refusal("target base SHA is malformed")
     if pr["head_sha"] != args.expected_head:
         raise Refusal("target head moved from the exact expected SHA")
     if state["files_sha256"] != args.expected_files_sha256:
         raise Refusal("pull-request file-set digest does not match predeclared digest")
     if args.repository == "rexcoleman/rexcoleman.dev":
-        if [item["filename"] for item in state["files"]] != [SITE_MANIFEST]:
-            raise Refusal("site review is not a one-file generation-5 manifest change")
+        filenames = [item["filename"] for item in state["files"]]
+        if (
+            filenames != SITE_REVIEW_FILES
+            or len(filenames) != len(set(filenames))
+            or any(item["status"] != "modified" for item in state["files"])
+        ):
+            raise Refusal(
+                "site review is not the exact manifest and boundary-receipt change"
+            )
         if not args.expected_manifest_sha256:
             raise Refusal("site review requires expected manifest SHA-256")
         if state["manifest"]["manifest_sha256"] != args.expected_manifest_sha256:
             raise Refusal("generation-5 manifest bytes do not match predeclared digest")
+        receipt = state.get("receipt")
+        expected_receipt = {
+            "assertion": "COMMIT_PREFLIGHT_PASS",
+            "caller": "git-pre-commit",
+            "changed_paths": [SITE_MANIFEST],
+            "changed_paths_count": 1,
+            "changed_paths_sha256": stable_paths_digest([SITE_MANIFEST]),
+            "content_ref": args.expected_head,
+            "mode": "commit-preflight",
+            "parent_head": pr["base_sha"],
+            "schema_version": PRE_COMMIT_RECEIPT_SCHEMA,
+        }
+        if (
+            not isinstance(receipt, dict)
+            or set(receipt)
+            != set(expected_receipt) | {"receipt_sha256", "run_id", "utc_asserted_at"}
+            or any(receipt.get(key) != value for key, value in expected_receipt.items())
+            or type(receipt.get("changed_paths_count")) is not int
+            or re.fullmatch(r"[0-9a-f]{64}", receipt.get("receipt_sha256", "")) is None
+            or re.fullmatch(r"pre-commit-[0-9a-f]{24}", receipt.get("run_id", "")) is None
+            or re.fullmatch(
+                r"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z",
+                receipt.get("utc_asserted_at", ""),
+            )
+            is None
+        ):
+            raise Refusal("site pre-commit boundary receipt state differs")
         if state["ruleset"]["status"] != "ACTIVE":
             raise Refusal("site review ruleset is not active")
         if state["ruleset"].get("bypass_actors") not in ([], None):
@@ -700,6 +845,8 @@ def run(args: argparse.Namespace) -> int:
         "head_sha": args.expected_head,
         "files_sha256": args.expected_files_sha256,
         "manifest_sha256": args.expected_manifest_sha256 or None,
+        "receipt_sha256": before.get("receipt", {}).get("receipt_sha256"),
+        "base_sha": before["pull_request"].get("base_sha"),
         "state_sha256": canonical_digest(before),
         "mutation_count": 0,
     }
