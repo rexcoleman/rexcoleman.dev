@@ -2,15 +2,27 @@
   "assertion": "COMMIT_PREFLIGHT_PASS",
   "caller": "git-pre-commit",
   "changed_paths": [
+    ".github/write-enforcement/SIGNED_RELEASE_CONVERGENCE.md",
+    ".github/write-enforcement/SIGNED_RELEASE_CONVERGENCE_INDEX.md",
+    ".github/write-enforcement/adapters/adversarial_ml_landscape.population-291-v1.json",
+    ".github/write-enforcement/adapters/agent_boundary_learning_landscape.population-291-v1.json",
+    ".github/write-enforcement/adapters/newsletter_generation_architecture.population-291-v1.json",
+    ".github/write-enforcement/adapters/newsletter_hybrid_path.population-291-v1.json",
+    ".github/write-enforcement/adapters/research_enforcement_activation.population-291-v1.json",
+    ".github/write-enforcement/adapters/research_engine_release.population-291-v1.json",
+    ".github/write-enforcement/build_frozen_manifest.py",
     ".github/write-enforcement/member_contract.py",
+    ".github/write-enforcement/signed_release_convergence.py",
+    ".github/write-enforcement/signed_release_convergence_index.json",
     ".github/write-enforcement/tests/test_build_frozen_manifest.py",
-    ".github/write-enforcement/tests/test_member_contract.py"
+    ".github/write-enforcement/tests/test_member_contract.py",
+    ".github/write-enforcement/tests/test_signed_release_convergence.py"
   ],
-  "changed_paths_count": 3,
-  "changed_paths_sha256": "49db8182d460e01f63ac10958363150c1d801513b311f192bb94939a2a4cbb0d",
+  "changed_paths_count": 15,
+  "changed_paths_sha256": "ab377443b6a55d2cf67b493e4ea29b12337ac0d49caf23b88a44b70afb9b97fc",
   "mode": "commit-preflight",
-  "parent_head": "bdf6b13ae3172b03968a65f5ee36573143a7bdac",
-  "run_id": "pre-commit-a81dbe6e4bff03ddce53195f",
+  "parent_head": "20a4532c362b82a00006c95073dbe38c4595eea1",
+  "run_id": "pre-commit-682635d5773f71d3f49952dd",
   "schema_version": "rea.pre-commit-boundary.v1",
-  "utc_asserted_at": "2026-09-13T00:28:01Z"
+  "utc_asserted_at": "2026-09-13T04:42:34Z"
 }

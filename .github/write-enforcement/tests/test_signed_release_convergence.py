@@ -71,6 +71,17 @@ DURABLE_COUNT = len(tool.member_contract(ROOT.parents[1], "durable_history_succe
 DURABLE_ADAPTERS = tuple(ROOT / f"adapters/{name}.population-{DURABLE_COUNT}-v1.json" for name in (
     "research_enforcement_activation", "adversarial_ml_landscape", "agent_boundary_learning_landscape",
     "newsletter_hybrid_path", "newsletter_generation_architecture", "research_engine_release"))
+FINAL_RUNTIME_COUNT = len(tool.member_contract(
+    ROOT.parents[1], "final_runtime_rollout_successor_members"
+))
+FINAL_RUNTIME_ADAPTERS = tuple(
+    ROOT / f"adapters/{name}.population-{FINAL_RUNTIME_COUNT}-v1.json"
+    for name in (
+        "research_enforcement_activation", "adversarial_ml_landscape",
+        "agent_boundary_learning_landscape", "newsletter_hybrid_path",
+        "newsletter_generation_architecture", "research_engine_release",
+    )
+)
 
 
 
@@ -1018,7 +1029,7 @@ def test_index_is_closed_and_resolves_every_registered_adapter():
     assert value["index_guide"] == INDEX_DOC.name
     assert value["cross_generation_inventory"] == INVENTORY.name
     identifiers = [row["adapter_id"] for row in value["adapters"]]
-    assert identifiers == [
+    assert identifiers == ([
         "research-enforcement-activation-generation-5",
         "research-enforcement-activation-generation-5-registration-v1",
         "research-enforcement-activation-generation-5-band-c-m1-v1",
@@ -1052,6 +1063,11 @@ def test_index_is_closed_and_resolves_every_registered_adapter():
     ] + [f"{name}-generation-5-population-{DURABLE_COUNT}-v1" for name in (
         "research-enforcement-activation", "adversarial-ml-landscape", "agent-boundary-learning-landscape",
         "newsletter-hybrid-path", "newsletter-generation-architecture", "research-engine-release")]
+    + [f"{name}-generation-5-population-{FINAL_RUNTIME_COUNT}-v1" for name in (
+        "research-enforcement-activation", "adversarial-ml-landscape",
+        "agent-boundary-learning-landscape", "newsletter-hybrid-path",
+        "newsletter-generation-architecture", "research-engine-release")]
+    )
     status = {row["adapter_id"]: row["status"] for row in value["adapters"]}
     assert {
         adapter_id for adapter_id, item in status.items() if item == "retired"
@@ -1111,8 +1127,10 @@ def test_index_refuses_duplicate_unknown_retired_and_traversing_rows(
                 POPULATION_273_ADAPTER,
             ):
         shutil.copyfile(adapter_path, adapters / adapter_path.name)
-    for adapter_path in DURABLE_ADAPTERS:
-        shutil.copyfile(adapter_path, adapters / adapter_path.name)
+        for adapter_path in DURABLE_ADAPTERS:
+            shutil.copyfile(adapter_path, adapters / adapter_path.name)
+        for adapter_path in FINAL_RUNTIME_ADAPTERS:
+            shutil.copyfile(adapter_path, adapters / adapter_path.name)
     shutil.copyfile(WORKFLOW, tmp_path / "workflows" / WORKFLOW.name)
 
     value = json.loads(INDEX.read_text())
@@ -1873,6 +1891,25 @@ def test_durable_history_adapter_derives_complete_union_and_required_tests():
         for field in ('expected_member_count','manifest_builder_flag','hermetic_tests','system_python_sources'):
             assert dependent[field]==authority[field]
         assert dependent['dependent_project']['required_source']=='SIGNED_BUNDLE'
+
+
+def test_final_runtime_rollout_adapters_derive_population_and_preserve_290():
+    authority = tool.load_adapter(FINAL_RUNTIME_ADAPTERS[0])
+    assert FINAL_RUNTIME_COUNT == DURABLE_COUNT + 1
+    assert authority["expected_member_count"] == FINAL_RUNTIME_COUNT
+    assert authority["manifest_builder_flag"] == "--final-runtime-rollout-successor"
+    tests = {path for row in authority["hermetic_tests"] for path in row["paths"]}
+    sources = {path for row in authority["system_python_sources"] for path in row["paths"]}
+    assert "tests/test_s231_final_runtime_rollout.py" in tests
+    assert "scripts/s231_final_runtime_rollout.py" in sources
+    for old, new in zip(DURABLE_ADAPTERS, FINAL_RUNTIME_ADAPTERS):
+        prior = tool.load_adapter(old)
+        successor = tool.load_adapter(new)
+        assert prior["expected_member_count"] == DURABLE_COUNT
+        assert prior["manifest_builder_flag"] == "--durable-history-successor"
+        assert successor["expected_member_count"] == FINAL_RUNTIME_COUNT
+        if successor.get("dependent_project"):
+            assert successor["dependent_project"]["required_source"] == "SIGNED_BUNDLE"
 
 
 def test_hermetic_cross_repository_fixture_uses_configured_root(tmp_path, monkeypatch):

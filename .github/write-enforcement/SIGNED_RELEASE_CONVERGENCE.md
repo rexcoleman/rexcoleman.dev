@@ -299,3 +299,34 @@ defines signed completed-run backfill, finite-retention refusal, same-principal
 finalization, scheduler recovery, runtime journaling and truthful health. The
 indexed adapter includes the production publisher and these transition tests.
 Registration and a green source plan do not issue authority or prove live adoption.
+
+## Final runtime rollout successor
+
+The s231 successor adds exactly one signed subject,
+`research_enforcement_activation/scripts/s231_final_runtime_rollout.py`, through
+`final_runtime_rollout_successor_members`.  The resulting count is derived from
+that closed map; population-290 and its adapters remain immutable.  All six
+population-next adapters select `--final-runtime-rollout-successor`, compile the
+new entrypoint, and run its focused packet, strict-subset, old/mixed closure,
+transitive-pin, exchange, recovery, and live-fence tests.
+
+The entrypoint separates pre-freeze and post-issuance authority.  Pre-freeze
+packet-shaped fixtures establish only the generic contract.  After issuance it
+delegates signature/receipt verification to the production renewal verifier,
+loads the exact signed member contract, requires complete member-map equality,
+checks all five source roots and the transitive runtime pin graph, and emits a
+non-mutating execution record bound to the packet's commits, tag, run, epoch,
+members and poststate.  Acceptance and a planted mixed-identity refusal must be
+repeated against the issued packet before any runtime exchange.
+
+For rex provenance it binds all three canonical identities: source commit R in
+the member rows, reviewed manifest/boundary feature commit F in the protected
+tag and issuance receipt, and fetched default merge M.  R..F is limited to the
+manifest plus its validated pre-commit-boundary receipt; F..M must be
+tree-identical.  It never substitutes M for the tag target.
+
+Runtime exchange is outside this convergence planner.  The signed REA entrypoint
+owns the existing audited `renameat2(RENAME_EXCHANGE)` primitive behind separate
+preflight/apply/recover/rollback receipts, the existing renewal lock and lease,
+an explicit live fence, and disposable forward/reverse/SIGKILL recovery tests.
+Neither a convergence plan nor an execution record performs an install.

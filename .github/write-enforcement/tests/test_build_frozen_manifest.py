@@ -109,11 +109,14 @@ EMITTER_RUNTIME_SURFACE_CLOSURES = {}
     return roots, commits
 
 
-@pytest.mark.parametrize("population", (273, 290))
+@pytest.mark.parametrize("population", (273, 290, 291))
 def test_managed_history_full_population_builder_and_issuer(tmp_path, population):
     contract = (
-        contract_module.durable_history_successor_members()
-        if population == 290 else contract_module.pre_commit_boundary_successor_members()
+        contract_module.final_runtime_rollout_successor_members()
+        if population == 291
+        else contract_module.durable_history_successor_members()
+        if population == 290
+        else contract_module.pre_commit_boundary_successor_members()
     )
     roots, commits = full_population_repositories(tmp_path, contract)
     loaded = builder.open_frozen_population(roots, commits, contract)
@@ -129,7 +132,7 @@ def test_managed_history_full_population_builder_and_issuer(tmp_path, population
         ],
     }
     assert issuer.verify_members(manifest, tmp_path) == loaded
-    if population == 290:
+    if population in (290, 291):
         # A stale digest in an otherwise exact full manifest must still refuse.
         planted = json.loads(json.dumps(manifest))
         row = next(row for row in planted["members"]
