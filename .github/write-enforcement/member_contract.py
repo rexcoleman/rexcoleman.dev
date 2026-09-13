@@ -1026,6 +1026,32 @@ def validate_durable_history_member_ids(observed):
         raise ValueError("durable history member set refused")
 
 
+# s231 adds the source-controlled authenticated-packet rollout and exchange
+# entrypoint.  Keep population 290 immutable and require this single new
+# subject only through a distinct successor contract.
+FINAL_RUNTIME_ROLLOUT_ADDITIONAL_MEMBERS = {
+    "final-runtime-rollout": (
+        "research_enforcement_activation",
+        "scripts/s231_final_runtime_rollout.py",
+    ),
+}
+
+
+def final_runtime_rollout_successor_members():
+    value = durable_history_successor_members()
+    if set(value) & set(FINAL_RUNTIME_ROLLOUT_ADDITIONAL_MEMBERS):
+        raise ValueError("final runtime rollout member id collision")
+    value.update(FINAL_RUNTIME_ROLLOUT_ADDITIONAL_MEMBERS)
+    if len(set(value.values())) != len(value):
+        raise ValueError("final runtime rollout member subject collision")
+    return value
+
+
+def validate_final_runtime_rollout_member_ids(observed):
+    if set(observed) != set(final_runtime_rollout_successor_members()):
+        raise ValueError("final runtime rollout member set refused")
+
+
 def production_members_for_manifest(manifest, baseline=None):
     """Select the exact closed set for one known generation; never a subset."""
     rows = manifest.get("members") if isinstance(manifest, dict) else None
@@ -1049,19 +1075,27 @@ def production_members_for_manifest(manifest, baseline=None):
     durable_successor = dict(pre_commit_successor)
     durable_successor.update(GOVERNED_READ_CREDENTIAL_ADDITIONAL_MEMBERS)
     durable_successor.update(DURABLE_HISTORY_ADDITIONAL_MEMBERS)
+    final_runtime_successor = dict(durable_successor)
+    final_runtime_successor.update(FINAL_RUNTIME_ROLLOUT_ADDITIONAL_MEMBERS)
     generation = manifest.get("authority_generation") if isinstance(manifest, dict) else None
     if generation is None and baseline is not None:
         # Unit-level byte/membership checks historically pass a reduced explicit
         # contract without the outer manifest loader. Production entrypoints
         # validate the generation before reaching this selector.
-        return successor if observed & set(SUCCESSOR_ADDITIONAL_MEMBERS) else base
+        return (
+            final_runtime_successor
+            if observed & set(FINAL_RUNTIME_ROLLOUT_ADDITIONAL_MEMBERS)
+            else successor if observed & set(SUCCESSOR_ADDITIONAL_MEMBERS) else base
+        )
     if generation == HISTORICAL_AUTHORITY_GENERATION:
         if observed & set(SUCCESSOR_ADDITIONAL_MEMBERS):
             raise ValueError("generation-4 manifest contains successor members")
         return base
     if generation == AUTHORITY_GENERATION:
         return (
-            durable_successor
+            final_runtime_successor
+            if observed & set(FINAL_RUNTIME_ROLLOUT_ADDITIONAL_MEMBERS)
+            else durable_successor
             if observed & set(DURABLE_HISTORY_ADDITIONAL_MEMBERS)
             else pre_commit_successor
             if observed & set(PRE_COMMIT_BOUNDARY_ADDITIONAL_MEMBERS)
@@ -1249,7 +1283,10 @@ def validate_managed_live_member_aliases(
     table = MANAGED_LIVE_MEMBER_ALIASES
     expected_count = 15
     if set(contract) & set(DURABLE_HISTORY_ADDITIONAL_MEMBERS):
-        if contract != durable_history_successor_members():
+        if contract not in (
+            durable_history_successor_members(),
+            final_runtime_rollout_successor_members(),
+        ):
             raise ValueError("managed live durable successor contract incomplete")
         table += DURABLE_HISTORY_MANAGED_LIVE_MEMBER_ALIASES
         expected_count = 16
