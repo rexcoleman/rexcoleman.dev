@@ -1125,6 +1125,13 @@ MANAGED_LIVE_MEMBER_ALIASES = (
     ("write-boundary-trusted-admission", "scaffold-hybrid-core-trusted-admission", "write_integrity/write_boundary/trusted_admission.py", "100644", "100644", 0o644),
 )
 
+# The durable successor adds a managed destination without changing any
+# historical alias population. Both immutable subjects are already members of
+# the complete durable contract; this row binds their installed relationship.
+DURABLE_HISTORY_MANAGED_LIVE_MEMBER_ALIASES = (
+    ("rea-durable-attestation-history", "durable-attestation-history", "scripts/durable_attestation_history.py", "100644", "100644", 0o644),
+)
+
 
 def _literal_assignment(source: bytes, name: str):
     """Read one closed literal assignment without executing candidate code."""
@@ -1239,9 +1246,16 @@ def validate_managed_live_member_aliases(
     contract: dict[str, tuple[str, str]],
 ) -> None:
     """Close every authoring alias over the authenticated managed contract."""
+    table = MANAGED_LIVE_MEMBER_ALIASES
+    expected_count = 15
+    if set(contract) & set(DURABLE_HISTORY_ADDITIONAL_MEMBERS):
+        if contract != durable_history_successor_members():
+            raise ValueError("managed live durable successor contract incomplete")
+        table += DURABLE_HISTORY_MANAGED_LIVE_MEMBER_ALIASES
+        expected_count = 16
     required_ids = {
         member_id
-        for row in MANAGED_LIVE_MEMBER_ALIASES
+        for row in table
         for member_id in row[:2]
     } | {
         "managed-enforcement-inventory", "scaffold-hybrid-install-manifest"
@@ -1259,8 +1273,7 @@ def validate_managed_live_member_aliases(
     source_to_ids = {}
     for member_id, subject in contract.items():
         source_to_ids.setdefault(subject, []).append(member_id)
-    table = MANAGED_LIVE_MEMBER_ALIASES
-    if len(table) != 15:
+    if len(table) != expected_count:
         raise ValueError("managed live alias count")
     if len({row[0] for row in table}) != len(table):
         raise ValueError("managed live authoring id duplicate")

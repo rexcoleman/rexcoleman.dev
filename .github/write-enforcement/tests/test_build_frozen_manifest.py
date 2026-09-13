@@ -13,6 +13,8 @@ HERE = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(HERE))
 
 import build_frozen_manifest as builder  # noqa: E402
+import issue_wea as issuer  # noqa: E402
+import member_contract as contract_module  # noqa: E402
 from member_contract import (  # noqa: E402
     EXACT_MEMBER_BYTE_ALIASES,
     GENERATION_MANIFEST_NAME,
@@ -42,11 +44,12 @@ def fixture_repository(tmp_path: Path) -> tuple[Path, str]:
 
 
 def full_population_repositories(
-    tmp_path: Path,
+    tmp_path: Path, contract=None,
 ) -> tuple[dict[str, Path], dict[str, str]]:
     roots = {}
     commits = {}
-    grouped = builder.group_member_contract(builder.EXPECTED_MEMBERS)
+    contract = builder.EXPECTED_MEMBERS if contract is None else contract
+    grouped = builder.group_member_contract(contract)
     aliases = {
         member_id: f"exact-alias:{authoring_id}:{runtime_id}\n".encode()
         for authoring_id, runtime_id in EXACT_MEMBER_BYTE_ALIASES
@@ -64,6 +67,18 @@ PROFILE_CONTRACT = {'research-build': {'research_type': 'build', 'surfaces': (),
 SIGNED_BASE = {'write_integrity/runners/runner_adapter.py': ('govML', 'templates/build/enforcement/runner_adapter_launcher.py')}
 EMITTER_RUNTIME_SURFACE_CLOSURES = {}
 """
+    if "rea-durable-attestation-history" in contract:
+        # Deliberately independent of the alias extension under test: these
+        # are the actual successor COMMON destination and three signed copies.
+        inventory = inventory.replace(
+            b"COMMON = {}",
+            b"COMMON = {'scripts/durable_attestation_history.py': 'durable_attestation_history.py'}",
+        )
+        for member_id in (
+            "rea-durable-attestation-history", "durable-attestation-history",
+            "remote-durable-attestation-history",
+        ):
+            aliases[member_id] = b"equal durable history fixture\n"
     hybrid = json.dumps({
         "core_members": core_rows,
         "report_members": [],
@@ -92,6 +107,36 @@ EMITTER_RUNTIME_SURFACE_CLOSURES = {}
         roots[repository] = root
         commits[repository] = git(root, "rev-parse", "HEAD")
     return roots, commits
+
+
+@pytest.mark.parametrize("population", (273, 290))
+def test_managed_history_full_population_builder_and_issuer(tmp_path, population):
+    contract = (
+        contract_module.durable_history_successor_members()
+        if population == 290 else contract_module.pre_commit_boundary_successor_members()
+    )
+    roots, commits = full_population_repositories(tmp_path, contract)
+    loaded = builder.open_frozen_population(roots, commits, contract)
+    assert len(loaded) == population
+    manifest = {
+        "authority_generation": contract_module.AUTHORITY_GENERATION,
+        "required_member_classes": list(contract_module.REQUIRED_MEMBER_CLASSES),
+        "members": [
+            {"member_id": member_id, "repository": repo, "path": path,
+             "commit": commits[repo], "sha256": builder.sha(loaded[member_id]),
+             "byte_length": len(loaded[member_id])}
+            for member_id, (repo, path) in sorted(contract.items())
+        ],
+    }
+    assert issuer.verify_members(manifest, tmp_path) == loaded
+    if population == 290:
+        # A stale digest in an otherwise exact full manifest must still refuse.
+        planted = json.loads(json.dumps(manifest))
+        row = next(row for row in planted["members"]
+                   if row["member_id"] == "rea-durable-attestation-history")
+        row["sha256"] = "0" * 64
+        with pytest.raises(ValueError, match="member mismatch: rea-durable"):
+            issuer.verify_members(planted, tmp_path)
 
 
 def ruleset(path: Path) -> None:

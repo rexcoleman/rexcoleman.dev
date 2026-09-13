@@ -378,6 +378,79 @@ def test_managed_live_alias_population_plants_refuse(monkeypatch, plant, reason)
         validate_managed_live_member_aliases(loaded, modes, contract)
 
 
+def durable_managed_alias_fixture():
+    loaded, modes, _historical = managed_alias_fixture()
+    contract = contract_module.durable_history_successor_members()
+    for member_id in contract:
+        loaded.setdefault(member_id, ("fixture:" + member_id).encode())
+        modes.setdefault(member_id, "100644")
+    # This input is independent of the alias table: it encodes the actual
+    # canonical COMMON addition that caused the normal 290 builder refusal.
+    loaded["managed-enforcement-inventory"] = loaded[
+        "managed-enforcement-inventory"
+    ].replace(b"COMMON = {}", b"COMMON = {'scripts/durable_attestation_history.py': 'durable_attestation_history.py'}")
+    for member_id in ("rea-durable-attestation-history", "durable-attestation-history",
+                      "remote-durable-attestation-history"):
+        loaded[member_id] = b"same durable history bytes"
+    return loaded, modes, contract
+
+
+def test_managed_history_full_contract_and_historical_table_unchanged():
+    loaded, modes, contract = durable_managed_alias_fixture()
+    validate_managed_live_member_aliases(loaded, modes, contract)
+    assert len(contract) == 290
+    assert len(MANAGED_LIVE_MEMBER_ALIASES) == 15
+    assert contract_module.DURABLE_HISTORY_MANAGED_LIVE_MEMBER_ALIASES == (
+        ("rea-durable-attestation-history", "durable-attestation-history",
+         "scripts/durable_attestation_history.py", "100644", "100644", 0o644),
+    )
+
+
+@pytest.mark.parametrize("plant,reason", (
+    ("omit-extension", "alias count"),
+    ("partial", "durable successor contract incomplete"),
+    ("partial-unrelated", "durable successor contract incomplete"),
+    ("wrong-subject", "durable successor contract incomplete"),
+    ("divergent-bytes", "alias divergence"),
+    ("authoring-mode", "authoring mode"),
+    ("runtime-mode", "runtime mode"),
+    ("installed-mode", "installed mode"),
+    ("wrong-target", "runtime target mismatch"),
+    ("wrong-common", "runtime target mismatch"),
+    ("duplicate", "alias count"),
+))
+def test_managed_history_alias_boundaries(monkeypatch, plant, reason):
+    loaded, modes, contract = durable_managed_alias_fixture()
+    table = list(contract_module.DURABLE_HISTORY_MANAGED_LIVE_MEMBER_ALIASES)
+    row = list(table[0])
+    if plant == "omit-extension":
+        table = []
+    elif plant == "partial":
+        contract.pop("rea-durable-attestation-history")
+    elif plant == "partial-unrelated":
+        contract.pop("renewal-health-observer")
+    elif plant == "wrong-subject":
+        contract["rea-durable-attestation-history"] = ("research_enforcement_activation", "scripts/forged.py")
+    elif plant == "divergent-bytes":
+        loaded["rea-durable-attestation-history"] = b"planted divergence"
+    elif plant == "authoring-mode":
+        modes["rea-durable-attestation-history"] = "100755"
+    elif plant == "runtime-mode":
+        modes["durable-attestation-history"] = "100755"
+    elif plant == "installed-mode":
+        row[5] = 0o755; table = [tuple(row)]
+    elif plant == "wrong-target":
+        row[2] = "scripts/forged.py"; table = [tuple(row)]
+    elif plant == "wrong-common":
+        loaded["managed-enforcement-inventory"] = loaded["managed-enforcement-inventory"].replace(
+            b"'durable_attestation_history.py'", b"'forged.py'")
+    elif plant == "duplicate":
+        table.append(table[0])
+    monkeypatch.setattr(contract_module, "DURABLE_HISTORY_MANAGED_LIVE_MEMBER_ALIASES", tuple(table))
+    with pytest.raises(ValueError, match=reason):
+        validate_managed_live_member_aliases(loaded, modes, contract)
+
+
 def test_member_contract_imports_on_supported_controller_pythons(tmp_path):
     command = (
         "import member_contract as m; "
