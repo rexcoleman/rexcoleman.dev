@@ -791,6 +791,19 @@ def assert_directory_fd_identity(descriptor: int, path: Path, subject: str) -> N
         raise Refusal("%s_DRIFT:%s" % (subject, path))
 
 
+class DirectoryChain:
+    def __init__(self, rows):
+        self.rows = tuple(rows)
+
+    @property
+    def fd(self):
+        return self.rows[-1][1]
+
+    def validate(self, subject: str) -> None:
+        for path, descriptor in self.rows:
+            assert_directory_fd_identity(descriptor, path, subject)
+
+
 @contextlib.contextmanager
 def open_real_directory_fd(path: Path, subject: str):
     path = real_directory(path, subject)
@@ -800,21 +813,25 @@ def open_real_directory_fd(path: Path, subject: str):
         | getattr(os, "O_CLOEXEC", 0)
         | getattr(os, "O_NOFOLLOW", 0)
     )
-    descriptor = None
+    rows = []
     try:
+        cursor = Path(path.anchor)
         descriptor = os.open(path.anchor, flags)
+        rows.append((cursor, descriptor))
         for part in path.parts[1:]:
+            cursor /= part
             child = os.open(part, flags, dir_fd=descriptor)
-            os.close(descriptor)
             descriptor = child
-        assert_directory_fd_identity(descriptor, path, subject)
-        yield descriptor
+            rows.append((cursor, descriptor))
+        chain = DirectoryChain(rows)
+        chain.validate(subject)
+        yield chain
     except Refusal:
         raise
     except OSError as exc:
         raise Refusal("%s_OPEN_REFUSED:%s:%s" % (subject, path, type(exc).__name__))
     finally:
-        if descriptor is not None:
+        for _path, descriptor in reversed(rows):
             os.close(descriptor)
 
 
@@ -1099,7 +1116,8 @@ def authenticated_hermetic_home(
     )
     if CREDENTIAL_SHAPED_PARTS.intersection(source.parts):
         raise Refusal("HERMETIC_PACKET_CREDENTIAL_PATH_REFUSED:%s" % source)
-    with open_real_directory_fd(source, "HERMETIC_PACKET_SOURCE") as source_fd:
+    with open_real_directory_fd(source, "HERMETIC_PACKET_SOURCE") as source_chain:
+        source_fd = source_chain.fd
         observed = set(os.listdir(source_fd))
         if observed != PUBLIC_PACKET_FILES:
             raise Refusal(
@@ -1111,13 +1129,14 @@ def authenticated_hermetic_home(
             )
         if source_opened is not None:
             source_opened()
+        source_chain.validate("HERMETIC_PACKET_SOURCE")
         packet = {
             name: regular_bytes_at(source_fd, name, "HERMETIC_PACKET_MEMBER")
             for name in PUBLIC_PACKET_FILES
         }
         if set(os.listdir(source_fd)) != PUBLIC_PACKET_FILES:
             raise Refusal("HERMETIC_PACKET_SET_DRIFT")
-        assert_directory_fd_identity(source_fd, source, "HERMETIC_PACKET_SOURCE")
+        source_chain.validate("HERMETIC_PACKET_SOURCE")
     parent = real_directory(
         roots[adapter["hermetic_fixture"]["durable_root_repository"]].parent,
         "HERMETIC_FIXTURE_PARENT",
@@ -1128,7 +1147,8 @@ def authenticated_hermetic_home(
     name_factory = fixture_name_factory or (
         lambda: ".rea-release-hermetic-" + secrets.token_hex(8)
     )
-    with open_real_directory_fd(parent, "HERMETIC_FIXTURE_PARENT") as parent_fd:
+    with open_real_directory_fd(parent, "HERMETIC_FIXTURE_PARENT") as parent_chain:
+        parent_fd = parent_chain.fd
         fixture_name = name_factory()
         if (
             not isinstance(fixture_name, str)
@@ -1189,6 +1209,7 @@ def authenticated_hermetic_home(
                 assert_directory_fd_identity(
                     destination_fd, destination, "HERMETIC_PACKET_DESTINATION"
                 )
+                parent_chain.validate("HERMETIC_FIXTURE_PARENT")
                 env = dict(
                     hermetic_environment(),
                     HOME=str(home),
@@ -1200,6 +1221,7 @@ def authenticated_hermetic_home(
                 assert_directory_fd_identity(
                     destination_fd, destination, "HERMETIC_PACKET_DESTINATION"
                 )
+                parent_chain.validate("HERMETIC_FIXTURE_PARENT")
                 authority["fixture_only"] = True
                 yield {
                     "root": fixture_root,

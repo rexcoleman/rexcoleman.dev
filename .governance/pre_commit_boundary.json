@@ -2,17 +2,14 @@
   "assertion": "COMMIT_PREFLIGHT_PASS",
   "caller": "git-pre-commit",
   "changed_paths": [
-    ".github/write-enforcement/SIGNED_RELEASE_CONVERGENCE.md",
-    ".github/write-enforcement/SIGNED_RELEASE_CONVERGENCE_INDEX.md",
     ".github/write-enforcement/signed_release_convergence.py",
-    ".github/write-enforcement/tests/test_renewal_workflow.py",
     ".github/write-enforcement/tests/test_signed_release_convergence.py"
   ],
-  "changed_paths_count": 5,
-  "changed_paths_sha256": "c969164ebcec82c09ac6d358d614d1686d3fd2d605f29ed3bdcebd2f2aa8653f",
+  "changed_paths_count": 2,
+  "changed_paths_sha256": "e032808ce8e20c18f0b92e3220916f3ece3d4acac7248cc070c3154f2f7251d2",
   "mode": "commit-preflight",
-  "parent_head": "cc1b0c2f78169e6e509635ebdbe92ade7caa8b78",
-  "run_id": "pre-commit-11c87cb294eeaacf44f5c6d1",
+  "parent_head": "246141321f792945deeb54ace78ac7c2c617959f",
+  "run_id": "pre-commit-676ec8fba4cccf08a28cac4b",
   "schema_version": "rea.pre-commit-boundary.v1",
-  "utc_asserted_at": "2026-09-13T08:50:56Z"
+  "utc_asserted_at": "2026-09-13T09:10:17Z"
 }

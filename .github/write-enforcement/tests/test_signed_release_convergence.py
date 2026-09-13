@@ -1596,8 +1596,9 @@ def test_authenticated_fixture_refuses_unwritable_and_escaping_parent(
     assert not list(parent.glob(".rea-release-hermetic-*"))
 
 
+@pytest.mark.parametrize("replacement", ["alternate", "same-target"])
 def test_authenticated_fixture_refuses_source_parent_swap_without_copy_or_residue(
-    tmp_path, monkeypatch
+    tmp_path, monkeypatch, replacement
 ):
     adapter, mapping, rows, ambient, _authority = _fixture_inputs(
         tmp_path, monkeypatch
@@ -1619,7 +1620,8 @@ def test_authenticated_fixture_refuses_source_parent_swap_without_copy_or_residu
 
     def swap_parent():
         original_parent.rename(held_parent)
-        original_parent.symlink_to(alternate_parent, target_is_directory=True)
+        target = alternate_parent if replacement == "alternate" else held_parent
+        original_parent.symlink_to(target, target_is_directory=True)
 
     fixture_parent = mapping["research_enforcement_activation"].parent
     with pytest.raises(tool.Refusal, match="HERMETIC_PACKET_SOURCE_DRIFT"):
