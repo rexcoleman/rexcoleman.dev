@@ -329,6 +329,22 @@ dependent population-next adapters retain their prior behavior because the
 field is optional and absent from their rows. A present null or open fixture
 object refuses; only complete absence selects legacy adapter behavior.
 
+The callable independent review route selects the unique highest active REA
+generation-5 population row in this canonical index and derives the adapter's
+builder selector through a structural parse of the protected member-contract
+literals and full production-successor call graph. The adapter must select the
+graph's unique terminal successor, and its population number must equal that
+selector's derived map size. It never imports or executes the reviewed
+candidate and does not depend on a successor manifest being published before
+its source. A missing, duplicate, malformed or lower-only index refuses. Exact
+current-map equality is required, so omissions, additions, and mixed rows also
+refuse while the existing exact-head, manifest-SHA, file-set, ruleset, and
+installation-scope predicates remain unchanged.
+
+Historical retired REA population rows remain identity/path validated and are
+excluded from active selection. A retired lower row cannot block a coherent
+active terminal, while a retired terminal with only a lower active row refuses.
+
 The rex identity remains the canonical two-commit freeze: signed members name
 source commit R; the reviewed manifest/pre-commit-boundary feature commit F is
 the protected tag and receipt target; fetched default M is F's tree-identical

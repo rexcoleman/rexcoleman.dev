@@ -24,8 +24,12 @@ SITE_RULESET_ID = 19768000
 SITE_MANIFEST = ".github/write-enforcement/frozen_bundle_manifest.generation-5.json"
 POLICY = "rea-option-a-posthoc-exact-head-v2"
 MEMBER_CONTRACT = Path(__file__).with_name("member_contract.py")
+CONVERGENCE_INDEX = Path(__file__).with_name("signed_release_convergence_index.json")
+ADAPTER_DIRECTORY = Path(__file__).with_name("adapters")
 AUTHORITY_GENERATION = 5
-GENERATION_MEMBER_COUNT = 259
+REA_POPULATION_ADAPTER = re.compile(
+    r"research-enforcement-activation-generation-5-population-([1-9][0-9]*)-v1"
+)
 REQUIRED_MEMBER_CLASSES = {
     "boundary_gate",
     "resolver",
@@ -116,25 +120,303 @@ def content_bytes(token: str, repo: str, path: str, ref: str) -> bytes:
     return base64.b64decode(response["content"])
 
 
-def expected_members() -> dict[str, tuple[str, str]]:
-    source = MEMBER_CONTRACT.read_text()
-    value: dict[str, tuple[str, str]] = {}
-    successor: dict[str, tuple[str, str]] = {}
-    for node in ast.parse(source).body:
+def _member_map(value: object, subject: str) -> dict[str, tuple[str, str]]:
+    if not isinstance(value, dict) or not value:
+        raise Refusal(f"trusted member contract {subject} is not a nonempty map")
+    result: dict[str, tuple[str, str]] = {}
+    for member_id, row in value.items():
+        if (
+            not isinstance(member_id, str)
+            or not member_id
+            or not isinstance(row, tuple)
+            or len(row) != 2
+            or not all(isinstance(item, str) and item for item in row)
+            or Path(row[1]).is_absolute()
+            or ".." in Path(row[1]).parts
+        ):
+            raise Refusal(f"trusted member contract {subject} row differs")
+        result[member_id] = row
+    return result
+
+
+def _json_file(path: Path, subject: str) -> object:
+    try:
+        if (
+            path.is_symlink()
+            or not path.is_file()
+            or path.resolve().parent != path.parent.resolve()
+        ):
+            raise Refusal(f"{subject} path differs")
+        return json.loads(path.read_bytes())
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise Refusal(f"{subject} is unavailable: {type(exc).__name__}") from exc
+
+
+def _registered_adapter_path() -> tuple[Path, int]:
+    value = _json_file(CONVERGENCE_INDEX, "signed release convergence index")
+    expected_keys = {
+        "adapters",
+        "documentation",
+        "engine",
+        "focused_tests",
+        "index_guide",
+        "cross_generation_inventory",
+        "schema_version",
+        "workflow",
+    }
+    if (
+        not isinstance(value, dict)
+        or set(value) != expected_keys
+        or value["schema_version"] != "rea.signed-release-convergence-index.v1"
+        or value["documentation"] != "SIGNED_RELEASE_CONVERGENCE.md"
+        or value["engine"] != "signed_release_convergence.py"
+        or value["focused_tests"] != "tests/test_signed_release_convergence.py"
+        or value["index_guide"] != "SIGNED_RELEASE_CONVERGENCE_INDEX.md"
+        or value["cross_generation_inventory"]
+        != "signed_release_convergence_inventory.json"
+        or value["workflow"] != "../workflows/signed-release-convergence.yml"
+        or not isinstance(value["adapters"], list)
+        or not value["adapters"]
+    ):
+        raise Refusal("signed release convergence index contract differs")
+    seen_ids: set[str] = set()
+    seen_paths: set[str] = set()
+    registered_populations: set[int] = set()
+    populations: dict[int, str] = {}
+    for row in value["adapters"]:
+        if (
+            not isinstance(row, dict)
+            or set(row) != {"adapter_id", "path", "status"}
+            or not isinstance(row["adapter_id"], str)
+            or not isinstance(row["path"], str)
+            or row["status"] not in {"active", "retired"}
+            or row["adapter_id"] in seen_ids
+            or row["path"] in seen_paths
+        ):
+            raise Refusal("signed release convergence index adapter row differs")
+        seen_ids.add(row["adapter_id"])
+        seen_paths.add(row["path"])
+        match = REA_POPULATION_ADAPTER.fullmatch(row["adapter_id"])
+        if match is None:
+            continue
+        population = int(match.group(1))
+        expected_path = (
+            f"adapters/research_enforcement_activation.population-{population}-v1.json"
+        )
+        if row["path"] != expected_path or population in registered_populations:
+            raise Refusal("registered REA population adapter identity is ambiguous")
+        registered_populations.add(population)
+        if row["status"] == "active":
+            populations[population] = row["path"]
+    if not populations:
+        raise Refusal("registered REA population adapter is absent")
+    selected_population = max(populations)
+    relative = Path(populations[selected_population])
+    selected = CONVERGENCE_INDEX.parent / relative
+    if (
+        relative.is_absolute()
+        or ".." in relative.parts
+        or selected.parent.resolve() != ADAPTER_DIRECTORY.resolve()
+    ):
+        raise Refusal("registered REA population adapter path differs")
+    return selected, selected_population
+
+
+def _registered_adapter() -> dict:
+    selected, selected_population = _registered_adapter_path()
+    value = _json_file(selected, "registered population adapter")
+    required = {
+        "adapter_id",
+        "authority_generation",
+        "expected_member_count",
+        "manifest_builder",
+        "manifest_builder_flag",
+        "manifest_path",
+        "schema_version",
+    }
+    if (
+        not isinstance(value, dict)
+        or not required.issubset(value)
+        or value["schema_version"] != "rea.signed-release-convergence-adapter.v1"
+        or value["adapter_id"]
+        != (
+            "research-enforcement-activation-generation-5-population-"
+            f"{selected_population}-v1"
+        )
+        or value["authority_generation"] != AUTHORITY_GENERATION
+        or not isinstance(value["expected_member_count"], int)
+        or isinstance(value["expected_member_count"], bool)
+        or value["expected_member_count"] != selected_population
+        or value["manifest_builder"]
+        != ".github/write-enforcement/build_frozen_manifest.py"
+        or not isinstance(value["manifest_builder_flag"], str)
+        or re.fullmatch(
+            r"--[a-z0-9]+(?:-[a-z0-9]+)*-successor",
+            value["manifest_builder_flag"],
+        )
+        is None
+        or value["manifest_path"] != SITE_MANIFEST
+    ):
+        raise Refusal("registered population adapter contract differs")
+    selector = value["manifest_builder_flag"][2:].replace("-", "_") + "_members"
+    if selector != _terminal_successor_selector():
+        raise Refusal("registered population adapter is not the terminal successor")
+    if len(structural_members(selector)) != selected_population:
+        raise Refusal("registered population differs from structural member contract")
+    return value
+
+
+def _selector_layers(tree: ast.Module, selector: str) -> list[str]:
+    functions = {
+        node.name: node for node in tree.body if isinstance(node, ast.FunctionDef)
+    }
+    resolving: set[str] = set()
+
+    def resolve(name: str) -> list[str]:
+        if name in resolving or name not in functions:
+            raise Refusal(f"trusted member selector is absent or recursive: {name}")
+        resolving.add(name)
+        function = functions[name]
+        for call in (
+            item for item in ast.walk(function) if isinstance(item, ast.Call)
+        ):
+            if (
+                isinstance(call.func, ast.Attribute)
+                and isinstance(call.func.value, ast.Name)
+                and call.func.value.id == "value"
+                and call.func.attr
+                in {"clear", "pop", "popitem", "setdefault", "__delitem__", "__setitem__"}
+            ):
+                raise Refusal(f"trusted member selector mutation differs: {name}")
+        layers: list[str] | None = None
+        extensions: list[str] = []
+        returned = False
+        for node in function.body:
+            if (
+                isinstance(node, ast.Assign)
+                and len(node.targets) == 1
+                and isinstance(node.targets[0], ast.Name)
+                and node.targets[0].id == "value"
+                and isinstance(node.value, ast.Call)
+                and not node.value.keywords
+            ):
+                called = node.value.func
+                if (
+                    isinstance(called, ast.Name)
+                    and called.id == "dict"
+                    and len(node.value.args) == 1
+                    and isinstance(node.value.args[0], ast.Name)
+                    and node.value.args[0].id == "EXPECTED_MEMBERS"
+                ):
+                    layers = ["EXPECTED_MEMBERS"]
+                elif (
+                    isinstance(called, ast.Name)
+                    and not node.value.args
+                    and called.id.endswith("_members")
+                ):
+                    layers = resolve(called.id)
+                else:
+                    raise Refusal(f"trusted member selector base differs: {name}")
+            elif (
+                isinstance(node, ast.Expr)
+                and isinstance(node.value, ast.Call)
+                and isinstance(node.value.func, ast.Attribute)
+                and isinstance(node.value.func.value, ast.Name)
+                and node.value.func.value.id == "value"
+                and node.value.func.attr == "update"
+                and len(node.value.args) == 1
+                and not node.value.keywords
+                and isinstance(node.value.args[0], ast.Name)
+            ):
+                extensions.append(node.value.args[0].id)
+            elif (
+                isinstance(node, ast.For)
+                and isinstance(node.target, ast.Name)
+                and isinstance(node.iter, (ast.Tuple, ast.List))
+                and all(isinstance(item, ast.Name) for item in node.iter.elts)
+            ):
+                update_calls = [
+                    item
+                    for item in node.body
+                    if isinstance(item, ast.Expr)
+                    and isinstance(item.value, ast.Call)
+                    and isinstance(item.value.func, ast.Attribute)
+                    and isinstance(item.value.func.value, ast.Name)
+                    and item.value.func.value.id == "value"
+                    and item.value.func.attr == "update"
+                    and len(item.value.args) == 1
+                    and isinstance(item.value.args[0], ast.Name)
+                    and item.value.args[0].id == node.target.id
+                ]
+                if len(update_calls) != 1:
+                    raise Refusal(f"trusted member selector loop differs: {name}")
+                extensions.extend(item.id for item in node.iter.elts)
+            elif (
+                isinstance(node, ast.Return)
+                and isinstance(node.value, ast.Name)
+                and node.value.id == "value"
+            ):
+                returned = True
+        resolving.remove(name)
+        if layers is None or not returned or not extensions:
+            raise Refusal(f"trusted member selector shape differs: {name}")
+        return layers + extensions
+
+    return resolve(selector)
+
+
+def _terminal_successor_selector() -> str:
+    try:
+        tree = ast.parse(MEMBER_CONTRACT.read_text())
+    except (OSError, UnicodeDecodeError, SyntaxError) as exc:
+        raise Refusal(
+            f"trusted member contract is unavailable: {type(exc).__name__}"
+        ) from exc
+    functions = {
+        node.name: node
+        for node in tree.body
+        if isinstance(node, ast.FunctionDef)
+        and (node.name == "successor_members" or node.name.endswith("_successor_members"))
+    }
+    if not functions:
+        raise Refusal("trusted successor selector graph is absent")
+    populations: dict[str, int] = {}
+    for name in functions:
+        _selector_layers(tree, name)
+        populations[name] = len(structural_members(name))
+    largest = max(populations.values())
+    terminals = {
+        name for name, population in populations.items() if population == largest
+    }
+    if len(terminals) != 1:
+        raise Refusal("trusted successor selector terminal is ambiguous")
+    return next(iter(terminals))
+
+
+def structural_members(selector: str) -> dict[str, tuple[str, str]]:
+    try:
+        tree = ast.parse(MEMBER_CONTRACT.read_text())
+    except (OSError, UnicodeDecodeError, SyntaxError) as exc:
+        raise Refusal(
+            f"trusted member contract is unavailable: {type(exc).__name__}"
+        ) from exc
+    maps: dict[str, dict[str, tuple[str, str]]] = {}
+    base_updates: list[dict[str, tuple[str, str]]] = []
+    for node in tree.body:
         if (
             isinstance(node, ast.Assign)
             and len(node.targets) == 1
             and isinstance(node.targets[0], ast.Name)
-            and node.targets[0].id == "EXPECTED_MEMBERS"
+            and (
+                node.targets[0].id == "EXPECTED_MEMBERS"
+                or node.targets[0].id.endswith("_ADDITIONAL_MEMBERS")
+            )
         ):
-            value = ast.literal_eval(node.value)
-        elif (
-            isinstance(node, ast.Assign)
-            and len(node.targets) == 1
-            and isinstance(node.targets[0], ast.Name)
-            and node.targets[0].id == "SUCCESSOR_ADDITIONAL_MEMBERS"
-        ):
-            successor = ast.literal_eval(node.value)
+            name = node.targets[0].id
+            try:
+                maps[name] = _member_map(ast.literal_eval(node.value), name)
+            except (ValueError, SyntaxError) as exc:
+                raise Refusal(f"trusted member contract literal differs: {name}") from exc
         elif (
             isinstance(node, ast.Expr)
             and isinstance(node.value, ast.Call)
@@ -145,15 +427,38 @@ def expected_members() -> dict[str, tuple[str, str]]:
             and len(node.value.args) == 1
             and not node.value.keywords
         ):
-            value.update(ast.literal_eval(node.value.args[0]))
-    if set(value) & set(successor):
-        raise Refusal("trusted successor member contract collides with generation 4")
-    value.update(successor)
-    if not isinstance(value, dict) or len(value) != GENERATION_MEMBER_COUNT:
-        raise Refusal(
-            "trusted member contract does not contain exactly "
-            f"{GENERATION_MEMBER_COUNT} members"
-        )
+            try:
+                base_updates.append(
+                    _member_map(ast.literal_eval(node.value.args[0]), "EXPECTED_MEMBERS.update")
+                )
+            except (ValueError, SyntaxError) as exc:
+                raise Refusal("trusted member contract base update differs") from exc
+    if "EXPECTED_MEMBERS" not in maps:
+        raise Refusal("trusted member contract base is absent")
+    for update in base_updates:
+        if set(maps["EXPECTED_MEMBERS"]) & set(update):
+            raise Refusal("trusted member contract base update collides")
+        maps["EXPECTED_MEMBERS"].update(update)
+    layers = _selector_layers(tree, selector)
+    if len(layers) != len(set(layers)) or any(layer not in maps for layer in layers):
+        raise Refusal("trusted member selector layer set differs")
+    value: dict[str, tuple[str, str]] = {}
+    for layer in layers:
+        extension = maps[layer]
+        if set(value) & set(extension):
+            raise Refusal(f"trusted member selector layer collides: {layer}")
+        value.update(extension)
+    if len(set(value.values())) != len(value):
+        raise Refusal("trusted member selector subject collision")
+    return value
+
+
+def expected_members() -> dict[str, tuple[str, str]]:
+    adapter = _registered_adapter()
+    selector = adapter["manifest_builder_flag"][2:].replace("-", "_") + "_members"
+    value = structural_members(selector)
+    if len(value) != adapter["expected_member_count"]:
+        raise Refusal("trusted member contract differs from registered adapter count")
     return value
 
 
@@ -177,6 +482,7 @@ def manifest_contract(raw: bytes) -> dict:
     claimed = unsigned.pop("manifest_digest")
     if claimed != canonical_digest(unsigned):
         raise Refusal("generation-5 manifest self-digest differs")
+    expected = expected_members()
     if (
         value["schema_version"] != "rea.write.enforcement-bundle-manifest.v1"
         or value["authority_generation"] != AUTHORITY_GENERATION
@@ -185,7 +491,7 @@ def manifest_contract(raw: bytes) -> dict:
         or re.fullmatch(r"[0-9a-f]{64}", value["normalized_ruleset_sha256"])
         is None
         or not isinstance(value["members"], list)
-        or len(value["members"]) != GENERATION_MEMBER_COUNT
+        or len(value["members"]) != len(expected)
     ):
         raise Refusal("generation-5 manifest contract differs")
     observed: dict[str, tuple[str, str]] = {}
@@ -210,12 +516,12 @@ def manifest_contract(raw: bytes) -> dict:
         ):
             raise Refusal("generation-5 manifest member shape differs")
         observed[row["member_id"]] = (row["repository"], row["path"])
-    if observed != expected_members():
+    if observed != expected:
         raise Refusal("generation-5 manifest member contract differs")
     return {
         "manifest_sha256": hashlib.sha256(raw).hexdigest(),
         "manifest_digest": claimed,
-        "member_count": GENERATION_MEMBER_COUNT,
+        "member_count": len(expected),
         "member_contract": "EXACT",
     }
 

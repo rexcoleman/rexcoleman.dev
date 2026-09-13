@@ -329,6 +329,25 @@ adapter also refuses source or root drift, packet set/symlink/identity drift, an
 escaping or non-real fixture path, and any structurally reported pytest skip,
 xfail, or xpass.
 
+The callable independent-second-principal reviewer reads the protected
+convergence index and selects the unique highest active REA generation-5
+population adapter. The reviewer derives the selector from that adapter's
+registered builder flag, then parses the protected `member_contract.py`
+literals and complete successor call graph without importing or executing
+reviewed source. The selected adapter must name the graph's unique terminal
+production successor, and its population number must equal that structurally
+derived member-map size. This prevents a lower-only index from becoming
+current without making source publication depend on already-published manifest
+bytes. The submitted manifest must match the complete derived map and count
+exactly; a missing, ambiguous, malformed, downgraded, extra, or mixed
+population refuses. This structural derivation does not relax the reviewer's
+existing exact-head, manifest-file SHA, complete-file set, ruleset, or
+installation-scope checks.
+
+Retired historical REA population rows retain exact ID/path validation but do
+not participate in active selection. Retiring the terminal row while leaving
+only a lower active population still refuses at the terminal-selector check.
+
 The entrypoint separates pre-freeze and post-issuance authority.  Pre-freeze
 packet-shaped fixtures establish only the generic contract.  After issuance it
 delegates signature/receipt verification to the production renewal verifier,

@@ -4,14 +4,14 @@
   "changed_paths": [
     ".github/write-enforcement/SIGNED_RELEASE_CONVERGENCE.md",
     ".github/write-enforcement/SIGNED_RELEASE_CONVERGENCE_INDEX.md",
-    ".github/write-enforcement/signed_release_convergence.py",
-    ".github/write-enforcement/tests/test_signed_release_convergence.py"
+    ".github/write-enforcement/independent_review.py",
+    ".github/write-enforcement/tests/test_independent_review.py"
   ],
   "changed_paths_count": 4,
-  "changed_paths_sha256": "53d2f833059e2b4f9f4b745b1de71e74791e8964e7b31e4e42c9d52c7f9a35fa",
+  "changed_paths_sha256": "d22928f9d276dc13d3ff3fd96d8c76645289c29b8998b27f6eb409ce9ef4d6cc",
   "mode": "commit-preflight",
-  "parent_head": "b11c62c278855cbc16dd0ed6323c34ca031b3b8a",
-  "run_id": "pre-commit-7ae24cfbcdf0fd74d4e8f4f6",
+  "parent_head": "3f95cdfe770ce3d87a220ea93380550ba51c92e5",
+  "run_id": "pre-commit-fba206dfc17d198d41183f21",
   "schema_version": "rea.pre-commit-boundary.v1",
-  "utc_asserted_at": "2026-09-13T09:38:05Z"
+  "utc_asserted_at": "2026-09-13T11:01:56Z"
 }
