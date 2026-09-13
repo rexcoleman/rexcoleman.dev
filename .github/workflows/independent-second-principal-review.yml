@@ -29,7 +29,7 @@ on:
         required: true
         type: string
       expected_files_sha256:
-        description: Independently verified canonical PR file-set SHA-256
+        description: Exact manifest plus normal-hook receipt file-set SHA-256
         required: true
         type: string
       expected_manifest_sha256:

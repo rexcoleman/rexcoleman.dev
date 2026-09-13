@@ -352,6 +352,17 @@ population refuses. This structural derivation does not relax the reviewer's
 existing exact-head, manifest-file SHA, complete-file set, ruleset, or
 installation-scope checks.
 
+A normal-hook site-manifest review is exactly two modified files: the
+generation-5 manifest and `.governance/pre_commit_boundary.json`. The reviewer
+fetches both at the declared PR head, matches the receipt's Git blob to the PR
+file row, and requires the receipt's exact canonical ten-field schema. The
+receipt must bind `COMMIT_PREFLIGHT_PASS`, `git-pre-commit`, `commit-preflight`,
+the PR base SHA as parent, and the manifest as its sole semantic changed path
+with a rederived count and path digest. Run-id and UTC shapes are closed. The
+predeclared canonical two-file digest and exact manifest SHA remain independent
+inputs; missing, extra, duplicate, reordered, stale-parent, or altered receipt
+states refuse.
+
 Retired historical REA population rows retain exact ID/path validation but do
 not participate in active selection. Retiring the terminal row while leaving
 only a lower active population still refuses at the terminal-selector check.

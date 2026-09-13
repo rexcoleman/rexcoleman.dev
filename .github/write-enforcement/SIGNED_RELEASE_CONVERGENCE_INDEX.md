@@ -348,6 +348,14 @@ current-map equality is required, so omissions, additions, and mixed rows also
 refuse while the existing exact-head, manifest-SHA, file-set, ruleset, and
 installation-scope predicates remain unchanged.
 
+For a normal-hook site-manifest PR, the callable reviewer requires the ordered
+two-file set consisting of the generation-5 manifest and
+`.governance/pre_commit_boundary.json`. It fetches the canonical receipt bytes
+at the exact head, matches their Git blob to the PR file row, binds the receipt
+parent to the PR base SHA, and rederives the sole semantic manifest path, count,
+and path digest. The exact whole-file-set digest and manifest SHA remain
+predeclared independent inputs.
+
 Historical retired REA population rows remain identity/path validated and are
 excluded from active selection. A retired lower row cannot block a coherent
 active terminal, while a retired terminal with only a lower active row refuses.

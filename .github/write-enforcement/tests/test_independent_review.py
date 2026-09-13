@@ -1,6 +1,7 @@
 import hashlib
 import importlib.util
 import json
+import subprocess
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -12,6 +13,8 @@ MODULE = importlib.util.module_from_spec(SPEC)
 assert SPEC.loader
 SPEC.loader.exec_module(MODULE)
 CURRENT_MANIFEST = Path(__file__).parents[1] / "frozen_bundle_manifest.generation-5.json"
+HEAD_SHA = "b" * 40
+BASE_SHA = "e" * 40
 
 
 def digest(value):
@@ -20,20 +23,55 @@ def digest(value):
     ).hexdigest()
 
 
-def args(repo="rexcoleman/rexcoleman.dev", mode="preflight"):
-    files = [
+def boundary_receipt(**updates):
+    value = {
+        "assertion": "COMMIT_PREFLIGHT_PASS",
+        "caller": "git-pre-commit",
+        "changed_paths": [MODULE.SITE_MANIFEST],
+        "changed_paths_count": 1,
+        "changed_paths_sha256": MODULE.stable_paths_digest([MODULE.SITE_MANIFEST]),
+        "mode": "commit-preflight",
+        "parent_head": BASE_SHA,
+        "run_id": "pre-commit-" + "1" * 24,
+        "schema_version": MODULE.PRE_COMMIT_RECEIPT_SCHEMA,
+        "utc_asserted_at": "2026-09-13T12:00:00Z",
+    }
+    value.update(updates)
+    return value
+
+
+def boundary_receipt_bytes(**updates):
+    return (
+        json.dumps(boundary_receipt(**updates), indent=2, sort_keys=True) + "\n"
+    ).encode()
+
+
+def site_files():
+    receipt_raw = boundary_receipt_bytes()
+    return [
         {
             "filename": MODULE.SITE_MANIFEST,
             "status": "modified",
             "sha": "a" * 40,
             "additions": 1,
             "deletions": 1,
-        }
+        },
+        {
+            "filename": MODULE.PRE_COMMIT_RECEIPT,
+            "status": "modified",
+            "sha": MODULE.git_blob_sha(receipt_raw),
+            "additions": 1,
+            "deletions": 1,
+        },
     ]
+
+
+def args(repo="rexcoleman/rexcoleman.dev", mode="preflight"):
+    files = site_files()
     return SimpleNamespace(
         repository=repo,
         pull_request=2,
-        expected_head="b" * 40,
+        expected_head=HEAD_SHA,
         expected_files_sha256=digest(files),
         expected_manifest_sha256="c" * 64 if repo.endswith(".dev") else "",
         mode=mode,
@@ -42,15 +80,7 @@ def args(repo="rexcoleman/rexcoleman.dev", mode="preflight"):
 
 def state(repo="rexcoleman/rexcoleman.dev"):
     value = args(repo)
-    files = [
-        {
-            "filename": MODULE.SITE_MANIFEST,
-            "status": "modified",
-            "sha": "a" * 40,
-            "additions": 1,
-            "deletions": 1,
-        }
-    ]
+    files = site_files()
     return {
         "installation_repositories": sorted(MODULE.ALLOWED_REPOSITORIES),
         "pull_request": {
@@ -58,6 +88,7 @@ def state(repo="rexcoleman/rexcoleman.dev"):
             "draft": False,
             "author": "rexcoleman",
             "base": MODULE.ALLOWED_REPOSITORIES[repo],
+            "base_sha": BASE_SHA,
             "head_ref": "candidate",
             "head_sha": value.expected_head,
         },
@@ -69,6 +100,9 @@ def state(repo="rexcoleman/rexcoleman.dev"):
             "member_count": len(MODULE.expected_members()),
             "member_contract": "EXACT",
         },
+        "receipt": MODULE.receipt_contract(
+            boundary_receipt_bytes(), HEAD_SHA, BASE_SHA
+        ),
         "ruleset": {
             "status": "ACTIVE",
             "id": 19768000,
@@ -86,6 +120,207 @@ def state(repo="rexcoleman/rexcoleman.dev"):
 
 def test_site_policy_accepts_exact_predeclared_state():
     MODULE.assert_policy(state(), args())
+
+
+def test_live_shaped_two_file_state_fetches_receipt_at_exact_head(
+    monkeypatch,
+):
+    expected = args()
+    manifest_raw = CURRENT_MANIFEST.read_bytes()
+    receipt_raw = boundary_receipt_bytes()
+    files = site_files()
+    fetched = []
+
+    def fake_api(_token, path, *_args, **_kwargs):
+        if path.endswith("/pulls/2"):
+            return {
+                "state": "open",
+                "draft": False,
+                "user": {"login": "rexcoleman"},
+                "base": {"ref": "main", "sha": BASE_SHA},
+                "head": {"ref": "candidate", "sha": HEAD_SHA},
+            }
+        if path.endswith("/pulls/2/reviews?per_page=100"):
+            return []
+        raise AssertionError(path)
+
+    def fake_content(_token, repo, path, ref):
+        assert repo == "rexcoleman/rexcoleman.dev"
+        assert ref == HEAD_SHA
+        fetched.append((path, ref))
+        return manifest_raw if path == MODULE.SITE_MANIFEST else receipt_raw
+
+    monkeypatch.setattr(MODULE, "api", fake_api)
+    monkeypatch.setattr(MODULE, "pull_files", lambda *_args: files)
+    monkeypatch.setattr(
+        MODULE,
+        "installation_repositories",
+        lambda _token: sorted(MODULE.ALLOWED_REPOSITORIES),
+    )
+    monkeypatch.setattr(MODULE, "ruleset_state", lambda *_args: state()["ruleset"])
+    monkeypatch.setattr(MODULE, "content_bytes", fake_content)
+    observed = MODULE.read_state("fixture-token", expected)
+    expected.expected_manifest_sha256 = hashlib.sha256(manifest_raw).hexdigest()
+    expected.expected_files_sha256 = digest(files)
+    MODULE.assert_policy(observed, expected)
+    assert fetched == [
+        (MODULE.SITE_MANIFEST, HEAD_SHA),
+        (MODULE.PRE_COMMIT_RECEIPT, HEAD_SHA),
+    ]
+    assert observed["receipt"]["receipt_sha256"] == hashlib.sha256(
+        receipt_raw
+    ).hexdigest()
+
+
+def test_system_python_38_imports_reviewer_and_computes_git_blob_identity():
+    program = "\n".join(
+        [
+            "import importlib.util",
+            f"path = {str(MODULE_PATH)!r}",
+            "spec = importlib.util.spec_from_file_location('review', path)",
+            "module = importlib.util.module_from_spec(spec)",
+            "spec.loader.exec_module(module)",
+            "print(module.git_blob_sha(b'fixture'))",
+        ]
+    )
+    completed = subprocess.run(
+        ["/usr/bin/python3", "-I", "-B", "-c", program],
+        check=True,
+        text=True,
+        capture_output=True,
+        env={
+            "PATH": "/usr/bin:/bin",
+            "HOME": "/nonexistent/independent-review-py38",
+            "LC_ALL": "C.UTF-8",
+            "LANG": "C.UTF-8",
+        },
+    )
+    assert completed.stderr == ""
+    assert completed.stdout == "001f1993905d81b471eeaa840432cf35aedaea61\n"
+
+
+@pytest.mark.parametrize(
+    "files",
+    [
+        site_files()[:1],
+        site_files()[1:],
+        site_files() + [{
+            "filename": "planted-extra",
+            "status": "added",
+            "sha": "f" * 40,
+            "additions": 1,
+            "deletions": 0,
+        }],
+        site_files() + [dict(site_files()[1])],
+        list(reversed(site_files())),
+        [site_files()[0], dict(site_files()[1], status="added")],
+    ],
+)
+def test_site_policy_refuses_nonexact_two_file_shapes_after_digest_binding(files):
+    observed = state()
+    observed["files"] = files
+    observed["files_sha256"] = digest(files)
+    expected = args()
+    expected.expected_files_sha256 = digest(files)
+    with pytest.raises(MODULE.Refusal, match="exact manifest and boundary-receipt"):
+        MODULE.assert_policy(observed, expected)
+
+
+def test_receipt_contract_accepts_exact_normal_hook_bytes():
+    raw = boundary_receipt_bytes()
+    observed = MODULE.receipt_contract(raw, HEAD_SHA, BASE_SHA)
+    assert observed["content_ref"] == HEAD_SHA
+    assert observed["parent_head"] == BASE_SHA
+    assert observed["changed_paths"] == [MODULE.SITE_MANIFEST]
+    assert observed["changed_paths_count"] == 1
+    assert observed["changed_paths_sha256"] == MODULE.stable_paths_digest(
+        [MODULE.SITE_MANIFEST]
+    )
+    assert observed["receipt_sha256"] == hashlib.sha256(raw).hexdigest()
+
+
+@pytest.mark.parametrize(
+    "mutation",
+    [
+        lambda value: value.pop("caller"),
+        lambda value: value.update(extra="planted"),
+        lambda value: value.update(assertion="REFUSED"),
+        lambda value: value.update(caller="planted"),
+        lambda value: value.update(mode="planted"),
+        lambda value: value.update(parent_head="f" * 40),
+        lambda value: value.update(changed_paths=[]),
+        lambda value: value.update(changed_paths=[MODULE.PRE_COMMIT_RECEIPT]),
+        lambda value: value.update(changed_paths_count=0),
+        lambda value: value.update(changed_paths_count=True),
+        lambda value: value.update(changed_paths_sha256="0" * 64),
+        lambda value: value.update(run_id="pre-commit-wrong"),
+        lambda value: value.update(utc_asserted_at="2026-02-30T12:00:00Z"),
+    ],
+)
+def test_receipt_contract_refuses_strict_subsets_and_nonpass_fields(mutation):
+    value = boundary_receipt()
+    mutation(value)
+    raw = (json.dumps(value, indent=2, sort_keys=True) + "\n").encode()
+    with pytest.raises(MODULE.Refusal):
+        MODULE.receipt_contract(raw, HEAD_SHA, BASE_SHA)
+
+
+def test_receipt_contract_refuses_altered_or_ambiguous_bytes():
+    raw = boundary_receipt_bytes()
+    with pytest.raises(MODULE.Refusal, match="not canonical"):
+        MODULE.receipt_contract(raw.replace(b"{\n", b"{ \n", 1), HEAD_SHA, BASE_SHA)
+    duplicate = raw.replace(
+        b'{\n  "assertion":', b'{\n  "assertion": "COMMIT_PREFLIGHT_PASS",\n  "assertion":', 1,
+    )
+    with pytest.raises(MODULE.Refusal, match="duplicate key"):
+        MODULE.receipt_contract(duplicate, HEAD_SHA, BASE_SHA)
+
+
+def test_receipt_state_binds_expected_head_and_pr_base():
+    expected = args()
+    for mutation in (
+        lambda value: value["receipt"].update(content_ref="f" * 40),
+        lambda value: value["receipt"].update(parent_head="f" * 40),
+        lambda value: value["pull_request"].update(base_sha="f" * 40),
+    ):
+        observed = state()
+        mutation(observed)
+        with pytest.raises(MODULE.Refusal):
+            MODULE.assert_policy(observed, expected)
+
+
+def test_read_state_refuses_receipt_blob_different_from_pr_file_row(monkeypatch):
+    expected = args()
+    manifest_raw = CURRENT_MANIFEST.read_bytes()
+    receipt_raw = boundary_receipt_bytes()
+    files = site_files()
+    files[1]["sha"] = "0" * 40
+
+    def fake_api(_token, path, *_args, **_kwargs):
+        if path.endswith("/pulls/2"):
+            return {
+                "state": "open", "draft": False,
+                "user": {"login": "rexcoleman"},
+                "base": {"ref": "main", "sha": BASE_SHA},
+                "head": {"ref": "candidate", "sha": HEAD_SHA},
+            }
+        if path.endswith("/pulls/2/reviews?per_page=100"):
+            return []
+        raise AssertionError(path)
+
+    monkeypatch.setattr(MODULE, "api", fake_api)
+    monkeypatch.setattr(MODULE, "pull_files", lambda *_args: files)
+    monkeypatch.setattr(MODULE, "installation_repositories", lambda _token: [])
+    monkeypatch.setattr(MODULE, "ruleset_state", lambda *_args: {})
+    monkeypatch.setattr(
+        MODULE,
+        "content_bytes",
+        lambda _token, _repo, path, _ref: (
+            manifest_raw if path == MODULE.SITE_MANIFEST else receipt_raw
+        ),
+    )
+    with pytest.raises(MODULE.Refusal, match="Git blob identity"):
+        MODULE.read_state("fixture-token", expected)
 
 
 @pytest.mark.parametrize(
@@ -546,3 +781,20 @@ def test_workflow_exposes_credential_only_after_environment_review():
     assert text.count("secrets.REA_SECOND_PRINCIPAL_PRIVATE_KEY") == 1
     assert "persist-credentials: false" in text
     assert "permissions:\n  contents: read" in text
+    assert "Exact manifest plus normal-hook receipt file-set SHA-256" in text
+    for argument in (
+        "--mode",
+        "--repository",
+        "--pull-request",
+        "--expected-head",
+        "--expected-files-sha256",
+        "--expected-manifest-sha256",
+    ):
+        assert text.count(argument) == 1
+    assert text.count(".github/write-enforcement/independent_review.py") == 1
+    convergence = (
+        Path(__file__).parents[2] / "workflows/signed-release-convergence.yml"
+    ).read_text()
+    assert convergence.count(
+        ".github/write-enforcement/tests/test_independent_review.py"
+    ) == 1
