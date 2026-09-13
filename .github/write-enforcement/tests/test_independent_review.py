@@ -578,14 +578,44 @@ def test_next_contract_manifest_is_an_exact_positive_control():
     assert report["member_contract"] == "EXACT"
 
 
-def test_current_registered_population_291_manifest_is_the_real_positive():
-    report = MODULE.manifest_contract(CURRENT_MANIFEST.read_bytes())
+def test_current_registered_manifest_is_the_structurally_derived_real_positive():
+    raw = CURRENT_MANIFEST.read_bytes()
+    value = json.loads(raw)
+    adapter = MODULE._registered_adapter()
+    selector = adapter["manifest_builder_flag"][2:].replace("-", "_") + "_members"
+    expected = MODULE.structural_members(selector)
+    observed = {
+        row["member_id"]: (row["repository"], row["path"])
+        for row in value["members"]
+    }
+    unsigned = {key: item for key, item in value.items() if key != "manifest_digest"}
+    assert observed == expected
+    assert len(expected) == adapter["expected_member_count"]
+    assert value["manifest_digest"] == digest(unsigned)
+
+    report = MODULE.manifest_contract(raw)
     assert report == {
-        "manifest_sha256": "2f5d5c1f1a4da940675f0b7b2ab4b0a50b128b1a7ae0011a212e514e493089cf",
-        "manifest_digest": "5844071f348ce00e6768009b88bc7a32cfc2868961c751be25fb38871e17e6aa",
-        "member_count": 291,
+        "manifest_sha256": hashlib.sha256(raw).hexdigest(),
+        "manifest_digest": value["manifest_digest"],
+        "member_count": adapter["expected_member_count"],
         "member_contract": "EXACT",
     }
+
+
+def test_manifest_only_identity_refresh_preserves_the_structural_positive():
+    current_raw = CURRENT_MANIFEST.read_bytes()
+    value = json.loads(current_raw)
+    original_commit = value["members"][0]["commit"]
+    replacement = "0" * 40 if original_commit != "0" * 40 else "1" * 40
+    value["members"][0]["commit"] = replacement
+    refreshed_raw = reseal(value)
+
+    current = MODULE.manifest_contract(current_raw)
+    refreshed = MODULE.manifest_contract(refreshed_raw)
+    assert refreshed["member_contract"] == current["member_contract"] == "EXACT"
+    assert refreshed["member_count"] == current["member_count"]
+    assert refreshed["manifest_sha256"] != current["manifest_sha256"]
+    assert refreshed["manifest_digest"] != current["manifest_digest"]
 
 
 def test_registered_adapter_selects_structurally_derived_final_runtime_contract():
