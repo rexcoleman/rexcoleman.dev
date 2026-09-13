@@ -2,17 +2,15 @@
   "assertion": "COMMIT_PREFLIGHT_PASS",
   "caller": "git-pre-commit",
   "changed_paths": [
-    ".github/write-enforcement/SIGNED_RELEASE_CONVERGENCE.md",
-    ".github/write-enforcement/SIGNED_RELEASE_CONVERGENCE_INDEX.md",
-    ".github/write-enforcement/adapters/research_enforcement_activation.population-291-v1.json",
-    ".github/write-enforcement/signed_release_convergence.py",
-    ".github/write-enforcement/tests/test_signed_release_convergence.py"
+    ".github/workflows/issue-write-enforcement-attestation.yml",
+    ".github/write-enforcement/artifact_contract_versions.json",
+    ".github/write-enforcement/tests/test_renewal_workflow.py"
   ],
-  "changed_paths_count": 5,
-  "changed_paths_sha256": "de5f58d4ce1d1b53deca99726e3b5f6032a043893f0a2f928a42d45bc71425a1",
+  "changed_paths_count": 3,
+  "changed_paths_sha256": "bd36a5a8a567f904da9e728b6d6030f5829a0d309313e4a90380c23c6e62c236",
   "mode": "commit-preflight",
-  "parent_head": "1012209582e7c7717a419cbf5c274c60c4015653",
-  "run_id": "pre-commit-76cd55773afd6a10a67f158c",
+  "parent_head": "19ee6b5bbc67fed990a83c0dc7b677b59e53e220",
+  "run_id": "pre-commit-a89a8f8a8f2abfcb083ac141",
   "schema_version": "rea.pre-commit-boundary.v1",
-  "utc_asserted_at": "2026-09-13T08:26:00Z"
+  "utc_asserted_at": "2026-09-13T08:31:51Z"
 }
