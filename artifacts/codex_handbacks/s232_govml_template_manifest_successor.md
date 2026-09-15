@@ -6,6 +6,10 @@
 - Owning repository/worktree: `/tmp/rea_s232_rex_manifest`.
 - Protected starting authority: `origin/main` and worktree `HEAD` both `69825941d3a5ff6b09a6fa6b92b8369812c44b37` after an explicit fetch.
 - Outcome: source prerequisite and the independent verifier's exact-template-mode correction are implemented and tests green. No merge, freeze, tag, issue, install, activation, live-state write, or change to `/tmp/rea_s232_rex_packet` was performed.
+- Publication: implementation commit
+  `4225382bd38a36b1bd6d064640794c4abc45842f` is pushed on
+  `fix/s232-govml-template-members`; protected-main PR
+  `https://github.com/rexcoleman/rexcoleman.dev/pull/222` is open and unmerged.
 - Reality versus intent: this work registers a 296-member successor. The live generation-5 manifest is still the immutable 291-member predecessor and therefore cannot authenticate these five templates until the registered publication/freeze/issuance sequence completes.
 
 ## Architecture finding
@@ -104,7 +108,9 @@ six population-296 adapters (`JSON_PASS index=1 adapters=6`).
 
 These actions remain pending and require their normal authority; this Builder did not perform them:
 
-1. Review and publish this rex source change through its protected-main PR path. Do not freeze from the dirty worktree.
+1. Review PR 222 through the protected-main path and merge only after its
+   required checks and reviewer authority pass. Do not freeze from this branch
+   or its worktree.
 2. Publish the already-prepared source prerequisites in their owning govML/Moonshots/REA repositories, then fetch five clean authoritative roots at the final protected commits.
 3. Refresh the six population-296 adapter repository pins/digests through the registered propagation source, preserving the exact three-field derivation and the protected successor flag.
 4. Run `.github/write-enforcement/signed_release_convergence.py` in registered `--plan` mode using `research-enforcement-activation-generation-5-population-296-v1` and the five exact clean roots. Require its hermetic suite, reachability proofs, root poststate, and two byte-identical manifest builds.
@@ -115,4 +121,11 @@ These actions remain pending and require their normal authority; this Builder di
 
 ## Boundaries and dirty state
 
-The worktree started clean. All listed modifications are from this task. No generated `__pycache__` remains. No manifest, boundary receipt, key, credential, signature, packet, governance live state, or historical lineage artifact was edited. Credential values were never read or printed.
+The worktree started clean. All listed source modifications are from this task.
+The normal pre-commit hook emitted `COMMIT_PREFLIGHT_PASS` for the explicitly
+staged 19 paths and updated `.governance/pre_commit_boundary.json` as the
+twentieth committed path; this was hook-owned output, not an extra manually
+staged source change. No generated task `__pycache__` remains. No manifest, key,
+credential, signature, packet, governance live state, or historical lineage
+artifact was edited. Credential values were never read or printed. The branch
+is pushed and PR 222 is open; it is not merged.

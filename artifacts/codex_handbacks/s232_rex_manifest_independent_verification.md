@@ -122,3 +122,12 @@ Post-repair complete result: `457 passed, 1 skipped in 84.32s`.
 Python compilation, convergence-index and six-adapter JSON parsing, and
 `git diff --check` all passed. This closes the sole verifier defect; publication
 does not authorize merge, freeze, tag, issue, install, or activation.
+
+The corrected implementation was committed as
+`4225382bd38a36b1bd6d064640794c4abc45842f`, pushed on
+`fix/s232-govml-template-members`, and opened as protected-main PR
+`https://github.com/rexcoleman/rexcoleman.dev/pull/222`. The normal hook added
+its authenticated `.governance/pre_commit_boundary.json` receipt to the
+implementation commit after the exact 19-path staging audit. The PR remains
+open and unmerged; no freeze, tag, issuance, installation, or activation was
+performed.
