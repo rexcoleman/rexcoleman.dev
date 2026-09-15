@@ -129,7 +129,7 @@ def test_live_shaped_two_file_state_fetches_receipt_at_exact_head(
     monkeypatch,
 ):
     expected = args()
-    manifest_raw = CURRENT_MANIFEST.read_bytes()
+    manifest_raw = reseal(next_contract_manifest())
     receipt_raw = boundary_receipt_bytes()
     files = site_files()
     fetched = []
@@ -574,36 +574,28 @@ def test_current_freeze_remains_exact_after_logical_policy_key_repair():
 
 def test_next_contract_manifest_is_an_exact_positive_control():
     report=MODULE.manifest_contract(reseal(next_contract_manifest()))
-    assert report["member_count"] == len(MODULE.expected_members()) == 291
+    assert report["member_count"] == len(MODULE.expected_members()) == 296
     assert report["member_contract"] == "EXACT"
 
 
-def test_current_registered_manifest_is_the_structurally_derived_real_positive():
+def test_current_registered_manifest_is_the_exact_prior_population_until_freeze():
     raw = CURRENT_MANIFEST.read_bytes()
     value = json.loads(raw)
-    adapter = MODULE._registered_adapter()
-    selector = adapter["manifest_builder_flag"][2:].replace("-", "_") + "_members"
-    expected = MODULE.structural_members(selector)
+    expected = MODULE.structural_members("final_runtime_rollout_successor_members")
     observed = {
         row["member_id"]: (row["repository"], row["path"])
         for row in value["members"]
     }
     unsigned = {key: item for key, item in value.items() if key != "manifest_digest"}
     assert observed == expected
-    assert len(expected) == adapter["expected_member_count"]
+    assert len(expected) == 291
     assert value["manifest_digest"] == digest(unsigned)
-
-    report = MODULE.manifest_contract(raw)
-    assert report == {
-        "manifest_sha256": hashlib.sha256(raw).hexdigest(),
-        "manifest_digest": value["manifest_digest"],
-        "member_count": adapter["expected_member_count"],
-        "member_contract": "EXACT",
-    }
+    with pytest.raises(MODULE.Refusal, match="manifest contract differs"):
+        MODULE.manifest_contract(raw)
 
 
 def test_manifest_only_identity_refresh_preserves_the_structural_positive():
-    current_raw = CURRENT_MANIFEST.read_bytes()
+    current_raw = reseal(next_contract_manifest())
     value = json.loads(current_raw)
     original_commit = value["members"][0]["commit"]
     replacement = "0" * 40 if original_commit != "0" * 40 else "1" * 40
@@ -618,7 +610,7 @@ def test_manifest_only_identity_refresh_preserves_the_structural_positive():
     assert refreshed["manifest_digest"] != current["manifest_digest"]
 
 
-def test_registered_adapter_selects_structurally_derived_final_runtime_contract():
+def test_registered_adapter_selects_structurally_derived_research_template_contract():
     path, population = MODULE._registered_adapter_path()
     adapter = MODULE._registered_adapter()
     selector = adapter["manifest_builder_flag"][2:].replace("-", "_") + "_members"
@@ -628,8 +620,15 @@ def test_registered_adapter_selects_structurally_derived_final_runtime_contract(
         f"research_enforcement_activation.population-{population}-v1.json"
     )
     assert set(old) < set(current)
-    assert len(current) == adapter["expected_member_count"] == population == 291
+    assert len(current) == adapter["expected_member_count"] == population == 296
     assert "final-runtime-rollout" in current
+    assert {
+        "research-template-observation-log",
+        "research-template-question-spec",
+        "research-template-landscape-assessment",
+        "research-template-hypothesis-registry",
+        "research-template-experimental-design",
+    } <= set(current)
 
 
 def registered_fixture(tmp_path, monkeypatch):
@@ -702,7 +701,7 @@ REVIEWER_ADDITIONAL_MEMBERS = {
     "future-reviewer-fixture": ("rexcoleman.dev", "future/reviewer.py"),
 }
 def reviewer_successor_members():
-    value = final_runtime_rollout_successor_members()
+    value = research_working_root_template_successor_members()
     value.update(REVIEWER_ADDITIONAL_MEMBERS)
     return value
 """
@@ -725,7 +724,7 @@ def test_lower_only_registered_population_refuses_as_a_downgrade(
         row
         for row in index["adapters"]
         if row["adapter_id"]
-        != "research-enforcement-activation-generation-5-population-291-v1"
+        != "research-enforcement-activation-generation-5-population-296-v1"
     ]
     paths["index"].write_text(json.dumps(index), encoding="utf-8")
     with pytest.raises(MODULE.Refusal, match="terminal successor"):
@@ -745,11 +744,11 @@ def test_retired_historical_population_does_not_block_active_terminal(
     historical["status"] = "retired"
     paths["index"].write_text(json.dumps(index), encoding="utf-8")
     selected, population = MODULE._registered_adapter_path()
-    assert population == 291
+    assert population == 296
     assert selected.name == (
-        "research_enforcement_activation.population-291-v1.json"
+        "research_enforcement_activation.population-296-v1.json"
     )
-    assert len(MODULE.expected_members()) == 291
+    assert len(MODULE.expected_members()) == 296
 
 
 def test_retired_terminal_with_only_lower_active_population_refuses(
@@ -760,14 +759,14 @@ def test_retired_terminal_with_only_lower_active_population_refuses(
         row
         for row in index["adapters"]
         if row["adapter_id"]
-        == "research-enforcement-activation-generation-5-population-291-v1"
+        == "research-enforcement-activation-generation-5-population-296-v1"
     )
     terminal["status"] = "retired"
     paths["index"].write_text(json.dumps(index), encoding="utf-8")
     selected, population = MODULE._registered_adapter_path()
-    assert population == 290
+    assert population == 291
     assert selected.name == (
-        "research_enforcement_activation.population-290-v1.json"
+        "research_enforcement_activation.population-291-v1.json"
     )
     with pytest.raises(MODULE.Refusal, match="terminal successor"):
         MODULE._registered_adapter()
@@ -811,7 +810,7 @@ def test_structural_member_derivation_does_not_execute_source(tmp_path, monkeypa
         encoding="utf-8",
     )
     monkeypatch.setattr(MODULE, "MEMBER_CONTRACT", planted)
-    assert len(MODULE.expected_members()) == 291
+    assert len(MODULE.expected_members()) == 296
     assert not marker.exists()
 
 

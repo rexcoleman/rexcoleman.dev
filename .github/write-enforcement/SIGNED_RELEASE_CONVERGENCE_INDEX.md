@@ -375,3 +375,13 @@ from F.
 
 The static propagation source names the five population-next dependent adapters.
 Every population-290 row remains registered and unchanged for historical audit.
+
+The s232 population-296 successor registers five canonical govML research
+templates required by the nested research-working-root materializer. All six
+population-next adapters select the distinct
+`--research-working-root-template-successor` terminal. Population 291 and its
+adapters remain unchanged for historical audit. The exact-set contract requires
+all five template paths together and binds each to the selected remotely
+reachable govML commit, byte length, and digest; partial or substituted template
+populations refuse. Registration alone does not freeze, tag, issue, install, or
+activate the successor.

@@ -92,9 +92,9 @@ def test_member_population_is_complete_and_two_method_count():
     )
     independent = load("independent_review")
     terminal_selector = independent._terminal_successor_selector()
-    assert terminal_selector == "final_runtime_rollout_successor_members"
-    terminal = contract.final_runtime_rollout_successor_members()
-    assert len(terminal) == 291
+    assert terminal_selector == "research_working_root_template_successor_members"
+    terminal = contract.research_working_root_template_successor_members()
+    assert len(terminal) == 296
     assert set(successor) < set(terminal)
     assert terminal["final-runtime-rollout"] == (
         "research_enforcement_activation",
@@ -324,7 +324,7 @@ def _materialize_candidate_subjects(
 ) -> dict[str, Path]:
     tmp_path.mkdir(parents=True)
     roots = {}
-    current = contract.final_runtime_rollout_successor_members()
+    current = contract.research_working_root_template_successor_members()
     for repository, specs in contract.group_member_contract(current).items():
         root = tmp_path / repository
         root.mkdir()
@@ -389,7 +389,7 @@ def _run_five_root_builder(
         "--ruleset-json", str(ruleset),
     ]
     if terminal:
-        arguments.append("--final-runtime-rollout-successor")
+        arguments.append("--research-working-root-template-successor")
     for repository in builder.MEMBERS:
         slug = repository.lower().replace("_", "-").replace(".", "-")
         arguments.extend(["--root-" + slug, str(roots[repository])])
@@ -419,8 +419,31 @@ def test_exact_five_candidate_roots_close_installed_runtime_population(
     honest = tmp_path / "honest" / contract.GENERATION_MANIFEST_NAME
     honest.parent.mkdir()
     assert _run_five_root_builder(monkeypatch, roots, ruleset, honest) == 0
-    current = contract.final_runtime_rollout_successor_members()
-    assert len(json.loads(honest.read_bytes())["members"]) == len(current) == 291
+    current = contract.research_working_root_template_successor_members()
+    assert len(json.loads(honest.read_bytes())["members"]) == len(current) == 296
+    repeated = tmp_path / "repeated" / contract.GENERATION_MANIFEST_NAME
+    repeated.parent.mkdir()
+    assert _run_five_root_builder(monkeypatch, roots, ruleset, repeated) == 0
+    assert repeated.read_bytes() == honest.read_bytes()
+
+    template_id = "research-template-observation-log"
+    template_repository, template_relative = current[template_id]
+    template = roots[template_repository] / template_relative
+    template.chmod(0o755)
+    _commit(roots[template_repository], "planted executable research template")
+    executable_output = (
+        tmp_path / "executable-template" / contract.GENERATION_MANIFEST_NAME
+    )
+    executable_output.parent.mkdir()
+    with pytest.raises(
+        ValueError, match=f"research working-root template mode:{template_id}"
+    ):
+        _run_five_root_builder(
+            monkeypatch, roots, ruleset, executable_output,
+        )
+    assert not executable_output.exists()
+    template.chmod(0o644)
+    _commit(roots[template_repository], "restore canonical template mode")
 
     destination, subjects = next(iter(
         contract.EXPECTED_EMITTER_RUNTIME_INSTALLATIONS.items()
@@ -431,17 +454,19 @@ def test_exact_five_candidate_roots_close_installed_runtime_population(
                       if subject == removed_subject)
     del reduced[removed_id]
     monkeypatch.setattr(
-        builder, "final_runtime_rollout_successor_members", lambda: reduced,
+        builder, "research_working_root_template_successor_members", lambda: reduced,
     )
-    with pytest.raises(ValueError, match="final runtime rollout member set refused"):
+    with pytest.raises(
+        ValueError, match="research working-root template member set refused"
+    ):
         _run_five_root_builder(
             monkeypatch, roots, ruleset,
             tmp_path / "unsigned" / contract.GENERATION_MANIFEST_NAME,
         )
     monkeypatch.setattr(
         builder,
-        "final_runtime_rollout_successor_members",
-        contract.final_runtime_rollout_successor_members,
+        "research_working_root_template_successor_members",
+        contract.research_working_root_template_successor_members,
     )
 
     govml = roots["govML"]

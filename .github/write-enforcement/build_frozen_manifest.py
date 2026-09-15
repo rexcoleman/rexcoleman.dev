@@ -36,8 +36,10 @@ from member_contract import (
     pre_commit_boundary_successor_members,
     durable_history_successor_members,
     final_runtime_rollout_successor_members,
+    research_working_root_template_successor_members,
     validate_durable_history_member_ids,
     validate_final_runtime_rollout_member_ids,
+    validate_research_working_root_template_member_ids,
     staged_nonproduction_members,
     successor_members,
     validate_managed_live_member_aliases,
@@ -358,6 +360,7 @@ def main() -> int:
     parser.add_argument("--pre-commit-boundary-successor", action="store_true")
     parser.add_argument("--durable-history-successor", action="store_true")
     parser.add_argument("--final-runtime-rollout-successor", action="store_true")
+    parser.add_argument("--research-working-root-template-successor", action="store_true")
     for name in MEMBERS:
         slug = name.lower().replace("_", "-").replace(".", "-")
         parser.add_argument("--root-" + slug, dest="root_" + name.lower().replace(".", "_"),
@@ -373,11 +376,14 @@ def main() -> int:
         args.pre_commit_boundary_successor,
         args.durable_history_successor,
         args.final_runtime_rollout_successor,
+        args.research_working_root_template_successor,
     ))
     if selected_contracts > 1:
         raise ValueError("staged and successor contracts are mutually exclusive")
     expected_members = (
         staged_nonproduction_members() if args.staged_nonproduction
+        else research_working_root_template_successor_members()
+        if args.research_working_root_template_successor
         else final_runtime_rollout_successor_members()
         if args.final_runtime_rollout_successor
         else durable_history_successor_members()
@@ -409,6 +415,8 @@ def main() -> int:
         validate_durable_history_member_ids(expected_members)
     if args.final_runtime_rollout_successor:
         validate_final_runtime_rollout_member_ids(expected_members)
+    if args.research_working_root_template_successor:
+        validate_research_working_root_template_member_ids(expected_members)
     synthetic_contract = (
         not args.staged_nonproduction and MEMBERS != grouped_members()
     )
@@ -437,6 +445,7 @@ def main() -> int:
         or args.pre_commit_boundary_successor
         or args.durable_history_successor
         or args.final_runtime_rollout_successor
+        or args.research_working_root_template_successor
         or args.staged_nonproduction
     )
     authority_generation = (

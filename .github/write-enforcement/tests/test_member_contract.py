@@ -1391,3 +1391,85 @@ def test_final_runtime_rollout_population_is_distinct_closed_successor():
     import pytest
     with pytest.raises(ValueError, match="member set refused"):
         validate_final_runtime_rollout_member_ids(historic)
+
+
+def test_research_working_root_templates_are_exact_closed_successor():
+    from member_contract import (
+        RESEARCH_WORKING_ROOT_TEMPLATE_ADDITIONAL_MEMBERS,
+        final_runtime_rollout_successor_members,
+        production_members_for_manifest,
+        research_working_root_template_successor_members,
+        validate_research_working_root_template_member_ids,
+        validate_research_working_root_template_modes,
+    )
+
+    historical = final_runtime_rollout_successor_members()
+    successor = research_working_root_template_successor_members()
+    expected = {
+        "research-template-observation-log": (
+            "govML", "templates/strategy/OBSERVATION_LOG.tmpl.md",
+        ),
+        "research-template-question-spec": (
+            "govML", "templates/strategy/RESEARCH_QUESTION_SPEC.tmpl.md",
+        ),
+        "research-template-landscape-assessment": (
+            "govML", "templates/strategy/LANDSCAPE_ASSESSMENT.tmpl.md",
+        ),
+        "research-template-hypothesis-registry": (
+            "govML", "templates/core/HYPOTHESIS_REGISTRY.tmpl.md",
+        ),
+        "research-template-experimental-design": (
+            "govML", "templates/core/EXPERIMENTAL_DESIGN.tmpl.md",
+        ),
+    }
+    assert RESEARCH_WORKING_ROOT_TEMPLATE_ADDITIONAL_MEMBERS == expected
+    assert len(historical) == 291
+    assert len(successor) == 296
+    assert set(successor) == set(historical) | set(expected)
+    assert all(successor[key] == value for key, value in expected.items())
+    manifest = {
+        "authority_generation": 5,
+        "members": [{"member_id": key} for key in successor],
+    }
+    assert production_members_for_manifest(manifest) == successor
+    validate_research_working_root_template_member_ids(successor)
+
+    for key in expected:
+        omitted = dict(successor)
+        omitted.pop(key)
+        with pytest.raises(ValueError, match="member set refused"):
+            validate_research_working_root_template_member_ids(omitted)
+        substituted = dict(successor)
+        subject = substituted.pop(key)
+        substituted[f"forged-{key}"] = subject
+        with pytest.raises(ValueError, match="member set refused"):
+            validate_research_working_root_template_member_ids(substituted)
+
+    with pytest.raises(ValueError, match="member set refused"):
+        validate_research_working_root_template_member_ids(historical)
+    assert production_members_for_manifest({
+        "authority_generation": 5,
+        "members": [{"member_id": next(iter(expected))}],
+    }) == successor
+
+    canonical_modes = {key: "100644" for key in expected}
+    validate_research_working_root_template_modes(canonical_modes, successor)
+    validate_research_working_root_template_modes({}, historical)
+    for key in expected:
+        executable = dict(canonical_modes)
+        executable[key] = "100755"
+        with pytest.raises(ValueError, match=f"template mode:{key}"):
+            validate_research_working_root_template_modes(executable, successor)
+        missing = dict(canonical_modes)
+        missing.pop(key)
+        with pytest.raises(ValueError, match=f"template mode:{key}"):
+            validate_research_working_root_template_modes(missing, successor)
+
+    retargeted = dict(successor)
+    retargeted[next(iter(expected))] = (
+        "govML", "templates/core/FORGED.tmpl.md",
+    )
+    with pytest.raises(ValueError, match="template contract incomplete"):
+        validate_research_working_root_template_modes(
+            canonical_modes, retargeted
+        )

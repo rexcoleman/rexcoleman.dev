@@ -83,6 +83,17 @@ FINAL_RUNTIME_ADAPTERS = tuple(
         "newsletter_generation_architecture", "research_engine_release",
     )
 )
+RESEARCH_TEMPLATE_COUNT = len(tool.member_contract(
+    ROOT.parents[1], "research_working_root_template_successor_members"
+))
+RESEARCH_TEMPLATE_ADAPTERS = tuple(
+    ROOT / f"adapters/{name}.population-{RESEARCH_TEMPLATE_COUNT}-v1.json"
+    for name in (
+        "research_enforcement_activation", "adversarial_ml_landscape",
+        "agent_boundary_learning_landscape", "newsletter_hybrid_path",
+        "newsletter_generation_architecture", "research_engine_release",
+    )
+)
 
 
 
@@ -1119,6 +1130,10 @@ def test_index_is_closed_and_resolves_every_registered_adapter():
         "research-enforcement-activation", "adversarial-ml-landscape",
         "agent-boundary-learning-landscape", "newsletter-hybrid-path",
         "newsletter-generation-architecture", "research-engine-release")]
+    + [f"{name}-generation-5-population-{RESEARCH_TEMPLATE_COUNT}-v1" for name in (
+        "research-enforcement-activation", "adversarial-ml-landscape",
+        "agent-boundary-learning-landscape", "newsletter-hybrid-path",
+        "newsletter-generation-architecture", "research-engine-release")]
     )
     status = {row["adapter_id"]: row["status"] for row in value["adapters"]}
     assert {
@@ -1182,6 +1197,8 @@ def test_index_refuses_duplicate_unknown_retired_and_traversing_rows(
         for adapter_path in DURABLE_ADAPTERS:
             shutil.copyfile(adapter_path, adapters / adapter_path.name)
         for adapter_path in FINAL_RUNTIME_ADAPTERS:
+            shutil.copyfile(adapter_path, adapters / adapter_path.name)
+        for adapter_path in RESEARCH_TEMPLATE_ADAPTERS:
             shutil.copyfile(adapter_path, adapters / adapter_path.name)
     shutil.copyfile(WORKFLOW, tmp_path / "workflows" / WORKFLOW.name)
 
