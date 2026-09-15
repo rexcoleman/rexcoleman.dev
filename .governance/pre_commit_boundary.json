@@ -2,16 +2,13 @@
   "assertion": "COMMIT_PREFLIGHT_PASS",
   "caller": "git-pre-commit",
   "changed_paths": [
-    "artifacts/codex_handbacks/s232_govml_template_manifest_successor.md",
-    "artifacts/codex_handbacks/s232_govml_template_manifest_successor.md.prose-bindings.json",
-    "artifacts/codex_handbacks/s232_rex_manifest_independent_verification.md",
-    "artifacts/codex_handbacks/s232_rex_manifest_independent_verification.md.prose-bindings.json"
+    ".github/write-enforcement/frozen_bundle_manifest.generation-5.json"
   ],
-  "changed_paths_count": 4,
-  "changed_paths_sha256": "0e12098c49f16c4a793c7da617390de3d007f982a27347167c395b650528df8c",
+  "changed_paths_count": 1,
+  "changed_paths_sha256": "0e50f527ad13467749dcd58967b714e8b6e5b0b91970adfa7dab4bae4ff957de",
   "mode": "commit-preflight",
-  "parent_head": "4225382bd38a36b1bd6d064640794c4abc45842f",
-  "run_id": "pre-commit-ea5dadbaef835c36c9a1fff0",
+  "parent_head": "c6cd21fff091564bf86d2cb08fc50bbb7d9a3509",
+  "run_id": "pre-commit-fae8f0f98fecd711e401edbc",
   "schema_version": "rea.pre-commit-boundary.v1",
-  "utc_asserted_at": "2026-09-15T02:23:47Z"
+  "utc_asserted_at": "2026-09-15T16:15:26Z"
 }
