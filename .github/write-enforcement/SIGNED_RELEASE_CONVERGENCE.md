@@ -337,6 +337,23 @@ adapter also refuses source or root drift, packet set/symlink/identity drift, an
 escaping or non-real fixture path, and any structurally reported pytest skip,
 xfail, or xpass.
 
+## Research working-root template successor
+
+The s232 successor adds exactly five canonical govML Stage-template subjects
+through `research_working_root_template_successor_members`: observation log,
+research-question specification, landscape assessment, hypothesis registry,
+and experimental design. Population 291 and every earlier frozen population
+remain immutable; the resulting closed population is 296.
+
+Each of the six population-next adapters selects
+`--research-working-root-template-successor`. The manifest builder reads every
+template from the exact selected govML commit, proves remote reachability, and
+records its path, commit, byte length, and digest. The issuer continues to
+require exact equality with the selected closed set, so one template row, a
+strict subset, a renamed member, or changed bytes cannot issue. This source
+registration does not build a production manifest, freeze, tag, issue, install,
+or activate an authority.
+
 The callable independent-second-principal reviewer reads the protected
 convergence index and selects the unique highest active REA generation-5
 population adapter. The reviewer derives the selector from that adapter's

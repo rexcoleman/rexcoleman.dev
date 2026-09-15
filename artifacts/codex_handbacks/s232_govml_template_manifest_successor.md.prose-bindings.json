@@ -1,0 +1,20 @@
+{
+  "document": "artifacts/codex_handbacks/s232_govml_template_manifest_successor.md",
+  "schema_version": "rea.prose-artifact-bindings.v1",
+  "tokens": [
+    {
+      "binding_kind": "git-commit",
+      "bucket": "repo-local-artifact-binding",
+      "occurrences": 1,
+      "repository": "rexcoleman.dev",
+      "token": "4225382bd38a36b1bd6d064640794c4abc45842f"
+    },
+    {
+      "binding_kind": "git-commit",
+      "bucket": "repo-local-artifact-binding",
+      "occurrences": 1,
+      "repository": "rexcoleman.dev",
+      "token": "69825941d3a5ff6b09a6fa6b92b8369812c44b37"
+    }
+  ]
+}

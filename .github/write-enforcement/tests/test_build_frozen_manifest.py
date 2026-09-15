@@ -109,10 +109,12 @@ EMITTER_RUNTIME_SURFACE_CLOSURES = {}
     return roots, commits
 
 
-@pytest.mark.parametrize("population", (273, 290, 291))
+@pytest.mark.parametrize("population", (273, 290, 291, 296))
 def test_managed_history_full_population_builder_and_issuer(tmp_path, population):
     contract = (
-        contract_module.final_runtime_rollout_successor_members()
+        contract_module.research_working_root_template_successor_members()
+        if population == 296
+        else contract_module.final_runtime_rollout_successor_members()
         if population == 291
         else contract_module.durable_history_successor_members()
         if population == 290
@@ -132,7 +134,7 @@ def test_managed_history_full_population_builder_and_issuer(tmp_path, population
         ],
     }
     assert issuer.verify_members(manifest, tmp_path) == loaded
-    if population in (290, 291):
+    if population in (290, 291, 296):
         # A stale digest in an otherwise exact full manifest must still refuse.
         planted = json.loads(json.dumps(manifest))
         row = next(row for row in planted["members"]
@@ -140,6 +142,96 @@ def test_managed_history_full_population_builder_and_issuer(tmp_path, population
         row["sha256"] = "0" * 64
         with pytest.raises(ValueError, match="member mismatch: rea-durable"):
             issuer.verify_members(planted, tmp_path)
+
+
+def test_research_template_successor_preserves_exact_committed_bytes(tmp_path):
+    contract = contract_module.research_working_root_template_successor_members()
+    roots, commits = full_population_repositories(tmp_path, contract)
+    loaded = builder.open_frozen_population(roots, commits, contract)
+    expected_ids = set(
+        contract_module.RESEARCH_WORKING_ROOT_TEMPLATE_ADDITIONAL_MEMBERS
+    )
+    assert len(contract) == len(loaded) == 296
+    assert expected_ids <= set(loaded)
+    for member_id in expected_ids:
+        repository, path = contract[member_id]
+        assert loaded[member_id] == builder.committed_member_bytes(
+            roots[repository], commits[repository], path
+        )
+
+    member_id = "research-template-observation-log"
+    repository, path = contract[member_id]
+    (roots[repository] / path).write_text("planted divergent template\n")
+    with pytest.raises(ValueError, match="frozen population member unavailable"):
+        builder.open_frozen_population(roots, commits, contract)
+
+
+@pytest.mark.parametrize(
+    "member_id",
+    sorted(contract_module.RESEARCH_WORKING_ROOT_TEMPLATE_ADDITIONAL_MEMBERS),
+)
+def test_each_research_template_executable_mode_refuses_opener_and_issuer(
+    tmp_path, capsys, member_id,
+):
+    contract = contract_module.research_working_root_template_successor_members()
+    roots, commits = full_population_repositories(tmp_path, contract)
+    repository, path = contract[member_id]
+    subject = roots[repository] / path
+    subject.chmod(0o755)
+    git(roots[repository], "add", "--", path)
+    git(roots[repository], "commit", "-q", "-m", "plant executable template")
+    commits[repository] = git(roots[repository], "rev-parse", "HEAD")
+
+    with pytest.raises(
+        ValueError, match=f"research working-root template mode:{member_id}"
+    ):
+        builder.open_frozen_population(roots, commits, contract)
+
+    loaded = {
+        key: builder.committed_member_bytes(roots[repo], commits[repo], relative)
+        for key, (repo, relative) in contract.items()
+    }
+    manifest = {
+        "authority_generation": contract_module.AUTHORITY_GENERATION,
+        "required_member_classes": list(contract_module.REQUIRED_MEMBER_CLASSES),
+        "members": [
+            {
+                "member_id": key,
+                "repository": repo,
+                "path": relative,
+                "commit": commits[repo],
+                "sha256": builder.sha(loaded[key]),
+                "byte_length": len(loaded[key]),
+            }
+            for key, (repo, relative) in sorted(contract.items())
+        ],
+    }
+    with pytest.raises(
+        issuer.IssuerRefusal, match=f"research working-root template mode:{member_id}"
+    ):
+        issuer.verify_members(manifest, tmp_path)
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert captured.err == ""
+
+
+@pytest.mark.parametrize("plant", ("missing", "symlink"))
+def test_research_template_missing_or_nonregular_mode_refuses(
+    tmp_path, plant,
+):
+    contract = contract_module.research_working_root_template_successor_members()
+    roots, commits = full_population_repositories(tmp_path, contract)
+    member_id = "research-template-observation-log"
+    repository, path = contract[member_id]
+    subject = roots[repository] / path
+    subject.unlink()
+    if plant == "symlink":
+        subject.symlink_to("RESEARCH_QUESTION_SPEC.tmpl.md")
+    git(roots[repository], "add", "--", path)
+    git(roots[repository], "commit", "-q", "-m", f"plant {plant} template")
+    commits[repository] = git(roots[repository], "rev-parse", "HEAD")
+    with pytest.raises(ValueError, match="frozen population member unavailable"):
+        builder.open_frozen_population(roots, commits, contract)
 
 
 def ruleset(path: Path) -> None:
@@ -264,6 +356,34 @@ def test_manifest_build_is_byte_identical_across_three_runs(
         "sha256": builder.sha(b"committed member\n"),
         "byte_length": len(b"committed member\n"),
     }]
+
+
+def test_manifest_builder_never_prints_member_bytes(monkeypatch, tmp_path, capsys):
+    root, _commit = fixture_repository(tmp_path)
+    secret = b"PLANTED_SECRET_MEMBER_BYTES_DO_NOT_PRINT\n"
+    (root / "member.txt").write_bytes(secret)
+    git(root, "add", "member.txt")
+    git(root, "commit", "-q", "-m", "secret output fixture")
+    ruleset_path = tmp_path / "ruleset.json"
+    ruleset(ruleset_path)
+    monkeypatch.setattr(
+        builder,
+        "MEMBERS",
+        {"fixture": (("fixture-member", "member.txt"),)},
+    )
+    output = tmp_path / GENERATION_MANIFEST_NAME
+    monkeypatch.setattr(sys, "argv", [
+        "build_frozen_manifest.py",
+        "--output", str(output),
+        "--ruleset-json", str(ruleset_path),
+        "--research-working-root-template-successor",
+        "--root-fixture", str(root),
+    ])
+    assert builder.main() == 0
+    captured = capsys.readouterr()
+    assert secret.decode().strip() not in captured.out
+    assert secret.decode().strip() not in captured.err
+    assert secret.decode().strip() not in output.read_text()
 
 
 def test_builder_refuses_wrong_generation_3_output_name(

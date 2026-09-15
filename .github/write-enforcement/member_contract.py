@@ -1052,6 +1052,63 @@ def validate_final_runtime_rollout_member_ids(observed):
         raise ValueError("final runtime rollout member set refused")
 
 
+# s232 authenticates the exact canonical Stage templates consumed by the
+# nested research-working-root materializer. Historical population 291 stays
+# immutable; selecting any one of these paths selects the complete five-member
+# successor so a partial Stage contract can never be issued.
+RESEARCH_WORKING_ROOT_TEMPLATE_ADDITIONAL_MEMBERS = {
+    "research-template-observation-log": (
+        "govML", "templates/strategy/OBSERVATION_LOG.tmpl.md",
+    ),
+    "research-template-question-spec": (
+        "govML", "templates/strategy/RESEARCH_QUESTION_SPEC.tmpl.md",
+    ),
+    "research-template-landscape-assessment": (
+        "govML", "templates/strategy/LANDSCAPE_ASSESSMENT.tmpl.md",
+    ),
+    "research-template-hypothesis-registry": (
+        "govML", "templates/core/HYPOTHESIS_REGISTRY.tmpl.md",
+    ),
+    "research-template-experimental-design": (
+        "govML", "templates/core/EXPERIMENTAL_DESIGN.tmpl.md",
+    ),
+}
+
+
+def research_working_root_template_successor_members():
+    value = final_runtime_rollout_successor_members()
+    if set(value) & set(RESEARCH_WORKING_ROOT_TEMPLATE_ADDITIONAL_MEMBERS):
+        raise ValueError("research working-root template member id collision")
+    value.update(RESEARCH_WORKING_ROOT_TEMPLATE_ADDITIONAL_MEMBERS)
+    if len(set(value.values())) != len(value):
+        raise ValueError("research working-root template member subject collision")
+    return value
+
+
+def validate_research_working_root_template_member_ids(observed):
+    if set(observed) != set(research_working_root_template_successor_members()):
+        raise ValueError("research working-root template member set refused")
+
+
+def validate_research_working_root_template_modes(source_modes, contract):
+    """Require canonical Markdown template blobs without changing older sets."""
+    required = set(RESEARCH_WORKING_ROOT_TEMPLATE_ADDITIONAL_MEMBERS)
+    present = required & set(contract)
+    if not present:
+        return
+    if present != required or any(
+        contract.get(member_id)
+        != RESEARCH_WORKING_ROOT_TEMPLATE_ADDITIONAL_MEMBERS[member_id]
+        for member_id in required
+    ):
+        raise ValueError("research working-root template contract incomplete")
+    for member_id in sorted(required):
+        if source_modes.get(member_id) != "100644":
+            raise ValueError(
+                f"research working-root template mode:{member_id}"
+            )
+
+
 def production_members_for_manifest(manifest, baseline=None):
     """Select the exact closed set for one known generation; never a subset."""
     rows = manifest.get("members") if isinstance(manifest, dict) else None
@@ -1077,13 +1134,19 @@ def production_members_for_manifest(manifest, baseline=None):
     durable_successor.update(DURABLE_HISTORY_ADDITIONAL_MEMBERS)
     final_runtime_successor = dict(durable_successor)
     final_runtime_successor.update(FINAL_RUNTIME_ROLLOUT_ADDITIONAL_MEMBERS)
+    research_template_successor = dict(final_runtime_successor)
+    research_template_successor.update(
+        RESEARCH_WORKING_ROOT_TEMPLATE_ADDITIONAL_MEMBERS
+    )
     generation = manifest.get("authority_generation") if isinstance(manifest, dict) else None
     if generation is None and baseline is not None:
         # Unit-level byte/membership checks historically pass a reduced explicit
         # contract without the outer manifest loader. Production entrypoints
         # validate the generation before reaching this selector.
         return (
-            final_runtime_successor
+            research_template_successor
+            if observed & set(RESEARCH_WORKING_ROOT_TEMPLATE_ADDITIONAL_MEMBERS)
+            else final_runtime_successor
             if observed & set(FINAL_RUNTIME_ROLLOUT_ADDITIONAL_MEMBERS)
             else successor if observed & set(SUCCESSOR_ADDITIONAL_MEMBERS) else base
         )
@@ -1093,7 +1156,9 @@ def production_members_for_manifest(manifest, baseline=None):
         return base
     if generation == AUTHORITY_GENERATION:
         return (
-            final_runtime_successor
+            research_template_successor
+            if observed & set(RESEARCH_WORKING_ROOT_TEMPLATE_ADDITIONAL_MEMBERS)
+            else final_runtime_successor
             if observed & set(FINAL_RUNTIME_ROLLOUT_ADDITIONAL_MEMBERS)
             else durable_successor
             if observed & set(DURABLE_HISTORY_ADDITIONAL_MEMBERS)
@@ -1280,12 +1345,14 @@ def validate_managed_live_member_aliases(
     contract: dict[str, tuple[str, str]],
 ) -> None:
     """Close every authoring alias over the authenticated managed contract."""
+    validate_research_working_root_template_modes(source_modes, contract)
     table = MANAGED_LIVE_MEMBER_ALIASES
     expected_count = 15
     if set(contract) & set(DURABLE_HISTORY_ADDITIONAL_MEMBERS):
         if contract not in (
             durable_history_successor_members(),
             final_runtime_rollout_successor_members(),
+            research_working_root_template_successor_members(),
         ):
             raise ValueError("managed live durable successor contract incomplete")
         table += DURABLE_HISTORY_MANAGED_LIVE_MEMBER_ALIASES
