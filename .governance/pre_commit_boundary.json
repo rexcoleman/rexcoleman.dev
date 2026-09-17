@@ -2,16 +2,13 @@
   "assertion": "COMMIT_PREFLIGHT_PASS",
   "caller": "git-pre-commit",
   "changed_paths": [
-    ".github/workflows/issue-external-judge-authority.yml",
-    ".github/workflows/issue-write-enforcement-attestation.yml",
-    ".github/write-enforcement/artifact_contract_versions.json",
-    ".github/write-enforcement/github_app_installation_token.py"
+    ".github/write-enforcement/frozen_bundle_manifest.generation-5.json"
   ],
-  "changed_paths_count": 4,
-  "changed_paths_sha256": "8835f0ab269e1224874d451113648e459de77bb83e56ea18bfa72dbf5120c46a",
+  "changed_paths_count": 1,
+  "changed_paths_sha256": "0e50f527ad13467749dcd58967b714e8b6e5b0b91970adfa7dab4bae4ff957de",
   "mode": "commit-preflight",
-  "parent_head": "beae8abc5f73bddfa37cb8a30f9353e98749844c",
-  "run_id": "pre-commit-be07caf36a2e60ce542bde1b",
+  "parent_head": "ceb41925bbc877bbf5d2f6f12d14cd4e58d3cb88",
+  "run_id": "pre-commit-0b7ebc266fd1e0093916803c",
   "schema_version": "rea.pre-commit-boundary.v1",
-  "utc_asserted_at": "2026-09-17T00:07:13Z"
+  "utc_asserted_at": "2026-09-17T00:19:58Z"
 }
