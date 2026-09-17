@@ -38,6 +38,13 @@ REQUIRED_REPOSITORIES = frozenset({
 DISPATCH_REPOSITORY = "govML"
 DISPATCH_REPOSITORY_FULL_NAME = f"{OWNER}/{DISPATCH_REPOSITORY}"
 DISPATCH_PERMISSIONS = {"actions": "write"}
+# The hosted judge client also performs one contents read
+# (GET /repos/{repo}/git/ref/heads/main).  A dispatch token correctly has no
+# contents access, so that read is minted its own equally narrow token rather
+# than widening DISPATCH_PERMISSIONS.
+READ_REPOSITORY = "govML"
+READ_REPOSITORY_FULL_NAME = f"{OWNER}/{READ_REPOSITORY}"
+READ_PERMISSIONS = {"contents": "read"}
 API_VERSION = "2022-11-28"
 
 
@@ -151,6 +158,17 @@ def _dispatch_permissions_exact(permissions: object) -> bool:
         return False
     return all(
         key == "actions" or (key == "metadata" and level == "read")
+        for key, level in permissions.items()
+    )
+
+
+def _read_permissions_exact(permissions: object) -> bool:
+    if not isinstance(permissions, dict):
+        return False
+    if permissions.get("contents") != "read":
+        return False
+    return all(
+        key == "contents" or (key == "metadata" and level == "read")
         for key, level in permissions.items()
     )
 
@@ -295,6 +313,58 @@ def mint_dispatch_and_verify() -> str:
     return token
 
 
+def mint_read_and_verify() -> str:
+    """Mint one contents:read token for exactly one repository.
+
+    Deliberately as narrow as ``mint_dispatch_and_verify``: a single
+    repository and a single permission, verified exactly as issued.  It is
+    not a widening of the dispatch token and does not replace it; each call
+    site holds only the scope its own operation needs.
+    """
+    app_id, key = _credentials()
+    jwt = _sign_jwt(app_id, key)
+    value = _api("GET", f"/repos/{READ_REPOSITORY_FULL_NAME}/installation", jwt)
+    installation_id = value.get("id")
+    account = value.get("account")
+    if (
+        isinstance(installation_id, bool)
+        or not isinstance(installation_id, int)
+        or installation_id <= 0
+        or not isinstance(account, dict)
+        or account.get("login") != OWNER
+        or not _read_installation_permissions_allowed(value.get("permissions"))
+    ):
+        raise Refusal("GITHUB_APP_READ_INSTALLATION_SCOPE_INVALID")
+    issued = _api(
+        "POST", f"/app/installations/{installation_id}/access_tokens", jwt,
+        {
+            "permissions": READ_PERMISSIONS,
+            "repositories": [READ_REPOSITORY],
+        },
+    )
+    token = issued.get("token")
+    repositories = issued.get("repositories")
+    if (
+        not isinstance(token, str)
+        or re.fullmatch(r"\S{20,}", token) is None
+        or not _read_permissions_exact(issued.get("permissions"))
+        or _observed_repository_names(repositories) != {READ_REPOSITORY}
+    ):
+        raise Refusal("GITHUB_APP_READ_INSTALLATION_TOKEN_SCOPE_INVALID")
+    reference = _api(
+        "GET", f"/repos/{READ_REPOSITORY_FULL_NAME}/git/ref/heads/main", token,
+    )
+    referenced = reference.get("object")
+    if (
+        reference.get("ref") != "refs/heads/main"
+        or not isinstance(referenced, dict)
+        or not isinstance(referenced.get("sha"), str)
+        or re.fullmatch(r"[0-9a-f]{40}", referenced["sha"]) is None
+    ):
+        raise Refusal("GITHUB_APP_READ_REPOSITORY_CONTENTS_INVALID")
+    return token
+
+
 def _write_token(path: Path, token: str) -> None:
     selected = path.absolute()
     selected.parent.mkdir(parents=True, exist_ok=True)
@@ -320,11 +390,15 @@ def main(argv: list[str] | None = None) -> int:
     mode.add_argument("--check", action="store_true")
     mode.add_argument("--output", type=Path)
     mode.add_argument("--dispatch-output", type=Path)
+    mode.add_argument("--read-output", type=Path)
     args = parser.parse_args(argv)
     try:
         if args.dispatch_output is not None:
             token = mint_dispatch_and_verify()
             _write_token(args.dispatch_output, token)
+        elif args.read_output is not None:
+            token = mint_read_and_verify()
+            _write_token(args.read_output, token)
         else:
             token = mint_and_verify()
         if args.output is not None:
@@ -336,6 +410,12 @@ def main(argv: list[str] | None = None) -> int:
         print(
             "GITHUB_APP_INSTALLATION_TOKEN_READY "
             f"repository={DISPATCH_REPOSITORY_FULL_NAME} actions=write mode=dispatch-mint"
+        )
+        return 0
+    if args.read_output is not None:
+        print(
+            "GITHUB_APP_INSTALLATION_TOKEN_READY "
+            f"repository={READ_REPOSITORY_FULL_NAME} contents=read mode=read-mint"
         )
         return 0
     print(
