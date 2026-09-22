@@ -2,14 +2,15 @@
   "assertion": "COMMIT_PREFLIGHT_PASS",
   "caller": "git-pre-commit",
   "changed_paths": [
-    ".github/write-enforcement/populate_rea_s170_govml_credentials.py",
-    ".github/write-enforcement/tests/test_s170_owner_arc.py"
+    ".github/workflows/issue-external-judge-authority.yml",
+    ".github/workflows/issue-write-enforcement-attestation.yml",
+    ".github/write-enforcement/github_app_installation_token.py"
   ],
-  "changed_paths_count": 2,
-  "changed_paths_sha256": "430e4b1dcca44621bbaf2c833fe99c96f6bff9ffa8343b2c74366dfe05a1d22b",
+  "changed_paths_count": 3,
+  "changed_paths_sha256": "c6a9f991c6afdd1d22f1179eed6e22395d7b5e36e1e02ec4666483f30a6c0474",
   "mode": "commit-preflight",
-  "parent_head": "837c44cd83956a379f648cab510dfbac8d4b4ce5",
-  "run_id": "pre-commit-b66f2f595284350a5224f467",
+  "parent_head": "8b4f98f3e41eed6efe2adec42dd31c6773856dec",
+  "run_id": "pre-commit-27451c386743056877af4893",
   "schema_version": "rea.pre-commit-boundary.v1",
-  "utc_asserted_at": "2026-09-22T20:33:26Z"
+  "utc_asserted_at": "2026-09-22T20:47:23Z"
 }

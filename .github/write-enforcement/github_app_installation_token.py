@@ -267,10 +267,17 @@ def mint_and_verify() -> str:
     return token
 
 
-def mint_dispatch_and_verify() -> str:
+def _selected_repository(repository: str) -> tuple[str, str]:
+    if repository not in REQUIRED_REPOSITORIES:
+        raise Refusal("GITHUB_APP_TARGET_REPOSITORY_INVALID")
+    return repository, f"{OWNER}/{repository}"
+
+
+def mint_dispatch_and_verify(repository: str = DISPATCH_REPOSITORY) -> str:
+    repository, repository_full_name = _selected_repository(repository)
     app_id, key = _credentials()
     jwt = _sign_jwt(app_id, key)
-    value = _api("GET", f"/repos/{DISPATCH_REPOSITORY_FULL_NAME}/installation", jwt)
+    value = _api("GET", f"/repos/{repository_full_name}/installation", jwt)
     installation_id = value.get("id")
     account = value.get("account")
     if (
@@ -286,7 +293,7 @@ def mint_dispatch_and_verify() -> str:
         "POST", f"/app/installations/{installation_id}/access_tokens", jwt,
         {
             "permissions": DISPATCH_PERMISSIONS,
-            "repositories": [DISPATCH_REPOSITORY],
+            "repositories": [repository],
         },
     )
     token = issued.get("token")
@@ -295,16 +302,16 @@ def mint_dispatch_and_verify() -> str:
         not isinstance(token, str)
         or re.fullmatch(r"\S{20,}", token) is None
         or not _dispatch_permissions_exact(issued.get("permissions"))
-        or _observed_repository_names(repositories) != {DISPATCH_REPOSITORY}
+        or _observed_repository_names(repositories) != {repository}
     ):
         raise Refusal("GITHUB_APP_DISPATCH_INSTALLATION_TOKEN_SCOPE_INVALID")
-    repository = _api("GET", f"/repos/{DISPATCH_REPOSITORY_FULL_NAME}", token)
+    repository_record = _api("GET", f"/repos/{repository_full_name}", token)
     workflows = _api(
-        "GET", f"/repos/{DISPATCH_REPOSITORY_FULL_NAME}/actions/workflows?per_page=1",
+        "GET", f"/repos/{repository_full_name}/actions/workflows?per_page=1",
         token,
     )
     if (
-        repository.get("full_name") != DISPATCH_REPOSITORY_FULL_NAME
+        repository_record.get("full_name") != repository_full_name
         or isinstance(workflows.get("total_count"), bool)
         or not isinstance(workflows.get("total_count"), int)
         or not isinstance(workflows.get("workflows"), list)
@@ -313,7 +320,7 @@ def mint_dispatch_and_verify() -> str:
     return token
 
 
-def mint_read_and_verify() -> str:
+def mint_read_and_verify(repository: str = READ_REPOSITORY) -> str:
     """Mint one contents:read token for exactly one repository.
 
     Deliberately as narrow as ``mint_dispatch_and_verify``: a single
@@ -321,9 +328,10 @@ def mint_read_and_verify() -> str:
     not a widening of the dispatch token and does not replace it; each call
     site holds only the scope its own operation needs.
     """
+    repository, repository_full_name = _selected_repository(repository)
     app_id, key = _credentials()
     jwt = _sign_jwt(app_id, key)
-    value = _api("GET", f"/repos/{READ_REPOSITORY_FULL_NAME}/installation", jwt)
+    value = _api("GET", f"/repos/{repository_full_name}/installation", jwt)
     installation_id = value.get("id")
     account = value.get("account")
     if (
@@ -339,7 +347,7 @@ def mint_read_and_verify() -> str:
         "POST", f"/app/installations/{installation_id}/access_tokens", jwt,
         {
             "permissions": READ_PERMISSIONS,
-            "repositories": [READ_REPOSITORY],
+            "repositories": [repository],
         },
     )
     token = issued.get("token")
@@ -348,11 +356,11 @@ def mint_read_and_verify() -> str:
         not isinstance(token, str)
         or re.fullmatch(r"\S{20,}", token) is None
         or not _read_permissions_exact(issued.get("permissions"))
-        or _observed_repository_names(repositories) != {READ_REPOSITORY}
+        or _observed_repository_names(repositories) != {repository}
     ):
         raise Refusal("GITHUB_APP_READ_INSTALLATION_TOKEN_SCOPE_INVALID")
     reference = _api(
-        "GET", f"/repos/{READ_REPOSITORY_FULL_NAME}/git/ref/heads/main", token,
+        "GET", f"/repos/{repository_full_name}/git/ref/heads/main", token,
     )
     referenced = reference.get("object")
     if (
@@ -391,13 +399,17 @@ def main(argv: list[str] | None = None) -> int:
     mode.add_argument("--output", type=Path)
     mode.add_argument("--dispatch-output", type=Path)
     mode.add_argument("--read-output", type=Path)
+    parser.add_argument(
+        "--repository", choices=sorted(REQUIRED_REPOSITORIES),
+        default=DISPATCH_REPOSITORY,
+    )
     args = parser.parse_args(argv)
     try:
         if args.dispatch_output is not None:
-            token = mint_dispatch_and_verify()
+            token = mint_dispatch_and_verify(args.repository)
             _write_token(args.dispatch_output, token)
         elif args.read_output is not None:
-            token = mint_read_and_verify()
+            token = mint_read_and_verify(args.repository)
             _write_token(args.read_output, token)
         else:
             token = mint_and_verify()
@@ -409,13 +421,13 @@ def main(argv: list[str] | None = None) -> int:
     if args.dispatch_output is not None:
         print(
             "GITHUB_APP_INSTALLATION_TOKEN_READY "
-            f"repository={DISPATCH_REPOSITORY_FULL_NAME} actions=write mode=dispatch-mint"
+            f"repository={OWNER}/{args.repository} actions=write mode=dispatch-mint"
         )
         return 0
     if args.read_output is not None:
         print(
             "GITHUB_APP_INSTALLATION_TOKEN_READY "
-            f"repository={READ_REPOSITORY_FULL_NAME} contents=read mode=read-mint"
+            f"repository={OWNER}/{args.repository} contents=read mode=read-mint"
         )
         return 0
     print(
