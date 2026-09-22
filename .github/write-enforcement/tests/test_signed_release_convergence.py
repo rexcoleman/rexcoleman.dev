@@ -49,6 +49,9 @@ S210_GOVERNED_READ_ADAPTER = ROOT / (
 )
 POPULATION_265_ADAPTER = ROOT / "adapters/research_enforcement_activation.population-265-v1.json"
 POPULATION_273_ADAPTER = ROOT / "adapters/research_enforcement_activation.population-273-v1.json"
+S241_CONSUMER_CONVERGENCE_ADAPTER = ROOT / (
+    "adapters/research_enforcement_activation.s241-consumer-convergence-v1.json"
+)
 POPULATION_264_DEPENDENT_ADAPTERS = (
     AML_264_ADAPTER,
     ABLL_264_ADAPTER,
@@ -629,6 +632,41 @@ def test_population_adapters_refuse_each_others_population(tmp_path):
         ] == result["manifest_digest"]
 
 
+def test_s241_consumer_convergence_adapter_preserves_terminal_population():
+    value = tool.load_adapter(S241_CONSUMER_CONVERGENCE_ADAPTER)
+    terminal = tool.load_adapter(RESEARCH_TEMPLATE_ADAPTERS[0])
+    assert value["adapter_id"] == (
+        "research-enforcement-activation-generation-5-"
+        "s241-consumer-convergence-v1"
+    )
+    assert value["expected_member_count"] == 296
+    assert value["manifest_builder_flag"] == (
+        "--research-working-root-template-successor"
+    )
+    for field in (
+        "authority_generation", "boundaries", "expected_member_count",
+        "hermetic_fixture", "manifest_builder", "manifest_builder_flag",
+        "manifest_path", "repositories", "ruleset_id", "ruleset_repository",
+        "schema_version",
+    ):
+        assert value[field] == terminal[field]
+    tests = {row["repository"]: row["paths"] for row in value["hermetic_tests"]}
+    assert ".github/write-enforcement/tests/test_generation2_bundle.py" in (
+        tests["rexcoleman.dev"]
+    )
+    assert ".github/write-enforcement/tests/test_member_contract.py" in (
+        tests["rexcoleman.dev"]
+    )
+    sources = {
+        row["repository"]: row["paths"]
+        for row in value["system_python_sources"]
+    }
+    assert ".github/write-enforcement/issue_wea.py" in sources["rexcoleman.dev"]
+    assert ".github/write-enforcement/member_contract.py" in (
+        sources["rexcoleman.dev"]
+    )
+
+
 def test_impact_selector_binds_control_closure_flag_to_264_contract():
     adapter_264 = tool.load_adapter(POPULATION_264_ADAPTER)
     adapter_261 = tool.load_adapter(POPULATION_261_ADAPTER)
@@ -1130,11 +1168,15 @@ def test_index_is_closed_and_resolves_every_registered_adapter():
         "research-enforcement-activation", "adversarial-ml-landscape",
         "agent-boundary-learning-landscape", "newsletter-hybrid-path",
         "newsletter-generation-architecture", "research-engine-release")]
-    + [f"{name}-generation-5-population-{RESEARCH_TEMPLATE_COUNT}-v1" for name in (
-        "research-enforcement-activation", "adversarial-ml-landscape",
-        "agent-boundary-learning-landscape", "newsletter-hybrid-path",
-        "newsletter-generation-architecture", "research-engine-release")]
-    )
+        + [f"{name}-generation-5-population-{RESEARCH_TEMPLATE_COUNT}-v1" for name in (
+            "research-enforcement-activation", "adversarial-ml-landscape",
+            "agent-boundary-learning-landscape", "newsletter-hybrid-path",
+            "newsletter-generation-architecture", "research-engine-release")]
+        + [
+            "research-enforcement-activation-generation-5-"
+            "s241-consumer-convergence-v1"
+        ]
+        )
     status = {row["adapter_id"]: row["status"] for row in value["adapters"]}
     assert {
         adapter_id for adapter_id, item in status.items() if item == "retired"
@@ -1192,6 +1234,7 @@ def test_index_refuses_duplicate_unknown_retired_and_traversing_rows(
                 S210_GOVERNED_READ_ADAPTER,
                 POPULATION_265_ADAPTER,
                 POPULATION_273_ADAPTER,
+                S241_CONSUMER_CONVERGENCE_ADAPTER,
             ):
         shutil.copyfile(adapter_path, adapters / adapter_path.name)
         for adapter_path in DURABLE_ADAPTERS:
@@ -2197,6 +2240,10 @@ def test_list_adapters_and_indexed_execution_selection(monkeypatch, capsys, tmp_
         "research-enforcement-activation-generation-5-s173-"
         "authenticated-head-rebase-v1\tactive\t" in listed
     )
+    assert (
+        "research-enforcement-activation-generation-5-"
+        "s241-consumer-convergence-v1\tactive\t" in listed
+    )
 
     captured = {}
 
@@ -2223,6 +2270,17 @@ def test_list_adapters_and_indexed_execution_selection(monkeypatch, capsys, tmp_
         "--plan",
     ]) == 0
     assert captured["adapter"] == S173_AUTHENTICATED_HEAD_REBASE_ADAPTER
+
+    captured.clear()
+    assert tool.main([
+        "--adapter-id",
+        "research-enforcement-activation-generation-5-"
+        "s241-consumer-convergence-v1",
+        "--state", str(tmp_path / "s241-state.json"),
+        "--evidence-dir", str(tmp_path / "s241-evidence"),
+        "--plan",
+    ]) == 0
+    assert captured["adapter"] == S241_CONSUMER_CONVERGENCE_ADAPTER
 
     for adapter_id, expected in (
         (

@@ -1204,8 +1204,8 @@ EXACT_MEMBER_BYTE_ALIASES = (
 # Closed authoring/runtime aliases for every signed member whose immutable
 # authoring identity names a govML-installer-owned live target.  Source modes
 # are Git tree modes.  The installed mode is the actual successor-installed
-# live mode.  Runner adapter is the sole explicit source-to-live mode
-# transform; every other row remains 100644 -> 0644.
+# live mode. Runner adapter and durable history are the closed executable
+# source-to-live transforms; every other row remains 100644 -> 0644.
 MANAGED_LIVE_MEMBER_ALIASES = (
     ("atomic-consumer", "scaffold-hybrid-core-atomic-consumer", "write_integrity/consumer/atomic_consumer.py", "100644", "100644", 0o644),
     ("route-runtime-mount", "scaffold-hybrid-core-runtime-mount", "write_integrity/mounts/runtime_mount.py", "100644", "100644", 0o644),
@@ -1228,8 +1228,20 @@ MANAGED_LIVE_MEMBER_ALIASES = (
 # historical alias population. Both immutable subjects are already members of
 # the complete durable contract; this row binds their installed relationship.
 DURABLE_HISTORY_MANAGED_LIVE_MEMBER_ALIASES = (
-    ("rea-durable-attestation-history", "durable-attestation-history", "scripts/durable_attestation_history.py", "100644", "100644", 0o644),
+    ("rea-durable-attestation-history", "durable-attestation-history", "scripts/durable_attestation_history.py", "100755", "100644", 0o755),
 )
+
+MANAGED_LIVE_EXECUTABLE_TARGETS = frozenset({
+    "scripts/durable_attestation_history.py",
+    "write_integrity/runners/runner_adapter.py",
+})
+
+# Immutable pre-s241 manifests recorded this authoring member before its Git
+# executable bit converged. New manifests still derive 100755 from the alias
+# table; this exception exists only so signed historical bytes remain readable.
+HISTORICAL_MANAGED_LIVE_AUTHORING_MODES = {
+    "rea-durable-attestation-history": frozenset({"100644"}),
+}
 
 
 def _literal_assignment(source: bytes, name: str):
@@ -1266,6 +1278,35 @@ def _literal_assignment(source: bytes, name: str):
     if len(matches) != 1:
         raise ValueError(f"managed inventory assignment population:{name}")
     return matches[0]
+
+
+def derive_research_build_signed_managed_contract(
+    inventory_source: bytes,
+) -> dict[str, tuple[str, str]]:
+    """Derive the signed installer-owned research-build population."""
+    signed_base = _literal_assignment(inventory_source, "SIGNED_BASE")
+    common = _literal_assignment(inventory_source, "COMMON")
+    build_only = _literal_assignment(inventory_source, "BUILD_ONLY")
+    profile_contract = _literal_assignment(inventory_source, "PROFILE_CONTRACT")
+    if not all(
+        isinstance(value, dict)
+        for value in (signed_base, common, build_only, profile_contract)
+    ):
+        raise ValueError("managed inventory literal shape")
+    profile = profile_contract.get("research-build")
+    if not isinstance(profile, dict) or set(profile) != {
+        "research_type", "surfaces", "runner"
+    }:
+        raise ValueError("managed research-build profile shape")
+    contract = dict(signed_base)
+    for destination, source in {**common, **build_only}.items():
+        contract[destination] = (
+            "govML", f"templates/build/enforcement/{source}"
+        )
+    contract["scripts/run_gates.sh"] = (
+        "govML", f"templates/build/enforcement/{profile['runner']}"
+    )
+    return contract
 
 
 def derive_research_build_managed_contract(
@@ -1400,13 +1441,18 @@ def validate_managed_live_member_aliases(
             raise ValueError(
                 f"managed live alias divergence:{authoring_id}:{runtime_id}"
             )
-        if source_modes.get(authoring_id) != authoring_mode:
+        observed_authoring_mode = source_modes.get(authoring_id)
+        accepted_authoring_modes = {
+            authoring_mode,
+            *HISTORICAL_MANAGED_LIVE_AUTHORING_MODES.get(authoring_id, ()),
+        }
+        if observed_authoring_mode not in accepted_authoring_modes:
             raise ValueError(f"managed live authoring mode:{authoring_id}")
         if source_modes.get(runtime_id) != runtime_mode:
             raise ValueError(f"managed live runtime mode:{runtime_id}")
-        expected_installed_mode = 0o755 if target == (
-            "write_integrity/runners/runner_adapter.py"
-        ) else 0o644
+        expected_installed_mode = (
+            0o755 if target in MANAGED_LIVE_EXECUTABLE_TARGETS else 0o644
+        )
         if installed_mode != expected_installed_mode:
             raise ValueError(f"managed live installed mode:{target}")
         authoring_subject = contract[authoring_id]

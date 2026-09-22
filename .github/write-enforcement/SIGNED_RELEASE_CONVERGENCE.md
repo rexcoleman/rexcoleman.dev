@@ -354,6 +354,26 @@ strict subset, a renamed member, or changed bytes cannot issue. This source
 registration does not build a production manifest, freeze, tag, issue, install,
 or activate an authority.
 
+## Pre-issuance consumer convergence
+
+The immutable s241 adapter
+`research-enforcement-activation-generation-5-s241-consumer-convergence-v1`
+preserves the terminal 296-member research-working-root-template contract and
+registers the issuer/member-contract machinery that closes the consumer side of
+the signed managed-install population. Before ruleset validation, private-key
+loading, signature creation, or output creation, the issuer parses the signed
+managed inventory without executing candidate code, derives every
+research-build destination, and requires the candidate REA commit to match the
+signed govML source bytes and expected installed mode. Executable destinations,
+including `scripts/durable_attestation_history.py`, must be Git mode `100755` in
+REA even when their govML installer template remains `100644`.
+
+Missing signed source rows, candidate byte drift, and candidate mode drift all
+refuse as `CONSUMER_CONVERGENCE_REFUSED`. Focused tests plant each polarity and
+also prove the refusal occurs before key access or output creation. This is a
+pre-issuance guard only; the adapter and candidate build do not issue, sign,
+tag, install, or activate authority.
+
 The callable independent-second-principal reviewer reads the protected
 convergence index and selects the unique highest active REA generation-5
 population adapter. The reviewer derives the selector from that adapter's

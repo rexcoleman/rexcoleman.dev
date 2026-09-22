@@ -35,6 +35,7 @@ from member_contract import (
     STAGED_NONPRODUCTION_PURPOSE,
     STAGED_NONPRODUCTION_RECEIPT_SCHEMA,
     STAGED_NONPRODUCTION_WEA_SCHEMA,
+    derive_research_build_signed_managed_contract,
     derive_write_boundary_route_surface_bindings,
     normalize_ruleset,
     staged_nonproduction_members,
@@ -174,6 +175,65 @@ def verify_members(
             "BUNDLE_MEMBER_BYTES_MISMATCH", f"managed_live_alias:{exc}"
         ) from None
     return loaded
+
+
+def verify_consumer_convergence(
+    manifest: dict, workspace: Path, loaded: dict[str, bytes]
+) -> None:
+    """Require the candidate REA tree to match every signed managed source."""
+    reason = "CONSUMER_CONVERGENCE_REFUSED"
+    inventory = loaded.get("managed-enforcement-inventory")
+    if not isinstance(inventory, bytes):
+        raise IssuerRefusal(reason, "managed-enforcement-inventory:missing")
+    try:
+        contract = derive_research_build_signed_managed_contract(inventory)
+    except (TypeError, ValueError) as exc:
+        raise IssuerRefusal(
+            reason, f"managed-enforcement-inventory:{exc}"
+        ) from None
+
+    subjects = {}
+    rea_commits = set()
+    for row in manifest.get("members", []):
+        if not isinstance(row, dict):
+            raise IssuerRefusal(reason, "manifest:member_shape")
+        subject = (row.get("repository"), row.get("path"))
+        if subject in subjects:
+            raise IssuerRefusal(
+                reason, f"manifest:duplicate_subject:{subject[0]}:{subject[1]}"
+            )
+        subjects[subject] = row
+        if row.get("repository") == "research_enforcement_activation":
+            rea_commits.add(row.get("commit"))
+    if len(rea_commits) != 1:
+        raise IssuerRefusal(reason, f"research_enforcement_activation:commits={len(rea_commits)}")
+    rea_commit = next(iter(rea_commits))
+    rea_root = workspace / REPOSITORIES["research_enforcement_activation"]
+
+    for destination, source_subject in contract.items():
+        source_row = subjects.get(source_subject)
+        if source_row is None:
+            raise IssuerRefusal(
+                reason,
+                f"{destination}:source_missing:{source_subject[0]}:{source_subject[1]}",
+            )
+        try:
+            source = committed_bytes(
+                workspace / REPOSITORIES[source_subject[0]],
+                source_row["commit"],
+                source_subject[1],
+            )
+            candidate = committed_bytes(rea_root, rea_commit, destination)
+            mode = committed_mode(rea_root, rea_commit, destination)
+        except (KeyError, TypeError, ValueError) as exc:
+            raise IssuerRefusal(reason, f"{destination}:{exc}") from None
+        if candidate != source:
+            raise IssuerRefusal(reason, f"{destination}:bytes")
+        expected_mode = "100644" if destination == "requirements-ci.txt" else "100755"
+        if mode != expected_mode:
+            raise IssuerRefusal(
+                reason, f"{destination}:mode:{mode}:expected:{expected_mode}"
+            )
 
 
 def load_private_key(path: Path) -> Ed25519PrivateKey:
@@ -324,6 +384,7 @@ def main() -> int:
     else:
         manifest = load_manifest(args.manifest)
         loaded = verify_members(manifest, args.workspace)
+        verify_consumer_convergence(manifest, args.workspace, loaded)
     ruleset = json.loads(args.ruleset_json.read_bytes())
     if (ruleset.get("id") != RULESET_ID
             or digest(canonical(normalize_ruleset(ruleset))) != manifest.get("normalized_ruleset_sha256")):

@@ -115,6 +115,9 @@ def test_issuer_refuses_workflow_byte_drift_before_signing(
         },
     )
     monkeypatch.setattr(
+        issue_wea, "verify_consumer_convergence", lambda *_args: None
+    )
+    monkeypatch.setattr(
         issue_wea,
         "committed_bytes",
         lambda _root, _commit, _path: b"post-freeze-workflow-mutation",
@@ -131,6 +134,157 @@ def test_issuer_refuses_workflow_byte_drift_before_signing(
             "--predecessor-wea-sha256", "0" * 64,
         ])
     with pytest.raises(ValueError, match="workflow byte drift"):
+        issue_wea.main()
+    assert not (tmp_path / "output").exists()
+
+
+def consumer_convergence_fixture(monkeypatch, tmp_path):
+    inventory = b"""
+COMMON = {'requirements-ci.txt': 'requirements-ci.txt'}
+BUILD_ONLY = {
+    'scripts/build-only.sh': 'build-only.sh',
+    'scripts/durable_attestation_history.py': 'durable_attestation_history.py',
+}
+PROFILE_CONTRACT = {'research-build': {'research_type': 'build', 'surfaces': (), 'runner': 'project_run_gates.sh'}}
+SIGNED_BASE = {'scripts/base.sh': ('govML', 'templates/build/enforcement/base.sh')}
+"""
+    sources = {
+        "templates/build/enforcement/requirements-ci.txt": b"requirements\n",
+        "templates/build/enforcement/build-only.sh": b"build only\n",
+        "templates/build/enforcement/durable_attestation_history.py": b"history\n",
+        "templates/build/enforcement/base.sh": b"base\n",
+        "templates/build/enforcement/project_run_gates.sh": b"runner\n",
+    }
+    destinations = {
+        "requirements-ci.txt": sources[
+            "templates/build/enforcement/requirements-ci.txt"
+        ],
+        "scripts/build-only.sh": sources[
+            "templates/build/enforcement/build-only.sh"
+        ],
+        "scripts/durable_attestation_history.py": sources[
+            "templates/build/enforcement/durable_attestation_history.py"
+        ],
+        "scripts/base.sh": sources["templates/build/enforcement/base.sh"],
+        "scripts/run_gates.sh": sources[
+            "templates/build/enforcement/project_run_gates.sh"
+        ],
+    }
+    govml_commit = "a" * 40
+    rea_commit = "b" * 40
+    manifest = {
+        "members": [
+            {
+                "member_id": f"source-{index}",
+                "repository": "govML",
+                "path": path,
+                "commit": govml_commit,
+            }
+            for index, path in enumerate(sources)
+        ] + [{
+            "member_id": "rea-candidate",
+            "repository": "research_enforcement_activation",
+            "path": "candidate-marker",
+            "commit": rea_commit,
+        }]
+    }
+    loaded = {"managed-enforcement-inventory": inventory}
+
+    def fake_bytes(root, commit, path):
+        if root.name == "govML" and commit == govml_commit:
+            return sources[path]
+        if root.name == "research_enforcement_activation" and commit == rea_commit:
+            return destinations[path]
+        raise ValueError("unexpected subject")
+
+    def fake_mode(root, commit, path):
+        assert root.name == "research_enforcement_activation"
+        assert commit == rea_commit
+        return "100644" if path == "requirements-ci.txt" else "100755"
+
+    monkeypatch.setattr(issue_wea, "committed_bytes", fake_bytes)
+    monkeypatch.setattr(issue_wea, "committed_mode", fake_mode)
+    return manifest, tmp_path / "workspace", loaded, sources, destinations
+
+
+def test_consumer_convergence_green(monkeypatch, tmp_path):
+    manifest, workspace, loaded, _sources, _destinations = (
+        consumer_convergence_fixture(monkeypatch, tmp_path)
+    )
+    issue_wea.verify_consumer_convergence(manifest, workspace, loaded)
+
+
+@pytest.mark.parametrize(
+    "plant,destination",
+    (
+        ("bytes", "scripts/build-only.sh"),
+        ("mode", "scripts/durable_attestation_history.py"),
+        ("missing-source", "scripts/build-only.sh"),
+    ),
+)
+def test_consumer_convergence_plants_refuse(
+    monkeypatch, tmp_path, plant, destination
+):
+    manifest, workspace, loaded, _sources, destinations = (
+        consumer_convergence_fixture(monkeypatch, tmp_path)
+    )
+    if plant == "bytes":
+        destinations[destination] = b"planted mismatch\n"
+    elif plant == "mode":
+        original = issue_wea.committed_mode
+        monkeypatch.setattr(
+            issue_wea,
+            "committed_mode",
+            lambda root, commit, path: (
+                "100644" if path == destination else original(root, commit, path)
+            ),
+        )
+    else:
+        source_path = next(
+            path for path, payload in _sources.items()
+            if payload == destinations[destination]
+        )
+        manifest["members"] = [
+            row for row in manifest["members"]
+            if row.get("path") != source_path
+        ]
+    with pytest.raises(issue_wea.IssuerRefusal) as caught:
+        issue_wea.verify_consumer_convergence(manifest, workspace, loaded)
+    assert caught.value.reason_code == "CONSUMER_CONVERGENCE_REFUSED"
+    assert destination in caught.value.detail
+
+
+def test_production_convergence_refuses_before_ruleset_key_and_output(
+    monkeypatch, tmp_path
+):
+    manifest = {"members": []}
+    monkeypatch.setattr(issue_wea, "load_manifest", lambda _path: manifest)
+    monkeypatch.setattr(issue_wea, "verify_members", lambda *_args: {})
+    monkeypatch.setattr(
+        issue_wea,
+        "verify_consumer_convergence",
+        lambda *_args: (_ for _ in ()).throw(
+            issue_wea.IssuerRefusal(
+                "CONSUMER_CONVERGENCE_REFUSED", "scripts/run_gates.sh:bytes"
+            )
+        ),
+    )
+    monkeypatch.setattr(
+        issue_wea, "load_private_key",
+        lambda *_args: pytest.fail("private key loaded before convergence"),
+    )
+    monkeypatch.setattr(sys, "argv", [
+        "issue_wea.py",
+        "--manifest", str(tmp_path / "manifest.json"),
+        "--workspace", str(tmp_path / "workspace"),
+        "--ruleset-json", str(tmp_path / "missing-ruleset.json"),
+        "--private-key", str(tmp_path / "missing-private.pem"),
+        "--output", str(tmp_path / "output"),
+        "--predecessor-wea-sha256", "0" * 64,
+    ])
+    with pytest.raises(
+        issue_wea.IssuerRefusal, match="CONSUMER_CONVERGENCE_REFUSED"
+    ):
         issue_wea.main()
     assert not (tmp_path / "output").exists()
 

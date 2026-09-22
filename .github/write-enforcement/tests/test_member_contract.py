@@ -392,6 +392,7 @@ def durable_managed_alias_fixture():
     for member_id in ("rea-durable-attestation-history", "durable-attestation-history",
                       "remote-durable-attestation-history"):
         loaded[member_id] = b"same durable history bytes"
+    modes["rea-durable-attestation-history"] = "100755"
     return loaded, modes, contract
 
 
@@ -402,8 +403,21 @@ def test_managed_history_full_contract_and_historical_table_unchanged():
     assert len(MANAGED_LIVE_MEMBER_ALIASES) == 15
     assert contract_module.DURABLE_HISTORY_MANAGED_LIVE_MEMBER_ALIASES == (
         ("rea-durable-attestation-history", "durable-attestation-history",
-         "scripts/durable_attestation_history.py", "100644", "100644", 0o644),
+         "scripts/durable_attestation_history.py", "100755", "100644", 0o755),
     )
+    assert contract_module.MANAGED_LIVE_EXECUTABLE_TARGETS == frozenset({
+        "scripts/durable_attestation_history.py",
+        "write_integrity/runners/runner_adapter.py",
+    })
+    assert contract_module.HISTORICAL_MANAGED_LIVE_AUTHORING_MODES == {
+        "rea-durable-attestation-history": frozenset({"100644"}),
+    }
+
+
+def test_managed_history_historical_authoring_mode_is_accepted():
+    loaded, modes, contract = durable_managed_alias_fixture()
+    modes["rea-durable-attestation-history"] = "100644"
+    validate_managed_live_member_aliases(loaded, modes, contract)
 
 
 @pytest.mark.parametrize("plant,reason", (
@@ -434,11 +448,11 @@ def test_managed_history_alias_boundaries(monkeypatch, plant, reason):
     elif plant == "divergent-bytes":
         loaded["rea-durable-attestation-history"] = b"planted divergence"
     elif plant == "authoring-mode":
-        modes["rea-durable-attestation-history"] = "100755"
+        modes["rea-durable-attestation-history"] = "100600"
     elif plant == "runtime-mode":
         modes["durable-attestation-history"] = "100755"
     elif plant == "installed-mode":
-        row[5] = 0o755; table = [tuple(row)]
+        row[5] = 0o644; table = [tuple(row)]
     elif plant == "wrong-target":
         row[2] = "scripts/forged.py"; table = [tuple(row)]
     elif plant == "wrong-common":

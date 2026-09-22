@@ -239,6 +239,11 @@
       "adapter_id": "research-engine-release-generation-5-population-296-v1",
       "path": "adapters/research_engine_release.population-296-v1.json",
       "status": "active"
+    },
+    {
+      "adapter_id": "research-enforcement-activation-generation-5-s241-consumer-convergence-v1",
+      "path": "adapters/research_enforcement_activation.s241-consumer-convergence-v1.json",
+      "status": "active"
     }
   ],
   "documentation": "SIGNED_RELEASE_CONVERGENCE.md",

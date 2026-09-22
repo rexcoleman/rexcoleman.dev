@@ -2,13 +2,21 @@
   "assertion": "COMMIT_PREFLIGHT_PASS",
   "caller": "git-pre-commit",
   "changed_paths": [
-    ".github/write-enforcement/frozen_bundle_manifest.generation-5.json"
+    ".github/write-enforcement/SIGNED_RELEASE_CONVERGENCE.md",
+    ".github/write-enforcement/SIGNED_RELEASE_CONVERGENCE_INDEX.md",
+    ".github/write-enforcement/adapters/research_enforcement_activation.s241-consumer-convergence-v1.json",
+    ".github/write-enforcement/issue_wea.py",
+    ".github/write-enforcement/member_contract.py",
+    ".github/write-enforcement/signed_release_convergence_index.json",
+    ".github/write-enforcement/tests/test_generation2_bundle.py",
+    ".github/write-enforcement/tests/test_member_contract.py",
+    ".github/write-enforcement/tests/test_signed_release_convergence.py"
   ],
-  "changed_paths_count": 1,
-  "changed_paths_sha256": "0e50f527ad13467749dcd58967b714e8b6e5b0b91970adfa7dab4bae4ff957de",
+  "changed_paths_count": 9,
+  "changed_paths_sha256": "7c1cc06b2cbf8881789bbcad29c99c635188f13a336930b897d4c0ea52443134",
   "mode": "commit-preflight",
-  "parent_head": "ceb41925bbc877bbf5d2f6f12d14cd4e58d3cb88",
-  "run_id": "pre-commit-0b7ebc266fd1e0093916803c",
+  "parent_head": "837c44cd83956a379f648cab510dfbac8d4b4ce5",
+  "run_id": "pre-commit-cad63fa2a0073fea98ba5245",
   "schema_version": "rea.pre-commit-boundary.v1",
-  "utc_asserted_at": "2026-09-17T00:19:58Z"
+  "utc_asserted_at": "2026-09-22T20:21:03Z"
 }

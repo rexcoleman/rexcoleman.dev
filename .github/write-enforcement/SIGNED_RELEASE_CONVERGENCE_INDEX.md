@@ -160,6 +160,17 @@ by exit code. The old population-265 adapter remains auditable, but the active
 reissue plan uses the 273-member contract so the frozen manifest cannot omit
 bytes that `managed_enforcement_inventory.py` installs.
 
+The s241 population-preserving successor is registered as
+`research-enforcement-activation-generation-5-s241-consumer-convergence-v1`.
+It is based on the terminal 296-member adapter and adds the changed issuer to
+the compiled rexcoleman.dev source set while retaining the focused issuer and
+member-contract tests. The issuer derives every research-build managed
+destination from the signed inventory and compares its committed bytes and
+installed mode with the candidate REA commit before ruleset validation, private
+key loading, or output creation. Any missing source, byte drift, or mode drift
+has the stable refusal `CONSUMER_CONVERGENCE_REFUSED`. Registration does not
+issue, sign, tag, install, or change the 296-member authority population.
+
 A population change always gets a new stable
 adapter identity; the 251- and 255-member adapters remain
 auditable without being silently redefined. The dependent adapters use schema
