@@ -1,18 +1,14 @@
 #!/usr/bin/env python3
-"""One-time hidden entry of the two owner-held REA enrollment tokens."""
+"""Report the retired owner-held PAT route without collecting credentials."""
 
 from __future__ import annotations
 
 import argparse
-import getpass
-import json
 import os
 from pathlib import Path
 import re
 import stat
-import subprocess
 import sys
-import tempfile
 
 
 CREDENTIAL_FILE = Path("/home/azureuser/.config/govml/env")
@@ -20,7 +16,6 @@ REQUIRED = (
     "GOVML_AUTHORITY_TOKEN",
     "REA_BUNDLE_READ_TOKEN",
 )
-TOKEN_PATTERN = re.compile(r"(?:github_pat_|ghp_)[A-Za-z0-9_]+")
 NAME_PATTERN = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
 
 
@@ -86,142 +81,14 @@ def presence(path: Path = CREDENTIAL_FILE) -> tuple[list[str], bytes, dict[str, 
     return rows, raw, states
 
 
-def gh_json(token: str, endpoint: str):
-    environment = {
-        "GH_TOKEN": token,
-        "HOME": os.environ.get("HOME", ""),
-        "PATH": os.environ.get("PATH", ""),
-    }
-    completed = subprocess.run(
-        ["gh", "api", endpoint],
-        env=environment,
-        text=True,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.DEVNULL,
-        check=False,
-        timeout=60,
-    )
-    if completed.returncode:
-        raise Refusal(f"TOKEN_CAPABILITY_REFUSED endpoint={endpoint}")
-    try:
-        return json.loads(completed.stdout)
-    except json.JSONDecodeError as exc:
-        raise Refusal(f"TOKEN_RESPONSE_REFUSED endpoint={endpoint}") from exc
-
-
-def validate_token(token: str, repository: str) -> None:
-    if TOKEN_PATTERN.fullmatch(token) is None:
-        raise Refusal("TOKEN_FORMAT_REFUSED")
-    user = gh_json(token, "user")
-    if not isinstance(user, dict) or user.get("login") != "rexcoleman":
-        raise Refusal("TOKEN_OWNER_REFUSED")
-    repo = gh_json(token, f"repos/{repository}")
-    if not isinstance(repo, dict) or repo.get("full_name") != repository:
-        raise Refusal(f"TOKEN_REPOSITORY_REFUSED repository={repository}")
-    permissions = repo.get("permissions")
-    if (
-        not isinstance(permissions, dict)
-        or permissions.get("pull") is not True
-        or any(
-            permissions.get(name) is not False
-            for name in ("admin", "maintain", "push", "triage")
-        )
-    ):
-        raise Refusal(f"TOKEN_READ_ONLY_SCOPE_REFUSED repository={repository}")
-    branch = repo.get("default_branch")
-    if not isinstance(branch, str) or not branch:
-        raise Refusal(f"TOKEN_DEFAULT_BRANCH_REFUSED repository={repository}")
-    tree = gh_json(token, f"repos/{repository}/git/trees/{branch}")
-    if not isinstance(tree, dict) or not isinstance(tree.get("sha"), str):
-        raise Refusal(f"TOKEN_CONTENTS_READ_REFUSED repository={repository}")
-
-
-def updated_rows(rows: list[str], values: dict[str, str]) -> bytes:
-    retained = []
-    for source in rows:
-        row = source.strip()
-        candidate = row[7:].lstrip() if row.startswith("export ") else row
-        name = candidate.split("=", 1)[0].strip() if "=" in candidate else ""
-        if name not in REQUIRED:
-            retained.append(source)
-    if retained and retained[-1] != "":
-        retained.append("")
-    retained.extend(f"{name}={values[name]}" for name in REQUIRED)
-    return ("\n".join(retained) + "\n").encode("utf-8")
-
-
-def atomic_replace(path: Path, raw: bytes) -> None:
-    descriptor, temporary = tempfile.mkstemp(prefix=".rea-s170-govml-env-", dir=path.parent)
-    try:
-        os.fchmod(descriptor, 0o600)
-        with os.fdopen(descriptor, "wb") as handle:
-            handle.write(raw)
-            handle.flush()
-            os.fsync(handle.fileno())
-        os.replace(temporary, path)
-        directory = os.open(path.parent, os.O_RDONLY)
-        try:
-            os.fsync(directory)
-        finally:
-            os.close(directory)
-    except BaseException:
-        try:
-            os.unlink(temporary)
-        except FileNotFoundError:
-            pass
-        raise
-
-
 def preflight(path: Path = CREDENTIAL_FILE) -> dict[str, str]:
-    unused_rows, raw, states = presence(path)
-    status = "COMPLETE" if all(state == "SET" for state in states.values()) else "READY"
-    if status == "COMPLETE":
-        unused_rows, values = parse(raw)
-        validate_token(values["GOVML_AUTHORITY_TOKEN"], "rexcoleman/govML")
-        validate_token(
-            values["REA_BUNDLE_READ_TOKEN"],
-            "rexcoleman/research_enforcement_activation",
-        )
-    return {"status": status, **states}
+    unused_rows, unused_raw, states = presence(path)
+    return {"status": "RETIRED", **states}
 
 
 def apply(path: Path = CREDENTIAL_FILE) -> dict[str, str]:
-    before = preflight(path)
-    if before["status"] == "COMPLETE":
-        return before
-    if not all(os.isatty(descriptor) for descriptor in (0, 1, 2)):
-        raise Refusal("OWNER_TTY_REQUIRED")
-    rows, original, states = presence(path)
-    if any(state != "UNSET" for state in states.values()):
-        raise Refusal("APPLY_PREFLIGHT_MOVED")
-    print("NOT SAFE to paste back", flush=True)
-    print("Prepare two fine-grained GitHub tokens with Contents read-only access.", flush=True)
-    authority = getpass.getpass("govML read-only token: ")
-    bundle = getpass.getpass("REA bundle read-only token: ")
-    written = False
-    try:
-        validate_token(authority, "rexcoleman/govML")
-        validate_token(bundle, "rexcoleman/research_enforcement_activation")
-        atomic_replace(path, updated_rows(rows, {
-            "GOVML_AUTHORITY_TOKEN": authority,
-            "REA_BUNDLE_READ_TOKEN": bundle,
-        }))
-        written = True
-        after = preflight(path)
-        if after["status"] != "COMPLETE":
-            raise Refusal("CREDENTIAL_POSTCONDITION_REFUSED")
-    except BaseException:
-        if written:
-            try:
-                atomic_replace(path, original)
-                print("CREDENTIAL_ROLLBACK_COMPLETE", file=sys.stderr)
-            except BaseException:
-                print("CREDENTIAL_ROLLBACK_INCOMPLETE", file=sys.stderr)
-        raise
-    finally:
-        authority = ""
-        bundle = ""
-    return after
+    preflight(path)
+    raise Refusal("OWNER_PAT_ROUTE_RETIRED use=GOVML_REA_READ_APP")
 
 
 def main() -> int:
@@ -232,11 +99,11 @@ def main() -> int:
     arguments = parser.parse_args()
     try:
         result = apply() if arguments.apply else preflight()
-    except (OSError, Refusal, subprocess.TimeoutExpired) as exc:
+    except (OSError, Refusal) as exc:
         print(f"REA_S170_CREDENTIAL_REFUSED reason={exc}", file=sys.stderr)
         return 3
     print(
-        "REA_S170_CREDENTIAL_" + ("COMPLETE" if result["status"] == "COMPLETE" else "PREFLIGHT")
+        "REA_S170_CREDENTIAL_" + result["status"]
         + " " + " ".join(f"{name}={result[name]}" for name in REQUIRED)
     )
     return 0
