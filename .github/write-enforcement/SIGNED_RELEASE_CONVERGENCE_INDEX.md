@@ -373,7 +373,7 @@ merge.  The rollout validator records all three and refuses a signed-member
 change in either interval, a malformed boundary receipt, or a tag not derived
 from F.
 
-The static propagation source names the five population-next dependent adapters.
+The static propagation source names the six population-next consumer adapters.
 Every population-290 row remains registered and unchanged for historical audit.
 
 The s232 population-296 successor registers five canonical govML research
@@ -385,3 +385,18 @@ all five template paths together and binds each to the selected remotely
 reachable govML commit, byte length, and digest; partial or substituted template
 populations refuse. Registration alone does not freeze, tag, issue, install, or
 activate the successor.
+
+The s242 population-297 successor closes the remaining runtime dependency set.
+The profile-local artifact-producer validator used by the nested working-root
+initializer is already signed under its canonical member ID; the successor
+adds only the existing quality-loop cleanliness gate that the installed gate
+stack actually invokes.
+The accompanying govML installer mapping also places the already-signed
+Moonshots `signed-hypothesis-gate` member at `scripts/hypothesis_gate.sh`; this
+repairs its missing child lookup without increasing the population. The same
+landing repairs that canonical member's split-root authority binding and enrolls
+its focused branch-C prerequisite suite in every population-297 adapter.
+All six enrolled population-next adapters select
+`--research-runtime-dependency-successor`; population 296 remains registered and
+unchanged for audit. This source registration does not freeze, tag, issue,
+install, or activate the successor.
