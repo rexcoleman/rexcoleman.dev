@@ -1239,15 +1239,16 @@ EXACT_MEMBER_BYTE_ALIASES = (
 # Closed authoring/runtime aliases for every signed member whose immutable
 # authoring identity names a govML-installer-owned live target.  Source modes
 # are Git tree modes.  The installed mode is the actual successor-installed
-# live mode.  Runner adapter is the sole explicit source-to-live mode
-# transform; every other row remains 100644 -> 0644.
+# live mode.  Every row preserves its authenticated Git mode at the live
+# destination: the runner adapter remains executable and every other row
+# remains 100644 -> 0644.
 MANAGED_LIVE_MEMBER_ALIASES = (
     ("atomic-consumer", "scaffold-hybrid-core-atomic-consumer", "write_integrity/consumer/atomic_consumer.py", "100644", "100644", 0o644),
     ("route-runtime-mount", "scaffold-hybrid-core-runtime-mount", "write_integrity/mounts/runtime_mount.py", "100644", "100644", 0o644),
     ("production-package-init", "scaffold-hybrid-core-provisioning-package-init", "write_integrity/provisioning/__init__.py", "100644", "100644", 0o644),
     ("production-boundary", "scaffold-hybrid-core-provisioning-boundary", "write_integrity/provisioning/boundary.py", "100644", "100644", 0o644),
     ("production-fixed-adapter", "scaffold-hybrid-core-provisioning-fixed-adapter", "write_integrity/provisioning/fixed_adapter.py", "100644", "100644", 0o644),
-    ("runner-adapter", "runner-adapter-launcher", "write_integrity/runners/runner_adapter.py", "100755", "100644", 0o755),
+    ("runner-adapter", "runner-adapter-launcher", "write_integrity/runners/runner_adapter.py", "100755", "100755", 0o755),
     ("write-boundary-engine", "scaffold-hybrid-core-write-boundary-engine", "write_integrity/write_boundary/boundary_engine.py", "100644", "100644", 0o644),
     ("write-boundary-row-registry", "scaffold-hybrid-core-row-registry", "write_integrity/write_boundary/row_registry.json", "100644", "100644", 0o644),
     ("write-boundary-ledger-schema", "scaffold-hybrid-core-ledger-schema", "write_integrity/write_boundary/schemas/ledger.schema.json", "100644", "100644", 0o644),

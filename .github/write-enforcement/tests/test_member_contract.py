@@ -328,17 +328,31 @@ def test_managed_live_alias_table_is_exact_closed_population():
     loaded, modes, contract = managed_alias_fixture()
     validate_managed_live_member_aliases(loaded, modes, contract)
     assert len(MANAGED_LIVE_MEMBER_ALIASES) == 15
-    transforms = [
+    runner = next(
         row for row in MANAGED_LIVE_MEMBER_ALIASES
-        if row[4] == "100644" and row[5] == 0o755
-    ]
-    assert transforms == [
-        (
-            "runner-adapter", "runner-adapter-launcher",
-            "write_integrity/runners/runner_adapter.py",
-            "100755", "100644", 0o755,
-        )
-    ]
+        if row[1] == "runner-adapter-launcher"
+    )
+    assert runner == (
+        "runner-adapter", "runner-adapter-launcher",
+        "write_integrity/runners/runner_adapter.py",
+        "100755", "100755", 0o755,
+    )
+    assert all(
+        int(authoring_mode[-3:], 8) == installed_mode
+        and int(runtime_mode[-3:], 8) == installed_mode
+        for (
+            _authoring, _runtime, _target, authoring_mode, runtime_mode,
+            installed_mode,
+        ) in MANAGED_LIVE_MEMBER_ALIASES
+    )
+
+    planted_modes = dict(modes)
+    planted_modes["runner-adapter-launcher"] = "100644"
+    with pytest.raises(
+        ValueError,
+        match="managed live runtime mode:runner-adapter-launcher",
+    ):
+        validate_managed_live_member_aliases(loaded, planted_modes, contract)
 
 
 @pytest.mark.parametrize(

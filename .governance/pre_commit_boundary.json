@@ -2,15 +2,15 @@
   "assertion": "COMMIT_PREFLIGHT_PASS",
   "caller": "git-pre-commit",
   "changed_paths": [
-    ".github/write-enforcement/FREEZE_SEQUENCE.md",
-    ".github/write-enforcement/GENERATION_5_OWNER_RUNBOOK.md",
-    ".github/write-enforcement/tests/test_independent_review.py"
+    ".github/write-enforcement/member_contract.py",
+    ".github/write-enforcement/tests/test_build_frozen_manifest.py",
+    ".github/write-enforcement/tests/test_member_contract.py"
   ],
   "changed_paths_count": 3,
-  "changed_paths_sha256": "f2fca8a7257ca60e9d438c74408b645ee4c89cc02ae2822672b8f1f086170add",
+  "changed_paths_sha256": "49db8182d460e01f63ac10958363150c1d801513b311f192bb94939a2a4cbb0d",
   "mode": "commit-preflight",
-  "parent_head": "cfc2179354e0c1c3bdefc7870666b2398a3fa134",
-  "run_id": "pre-commit-8d38ddcae6b2fbc30eaeaab1",
+  "parent_head": "15d5302e9c83f96ac049edc28ac5feb95f8404ed",
+  "run_id": "pre-commit-3b3a2994799360a9fc5bd6c9",
   "schema_version": "rea.pre-commit-boundary.v1",
-  "utc_asserted_at": "2026-09-23T18:12:12Z"
+  "utc_asserted_at": "2026-09-23T18:43:58Z"
 }
