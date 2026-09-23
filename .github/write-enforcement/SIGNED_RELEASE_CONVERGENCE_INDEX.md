@@ -184,6 +184,12 @@ the contract receipt but keeps release/install mutation outside the planner.
 5. Run the internal self-test and focused test file. The read-only
    `signed-release-convergence` workflow repeats both on the pull request.
 
+The engine's refusal evidence contract includes a durable
+`hermetic-refusal.json` outside the disposable authenticated fixture. It binds
+failed/error node IDs, the child exit code, complete stdout/stderr digests, and
+bounded 4,096-character stream tails so a failed registered plan remains
+diagnosable after fixture cleanup.
+
 The index is navigation and contract metadata, not release authority. It does
 not merge, tag, approve, issue, install, or prove a target project green.
 

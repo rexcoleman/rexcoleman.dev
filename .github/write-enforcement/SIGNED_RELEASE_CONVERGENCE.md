@@ -210,6 +210,14 @@ The planner requires five explicit clean repository roots. It:
 8. rechecks all five input roots after the build and refuses if any HEAD or
    worktree changed.
 
+If a registered hermetic pytest group refuses, the planner writes
+`hermetic-refusal.json` in the durable evidence directory before returning the
+refusal. The record keeps the exact failed/error node IDs reported by pytest,
+the exit code, the existing complete stdout/stderr SHA-256 digests, and at most
+4,096 characters from the tail of each stream. The authenticated fixture may
+then be removed without erasing the output needed to identify the real failing
+test; successful groups and all existing checks are unchanged.
+
 For a dependent v2 adapter, including a population-versioned successor, the
 contract receipt additionally binds the exact
 project identifier, GitHub repository, default branch, runner path, preflight

@@ -1821,6 +1821,81 @@ def test_audited_pytest_positive_has_structural_zero_counts(tmp_path):
     assert audit == {"exitstatus": 0, "skipped": [], "xfailed": [], "xpassed": []}
 
 
+def test_audited_pytest_refusal_retains_node_ids_and_bounded_output(tmp_path):
+    root = tmp_path / "source"
+    root.mkdir()
+    (root / "test_retained.py").write_text(
+        "import sys\n"
+        "def test_retained_node():\n"
+        " print('stdout-marker-' + 'x' * 5000)\n"
+        " print('stderr-marker-' + 'y' * 5000, file=sys.stderr)\n"
+        " assert False\n",
+        encoding="ascii",
+    )
+    fixture_root = tmp_path / "fixture"
+    fixture_root.mkdir()
+    row = {
+        "name": "planted-failure",
+        "repository": "research_enforcement_activation",
+        "paths": ["test_retained.py"],
+    }
+    with pytest.raises(tool.HermeticTestRefusal) as raised:
+        tool.audited_pytest(
+            sys.executable,
+            row,
+            root,
+            {
+                "root": fixture_root,
+                "env": dict(tool.hermetic_environment(), HOME=str(fixture_root)),
+            },
+        )
+    evidence = raised.value.evidence
+    assert evidence["schema_version"] == tool.HERMETIC_REFUSAL_SCHEMA
+    assert evidence["failing_test_nodes"] == [
+        "test_retained.py::test_retained_node"
+    ]
+    assert evidence["exit_code"] == 1
+    assert len(evidence["stdout_tail"]) <= tool.HERMETIC_OUTPUT_TAIL_LIMIT
+    assert len(evidence["stderr_tail"]) <= tool.HERMETIC_OUTPUT_TAIL_LIMIT
+    assert len(evidence["stdout_sha256"]) == 64
+    assert len(evidence["stderr_sha256"]) == 64
+
+
+def test_execute_persists_hermetic_refusal_outside_fixture(tmp_path, monkeypatch):
+    state = tmp_path / "state.json"
+    evidence = tmp_path / "evidence"
+    mapping = roots(tmp_path / "roots")
+    for path in mapping.values():
+        path.mkdir(parents=True)
+    monkeypatch.setattr(tool, "parse_roots", lambda _rows, _adapter: mapping)
+    payload = {
+        "schema_version": tool.HERMETIC_REFUSAL_SCHEMA,
+        "phase": "hermetic",
+        "test_name": "planted-failure",
+        "repository": "research_enforcement_activation",
+        "paths": ["test_retained.py"],
+        "exit_code": 1,
+        "failing_test_nodes": ["test_retained.py::test_retained_node"],
+        "stdout_sha256": "a" * 64,
+        "stdout_tail": "bounded stdout",
+        "stderr_sha256": "b" * 64,
+        "stderr_tail": "bounded stderr",
+    }
+
+    def planted(phase, *_args):
+        if phase == "hermetic":
+            raise tool.HermeticTestRefusal("PLANTED_HERMETIC_REFUSAL", payload)
+        return []
+
+    monkeypatch.setattr(tool, "phase_result", planted)
+    with pytest.raises(tool.HermeticTestRefusal, match="PLANTED_HERMETIC_REFUSAL"):
+        tool.execute(ADAPTER, state, evidence, [], "plan", False)
+    assert json.loads((evidence / "hermetic-refusal.json").read_text()) == payload
+    saved = json.loads(state.read_text())
+    assert saved["status"] == "refused"
+    assert saved["refusal"].endswith("PLANTED_HERMETIC_REFUSAL")
+
+
 def test_builder_token_is_transient_and_only_added_to_build_child(monkeypatch):
     class Completed:
         stdout = "transient-token\n"
