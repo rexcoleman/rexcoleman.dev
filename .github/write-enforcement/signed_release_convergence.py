@@ -34,6 +34,8 @@ INVENTORY_SCHEMA = "rea.signed-release-convergence-inventory.v1"
 STATE_SCHEMA = "rea.signed-release-convergence-state.v1"
 SUMMARY_SCHEMA = "rea.signed-release-convergence-summary.v1"
 RECEIPT_SCHEMA = "rea.signed-release-convergence-phase-receipt.v1"
+HERMETIC_REFUSAL_SCHEMA = "rea.signed-release-convergence-hermetic-refusal.v1"
+HERMETIC_OUTPUT_TAIL_LIMIT = 4096
 ALLOWED_MODES = frozenset(("plan", "noop-rehearsal"))
 PHASES = (
     "roots",
@@ -74,6 +76,14 @@ SESSION_UUID = re.compile(r"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-f
 
 class Refusal(RuntimeError):
     """Typed fail-closed result."""
+
+
+class HermeticTestRefusal(Refusal):
+    """Hermetic pytest refusal with bounded evidence safe to persist."""
+
+    def __init__(self, message, evidence):
+        super().__init__(message)
+        self.evidence = evidence
 
 
 def canonical(value: object) -> bytes:
@@ -156,7 +166,7 @@ def atomic_json(path: Path, value: object) -> None:
         raise
 
 
-def run(argv, cwd=None, env=None, timeout=900):
+def run(argv, cwd=None, env=None, timeout=900, check=True):
     completed = subprocess.run(
         argv,
         cwd=str(cwd) if cwd is not None else None,
@@ -167,7 +177,7 @@ def run(argv, cwd=None, env=None, timeout=900):
         text=True,
         timeout=timeout,
     )
-    if completed.returncode:
+    if check and completed.returncode:
         raise Refusal(
             "COMMAND_REFUSED:exit=%s:subject=%s:stdout_sha256=%s:stderr_sha256=%s"
             % (
@@ -178,6 +188,50 @@ def run(argv, cwd=None, env=None, timeout=900):
             )
         )
     return completed
+
+
+def bounded_output_tail(value):
+    return value[-HERMETIC_OUTPUT_TAIL_LIMIT:]
+
+
+def pytest_failure_nodes_from_text(stdout, stderr):
+    nodes = set()
+    for line in (stdout + "\n" + stderr).splitlines():
+        match = re.match(r"^(?:FAILED|ERROR)\s+([^\s]+)", line.strip())
+        if match and match.group(1) != "collecting":
+            nodes.add(match.group(1))
+    return sorted(nodes)
+
+
+def hermetic_test_refusal(row, argv, completed, failing_test_nodes):
+    stdout_raw = completed.stdout.encode("utf-8")
+    stderr_raw = completed.stderr.encode("utf-8")
+    subject = " ".join(str(item) for item in argv[:4])
+    message = (
+        "HERMETIC_TEST_REFUSED:%s:COMMAND_REFUSED:exit=%s:subject=%s:"
+        "stdout_sha256=%s:stderr_sha256=%s"
+        % (
+            row["name"],
+            completed.returncode,
+            subject,
+            sha256(stdout_raw),
+            sha256(stderr_raw),
+        )
+    )
+    evidence = {
+        "schema_version": HERMETIC_REFUSAL_SCHEMA,
+        "phase": "hermetic",
+        "test_name": row["name"],
+        "repository": row["repository"],
+        "paths": row["paths"],
+        "exit_code": completed.returncode,
+        "failing_test_nodes": sorted(set(failing_test_nodes)),
+        "stdout_sha256": sha256(stdout_raw),
+        "stdout_tail": bounded_output_tail(completed.stdout),
+        "stderr_sha256": sha256(stderr_raw),
+        "stderr_tail": bounded_output_tail(completed.stderr),
+    }
+    return HermeticTestRefusal(message, evidence)
 
 
 def closed_dict(value, required, subject):
@@ -1146,7 +1200,7 @@ from pathlib import Path
 import pytest
 class Audit:
  def __init__(self):
-  self.rows={"skipped":set(),"xfailed":set(),"xpassed":set()}
+  self.rows={"skipped":set(),"xfailed":set(),"xpassed":set(),"failed":set(),"error":set()}
  def pytest_terminal_summary(self,terminalreporter):
   for outcome in self.rows:
    for report in terminalreporter.stats.get(outcome,[]):
@@ -1403,30 +1457,49 @@ def audited_pytest(pytest_python, row, root, fixture):
     junit = audit_dir / (row["name"] + ".xml")
     wrapper = audit_dir / (row["name"] + ".py")
     write_exclusive(wrapper, PYTEST_AUDIT_PROGRAM.encode("utf-8"))
+    argv = [
+        pytest_python,
+        str(wrapper),
+        str(report),
+        "-q",
+        "-p",
+        "no:cacheprovider",
+        "--junitxml=%s" % junit,
+    ] + row["paths"]
     completed = run(
-        [
-            pytest_python,
-            str(wrapper),
-            str(report),
-            "-q",
-            "-p",
-            "no:cacheprovider",
-            "--junitxml=%s" % junit,
-        ]
-        + row["paths"],
+        argv,
         cwd=root,
         env=fixture["env"],
         timeout=1200,
+        check=False,
     )
     try:
         audit = json.loads(regular_bytes(report))
         junit_root = ET.fromstring(regular_bytes(junit))
     except (ValueError, ET.ParseError):
+        if getattr(completed, "returncode", 0):
+            raise hermetic_test_refusal(
+                row,
+                argv,
+                completed,
+                pytest_failure_nodes_from_text(completed.stdout, completed.stderr),
+            )
         raise Refusal("HERMETIC_TEST_AUDIT_REFUSED:%s" % row["name"])
-    closed_dict(audit, {"exitstatus", "skipped", "xfailed", "xpassed"}, "PYTEST_AUDIT")
+    closed_dict(
+        audit,
+        {"exitstatus", "skipped", "xfailed", "xpassed", "failed", "error"},
+        "PYTEST_AUDIT",
+    )
+    if getattr(completed, "returncode", 0):
+        failing_test_nodes = sorted(set(audit["failed"] + audit["error"]))
+        if not failing_test_nodes:
+            failing_test_nodes = pytest_failure_nodes_from_text(
+                completed.stdout, completed.stderr
+            )
+        raise hermetic_test_refusal(row, argv, completed, failing_test_nodes)
     if audit["exitstatus"] != 0 or any(
         not isinstance(audit[field], list)
-        for field in ("skipped", "xfailed", "xpassed")
+        for field in ("skipped", "xfailed", "xpassed", "failed", "error")
     ):
         raise Refusal("HERMETIC_TEST_AUDIT_SHAPE_REFUSED:%s" % row["name"])
     junit_skipped = list(junit_root.findall(".//testcase/skipped"))
@@ -1440,7 +1513,10 @@ def audited_pytest(pytest_python, row, root, fixture):
                 len(audit["xpassed"]),
             )
         )
-    return completed, audit
+    return completed, {
+        field: audit[field]
+        for field in ("exitstatus", "skipped", "xfailed", "xpassed")
+    }
 
 
 def hermetic_snapshot(adapter, roots, authenticated_rows=None):
@@ -1502,17 +1578,30 @@ def hermetic_snapshot(adapter, roots, authenticated_rows=None):
                     raise Refusal("HERMETIC_TEST_ABSENT:%s:%s" % (row["name"], path))
             try:
                 if fixture_policy is None:
+                    argv = [pytest_python, "-m", "pytest", "-q"] + row["paths"]
                     completed = run(
-                        [pytest_python, "-m", "pytest", "-q"] + row["paths"],
+                        argv,
                         cwd=root,
                         env=fixture["env"],
                         timeout=1200,
+                        check=False,
                     )
+                    if getattr(completed, "returncode", 0):
+                        raise hermetic_test_refusal(
+                            row,
+                            argv,
+                            completed,
+                            pytest_failure_nodes_from_text(
+                                completed.stdout, completed.stderr
+                            ),
+                        )
                     audit = None
                 else:
                     completed, audit = audited_pytest(
                         pytest_python, row, root, fixture
                     )
+            except HermeticTestRefusal:
+                raise
             except Refusal as exc:
                 raise Refusal("HERMETIC_TEST_REFUSED:%s:%s" % (row["name"], exc))
             result = {
@@ -1848,6 +1937,8 @@ def execute(
         )
         return 0
     except Exception as exc:
+        if isinstance(exc, HermeticTestRefusal):
+            atomic_json(evidence_dir / "hermetic-refusal.json", exc.evidence)
         state["status"] = "refused"
         state["refusal"] = "%s:%s" % (type(exc).__name__, exc)
         atomic_json(state_path, state)
