@@ -578,20 +578,23 @@ def test_next_contract_manifest_is_an_exact_positive_control():
     assert report["member_contract"] == "EXACT"
 
 
-def test_current_registered_manifest_is_the_exact_prior_population_until_freeze():
+def test_current_registered_manifest_is_the_exact_installed_population():
     raw = CURRENT_MANIFEST.read_bytes()
     value = json.loads(raw)
-    expected = MODULE.structural_members("final_runtime_rollout_successor_members")
+    expected = MODULE.expected_members()
     observed = {
         row["member_id"]: (row["repository"], row["path"])
         for row in value["members"]
     }
     unsigned = {key: item for key, item in value.items() if key != "manifest_digest"}
     assert observed == expected
-    assert len(expected) == 291
+    assert len(expected) == 297
     assert value["manifest_digest"] == digest(unsigned)
-    with pytest.raises(MODULE.Refusal, match="manifest contract differs"):
-        MODULE.manifest_contract(raw)
+    report = MODULE.manifest_contract(raw)
+    assert report["member_contract"] == "EXACT"
+    assert report["member_count"] == 297
+    assert report["manifest_sha256"] == hashlib.sha256(raw).hexdigest()
+    assert report["manifest_digest"] == value["manifest_digest"]
 
 
 def test_manifest_only_identity_refresh_preserves_the_structural_positive():
