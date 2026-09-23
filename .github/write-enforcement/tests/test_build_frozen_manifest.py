@@ -100,7 +100,7 @@ EMITTER_RUNTIME_SURFACE_CLOSURES = {}
             path.write_bytes(special.get(
                 member_id, aliases.get(member_id, f"{member_id}\n".encode())
             ))
-            if member_id == "runner-adapter":
+            if member_id in {"runner-adapter", "runner-adapter-launcher"}:
                 path.chmod(0o755)
         git(root, "add", ".")
         git(root, "commit", "-q", "-m", "complete frozen population")
@@ -292,6 +292,21 @@ def test_full_frozen_population_opens_at_selected_authoritative_commits(tmp_path
     for authoring_id, runtime_id in EXACT_MEMBER_BYTE_ALIASES:
         if authoring_id in builder.EXPECTED_MEMBERS:
             assert loaded[authoring_id] == loaded[runtime_id]
+
+
+def test_full_population_refuses_nonexecutable_runner_launcher(tmp_path):
+    roots, commits = full_population_repositories(tmp_path)
+    repository, path = builder.EXPECTED_MEMBERS["runner-adapter-launcher"]
+    subject = roots[repository] / path
+    subject.chmod(0o644)
+    git(roots[repository], "add", "--", path)
+    git(roots[repository], "commit", "-q", "-m", "plant launcher mode drift")
+    commits[repository] = git(roots[repository], "rev-parse", "HEAD")
+    with pytest.raises(
+        ValueError,
+        match="managed live runtime mode:runner-adapter-launcher",
+    ):
+        builder.open_frozen_population(roots, commits)
 
 
 def test_full_population_refuses_wrong_member_mapping(tmp_path):
