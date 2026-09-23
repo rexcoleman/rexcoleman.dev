@@ -1473,3 +1473,39 @@ def test_research_working_root_templates_are_exact_closed_successor():
         validate_research_working_root_template_modes(
             canonical_modes, retargeted
         )
+
+
+def test_research_runtime_dependencies_are_exact_closed_successor():
+    from member_contract import (
+        RESEARCH_RUNTIME_DEPENDENCY_ADDITIONAL_MEMBERS,
+        production_members_for_manifest,
+        research_runtime_dependency_successor_members,
+        research_working_root_template_successor_members,
+        validate_research_runtime_dependency_member_ids,
+    )
+
+    historical = research_working_root_template_successor_members()
+    successor = research_runtime_dependency_successor_members()
+    expected = {
+        "quality-loop-cleanliness-gate": (
+            "govML",
+            "templates/build/enforcement/quality_loop_cleanliness_gate.py",
+        ),
+    }
+    assert RESEARCH_RUNTIME_DEPENDENCY_ADDITIONAL_MEMBERS == expected
+    assert len(historical) == 296
+    assert len(successor) == 297
+    assert set(successor) == set(historical) | set(expected)
+    validate_research_runtime_dependency_member_ids(successor)
+    assert production_members_for_manifest({
+        "authority_generation": 5,
+        "members": [{"member_id": key} for key in successor],
+    }) == successor
+    for key in expected:
+        omitted = dict(successor)
+        omitted.pop(key)
+        with pytest.raises(ValueError, match="member set refused"):
+            validate_research_runtime_dependency_member_ids(omitted)
+
+    with pytest.raises(ValueError, match="member set refused"):
+        validate_research_runtime_dependency_member_ids(historical)

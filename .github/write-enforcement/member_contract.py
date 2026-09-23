@@ -1109,6 +1109,33 @@ def validate_research_working_root_template_modes(source_modes, contract):
             )
 
 
+# s242 closes the one runtime dependency that population 296 left outside the
+# signed set: the cleanliness gate invoked by the installed gate stack. The
+# profile-local validator used by the nested working-root materializer was
+# already registered as profile-local-artifact-producer-validator.
+RESEARCH_RUNTIME_DEPENDENCY_ADDITIONAL_MEMBERS = {
+    "quality-loop-cleanliness-gate": (
+        "govML",
+        "templates/build/enforcement/quality_loop_cleanliness_gate.py",
+    ),
+}
+
+
+def research_runtime_dependency_successor_members():
+    value = research_working_root_template_successor_members()
+    if set(value) & set(RESEARCH_RUNTIME_DEPENDENCY_ADDITIONAL_MEMBERS):
+        raise ValueError("research runtime dependency member id collision")
+    value.update(RESEARCH_RUNTIME_DEPENDENCY_ADDITIONAL_MEMBERS)
+    if len(set(value.values())) != len(value):
+        raise ValueError("research runtime dependency member subject collision")
+    return value
+
+
+def validate_research_runtime_dependency_member_ids(observed):
+    if set(observed) != set(research_runtime_dependency_successor_members()):
+        raise ValueError("research runtime dependency member set refused")
+
+
 def production_members_for_manifest(manifest, baseline=None):
     """Select the exact closed set for one known generation; never a subset."""
     rows = manifest.get("members") if isinstance(manifest, dict) else None
@@ -1138,13 +1165,19 @@ def production_members_for_manifest(manifest, baseline=None):
     research_template_successor.update(
         RESEARCH_WORKING_ROOT_TEMPLATE_ADDITIONAL_MEMBERS
     )
+    research_runtime_successor = dict(research_template_successor)
+    research_runtime_successor.update(
+        RESEARCH_RUNTIME_DEPENDENCY_ADDITIONAL_MEMBERS
+    )
     generation = manifest.get("authority_generation") if isinstance(manifest, dict) else None
     if generation is None and baseline is not None:
         # Unit-level byte/membership checks historically pass a reduced explicit
         # contract without the outer manifest loader. Production entrypoints
         # validate the generation before reaching this selector.
         return (
-            research_template_successor
+            research_runtime_successor
+            if observed & set(RESEARCH_RUNTIME_DEPENDENCY_ADDITIONAL_MEMBERS)
+            else research_template_successor
             if observed & set(RESEARCH_WORKING_ROOT_TEMPLATE_ADDITIONAL_MEMBERS)
             else final_runtime_successor
             if observed & set(FINAL_RUNTIME_ROLLOUT_ADDITIONAL_MEMBERS)
@@ -1156,7 +1189,9 @@ def production_members_for_manifest(manifest, baseline=None):
         return base
     if generation == AUTHORITY_GENERATION:
         return (
-            research_template_successor
+            research_runtime_successor
+            if observed & set(RESEARCH_RUNTIME_DEPENDENCY_ADDITIONAL_MEMBERS)
+            else research_template_successor
             if observed & set(RESEARCH_WORKING_ROOT_TEMPLATE_ADDITIONAL_MEMBERS)
             else final_runtime_successor
             if observed & set(FINAL_RUNTIME_ROLLOUT_ADDITIONAL_MEMBERS)
@@ -1353,6 +1388,7 @@ def validate_managed_live_member_aliases(
             durable_history_successor_members(),
             final_runtime_rollout_successor_members(),
             research_working_root_template_successor_members(),
+            research_runtime_dependency_successor_members(),
         ):
             raise ValueError("managed live durable successor contract incomplete")
         table += DURABLE_HISTORY_MANAGED_LIVE_MEMBER_ALIASES

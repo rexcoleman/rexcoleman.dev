@@ -109,10 +109,12 @@ EMITTER_RUNTIME_SURFACE_CLOSURES = {}
     return roots, commits
 
 
-@pytest.mark.parametrize("population", (273, 290, 291, 296))
+@pytest.mark.parametrize("population", (273, 290, 291, 296, 297))
 def test_managed_history_full_population_builder_and_issuer(tmp_path, population):
     contract = (
-        contract_module.research_working_root_template_successor_members()
+        contract_module.research_runtime_dependency_successor_members()
+        if population == 297
+        else contract_module.research_working_root_template_successor_members()
         if population == 296
         else contract_module.final_runtime_rollout_successor_members()
         if population == 291
@@ -134,7 +136,7 @@ def test_managed_history_full_population_builder_and_issuer(tmp_path, population
         ],
     }
     assert issuer.verify_members(manifest, tmp_path) == loaded
-    if population in (290, 291, 296):
+    if population in (290, 291, 296, 297):
         # A stale digest in an otherwise exact full manifest must still refuse.
         planted = json.loads(json.dumps(manifest))
         row = next(row for row in planted["members"]
@@ -164,6 +166,23 @@ def test_research_template_successor_preserves_exact_committed_bytes(tmp_path):
     (roots[repository] / path).write_text("planted divergent template\n")
     with pytest.raises(ValueError, match="frozen population member unavailable"):
         builder.open_frozen_population(roots, commits, contract)
+
+
+def test_research_runtime_successor_closes_both_missing_dependencies(tmp_path):
+    contract = contract_module.research_runtime_dependency_successor_members()
+    roots, commits = full_population_repositories(tmp_path, contract)
+    loaded = builder.open_frozen_population(roots, commits, contract)
+    expected_ids = set(
+        contract_module.RESEARCH_RUNTIME_DEPENDENCY_ADDITIONAL_MEMBERS
+    )
+    assert len(contract) == len(loaded) == 297
+    assert expected_ids == {"quality-loop-cleanliness-gate"}
+    assert expected_ids <= set(loaded)
+    for member_id in expected_ids:
+        repository, path = contract[member_id]
+        assert loaded[member_id] == builder.committed_member_bytes(
+            roots[repository], commits[repository], path
+        )
 
 
 @pytest.mark.parametrize(

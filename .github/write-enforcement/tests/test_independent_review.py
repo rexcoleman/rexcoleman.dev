@@ -574,7 +574,7 @@ def test_current_freeze_remains_exact_after_logical_policy_key_repair():
 
 def test_next_contract_manifest_is_an_exact_positive_control():
     report=MODULE.manifest_contract(reseal(next_contract_manifest()))
-    assert report["member_count"] == len(MODULE.expected_members()) == 296
+    assert report["member_count"] == len(MODULE.expected_members()) == 297
     assert report["member_contract"] == "EXACT"
 
 
@@ -610,7 +610,7 @@ def test_manifest_only_identity_refresh_preserves_the_structural_positive():
     assert refreshed["manifest_digest"] != current["manifest_digest"]
 
 
-def test_registered_adapter_selects_structurally_derived_research_template_contract():
+def test_registered_adapter_selects_structurally_derived_runtime_dependency_contract():
     path, population = MODULE._registered_adapter_path()
     adapter = MODULE._registered_adapter()
     selector = adapter["manifest_builder_flag"][2:].replace("-", "_") + "_members"
@@ -620,7 +620,7 @@ def test_registered_adapter_selects_structurally_derived_research_template_contr
         f"research_enforcement_activation.population-{population}-v1.json"
     )
     assert set(old) < set(current)
-    assert len(current) == adapter["expected_member_count"] == population == 296
+    assert len(current) == adapter["expected_member_count"] == population == 297
     assert "final-runtime-rollout" in current
     assert {
         "research-template-observation-log",
@@ -629,6 +629,8 @@ def test_registered_adapter_selects_structurally_derived_research_template_contr
         "research-template-hypothesis-registry",
         "research-template-experimental-design",
     } <= set(current)
+    assert "profile-local-artifact-producer-validator" in current
+    assert "quality-loop-cleanliness-gate" in current
 
 
 def registered_fixture(tmp_path, monkeypatch):
@@ -701,7 +703,7 @@ REVIEWER_ADDITIONAL_MEMBERS = {
     "future-reviewer-fixture": ("rexcoleman.dev", "future/reviewer.py"),
 }
 def reviewer_successor_members():
-    value = research_working_root_template_successor_members()
+    value = research_runtime_dependency_successor_members()
     value.update(REVIEWER_ADDITIONAL_MEMBERS)
     return value
 """
@@ -724,7 +726,7 @@ def test_lower_only_registered_population_refuses_as_a_downgrade(
         row
         for row in index["adapters"]
         if row["adapter_id"]
-        != "research-enforcement-activation-generation-5-population-296-v1"
+        != "research-enforcement-activation-generation-5-population-297-v1"
     ]
     paths["index"].write_text(json.dumps(index), encoding="utf-8")
     with pytest.raises(MODULE.Refusal, match="terminal successor"):
@@ -744,11 +746,11 @@ def test_retired_historical_population_does_not_block_active_terminal(
     historical["status"] = "retired"
     paths["index"].write_text(json.dumps(index), encoding="utf-8")
     selected, population = MODULE._registered_adapter_path()
-    assert population == 296
+    assert population == 297
     assert selected.name == (
-        "research_enforcement_activation.population-296-v1.json"
+        "research_enforcement_activation.population-297-v1.json"
     )
-    assert len(MODULE.expected_members()) == 296
+    assert len(MODULE.expected_members()) == 297
 
 
 def test_retired_terminal_with_only_lower_active_population_refuses(
@@ -759,14 +761,14 @@ def test_retired_terminal_with_only_lower_active_population_refuses(
         row
         for row in index["adapters"]
         if row["adapter_id"]
-        == "research-enforcement-activation-generation-5-population-296-v1"
+        == "research-enforcement-activation-generation-5-population-297-v1"
     )
     terminal["status"] = "retired"
     paths["index"].write_text(json.dumps(index), encoding="utf-8")
     selected, population = MODULE._registered_adapter_path()
-    assert population == 291
+    assert population == 296
     assert selected.name == (
-        "research_enforcement_activation.population-291-v1.json"
+        "research_enforcement_activation.population-296-v1.json"
     )
     with pytest.raises(MODULE.Refusal, match="terminal successor"):
         MODULE._registered_adapter()
@@ -810,7 +812,7 @@ def test_structural_member_derivation_does_not_execute_source(tmp_path, monkeypa
         encoding="utf-8",
     )
     monkeypatch.setattr(MODULE, "MEMBER_CONTRACT", planted)
-    assert len(MODULE.expected_members()) == 296
+    assert len(MODULE.expected_members()) == 297
     assert not marker.exists()
 
 

@@ -354,6 +354,30 @@ strict subset, a renamed member, or changed bytes cannot issue. This source
 registration does not build a production manifest, freeze, tag, issue, install,
 or activate an authority.
 
+## Research runtime dependency successor
+
+The s242 successor extends the immutable population-296 template set with the
+existing `templates/build/enforcement/quality_loop_cleanliness_gate.py` member
+invoked by the installed gate stack. The profile-local validator authenticated
+by `init_research_working_root.py` is already signed as
+`profile-local-artifact-producer-validator`; it is not duplicated. The
+resulting exact closed population is 297.
+
+The same consumer-first source set maps the already-signed Moonshots member
+`signed-hypothesis-gate` to installed path `scripts/hypothesis_gate.sh`. That
+repairs the distinct `--enter-hypothesize` child lookup without adding another
+signed member or changing the population count. The companion canonical source
+repair preserves branch-C outputs while reading signed authority from the
+repository root; every population-297 adapter enrolls its focused prerequisite
+suite.
+
+All six population-next adapters select
+`--research-runtime-dependency-successor`; no enrolled dependent remains on a
+different next-population contract. The selector reuses the existing successor
+chain, manifest builder, independent reviewer, and convergence driver. This
+registration changes source membership only: it does not freeze, tag, issue,
+install, or activate an authority.
+
 The callable independent-second-principal reviewer reads the protected
 convergence index and selects the unique highest active REA generation-5
 population adapter. The reviewer derives the selector from that adapter's
