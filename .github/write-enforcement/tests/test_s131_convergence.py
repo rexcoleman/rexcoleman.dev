@@ -324,7 +324,7 @@ def _materialize_candidate_subjects(
 ) -> dict[str, Path]:
     tmp_path.mkdir(parents=True)
     roots = {}
-    current = contract.research_working_root_template_successor_members()
+    current = contract.research_runtime_dependency_successor_members()
     for repository, specs in contract.group_member_contract(current).items():
         root = tmp_path / repository
         root.mkdir()
@@ -454,10 +454,10 @@ def test_exact_five_candidate_roots_close_installed_runtime_population(
                       if subject == removed_subject)
     del reduced[removed_id]
     monkeypatch.setattr(
-        builder, "research_working_root_template_successor_members", lambda: reduced,
+        builder, "research_runtime_dependency_successor_members", lambda: reduced,
     )
     with pytest.raises(
-        ValueError, match="research working-root template member set refused"
+        ValueError, match="research runtime dependency member set refused"
     ):
         _run_five_root_builder(
             monkeypatch, roots, ruleset,
@@ -465,8 +465,8 @@ def test_exact_five_candidate_roots_close_installed_runtime_population(
         )
     monkeypatch.setattr(
         builder,
-        "research_working_root_template_successor_members",
-        contract.research_working_root_template_successor_members,
+        "research_runtime_dependency_successor_members",
+        contract.research_runtime_dependency_successor_members,
     )
 
     govml = roots["govML"]
