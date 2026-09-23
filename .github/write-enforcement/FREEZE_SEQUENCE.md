@@ -15,7 +15,8 @@ Historical generations are immutable:
 
 Never edit, recreate, delete, or move those manifests, commits, or tags.
 
-Generation 4 uses exactly this two-commit rex sequence:
+Generation 4 used the historical manifest-only form of this two-commit rex
+sequence:
 
 1. Commit and push every implementation/member change first. The rex
    implementation commit includes the issuer checksum-cwd correction, hosted
@@ -58,8 +59,9 @@ name is never issuance provenance.
 ## Generation 5 successor
 
 Generation 4 is now historical and immutable. Generation 5 adds the signed CI
-enforcement materializer and uses the same two-commit construction without
-rewriting the generation-4 manifest:
+enforcement materializer and keeps the same source-then-freeze identity without
+rewriting the generation-4 manifest. Its current protected-PR boundary is the
+normal-hook two-file contract, not the historical manifest-only form:
 
 1. Commit and push all generation-5 implementation bytes, including the issuer
    workflow pin to `frozen_bundle_manifest.generation-5.json`.
@@ -69,20 +71,33 @@ rewriting the generation-4 manifest:
    contract. The deterministic builder must emit generation 5 with that exact
    population and output
    `.github/write-enforcement/frozen_bundle_manifest.generation-5.json`.
-3. Commit only that new manifest in a later rexcoleman.dev commit. Derive the
-   annotated tag as `rea-wea-generation-5-` plus the first 12 lowercase hex
-   characters of the manifest-only commit.
-4. After independent exact-head review, create the protected annotated tag and
-   dispatch the issuer at that tag with the authenticated installed generation-4
-   predecessor run and WEA digest. Required environment approval remains the
-   owner gate; all other construction and verification is executor-owned.
+3. Stage the new manifest and commit through the normal pre-commit hook. The
+   hook-generated `.governance/pre_commit_boundary.json` binds the base parent
+   and names the manifest as the sole semantic path. The pull request must
+   contain exactly those two ordered files. The independent reviewer fetches
+   both at the exact head and rederives the receipt blob, parent, path/count
+   digest, whole-file-set digest, and manifest SHA-256. A one-file
+   manifest-only PR or a hand-written receipt refuses.
+4. Let `F` be that reviewed two-file feature commit. Merge it through the
+   protected normal route and require the fetched default commit `M` to have a
+   tree identical to `F`. Derive the annotated tag as
+   `rea-wea-generation-5-` plus the first 12 lowercase hexadecimal characters
+   of `F`, and create the protected tag at `F`, not at `M`.
+5. Dispatch the issuer at that tag with the authenticated installed predecessor
+   run and WEA digest. The Coach uses the registered non-personal OAuth route for
+   exact pending-environment approvals and the existing App installation
+   `159880331` plus `/home/azureuser/.config/govml/env` for short-lived
+   five-repository read authority. This is a machine route: no recurring Rex
+   approval or newly minted personal token is part of a release. Any
+   external-judge gate reuses the established 2026-09-07 judge keypair.
 
 Before step 2 for any new successor, run the registered signed-release
 convergence accelerator in `--plan` mode over the five exact clean roots. Use
 the machine index to select the adapter; do not copy a member count from this
 operator document. It
 must complete its hermetic test matrix and two byte-identical manifest builds
-before a manifest-only PR exists. Use `--noop-rehearsal` to prove the current
+before the two-file manifest-and-receipt PR exists. Use `--noop-rehearsal` to
+prove the current
 manifest can be rebuilt from its exact frozen commits without any remote
-mutation. The accelerator never replaces independent review, protected
+mutation. The accelerator never replaces independent review, protected machine
 approval, issuance, installation, or post-install CI.
