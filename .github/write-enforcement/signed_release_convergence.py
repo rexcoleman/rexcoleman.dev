@@ -309,6 +309,7 @@ def load_adapter(path: Path):
         "--final-runtime-rollout-successor",
         "--research-working-root-template-successor",
         "--research-runtime-dependency-successor",
+        "--role-checklist-successor",
     }:
         raise Refusal("MANIFEST_BUILDER_FLAG_REFUSED")
     if not isinstance(value["ruleset_id"], int) or isinstance(
@@ -729,6 +730,7 @@ def impact_snapshot(adapter, roots, root_rows):
         "--research-runtime-dependency-successor": (
             "research_runtime_dependency_successor_members"
         ),
+        "--role-checklist-successor": "role_checklist_successor_members",
     }[adapter["manifest_builder_flag"]]
     expected = member_contract(rex_root, selector_name)
     by_subject = {}

@@ -109,10 +109,12 @@ EMITTER_RUNTIME_SURFACE_CLOSURES = {}
     return roots, commits
 
 
-@pytest.mark.parametrize("population", (273, 290, 291, 296, 297))
+@pytest.mark.parametrize("population", (273, 290, 291, 296, 297, 300))
 def test_managed_history_full_population_builder_and_issuer(tmp_path, population):
     contract = (
-        contract_module.research_runtime_dependency_successor_members()
+        contract_module.role_checklist_successor_members()
+        if population == 300
+        else contract_module.research_runtime_dependency_successor_members()
         if population == 297
         else contract_module.research_working_root_template_successor_members()
         if population == 296
@@ -136,7 +138,7 @@ def test_managed_history_full_population_builder_and_issuer(tmp_path, population
         ],
     }
     assert issuer.verify_members(manifest, tmp_path) == loaded
-    if population in (290, 291, 296, 297):
+    if population in (290, 291, 296, 297, 300):
         # A stale digest in an otherwise exact full manifest must still refuse.
         planted = json.loads(json.dumps(manifest))
         row = next(row for row in planted["members"]
@@ -183,6 +185,79 @@ def test_research_runtime_successor_closes_both_missing_dependencies(tmp_path):
         assert loaded[member_id] == builder.committed_member_bytes(
             roots[repository], commits[repository], path
         )
+
+
+def test_role_checklist_successor_signs_exact_committed_checklists(tmp_path):
+    contract = contract_module.role_checklist_successor_members()
+    roots, commits = full_population_repositories(tmp_path, contract)
+    loaded = builder.open_frozen_population(roots, commits, contract)
+    expected_ids = set(contract_module.ROLE_CHECKLIST_ADDITIONAL_MEMBERS)
+    assert len(contract) == len(loaded) == 300
+    assert expected_ids == {
+        "canonical-orchestrator-checklist",
+        "canonical-rp-checklist",
+        "canonical-verifier-checklist",
+    }
+    for member_id in expected_ids:
+        repository, path = contract[member_id]
+        assert repository == "govML"
+        assert loaded[member_id] == builder.committed_member_bytes(
+            roots[repository], commits[repository], path
+        )
+
+    # Planted refusal: a checklist whose working bytes diverge from the
+    # committed member cannot enter the frozen population.
+    repository, path = contract["canonical-verifier-checklist"]
+    (roots[repository] / path).write_text("planted divergent checklist\n")
+    with pytest.raises(ValueError, match="frozen population member unavailable"):
+        builder.open_frozen_population(roots, commits, contract)
+
+
+def test_role_checklist_manifest_refuses_missing_or_substituted_rows(tmp_path):
+    contract = contract_module.role_checklist_successor_members()
+    roots, commits = full_population_repositories(tmp_path, contract)
+    loaded = builder.open_frozen_population(roots, commits, contract)
+    manifest = {
+        "authority_generation": contract_module.AUTHORITY_GENERATION,
+        "required_member_classes": list(contract_module.REQUIRED_MEMBER_CLASSES),
+        "members": [
+            {"member_id": member_id, "repository": repo, "path": path,
+             "commit": commits[repo], "sha256": builder.sha(loaded[member_id]),
+             "byte_length": len(loaded[member_id])}
+            for member_id, (repo, path) in sorted(contract.items())
+        ],
+    }
+    assert issuer.verify_members(manifest, tmp_path) == loaded
+    for member_id in sorted(contract_module.ROLE_CHECKLIST_ADDITIONAL_MEMBERS):
+        # Planted: one checklist row omitted. The manifest then reads as the
+        # 297 contract plus two strays and the issuer refuses the set.
+        omitted = json.loads(json.dumps(manifest))
+        omitted["members"] = [
+            row for row in omitted["members"] if row["member_id"] != member_id
+        ]
+        with pytest.raises(issuer.IssuerRefusal, match="BUNDLE_MEMBER_SET_MISMATCH"):
+            issuer.verify_members(omitted, tmp_path)
+        # Planted: the checklist row names a substituted path.
+        substituted = json.loads(json.dumps(manifest))
+        row = next(
+            row for row in substituted["members"] if row["member_id"] == member_id
+        )
+        row["path"] = "checklists/builder.checklist"
+        with pytest.raises(
+            issuer.IssuerRefusal, match=f"changed=\\['{member_id}'\\]"
+        ):
+            issuer.verify_members(substituted, tmp_path)
+
+
+def test_role_checklist_successor_refuses_missing_checklist(tmp_path):
+    contract = contract_module.role_checklist_successor_members()
+    roots, commits = full_population_repositories(tmp_path, contract)
+    repository, path = contract["canonical-rp-checklist"]
+    git(roots[repository], "rm", "-q", "--", path)
+    git(roots[repository], "commit", "-q", "-m", "planted missing checklist")
+    commits[repository] = git(roots[repository], "rev-parse", "HEAD")
+    with pytest.raises(ValueError, match="frozen population member unavailable"):
+        builder.open_frozen_population(roots, commits, contract)
 
 
 @pytest.mark.parametrize(
@@ -479,6 +554,59 @@ def test_historical_build_remains_generation4_and_cannot_overwrite_successor(
     ])
     assert builder.main() == 0
     assert json.loads(output.read_bytes())["authority_generation"] == 4
+
+
+def _role_checklist_flag_argv(tmp_path, root, *flags):
+    return [
+        "build_frozen_manifest.py",
+        "--output", str(tmp_path / GENERATION_MANIFEST_NAME),
+        "--ruleset-json", str(tmp_path / "ruleset.json"),
+        *flags,
+        "--root-fixture", str(root),
+    ]
+
+
+def test_role_checklist_successor_flag_builds_generation5(monkeypatch, tmp_path):
+    root, _commit = fixture_repository(tmp_path)
+    ruleset(tmp_path / "ruleset.json")
+    monkeypatch.setattr(
+        builder, "MEMBERS", {"fixture": (("fixture-member", "member.txt"),)},
+    )
+    monkeypatch.setattr(sys, "argv", _role_checklist_flag_argv(
+        tmp_path, root, "--role-checklist-successor",
+    ))
+    assert builder.main() == 0
+    output = tmp_path / GENERATION_MANIFEST_NAME
+    assert json.loads(output.read_bytes())["authority_generation"] == 5
+
+
+def test_role_checklist_successor_flag_is_mutually_exclusive(monkeypatch, tmp_path):
+    root, _commit = fixture_repository(tmp_path)
+    ruleset(tmp_path / "ruleset.json")
+    monkeypatch.setattr(
+        builder, "MEMBERS", {"fixture": (("fixture-member", "member.txt"),)},
+    )
+    monkeypatch.setattr(sys, "argv", _role_checklist_flag_argv(
+        tmp_path, root,
+        "--role-checklist-successor", "--research-runtime-dependency-successor",
+    ))
+    with pytest.raises(ValueError, match="mutually exclusive"):
+        builder.main()
+
+
+def test_builder_refuses_unknown_successor_flag(monkeypatch, tmp_path):
+    root, _commit = fixture_repository(tmp_path)
+    ruleset(tmp_path / "ruleset.json")
+    monkeypatch.setattr(
+        builder, "MEMBERS", {"fixture": (("fixture-member", "member.txt"),)},
+    )
+    monkeypatch.setattr(sys, "argv", _role_checklist_flag_argv(
+        tmp_path, root, "--role-checklists-v2-successor",
+    ))
+    with pytest.raises(SystemExit) as excinfo:
+        builder.main()
+    assert excinfo.value.code == 2
+    assert not (tmp_path / GENERATION_MANIFEST_NAME).exists()
 
 
 @pytest.mark.parametrize("logical,slug", [

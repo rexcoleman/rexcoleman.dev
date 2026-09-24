@@ -386,6 +386,30 @@ chain, manifest builder, independent reviewer, and convergence driver. This
 registration changes source membership only: it does not freeze, tag, issue,
 install, or activate an authority.
 
+## Role checklist successor
+
+The s249 successor (hardening queue row 252, failure class 15) extends the
+immutable population-297 contract with the three canonical govML role
+checklists the Stage 0-5 agent specs read through
+`agent_pre_check_runner.sh --role orchestrator|rp|verifier`:
+`canonical-orchestrator-checklist` (`checklists/orchestrator.checklist`),
+`canonical-rp-checklist` (`checklists/rp.checklist`) and
+`canonical-verifier-checklist` (`checklists/verifier.checklist`). Population
+297 signed only the research-integrity, build-runner and build-orchestrator
+checklists, so a build-type authority root with `f_c_checklist: enabled`
+refused Check 0 with `Checklist file not found` for those roles. The resulting
+exact closed population is 300, derived as the size of
+`role_checklist_successor_members()`. All six population-300 adapters select
+the distinct `--role-checklist-successor` builder contract and differ from
+their population-297 predecessors only in `adapter_id`,
+`expected_member_count` and `manifest_builder_flag`; the population-297 rows
+remain registered and active for audit, and the 297 contract still refuses the
+three new subjects. Dependent registration is identity-only and enrolls or
+mutates no dependent project. This registration does not freeze, tag, issue,
+install, or activate an authority; the repair takes effect only by release.
+Because it adds a new active builder flag, an REA-pinned engine that predates
+it refuses the new adapters (failure class 3) until REA moves its pins.
+
 The callable independent-second-principal reviewer reads the protected
 convergence index and selects the unique highest active REA generation-5
 population adapter. The reviewer derives the selector from that adapter's
