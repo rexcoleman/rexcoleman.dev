@@ -195,8 +195,8 @@ not merge, tag, approve, issue, install, or prove a target project green.
 
 ## Cross-generation inventory and reconciliation
 
-The inventory has 36 closed rows spanning s88, s127, s131, s132, s149, s153,
-s154, s155, s157, s165, s169, s170, s173, s180, and s188 in govML and
+The inventory has 37 closed rows spanning s88, s127, s131, s132, s149, s153,
+s154, s155, s157, s165, s169, s170, s173, s180, s188 and s248 in govML and
 s212 in rexcoleman.dev. Each row names a stable identity, remote
 repository/default branch, path, session generation, kind, semantic discovery
 markers, and the tested properties it supplies. The six required properties
@@ -406,3 +406,29 @@ All six enrolled population-next adapters select
 `--research-runtime-dependency-successor`; population 296 remains registered and
 unchanged for audit. This source registration does not freeze, tag, issue,
 install, or activate the successor.
+
+## Known failure classes (s248 catalogue)
+
+Read this table before diagnosing a refusal on the REA release, recovery,
+renewal or commit chain. Each row names the class, the refusal it surfaces as,
+where it was measured, and its repair status. The cross-generation inventory
+is a closed mechanism schema (adapter, engine, evidence-suite, test); a class
+enters the inventory only when a registered, tested mechanism guards it, so
+classes without one are catalogued here only. Changing the inventory schema
+would change the engine bytes that REA pins, which is itself class 3.
+
+| # | Class | Surfaces as | Measured | Status |
+|---|---|---|---|---|
+| 1 | Signed mode contract 100644/100755 | member mode mismatch at install or bootstrap | s244 (`D-s244-MODE-CONTRACT`) | repaired at source; every release must carry the mode-only change |
+| 2 | Predecessor-signed source misclassified as a predecessor-installed destination (queue row 246) | `COMMITTED_PREDECESSOR_MEMBER_REFUSED:scripts/hypothesis_gate.sh` in the hop-194 recovery census | s247, s248 | hardening queue row 246 BUILT: fixed in govML PR #228 (`ca8e3c42`); guarded by inventory row `s248-row246-census-introduced-destination-test`; takes effect only once a release freezes it as the control commit (class 13) |
+| 3 | Transitive engine-pin drift | `CONVERGENCE_INVENTORY_REFUSED` (pinned engine `4225382`/`ac6836a4` refuses `MANIFEST_BUILDER_FLAG_REFUSED` on the population-297 adapter flag); `ROLLOUT_TRANSITIVE_PIN_REFUSED:propagation:convergence-engine` | s240, s247, s248 (reproduced rc 2 vs current engine rc 0) | repair is the s247 combined successor on REA PR #589; lands only after REA commits |
+| 4 | Adapter population drift, 291 vs 297 | `SOURCE_POPULATION_REFUSED source=297;registered=291` in the dependent refresh | s247, s248 | open; REA-owned bytes, lands only after REA commits |
+| 5 | Issuer unfrozen-module digest-table drift | `UNFROZEN_MODULE_PIN_PASS` step fails when a pinned module changes without its workflow digest | kc-98 | catalogue only; any edit to a pinned issuer module must update the workflow table in the same PR |
+| 6 | Scheduled-issuer race | a manual capability issuance refuses public publication because a scheduled `renew` finalized a newer predecessor | s247 (run 35928505518 vs 35923088452) | handled by the registered `public_retry` mode |
+| 7 | Ruleset `bypass_actors` omitted from the ruleset read | plan refuses after hermetic phase; the App token cannot read bypass actors | s247 attempt 3 | handled by the registered non-personal OAuth ruleset read |
+| 8 | Renewal consumer selecting session roots | hourly log `root=/data/rea_preserved/...` or `root=.../s241-current`; worktree enumeration admits any registered REA worktree outside the ephemeral predicate | s246, s247, s248 | repair is the fixed durable root in the s247 combined successor; lands only after REA commits |
+| 9 | Releasing before consumer convergence locks REA | REA's tracked managed bytes and pin lag the newest packet; every selector refuses | s240, s244 | ordering rule: a release that moves REA-owned members is issued only after REA lands them |
+| 10 | Historical recovery hop expiry | the recovery installer's in-transaction `write_enforcement_state.py status` refuses `WEA_EXPIRED` for a staged historical target; each hop is possible only while its own packet is unexpired | s248 (194 expires 2026-09-24T07:17:46Z) | hardening queue row 248, open. `authenticated_head_rebase.py` bypasses intermediate expiry only on the plain stale-packet refresh, which also requires the consumer pin to equal the head's govML commit, so a pin-lagging consumer cannot use it |
+| 11 | Umask-dependent preserved-ledger mode | committed ledger records `0775`; umask 022 → `DISPLACED_ENFORCEMENT_SLOT_OCCUPIED`, umask 002 → census mode refusal | s248 (scratch reproduction) | hardening queue row 247, open; the kernel coach ruled it a correctness defect: modes must be set explicitly from signed authority and compared exactly |
+| 12 | Refusal relabelling hides the real cause (hardening queue row 249) | `AUTHORITY_APP_AUTHENTICATION_REFUSED` wraps `APP_EXECUTABLE_AUTHENTICATION_REFUSED` (tracked tool bytes ≠ signed members), which reads as a credential fault | s248 | open; diagnose with `scripts/authenticated_app_tools.py` directly |
+| 13 | A recovery fix reaches the consumer only by release | the successor recovery executes its installer from the CONTROL commit, which is the govML commit signed by the newest public packet; a fix merged to govML main is inert (running from it refuses `AUTHORITY_GOVML_LOCK_MISMATCH`) until a release freezes it | s248 | ordering rule (kc-99 R3): issue such a release only after a scratch drive against that exact planned release proves the consumer's recovery completes with no hand-set modes and the post-recovery hook clears |
