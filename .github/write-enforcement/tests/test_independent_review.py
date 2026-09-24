@@ -579,34 +579,29 @@ def test_next_contract_manifest_is_an_exact_positive_control():
 
 
 def test_current_registered_manifest_is_the_exact_installed_population():
-    # The committed freeze is population 297 (s249 release). The s249
-    # role-checklist successor registers population 300 as the terminal
-    # contract in source; it takes effect only when a release freezes it.
-    # Until then the committed freeze must still be EXACTLY its own
-    # registered predecessor contract, and the terminal reviewer route must
-    # refuse it rather than accept a manifest lacking the three checklists.
+    # Release 3 (s249) froze population 300: the committed freeze is EXACT
+    # under the terminal role-checklist contract again.
     raw = CURRENT_MANIFEST.read_bytes()
     value = json.loads(raw)
+    expected = MODULE.expected_members()
     observed = {
         row["member_id"]: (row["repository"], row["path"])
         for row in value["members"]
     }
     unsigned = {key: item for key, item in value.items() if key != "manifest_digest"}
-    frozen = MODULE.structural_members(
-        "research_runtime_dependency_successor_members"
-    )
-    terminal = MODULE.expected_members()
-    assert observed == frozen
-    assert len(frozen) == 297
-    assert len(terminal) == 300
-    assert set(terminal) - set(frozen) == {
+    assert observed == expected
+    assert len(expected) == 300
+    assert {
         "canonical-orchestrator-checklist",
         "canonical-rp-checklist",
         "canonical-verifier-checklist",
-    }
+    } <= set(observed)
     assert value["manifest_digest"] == digest(unsigned)
-    with pytest.raises(MODULE.Refusal, match="generation-5 manifest contract differs"):
-        MODULE.manifest_contract(raw)
+    report = MODULE.manifest_contract(raw)
+    assert report["member_contract"] == "EXACT"
+    assert report["member_count"] == 300
+    assert report["manifest_sha256"] == hashlib.sha256(raw).hexdigest()
+    assert report["manifest_digest"] == value["manifest_digest"]
 
 
 def test_manifest_only_identity_refresh_preserves_the_structural_positive():
