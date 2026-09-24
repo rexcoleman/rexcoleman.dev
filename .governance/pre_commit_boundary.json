@@ -2,29 +2,13 @@
   "assertion": "COMMIT_PREFLIGHT_PASS",
   "caller": "git-pre-commit",
   "changed_paths": [
-    ".github/write-enforcement/SIGNED_RELEASE_CONVERGENCE.md",
-    ".github/write-enforcement/SIGNED_RELEASE_CONVERGENCE_INDEX.md",
-    ".github/write-enforcement/adapters/adversarial_ml_landscape.population-300-v1.json",
-    ".github/write-enforcement/adapters/agent_boundary_learning_landscape.population-300-v1.json",
-    ".github/write-enforcement/adapters/newsletter_generation_architecture.population-300-v1.json",
-    ".github/write-enforcement/adapters/newsletter_hybrid_path.population-300-v1.json",
-    ".github/write-enforcement/adapters/research_enforcement_activation.population-300-v1.json",
-    ".github/write-enforcement/adapters/research_engine_release.population-300-v1.json",
-    ".github/write-enforcement/build_frozen_manifest.py",
-    ".github/write-enforcement/member_contract.py",
-    ".github/write-enforcement/signed_release_convergence.py",
-    ".github/write-enforcement/signed_release_convergence_index.json",
-    ".github/write-enforcement/tests/test_build_frozen_manifest.py",
-    ".github/write-enforcement/tests/test_independent_review.py",
-    ".github/write-enforcement/tests/test_member_contract.py",
-    ".github/write-enforcement/tests/test_s131_convergence.py",
-    ".github/write-enforcement/tests/test_signed_release_convergence.py"
+    ".github/write-enforcement/frozen_bundle_manifest.generation-5.json"
   ],
-  "changed_paths_count": 17,
-  "changed_paths_sha256": "bbcca2b51c278f91a129ae3c15596fead297bdec28528610479173785c079976",
+  "changed_paths_count": 1,
+  "changed_paths_sha256": "0e50f527ad13467749dcd58967b714e8b6e5b0b91970adfa7dab4bae4ff957de",
   "mode": "commit-preflight",
-  "parent_head": "069f909a9f34a0f9301e8d7d2c8d05a8026fba89",
-  "run_id": "pre-commit-4059d217418926b8741a6b91",
+  "parent_head": "2ea3293e3f30d7afbbdecf23b3bfd5be91e448f5",
+  "run_id": "pre-commit-ea3cb2c030e5a0d6a6bdfafd",
   "schema_version": "rea.pre-commit-boundary.v1",
-  "utc_asserted_at": "2026-09-24T17:10:23Z"
+  "utc_asserted_at": "2026-09-24T19:12:56Z"
 }
