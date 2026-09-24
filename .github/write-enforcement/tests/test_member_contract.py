@@ -1523,3 +1523,86 @@ def test_research_runtime_dependencies_are_exact_closed_successor():
 
     with pytest.raises(ValueError, match="member set refused"):
         validate_research_runtime_dependency_member_ids(historical)
+
+
+def test_role_checklists_are_exact_closed_successor():
+    from member_contract import (
+        ROLE_CHECKLIST_ADDITIONAL_MEMBERS,
+        production_members_for_manifest,
+        research_runtime_dependency_successor_members,
+        role_checklist_successor_members,
+        validate_research_runtime_dependency_member_ids,
+        validate_role_checklist_member_ids,
+    )
+
+    historical = research_runtime_dependency_successor_members()
+    successor = role_checklist_successor_members()
+    expected = {
+        "canonical-orchestrator-checklist": (
+            "govML", "checklists/orchestrator.checklist",
+        ),
+        "canonical-rp-checklist": ("govML", "checklists/rp.checklist"),
+        "canonical-verifier-checklist": (
+            "govML", "checklists/verifier.checklist",
+        ),
+    }
+    assert ROLE_CHECKLIST_ADDITIONAL_MEMBERS == expected
+    assert len(historical) == 297
+    assert len(successor) == 300
+    assert set(successor) == set(historical) | set(expected)
+    assert all(successor[key] == historical[key] for key in historical)
+    validate_role_checklist_member_ids(successor)
+    assert production_members_for_manifest({
+        "authority_generation": 5,
+        "members": [{"member_id": key} for key in successor],
+    }) == successor
+    # The 297 manifest selector is unchanged by the successor.
+    assert production_members_for_manifest({
+        "authority_generation": 5,
+        "members": [{"member_id": key} for key in historical],
+    }) == historical
+
+    # Planted refusal: every single missing checklist member refuses.
+    for key in expected:
+        omitted = dict(successor)
+        omitted.pop(key)
+        with pytest.raises(ValueError, match="role checklist member set refused"):
+            validate_role_checklist_member_ids(omitted)
+
+    # Planted refusal: the 297 contract is not the 300 contract.
+    with pytest.raises(ValueError, match="role checklist member set refused"):
+        validate_role_checklist_member_ids(historical)
+
+    # Planted refusal: the 297 contract still refuses the new subjects.
+    with pytest.raises(ValueError, match="research runtime dependency member set refused"):
+        validate_research_runtime_dependency_member_ids(successor)
+    for key in expected:
+        widened = dict(historical)
+        widened[key] = expected[key]
+        with pytest.raises(
+            ValueError, match="research runtime dependency member set refused"
+        ):
+            validate_research_runtime_dependency_member_ids(widened)
+
+
+def test_role_checklist_substituted_path_refuses_by_collision_guard():
+    import member_contract
+    from member_contract import (
+        ROLE_CHECKLIST_ADDITIONAL_MEMBERS,
+        role_checklist_successor_members,
+    )
+
+    successor = role_checklist_successor_members()
+    # Substitution inside the registered literal is refused by the collision
+    # guard rather than silently shrinking the population.
+    original = dict(ROLE_CHECKLIST_ADDITIONAL_MEMBERS)
+    try:
+        member_contract.ROLE_CHECKLIST_ADDITIONAL_MEMBERS[
+            "canonical-verifier-checklist"
+        ] = ("govML", "checklists/research_integrity.checklist")
+        with pytest.raises(ValueError, match="role checklist member subject collision"):
+            member_contract.role_checklist_successor_members()
+    finally:
+        member_contract.ROLE_CHECKLIST_ADDITIONAL_MEMBERS.clear()
+        member_contract.ROLE_CHECKLIST_ADDITIONAL_MEMBERS.update(original)
+    assert member_contract.role_checklist_successor_members() == successor

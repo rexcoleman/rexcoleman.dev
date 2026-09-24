@@ -1136,6 +1136,43 @@ def validate_research_runtime_dependency_member_ids(observed):
         raise ValueError("research runtime dependency member set refused")
 
 
+# s249 (hardening queue row 252, failure class 15) signs the three canonical
+# govML role checklists that the Stage 0-5 agent specs read through
+# agent_pre_check_runner.sh --role orchestrator|rp|verifier. Population 297
+# signed only research_integrity, build_runner and build_orchestrator, so a
+# build-type authority root with f_c_checklist enabled refused Check 0 with
+# "Checklist file not found" for those three roles.
+ROLE_CHECKLIST_ADDITIONAL_MEMBERS = {
+    "canonical-orchestrator-checklist": (
+        "govML",
+        "checklists/orchestrator.checklist",
+    ),
+    "canonical-rp-checklist": (
+        "govML",
+        "checklists/rp.checklist",
+    ),
+    "canonical-verifier-checklist": (
+        "govML",
+        "checklists/verifier.checklist",
+    ),
+}
+
+
+def role_checklist_successor_members():
+    value = research_runtime_dependency_successor_members()
+    if set(value) & set(ROLE_CHECKLIST_ADDITIONAL_MEMBERS):
+        raise ValueError("role checklist member id collision")
+    value.update(ROLE_CHECKLIST_ADDITIONAL_MEMBERS)
+    if len(set(value.values())) != len(value):
+        raise ValueError("role checklist member subject collision")
+    return value
+
+
+def validate_role_checklist_member_ids(observed):
+    if set(observed) != set(role_checklist_successor_members()):
+        raise ValueError("role checklist member set refused")
+
+
 def production_members_for_manifest(manifest, baseline=None):
     """Select the exact closed set for one known generation; never a subset."""
     rows = manifest.get("members") if isinstance(manifest, dict) else None
@@ -1169,13 +1206,17 @@ def production_members_for_manifest(manifest, baseline=None):
     research_runtime_successor.update(
         RESEARCH_RUNTIME_DEPENDENCY_ADDITIONAL_MEMBERS
     )
+    role_checklist_successor = dict(research_runtime_successor)
+    role_checklist_successor.update(ROLE_CHECKLIST_ADDITIONAL_MEMBERS)
     generation = manifest.get("authority_generation") if isinstance(manifest, dict) else None
     if generation is None and baseline is not None:
         # Unit-level byte/membership checks historically pass a reduced explicit
         # contract without the outer manifest loader. Production entrypoints
         # validate the generation before reaching this selector.
         return (
-            research_runtime_successor
+            role_checklist_successor
+            if observed & set(ROLE_CHECKLIST_ADDITIONAL_MEMBERS)
+            else research_runtime_successor
             if observed & set(RESEARCH_RUNTIME_DEPENDENCY_ADDITIONAL_MEMBERS)
             else research_template_successor
             if observed & set(RESEARCH_WORKING_ROOT_TEMPLATE_ADDITIONAL_MEMBERS)
@@ -1189,7 +1230,9 @@ def production_members_for_manifest(manifest, baseline=None):
         return base
     if generation == AUTHORITY_GENERATION:
         return (
-            research_runtime_successor
+            role_checklist_successor
+            if observed & set(ROLE_CHECKLIST_ADDITIONAL_MEMBERS)
+            else research_runtime_successor
             if observed & set(RESEARCH_RUNTIME_DEPENDENCY_ADDITIONAL_MEMBERS)
             else research_template_successor
             if observed & set(RESEARCH_WORKING_ROOT_TEMPLATE_ADDITIONAL_MEMBERS)
@@ -1390,6 +1433,7 @@ def validate_managed_live_member_aliases(
             final_runtime_rollout_successor_members(),
             research_working_root_template_successor_members(),
             research_runtime_dependency_successor_members(),
+            role_checklist_successor_members(),
         ):
             raise ValueError("managed live durable successor contract incomplete")
         table += DURABLE_HISTORY_MANAGED_LIVE_MEMBER_ALIASES

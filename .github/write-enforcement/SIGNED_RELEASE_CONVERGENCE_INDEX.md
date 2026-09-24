@@ -407,6 +407,21 @@ All six enrolled population-next adapters select
 unchanged for audit. This source registration does not freeze, tag, issue,
 install, or activate the successor.
 
+The s249 population-300 successor repairs failure class 15 (hardening queue
+row 252). It adds exactly the three canonical govML role checklists that the
+Stage 0-5 agent specs require through `agent_pre_check_runner.sh --role
+orchestrator|rp|verifier` - `canonical-orchestrator-checklist`,
+`canonical-rp-checklist` and `canonical-verifier-checklist` - to the immutable
+population-297 contract, selected by the distinct `--role-checklist-successor`
+builder contract. Six population-300 adapters (REA, AML, ABL, NHP, NGA and
+RER) derive from their population-297 predecessors with only `adapter_id`,
+`expected_member_count` and `manifest_builder_flag` changed, so REA's static
+propagation can name population-300 dependents before a 300-member bundle is
+installed. Population 297 remains registered, active and unchanged for audit;
+its contract still refuses the three new subjects. Dependent registration is
+identity-only. This source registration does not freeze, tag, issue, install,
+or activate the successor.
+
 ## Known failure classes (s248 catalogue)
 
 Read this table before diagnosing a refusal on the REA release, recovery,
@@ -433,4 +448,7 @@ would change the engine bytes that REA pins, which is itself class 3.
 | 12 | Refusal relabelling hides the real cause (hardening queue row 249) | `AUTHORITY_APP_AUTHENTICATION_REFUSED` wraps `APP_EXECUTABLE_AUTHENTICATION_REFUSED` (tracked tool bytes ≠ signed members), which reads as a credential fault | s248 | open; diagnose with `scripts/authenticated_app_tools.py` directly |
 | 13 | A recovery fix reaches the consumer only by release | the successor recovery executes its installer from the CONTROL commit, which is the govML commit signed by the newest public packet; a fix merged to govML main is inert (running from it refuses `AUTHORITY_GOVML_LOCK_MISMATCH`) until a release freezes it | s248 | ordering rule (kc-99 R3): issue such a release only after a scratch drive against that exact planned release proves the consumer's recovery completes with no hand-set modes and the post-recovery hook clears |
 | 14 | Recovery installs historical hops at the control's mode contract (hardening queue row 251) | `DISPLACED_ENFORCEMENT_SLOT_OCCUPIED:.governance/preserved_enforcement/scripts/artifact_class_integrity.py` at the first hop that crosses from the legacy blanket-0755 installer generation (govML `753e3ab`, packets 194-197) into the signed-mode-contract generation (`e6a968de`, packet 198). The control installer wrote the legacy targets at its own exact mode (0644), while the predecessor proof authenticates what that generation really installed (0755) | s249 (real multi-hop drive, both umasks; classifier called directly on the preserved hop-198 inputs) | open; repair: a recovery advance installs each target at `_authenticated_managed_install_mode(target_manifest)` and refuses when that mode is unauthenticated |
-| 15 | Signed population lacks the role checklists the agent specs require (hardening queue row 252) | `agent_pre_check_runner.sh --role orchestrator` (also `rp`, `verifier`) FAILs Check 0 `Checklist file not found: <root>/write_integrity/bundle/govML/checklists/orchestrator.checklist` on a build-type authority root with `f_c_checklist: enabled`; population 297 signs only `research_integrity`, `build_runner` and `build_orchestrator` checklists | s249 (measured on a scratch clone recovered to epoch 200) | open; repair is a population successor signing the three canonical govML role checklists. Sequence it after REA recovers and PR #589 lands: a new active adapter flag re-triggers class 3 against #589's pinned engine |
+| 15 | Signed population lacks the role checklists the agent specs require (hardening queue row 252) | `agent_pre_check_runner.sh --role orchestrator` (also `rp`, `verifier`) FAILs Check 0 `Checklist file not found: <root>/write_integrity/bundle/govML/checklists/orchestrator.checklist` on a build-type authority root with `f_c_checklist: enabled`; population 297 signs only `research_integrity`, `build_runner` and `build_orchestrator` checklists | s249 (measured on a scratch clone recovered to epoch 200) | repair registered (population 300); takes effect by release. The s249 successor signs `canonical-orchestrator-checklist`, `canonical-rp-checklist` and `canonical-verifier-checklist` under `--role-checklist-successor`. Sequence the release after REA recovers and PR #589 lands: the new active adapter flag re-triggers class 3 against #589's pinned engine |
+| 16 | Recovery census binds destinations to a stale HEAD across uncommitted hops (hardening queue row 253) | `DISPLACED_ENFORCEMENT_SLOT_OCCUPIED:.governance/preserved_enforcement/scripts/research_type_registration_catalogs.json` on the release-2 hop after generations 194-200 were installed without an intermediate commit; the census proves each destination through the committed HEAD blob | s249 (real REA recovery) | open; measured workaround: a hooked commit at the generation where commit-preflight clears, then the next hop authenticates against a current HEAD |
+| 17 | Signed hash-locked CI requirements carry one wheel hash (hardening queue row 254) | every REA workflow run refuses `THESE PACKAGES DO NOT MATCH THE HASHES` for `cffi==2.0.0` at dependency provisioning (runner cp313 wheel `c8d3...` vs signed `3e17...`) | s249 (REA runs 36031277703, 36031705962) | open; repair in govML, takes effect by release |
+| 18 | Pre-push source adoption compares an incomplete closure (hardening queue row 255) | `REFUSE(APP_PROBE_RUN_FAILED)` on every REA push: the workflow bytes equal the remote default, so the pre-push App probe runs on the remote's broken dependency closure (class 17), including for the push carrying the repair | s249 (REA backlog push) | open; repair: adoption compares the complete signed workflow closure; takes effect by release |
