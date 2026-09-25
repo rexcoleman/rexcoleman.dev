@@ -431,6 +431,7 @@ is a closed mechanism schema (adapter, engine, evidence-suite, test); a class
 enters the inventory only when a registered, tested mechanism guards it, so
 classes without one are catalogued here only. Changing the inventory schema
 would change the engine bytes that REA pins, which is itself class 3.
+The catalogue below is current through release 4 and class 19.
 
 | # | Class | Surfaces as | Measured | Status |
 |---|---|---|---|---|
