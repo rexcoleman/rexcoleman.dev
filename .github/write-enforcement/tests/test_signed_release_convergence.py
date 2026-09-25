@@ -119,6 +119,9 @@ ROLE_CHECKLIST_ADAPTERS = tuple(
 STAGE5_TEMPLATE_COUNT = len(tool.member_contract(
     ROOT.parents[1], "stage5_build_template_successor_members"
 ))
+STAGED_NONPRODUCTION_COUNT = len(tool.member_contract(
+    ROOT.parents[1], "staged_nonproduction_members"
+))
 STAGE5_TEMPLATE_ADAPTERS = tuple(
     ROOT / f"adapters/{name}.population-{STAGE5_TEMPLATE_COUNT}-v1.json"
     for name in (
@@ -2866,7 +2869,7 @@ def fake_member_contract(_root, selector_name="successor_members"):
     }
     value.update({
         "member-%03d" % index: ("govML", "path-%03d.py" % index)
-        for index in range(STAGE5_TEMPLATE_COUNT)
+        for index in range(STAGED_NONPRODUCTION_COUNT - 1)
     })
     return value
 
@@ -2964,7 +2967,7 @@ def test_exact_plan_recovery_drive_phase_binds_evidence(tmp_path, monkeypatch):
     assert result["nonproduction_candidate_authority"] == {
         "selector": "staged_nonproduction_members",
         "trusted_member_id": "staged-nonproduction-trusted-public-key",
-        "member_count": STAGE5_TEMPLATE_COUNT + 1,
+        "member_count": STAGED_NONPRODUCTION_COUNT,
         "remote_mutation": False,
         "staged_nonproduction": True,
     }
@@ -3004,6 +3007,27 @@ def test_exact_plan_recovery_drive_negative_polarities(
     drift = "govML" if plant == "wrong_root_commit" else None
     install_exact_plan_recovery_fakes(monkeypatch, mapping, mode, drift)
     with pytest.raises(tool.Refusal, match=match):
+        tool.exact_plan_recovery_drive_snapshot(
+            adapter, mapping, tmp_path / "evidence"
+        )
+
+
+def test_exact_plan_recovery_drive_refuses_wrong_staged_nonproduction_count(tmp_path, monkeypatch):
+    adapter = tool.load_adapter(EXACT_PLAN_RECOVERY_ADAPTER)
+    mapping = roots(tmp_path)
+    for path in mapping.values():
+        path.mkdir()
+    manifest = tmp_path / "candidate-manifest.json"
+    write_exact_plan_recovery_receipts(tmp_path / "evidence", manifest, mapping)
+    install_exact_plan_recovery_fakes(monkeypatch, mapping)
+
+    def short_member_contract(_root, selector_name="successor_members"):
+        value = fake_member_contract(_root, selector_name)
+        value.pop("member-000")
+        return value
+
+    monkeypatch.setattr(tool, "member_contract", short_member_contract)
+    with pytest.raises(tool.Refusal, match="EXACT_PLAN_RECOVERY_NONPRODUCTION_AUTHORITY_REFUSED"):
         tool.exact_plan_recovery_drive_snapshot(
             adapter, mapping, tmp_path / "evidence"
         )
