@@ -2,13 +2,19 @@
   "assertion": "COMMIT_PREFLIGHT_PASS",
   "caller": "git-pre-commit",
   "changed_paths": [
-    ".github/write-enforcement/SIGNED_RELEASE_CONVERGENCE_INDEX.md"
+    ".github/write-enforcement/SIGNED_RELEASE_CONVERGENCE.md",
+    ".github/write-enforcement/SIGNED_RELEASE_CONVERGENCE_INDEX.md",
+    ".github/write-enforcement/adapters/research_enforcement_activation.exact-plan-recovery-drive-v1.json",
+    ".github/write-enforcement/signed_release_convergence.py",
+    ".github/write-enforcement/signed_release_convergence_index.json",
+    ".github/write-enforcement/signed_release_convergence_inventory.json",
+    ".github/write-enforcement/tests/test_signed_release_convergence.py"
   ],
-  "changed_paths_count": 1,
-  "changed_paths_sha256": "4263c2d89130d6d153c2f0c23b9697744b9db00ab3df20ee32cbf4d718b95f83",
+  "changed_paths_count": 7,
+  "changed_paths_sha256": "d6b8b7b564576fe0d43bffb1cbe939e4022bc926a3aa21532ea9148203d33d9e",
   "mode": "commit-preflight",
-  "parent_head": "63499cb6da4e993e4518ea0b770948c7fb1c2f7d",
-  "run_id": "pre-commit-s251-class-catalogue-r2",
+  "parent_head": "c2ad1059e7b66e818fc9200a3fb2de6a5c04a91a",
+  "run_id": "pre-commit-38a69b60a77a69af41da408b",
   "schema_version": "rea.pre-commit-boundary.v1",
-  "utc_asserted_at": "2026-09-25T05:36:53Z"
+  "utc_asserted_at": "2026-09-25T16:19:16Z"
 }

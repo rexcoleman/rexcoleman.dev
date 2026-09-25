@@ -195,7 +195,7 @@ not merge, tag, approve, issue, install, or prove a target project green.
 
 ## Cross-generation inventory and reconciliation
 
-The inventory has 37 closed rows spanning s88, s127, s131, s132, s149, s153,
+The inventory has 38 closed rows spanning s88, s127, s131, s132, s149, s153,
 s154, s155, s157, s165, s169, s170, s173, s180, s188 and s248 in govML and
 s212 in rexcoleman.dev. Each row names a stable identity, remote
 repository/default branch, path, session generation, kind, semantic discovery
@@ -434,6 +434,20 @@ predecessors with only `adapter_id`, `expected_member_count`, and
 `manifest_builder_flag` changed; population 300 remains registered and active
 for audit. This source registration does not freeze, tag, issue, install, or
 activate the successor, and the scaffolds contain no completed cycle content.
+
+The s252 exact-plan recovery-drive adapter is registered as
+`research-enforcement-activation-generation-5-exact-plan-recovery-drive-v1`.
+It does not change the 305-member population or select a new builder contract;
+instead it requires the convergence engine's optional
+`exact-plan-recovery-drive` phase. That phase binds the planned manifest,
+adapter, engine, five roots, authenticated predecessor packet, staged
+nonproduction candidate authority, umask `002`, umask `022`, the real govML
+recovery installer, the REA renewal consumer, and the REA commit-preflight
+surface before poststate. The s249 scratch drive is input-only context and is
+not trusted code. The focused test file plants omitted-member, changed-byte,
+wrong-mode, wrong-predecessor, wrong-root-commit and mixed-packet refusals.
+The adapter plans evidence only; it does not release, install, repoint, merge,
+or run commit preflight.
 
 ## Known failure classes (s250 catalogue)
 

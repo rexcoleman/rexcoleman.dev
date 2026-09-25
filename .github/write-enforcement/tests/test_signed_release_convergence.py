@@ -127,6 +127,9 @@ STAGE5_TEMPLATE_ADAPTERS = tuple(
         "newsletter_generation_architecture", "research_engine_release",
     )
 )
+EXACT_PLAN_RECOVERY_ADAPTER = (
+    ROOT / "adapters/research_enforcement_activation.exact-plan-recovery-drive-v1.json"
+)
 
 
 
@@ -1179,6 +1182,7 @@ def test_index_is_closed_and_resolves_every_registered_adapter():
         "research-enforcement-activation", "adversarial-ml-landscape",
         "agent-boundary-learning-landscape", "newsletter-hybrid-path",
         "newsletter-generation-architecture", "research-engine-release")]
+    + ["research-enforcement-activation-generation-5-exact-plan-recovery-drive-v1"]
     )
     status = {row["adapter_id"]: row["status"] for row in value["adapters"]}
     assert {
@@ -1237,7 +1241,8 @@ def test_index_refuses_duplicate_unknown_retired_and_traversing_rows(
                 S210_GOVERNED_READ_ADAPTER,
                 POPULATION_265_ADAPTER,
                 POPULATION_273_ADAPTER,
-            ):
+                EXACT_PLAN_RECOVERY_ADAPTER,
+                ):
         shutil.copyfile(adapter_path, adapters / adapter_path.name)
         for adapter_path in DURABLE_ADAPTERS:
             shutil.copyfile(adapter_path, adapters / adapter_path.name)
@@ -1296,7 +1301,7 @@ def test_index_refuses_duplicate_unknown_retired_and_traversing_rows(
 
 def test_cross_generation_inventory_is_closed_and_covers_six_properties():
     value = tool.load_cross_generation_inventory(INVENTORY)
-    assert len(value["entries"]) == 37
+    assert len(value["entries"]) == 38
     assert {row["repository"] for row in value["entries"]} == {
         "govML", "rexcoleman.dev",
     }
@@ -2779,6 +2784,229 @@ def test_stage5_template_adapter_refuses_a_300_member_build(
         }))
     with pytest.raises(tool.Refusal, match="BUILT_MANIFEST_CONTRACT_REFUSED"):
         tool.contract_snapshot(adapter, evidence, "plan", None)
+
+
+def exact_packet(epoch=200, predecessor_verified=True, marker="a"):
+    return {
+        "authority_epoch": epoch,
+        "fixture_only": True,
+        "manifest_digest": marker * 64,
+        "packet_files": sorted(tool.PUBLIC_PACKET_FILES),
+        "predecessor_epoch": epoch - 1,
+        "predecessor_file_sha256": chr(ord(marker) + 1) * 64,
+        "predecessor_verified": predecessor_verified,
+        "predecessor_wea_digest": chr(ord(marker) + 1) * 64,
+        "verdict": "PASS",
+        "wea_digest": chr(ord(marker) + 2) * 64,
+    }
+
+
+def write_exact_plan_recovery_receipts(evidence, manifest, roots_map, packet_rows=None):
+    raw = b'{"authority_generation":5,"manifest_digest":"' + b"b" * 64 + b'"}\n'
+    manifest.write_bytes(raw)
+    os.chmod(manifest, 0o600)
+    plan = {
+        "label": "manifest-a",
+        "path": str(manifest),
+        "sha256": tool.sha256(raw),
+        "byte_length": len(raw),
+        "manifest_digest": "b" * 64,
+        "authority_generation": 5,
+        "member_count": STAGE5_TEMPLATE_COUNT,
+        "stdout_sha256": "c" * 64,
+        "stderr_sha256": "d" * 64,
+    }
+    roots_result = [
+        {
+            "logical_name": name,
+            "slug": name,
+            "default_branch": "main",
+            "commit": "a" * 40,
+        }
+        for name in roots_map
+    ]
+    tool.receipt(evidence, "roots", roots_result)
+    tool.receipt(evidence, "hermetic", {
+        "result": "placeholder",
+    })
+    hermetic = {
+        "schema_version": tool.RECEIPT_SCHEMA,
+        "phase": "hermetic",
+        "result": [
+            {"name": "one", "packet_authority": row}
+            for row in (packet_rows or [exact_packet()])
+        ],
+        "result_sha256": "placeholder",
+    }
+    hermetic["result_sha256"] = tool.sha256(tool.canonical(hermetic["result"]))
+    tool.atomic_json(evidence / "receipts" / "hermetic.json", hermetic)
+    tool.receipt(evidence, "manifest-a", plan)
+    tool.receipt(evidence, "manifest-b", dict(plan, label="manifest-b"))
+    tool.receipt(evidence, "contract", {
+        "deterministic": True,
+        "noop_equal": False,
+        "manifest_sha256": plan["sha256"],
+        "manifest_digest": plan["manifest_digest"],
+        "member_count": plan["member_count"],
+        "remote_mutation": False,
+        "owner_action": False,
+        "anti_spin": "not-applicable-deterministic",
+        "bcs_surface": "untouched",
+    })
+    return raw
+
+
+def fake_member_contract(_root, selector_name="successor_members"):
+    assert selector_name == "staged_nonproduction_members"
+    value = {
+        "staged-nonproduction-trusted-public-key": (
+            "govML",
+            "tests/fixtures/s132_staged_nonproduction_ed25519_public.pem",
+        )
+    }
+    value.update({
+        "member-%03d" % index: ("govML", "path-%03d.py" % index)
+        for index in range(STAGE5_TEMPLATE_COUNT)
+    })
+    return value
+
+
+def install_exact_plan_recovery_fakes(monkeypatch, roots_map, modes=None, drift_root=None):
+    mode_map = {
+        "templates/build/enforcement/ci_materialize_enforcement.py": "100644",
+        "scripts/s145_renewal_consumer.py": "100644",
+        "scripts/run_gates.sh": "100755",
+    }
+    if modes:
+        mode_map.update(modes)
+
+    def fake_git(root, *args):
+        logical = next(name for name, path in roots_map.items() if path == root)
+        if args == ("rev-parse", "HEAD"):
+            return "b" * 40 if logical == drift_root else "a" * 40
+        if args == ("status", "--porcelain=v1", "--untracked-files=all"):
+            return ""
+        raise AssertionError(args)
+
+    def fake_run(argv, **_kwargs):
+        class Completed:
+            stderr = ""
+            returncode = 0
+
+            def __init__(self, stdout):
+                self.stdout = stdout
+
+        if argv[3] == "ls-tree":
+            path = argv[-1]
+            return Completed("%s blob %s\t%s\n" % (mode_map[path], "1" * 40, path))
+        if argv[3] == "show":
+            path = argv[-1].split(":", 1)[1]
+            return Completed("bound bytes for %s\n" % path)
+        raise AssertionError(argv)
+
+    monkeypatch.setattr(tool, "git", fake_git)
+    monkeypatch.setattr(tool, "run", fake_run)
+    monkeypatch.setattr(tool, "member_contract", fake_member_contract)
+
+
+def test_exact_plan_recovery_drive_adapter_binds_phase_and_surfaces():
+    value = tool.load_adapter(EXACT_PLAN_RECOVERY_ADAPTER)
+    assert value["adapter_id"] == (
+        "research-enforcement-activation-generation-5-"
+        "exact-plan-recovery-drive-v1"
+    )
+    assert value["expected_member_count"] == STAGE5_TEMPLATE_COUNT
+    assert value["manifest_builder_flag"] == "--stage5-build-template-successor"
+    assert tool.phases_for_adapter(value) == (
+        "roots", "impact", "hermetic", "manifest-a", "manifest-b", "contract",
+        "exact-plan-recovery-drive", "poststate",
+    )
+    policy = value["exact_plan_recovery_drive"]
+    assert policy["required_bindings"] == list(
+        tool.EXACT_PLAN_RECOVERY_DRIVE_REQUIRED_BINDINGS
+    )
+    assert policy["negative_polarity_plants"] == list(
+        tool.EXACT_PLAN_RECOVERY_DRIVE_NEGATIVE_PLANTS
+    )
+    assert {row["binding"]: row["path"] for row in policy["surfaces"]} == {
+        "real_recovery_installer": (
+            "templates/build/enforcement/ci_materialize_enforcement.py"
+        ),
+        "renewal_consumer": "scripts/s145_renewal_consumer.py",
+        "commit_preflight": "scripts/run_gates.sh",
+    }
+
+
+def test_exact_plan_recovery_drive_refuses_omitted_member(tmp_path):
+    value = json.loads(EXACT_PLAN_RECOVERY_ADAPTER.read_text())
+    value["exact_plan_recovery_drive"]["required_bindings"].remove("adapter")
+    planted = tmp_path / "adapter.json"
+    planted.write_text(json.dumps(value))
+    with pytest.raises(tool.Refusal, match="EXACT_PLAN_RECOVERY_DRIVE_CONTRACT_REFUSED"):
+        tool.load_adapter(planted)
+
+
+def test_exact_plan_recovery_drive_phase_binds_evidence(tmp_path, monkeypatch):
+    adapter = tool.load_adapter(EXACT_PLAN_RECOVERY_ADAPTER)
+    mapping = roots(tmp_path)
+    for path in mapping.values():
+        path.mkdir()
+    manifest = tmp_path / "candidate-manifest.json"
+    write_exact_plan_recovery_receipts(tmp_path / "evidence", manifest, mapping)
+    install_exact_plan_recovery_fakes(monkeypatch, mapping)
+    result = tool.exact_plan_recovery_drive_snapshot(
+        adapter, mapping, tmp_path / "evidence"
+    )
+    assert result["schema_version"] == tool.EXACT_PLAN_RECOVERY_DRIVE_SCHEMA
+    assert result["plan_manifest"]["member_count"] == STAGE5_TEMPLATE_COUNT
+    assert result["umasks"] == ["002", "022"]
+    assert result["remote_mutation"] is False
+    assert result["nonproduction_candidate_authority"] == {
+        "selector": "staged_nonproduction_members",
+        "trusted_member_id": "staged-nonproduction-trusted-public-key",
+        "member_count": STAGE5_TEMPLATE_COUNT + 1,
+        "remote_mutation": False,
+        "staged_nonproduction": True,
+    }
+    assert result["surfaces"]["commit_preflight"]["argv"] == [
+        "bash", "scripts/run_gates.sh", "--commit-preflight",
+    ]
+
+
+@pytest.mark.parametrize(
+    "plant,match",
+    [
+        ("changed_byte", "EXACT_PLAN_RECOVERY_PLAN_MANIFEST_REFUSED"),
+        ("wrong_mode", "EXACT_PLAN_RECOVERY_SURFACE_MODE_MISMATCH"),
+        ("wrong_predecessor", "EXACT_PLAN_RECOVERY_PREDECESSOR_PACKET_REFUSED"),
+        ("wrong_root_commit", "EXACT_PLAN_RECOVERY_ROOT_COMMIT_REFUSED"),
+        ("mixed_packet", "EXACT_PLAN_RECOVERY_MIXED_PACKET_REFUSED"),
+    ],
+)
+def test_exact_plan_recovery_drive_negative_polarities(
+    tmp_path, monkeypatch, plant, match,
+):
+    adapter = tool.load_adapter(EXACT_PLAN_RECOVERY_ADAPTER)
+    mapping = roots(tmp_path)
+    for path in mapping.values():
+        path.mkdir()
+    manifest = tmp_path / "candidate-manifest.json"
+    packets = [exact_packet()]
+    if plant == "wrong_predecessor":
+        packets = [exact_packet(predecessor_verified=False)]
+    if plant == "mixed_packet":
+        packets = [exact_packet(marker="a"), exact_packet(marker="d")]
+    write_exact_plan_recovery_receipts(tmp_path / "evidence", manifest, mapping, packets)
+    if plant == "changed_byte":
+        manifest.write_bytes(b"changed\n")
+        os.chmod(manifest, 0o600)
+    mode = {"scripts/run_gates.sh": "100644"} if plant == "wrong_mode" else None
+    drift = "govML" if plant == "wrong_root_commit" else None
+    install_exact_plan_recovery_fakes(monkeypatch, mapping, mode, drift)
+    with pytest.raises(tool.Refusal, match=match):
+        tool.exact_plan_recovery_drive_snapshot(
+            adapter, mapping, tmp_path / "evidence"
+        )
 
 
 def test_hermetic_cross_repository_fixture_uses_configured_root(tmp_path, monkeypatch):
