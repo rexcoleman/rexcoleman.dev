@@ -422,7 +422,7 @@ its contract still refuses the three new subjects. Dependent registration is
 identity-only. This source registration does not freeze, tag, issue, install,
 or activate the successor.
 
-## Known failure classes (s248 catalogue)
+## Known failure classes (s250 catalogue)
 
 Read this table before diagnosing a refusal on the REA release, recovery,
 renewal or commit chain. Each row names the class, the refusal it surfaces as,
@@ -431,6 +431,7 @@ is a closed mechanism schema (adapter, engine, evidence-suite, test); a class
 enters the inventory only when a registered, tested mechanism guards it, so
 classes without one are catalogued here only. Changing the inventory schema
 would change the engine bytes that REA pins, which is itself class 3.
+The catalogue below is current through release 4 and class 19.
 
 | # | Class | Surfaces as | Measured | Status |
 |---|---|---|---|---|
@@ -452,3 +453,4 @@ would change the engine bytes that REA pins, which is itself class 3.
 | 16 | Recovery census binds destinations to a stale HEAD across uncommitted hops (hardening queue row 253) | `DISPLACED_ENFORCEMENT_SLOT_OCCUPIED:.governance/preserved_enforcement/scripts/research_type_registration_catalogs.json` on the release-2 hop after generations 194-200 were installed without an intermediate commit; the census proves each destination through the committed HEAD blob | s249 (real REA recovery) | BUILT: govML #237 (`fdd203c1`); takes effect with the next release control (release 4); measured workaround remains a hooked commit at the admissible generation |
 | 17 | Signed hash-locked CI requirements carry one wheel hash (hardening queue row 254) | every REA workflow run refuses `THESE PACKAGES DO NOT MATCH THE HASHES` for `cffi==2.0.0` at dependency provisioning (runner cp313 wheel `c8d3...` vs signed `3e17...`) | s249 (REA runs 36031277703, 36031705962) | BUILT: govML #234 (`8dfdc56d`); every runner wheel hash verified by pip download and sha256; carried by release 3 |
 | 18 | Pre-push source adoption compares an incomplete closure (hardening queue row 255) | `REFUSE(APP_PROBE_RUN_FAILED)` on every REA push: the workflow bytes equal the remote default, so the pre-push App probe runs on the remote's broken dependency closure (class 17), including for the push carrying the repair | s249 (REA backlog push) | BUILT: govML #234 (`8dfdc56d`); adoption compares the complete signed CI closure; carried by release 3 |
+| 19 | Hook-exported Git environment overrides an explicit engine repository (hardening queue row 256) | `APP_ADOPTION_ENGINE_REPOSITORY_INVALID` on a push from a linked worktree: Git exports an absolute `GIT_DIR` to hooks, so the enrollment tool's `git -C <govML> config --get remote.origin.url` resolves REA's origin instead of govML | s249 (direct reproduction with and without `GIT_DIR`; first release-3 landing push) | BUILT: govML #238 (`4ec6d7dd`); repository-selecting Git subprocesses clear ambient `GIT_*` variables, with planted linked-worktree and hostile-environment tests; carried by release 4 |
