@@ -433,6 +433,27 @@ Build-Runner after lock. Because the successor adds a new builder flag and new
 adapter identities, an REA-pinned convergence engine and adapter set must move
 before a population-305 release can be issued without failure classes 3 or 4.
 
+## Exact-plan recovery-drive phase
+
+The s252 recovery-drive adapter
+`research-enforcement-activation-generation-5-exact-plan-recovery-drive-v1`
+keeps the population-305 member contract and adds one convergence-engine
+receipt phase, `exact-plan-recovery-drive`, before poststate. The phase binds
+the planned manifest bytes, adapter and engine digests, five root commits, the
+authenticated public packet's immediate predecessor evidence, the staged
+nonproduction candidate authority, both recovery umasks (`002` and `022`), the
+real govML recovery installer (`ci_materialize_enforcement.py`), the REA
+renewal consumer, and the REA `scripts/run_gates.sh --commit-preflight`
+surface. It was derived from the s249 scratch drive as an input description
+only; the scratch script is not imported or trusted.
+
+The phase is receipt-only and deterministic. It does not clone, issue, install,
+freeze, tag, merge, runtime-repoint, or run commit preflight. Its focused tests
+plant omitted-member, changed-byte, wrong-mode, wrong-predecessor,
+wrong-root-commit, and mixed-packet refusals so a green plan proves the exact
+bindings are present before any release rail can treat the recovery drive as
+ready.
+
 The callable independent-second-principal reviewer reads the protected
 convergence index and selects the unique highest active REA generation-5
 population adapter. The reviewer derives the selector from that adapter's

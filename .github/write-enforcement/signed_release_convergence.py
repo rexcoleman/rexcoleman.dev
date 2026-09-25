@@ -35,9 +35,12 @@ STATE_SCHEMA = "rea.signed-release-convergence-state.v1"
 SUMMARY_SCHEMA = "rea.signed-release-convergence-summary.v1"
 RECEIPT_SCHEMA = "rea.signed-release-convergence-phase-receipt.v1"
 HERMETIC_REFUSAL_SCHEMA = "rea.signed-release-convergence-hermetic-refusal.v1"
+EXACT_PLAN_RECOVERY_DRIVE_SCHEMA = (
+    "rea.signed-release-convergence-exact-plan-recovery-drive.v1"
+)
 HERMETIC_OUTPUT_TAIL_LIMIT = 4096
 ALLOWED_MODES = frozenset(("plan", "noop-rehearsal"))
-PHASES = (
+BASE_PHASES = (
     "roots",
     "impact",
     "hermetic",
@@ -45,6 +48,29 @@ PHASES = (
     "manifest-b",
     "contract",
     "poststate",
+)
+PHASES = BASE_PHASES
+EXACT_PLAN_RECOVERY_DRIVE_PHASE = "exact-plan-recovery-drive"
+EXACT_PLAN_RECOVERY_DRIVE_REQUIRED_BINDINGS = (
+    "plan_manifest",
+    "adapter",
+    "engine",
+    "roots",
+    "predecessor_packet",
+    "nonproduction_candidate_authority",
+    "umask_002",
+    "umask_022",
+    "real_recovery_installer",
+    "renewal_consumer",
+    "commit_preflight",
+)
+EXACT_PLAN_RECOVERY_DRIVE_NEGATIVE_PLANTS = (
+    "omitted_member",
+    "changed_byte",
+    "wrong_mode",
+    "wrong_predecessor",
+    "wrong_root_commit",
+    "mixed_packet",
 )
 HEX40 = re.compile(r"[0-9a-f]{40}\Z")
 HEX64 = re.compile(r"[0-9a-f]{64}\Z")
@@ -279,6 +305,8 @@ def load_adapter(path: Path):
     }
     if "hermetic_fixture" in value:
         required.add("hermetic_fixture")
+    if "exact_plan_recovery_drive" in value:
+        required.add("exact_plan_recovery_drive")
     if value.get("schema_version") == DEPENDENT_ADAPTER_SCHEMA:
         required.add("dependent_project")
     closed_dict(value, required, "ADAPTER")
@@ -417,8 +445,12 @@ def load_adapter(path: Path):
             or fixture["durable_root_repository"]
             != "research_enforcement_activation"
             or fixture["require_zero_skips"] is not True
-        ):
+            ):
             raise Refusal("HERMETIC_FIXTURE_CONTRACT_REFUSED")
+    if "exact_plan_recovery_drive" in value:
+        validate_exact_plan_recovery_drive_adapter(
+            value["exact_plan_recovery_drive"], logical_names
+        )
     if value["schema_version"] == DEPENDENT_ADAPTER_SCHEMA:
         dependent = value["dependent_project"]
         closed_dict(
@@ -468,6 +500,105 @@ def load_adapter(path: Path):
         if dependent["required_source"] != "SIGNED_BUNDLE":
             raise Refusal("DEPENDENT_PROJECT_SOURCE_REFUSED")
     return value
+
+
+def validate_exact_plan_recovery_drive_adapter(value, logical_names):
+    closed_dict(
+        value,
+        {
+            "schema_version",
+            "phase",
+            "required_bindings",
+            "negative_polarity_plants",
+            "umasks",
+            "nonproduction_candidate_authority",
+            "surfaces",
+        },
+        "EXACT_PLAN_RECOVERY_DRIVE",
+    )
+    if (
+        value["schema_version"] != EXACT_PLAN_RECOVERY_DRIVE_SCHEMA
+        or value["phase"] != EXACT_PLAN_RECOVERY_DRIVE_PHASE
+        or value["required_bindings"]
+        != list(EXACT_PLAN_RECOVERY_DRIVE_REQUIRED_BINDINGS)
+        or value["negative_polarity_plants"]
+        != list(EXACT_PLAN_RECOVERY_DRIVE_NEGATIVE_PLANTS)
+        or value["umasks"] != ["002", "022"]
+    ):
+        raise Refusal("EXACT_PLAN_RECOVERY_DRIVE_CONTRACT_REFUSED")
+    candidate = value["nonproduction_candidate_authority"]
+    closed_dict(
+        candidate,
+        {
+            "selector",
+            "trusted_member_id",
+            "staged_nonproduction",
+            "remote_mutation",
+            "purpose",
+        },
+        "EXACT_PLAN_RECOVERY_DRIVE_CANDIDATE",
+    )
+    if candidate != {
+        "selector": "staged_nonproduction_members",
+        "trusted_member_id": "staged-nonproduction-trusted-public-key",
+        "staged_nonproduction": True,
+        "remote_mutation": False,
+        "purpose": "VERIFY_ONLY_STAGED_NONPRODUCTION_REGISTRY",
+    }:
+        raise Refusal("EXACT_PLAN_RECOVERY_DRIVE_CANDIDATE_REFUSED")
+    surfaces = value["surfaces"]
+    if not isinstance(surfaces, list) or len(surfaces) != 3:
+        raise Refusal("EXACT_PLAN_RECOVERY_DRIVE_SURFACES_REFUSED")
+    expected = {
+        "real_recovery_installer": {
+            "repository": "govML",
+            "path": "templates/build/enforcement/ci_materialize_enforcement.py",
+            "mode": "100644",
+            "argv": [],
+        },
+        "renewal_consumer": {
+            "repository": "research_enforcement_activation",
+            "path": "scripts/s145_renewal_consumer.py",
+            "mode": "100644",
+            "argv": [],
+        },
+        "commit_preflight": {
+            "repository": "research_enforcement_activation",
+            "path": "scripts/run_gates.sh",
+            "mode": "100755",
+            "argv": ["bash", "scripts/run_gates.sh", "--commit-preflight"],
+        },
+    }
+    observed = {}
+    for row in surfaces:
+        closed_dict(
+            row,
+            {"binding", "repository", "path", "mode", "argv"},
+            "EXACT_PLAN_RECOVERY_DRIVE_SURFACE",
+        )
+        binding = row["binding"]
+        if binding in observed:
+            raise Refusal("EXACT_PLAN_RECOVERY_DRIVE_SURFACE_DUPLICATE")
+        if binding not in expected:
+            raise Refusal("EXACT_PLAN_RECOVERY_DRIVE_SURFACE_UNKNOWN:%s" % binding)
+        if row["repository"] not in logical_names:
+            raise Refusal("EXACT_PLAN_RECOVERY_DRIVE_SURFACE_REPOSITORY_REFUSED")
+        safe_relative(row["path"])
+        if row["mode"] not in ("100644", "100755"):
+            raise Refusal("EXACT_PLAN_RECOVERY_DRIVE_SURFACE_MODE_REFUSED")
+        if (
+            not isinstance(row["argv"], list)
+            or not all(isinstance(item, str) and item for item in row["argv"])
+        ):
+            raise Refusal("EXACT_PLAN_RECOVERY_DRIVE_SURFACE_ARGV_REFUSED")
+        observed[binding] = {
+            "repository": row["repository"],
+            "path": row["path"],
+            "mode": row["mode"],
+            "argv": row["argv"],
+        }
+    if observed != expected:
+        raise Refusal("EXACT_PLAN_RECOVERY_DRIVE_SURFACE_BINDING_REFUSED")
 
 
 def load_cross_generation_inventory(path: Path):
@@ -1748,6 +1879,164 @@ def poststate_snapshot(adapter, roots, evidence_dir, baseline):
     }
 
 
+def phases_for_adapter(adapter):
+    phases = list(BASE_PHASES)
+    if "exact_plan_recovery_drive" in adapter:
+        phases.insert(phases.index("poststate"), EXACT_PLAN_RECOVERY_DRIVE_PHASE)
+    return tuple(phases)
+
+
+def root_rows_by_name(evidence_dir):
+    rows = json.loads(regular_bytes(receipt_path(evidence_dir, "roots")))["result"]
+    result = {}
+    for row in rows:
+        closed_dict(
+            row,
+            {"logical_name", "slug", "default_branch", "commit"},
+            "EXACT_PLAN_RECOVERY_ROOT_ROW",
+        )
+        result[row["logical_name"]] = row
+    return result
+
+
+def committed_surface(root, commit, path):
+    mode_rows = run(
+        ["git", "-C", str(root), "ls-tree", commit, "--", path],
+        timeout=120,
+    ).stdout.splitlines()
+    if len(mode_rows) != 1:
+        raise Refusal("EXACT_PLAN_RECOVERY_SURFACE_MODE_ABSENT:%s" % path)
+    match = re.fullmatch(r"(100644|100755) blob [0-9a-f]{40}\t(.+)", mode_rows[0])
+    if match is None or match.group(2) != path:
+        raise Refusal("EXACT_PLAN_RECOVERY_SURFACE_MODE_REFUSED:%s" % path)
+    raw = run(
+        ["git", "-C", str(root), "show", "%s:%s" % (commit, path)],
+        timeout=120,
+    ).stdout.encode("utf-8")
+    return {"mode": match.group(1), "sha256": sha256(raw), "byte_length": len(raw)}
+
+
+def hermetic_packet_authority(evidence_dir):
+    rows = json.loads(regular_bytes(receipt_path(evidence_dir, "hermetic")))["result"]
+    authorities = []
+    for row in rows:
+        authority = row.get("packet_authority") if isinstance(row, dict) else None
+        if authority is not None:
+            authorities.append(authority)
+    if not authorities:
+        raise Refusal("EXACT_PLAN_RECOVERY_PREDECESSOR_PACKET_ABSENT")
+    canonical_rows = {canonical(row) for row in authorities}
+    if len(canonical_rows) != 1:
+        raise Refusal("EXACT_PLAN_RECOVERY_MIXED_PACKET_REFUSED")
+    authority = authorities[0]
+    closed_dict(
+        authority,
+        {
+            "authority_epoch",
+            "fixture_only",
+            "manifest_digest",
+            "packet_files",
+            "predecessor_epoch",
+            "predecessor_file_sha256",
+            "predecessor_verified",
+            "predecessor_wea_digest",
+            "verdict",
+            "wea_digest",
+        },
+        "EXACT_PLAN_RECOVERY_PACKET_AUTHORITY",
+    )
+    if (
+        authority["fixture_only"] is not True
+        or authority["verdict"] != "PASS"
+        or authority["predecessor_verified"] is not True
+        or authority["predecessor_epoch"] != authority["authority_epoch"] - 1
+        or authority["packet_files"] != sorted(PUBLIC_PACKET_FILES)
+        or not HEX64.fullmatch(authority["manifest_digest"] or "")
+        or not HEX64.fullmatch(authority["wea_digest"] or "")
+        or not HEX64.fullmatch(authority["predecessor_wea_digest"] or "")
+        or authority["predecessor_file_sha256"] != authority["predecessor_wea_digest"]
+    ):
+        raise Refusal("EXACT_PLAN_RECOVERY_PREDECESSOR_PACKET_REFUSED")
+    return authority
+
+
+def exact_plan_recovery_drive_snapshot(adapter, roots, evidence_dir):
+    policy = adapter.get("exact_plan_recovery_drive")
+    if policy is None:
+        raise Refusal("EXACT_PLAN_RECOVERY_DRIVE_ABSENT")
+    manifest_a = json.loads(regular_bytes(receipt_path(evidence_dir, "manifest-a")))[
+        "result"
+    ]
+    contract = json.loads(regular_bytes(receipt_path(evidence_dir, "contract")))[
+        "result"
+    ]
+    manifest_path = Path(manifest_a["path"])
+    raw_manifest = secure_regular_bytes(manifest_path)
+    if (
+        sha256(raw_manifest) != manifest_a["sha256"]
+        or manifest_a["sha256"] != contract["manifest_sha256"]
+        or manifest_a["manifest_digest"] != contract["manifest_digest"]
+        or manifest_a["member_count"] != contract["member_count"]
+    ):
+        raise Refusal("EXACT_PLAN_RECOVERY_PLAN_MANIFEST_REFUSED")
+    root_rows = root_rows_by_name(evidence_dir)
+    remeasured_roots = {}
+    for logical, row in sorted(root_rows.items()):
+        observed = git(roots[logical], "rev-parse", "HEAD")
+        status = git(roots[logical], "status", "--porcelain=v1", "--untracked-files=all")
+        if observed != row["commit"] or status:
+            raise Refusal("EXACT_PLAN_RECOVERY_ROOT_COMMIT_REFUSED:%s" % logical)
+        remeasured_roots[logical] = observed
+    packet = hermetic_packet_authority(evidence_dir)
+    candidate = policy["nonproduction_candidate_authority"]
+    nonproduction_members = member_contract(roots["rexcoleman.dev"], candidate["selector"])
+    if (
+        candidate["trusted_member_id"] not in nonproduction_members
+        or len(nonproduction_members) < contract["member_count"]
+    ):
+        raise Refusal("EXACT_PLAN_RECOVERY_NONPRODUCTION_AUTHORITY_REFUSED")
+    surfaces = {}
+    for row in policy["surfaces"]:
+        commit = root_rows[row["repository"]]["commit"]
+        observed = committed_surface(roots[row["repository"]], commit, row["path"])
+        if observed["mode"] != row["mode"]:
+            raise Refusal(
+                "EXACT_PLAN_RECOVERY_SURFACE_MODE_MISMATCH:%s" % row["binding"]
+            )
+        surfaces[row["binding"]] = dict(row, **observed)
+    return {
+        "schema_version": EXACT_PLAN_RECOVERY_DRIVE_SCHEMA,
+        "phase": EXACT_PLAN_RECOVERY_DRIVE_PHASE,
+        "adapter_id": adapter["adapter_id"],
+        "adapter_sha256": sha256(canonical(adapter)),
+        "engine_sha256": sha256(regular_bytes(Path(__file__))),
+        "plan_manifest": {
+            "path": manifest_a["path"],
+            "sha256": manifest_a["sha256"],
+            "manifest_digest": manifest_a["manifest_digest"],
+            "member_count": manifest_a["member_count"],
+        },
+        "root_commits": remeasured_roots,
+        "predecessor_packet": {
+            "authority_epoch": packet["authority_epoch"],
+            "predecessor_epoch": packet["predecessor_epoch"],
+            "predecessor_wea_digest": packet["predecessor_wea_digest"],
+            "manifest_digest": packet["manifest_digest"],
+        },
+        "nonproduction_candidate_authority": {
+            "selector": candidate["selector"],
+            "trusted_member_id": candidate["trusted_member_id"],
+            "member_count": len(nonproduction_members),
+            "remote_mutation": candidate["remote_mutation"],
+            "staged_nonproduction": candidate["staged_nonproduction"],
+        },
+        "umasks": policy["umasks"],
+        "surfaces": surfaces,
+        "negative_polarity_plants": policy["negative_polarity_plants"],
+        "remote_mutation": False,
+    }
+
+
 def receipt_path(evidence_dir, phase):
     return evidence_dir / "receipts" / (phase + ".json")
 
@@ -1821,7 +2110,8 @@ def load_state(path, adapter_raw, adapter, evidence_dir, baseline):
         or value["evidence_dir"] != str(evidence_dir)
         or not isinstance(value["completed"], list)
         or not isinstance(value["receipt_sha256"], dict)
-        or value["completed"] != list(PHASES[: len(value["completed"])])
+        or value["completed"]
+        != list(phases_for_adapter(adapter)[: len(value["completed"])])
     ):
         raise Refusal("STATE_IDENTITY_REFUSED")
     for phase in value["completed"]:
@@ -1852,6 +2142,8 @@ def phase_result(phase, adapter, roots, evidence_dir, mode, baseline):
         return build_manifest(adapter, roots, evidence_dir, "manifest-b")
     if phase == "contract":
         return contract_snapshot(adapter, evidence_dir, mode, baseline)
+    if phase == EXACT_PLAN_RECOVERY_DRIVE_PHASE:
+        return exact_plan_recovery_drive_snapshot(adapter, roots, evidence_dir)
     if phase == "poststate":
         return poststate_snapshot(adapter, roots, evidence_dir, baseline)
     raise Refusal("PHASE_UNKNOWN:%s" % phase)
@@ -1903,7 +2195,8 @@ def execute(
         state = new_state(adapter_raw, adapter, mode, evidence_dir, baseline)
         atomic_json(state_path, state)
     try:
-        for phase in PHASES[len(state["completed"]) :]:
+        phases = phases_for_adapter(adapter)
+        for phase in phases[len(state["completed"]) :]:
             result = phase_result(phase, adapter, roots, evidence_dir, mode, baseline)
             value = receipt(evidence_dir, phase, result)
             state["completed"].append(phase)
@@ -1919,7 +2212,7 @@ def execute(
             "tool_sha256": sha256(regular_bytes(Path(__file__))),
             "mode": mode,
             "status": "PASS",
-            "phases": list(PHASES),
+            "phases": list(phases),
             "contract": contract,
             "next_remote_step": (
                 "none-noop-rehearsal"
