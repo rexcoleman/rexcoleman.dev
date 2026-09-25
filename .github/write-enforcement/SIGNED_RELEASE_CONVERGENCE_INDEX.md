@@ -445,7 +445,8 @@ nonproduction candidate authority, umask `002`, umask `022`, the real govML
 recovery installer, the REA renewal consumer, and the REA commit-preflight
 surface before poststate. The s249 scratch drive is input-only context and is
 not trusted code. The focused test file plants omitted-member, changed-byte,
-wrong-mode, wrong-predecessor, wrong-root-commit and mixed-packet refusals.
+wrong-mode, wrong-predecessor, wrong-root-commit, exact staged nonproduction
+count and mixed-packet refusals.
 The adapter plans evidence only; it does not release, install, repoint, merge,
 or run commit preflight.
 

@@ -7,7 +7,6 @@
     "owner_rail": "irreducible-human-only",
     "remote_mutation": "forbidden"
   },
-  "expected_member_count": 305,
   "exact_plan_recovery_drive": {
     "negative_polarity_plants": [
       "omitted_member",
@@ -18,6 +17,7 @@
       "mixed_packet"
     ],
     "nonproduction_candidate_authority": {
+      "expected_member_count": 260,
       "purpose": "VERIFY_ONLY_STAGED_NONPRODUCTION_REGISTRY",
       "remote_mutation": false,
       "selector": "staged_nonproduction_members",
@@ -71,6 +71,7 @@
       "022"
     ]
   },
+  "expected_member_count": 305,
   "hermetic_fixture": {
     "durable_root_repository": "research_enforcement_activation",
     "kind": "authenticated-public-packet-home",

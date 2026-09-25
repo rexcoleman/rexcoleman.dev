@@ -535,6 +535,7 @@ def validate_exact_plan_recovery_drive_adapter(value, logical_names):
             "staged_nonproduction",
             "remote_mutation",
             "purpose",
+            "expected_member_count",
         },
         "EXACT_PLAN_RECOVERY_DRIVE_CANDIDATE",
     )
@@ -544,6 +545,7 @@ def validate_exact_plan_recovery_drive_adapter(value, logical_names):
         "staged_nonproduction": True,
         "remote_mutation": False,
         "purpose": "VERIFY_ONLY_STAGED_NONPRODUCTION_REGISTRY",
+        "expected_member_count": 260,
     }:
         raise Refusal("EXACT_PLAN_RECOVERY_DRIVE_CANDIDATE_REFUSED")
     surfaces = value["surfaces"]
@@ -1992,7 +1994,7 @@ def exact_plan_recovery_drive_snapshot(adapter, roots, evidence_dir):
     nonproduction_members = member_contract(roots["rexcoleman.dev"], candidate["selector"])
     if (
         candidate["trusted_member_id"] not in nonproduction_members
-        or len(nonproduction_members) < contract["member_count"]
+        or len(nonproduction_members) != candidate["expected_member_count"]
     ):
         raise Refusal("EXACT_PLAN_RECOVERY_NONPRODUCTION_AUTHORITY_REFUSED")
     surfaces = {}
