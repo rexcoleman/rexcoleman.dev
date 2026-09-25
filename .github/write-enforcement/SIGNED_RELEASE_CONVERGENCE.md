@@ -447,6 +447,10 @@ renewal consumer, and the REA `scripts/run_gates.sh --commit-preflight`
 surface. It was derived from the s249 scratch drive as an input description
 only; the scratch script is not imported or trusted.
 
+The staged nonproduction authority is bound by the adapter's exact member count
+and trusted staged member id. A production population count is not accepted as a
+substitute for the staged registry's actual membership.
+
 The phase is receipt-only and deterministic. It does not clone, issue, install,
 freeze, tag, merge, runtime-repoint, or run commit preflight. Its focused tests
 plant omitted-member, changed-byte, wrong-mode, wrong-predecessor,
