@@ -422,6 +422,19 @@ its contract still refuses the three new subjects. Dependent registration is
 identity-only. This source registration does not freeze, tag, issue, install,
 or activate the successor.
 
+The s250 population-305 successor repairs failure class 20. It adds exactly
+the five canonical, intentionally unfilled govML Stage 5 scaffolds required by
+the signed working-root materializer to the immutable population-300 contract:
+`ARTIFACT_CONTRACT.tmpl.md`, `RUNTIME_EMIT_SPEC.tmpl.md`,
+`ACCEPTANCE_CRITERIA.tmpl.md`, `construction_manifest_spec.tmpl.json`, and
+`construction_manifest.tmpl.json`. The distinct
+`--stage5-build-template-successor` builder contract requires all five as
+`100644` blobs. Six population-305 adapters derive from their population-300
+predecessors with only `adapter_id`, `expected_member_count`, and
+`manifest_builder_flag` changed; population 300 remains registered and active
+for audit. This source registration does not freeze, tag, issue, install, or
+activate the successor, and the scaffolds contain no completed cycle content.
+
 ## Known failure classes (s250 catalogue)
 
 Read this table before diagnosing a refusal on the REA release, recovery,
@@ -431,7 +444,7 @@ is a closed mechanism schema (adapter, engine, evidence-suite, test); a class
 enters the inventory only when a registered, tested mechanism guards it, so
 classes without one are catalogued here only. Changing the inventory schema
 would change the engine bytes that REA pins, which is itself class 3.
-The catalogue below is current through release 4 and class 19.
+The catalogue below is current through release 4 and class 20.
 
 | # | Class | Surfaces as | Measured | Status |
 |---|---|---|---|---|
@@ -454,3 +467,4 @@ The catalogue below is current through release 4 and class 19.
 | 17 | Signed hash-locked CI requirements carry one wheel hash (hardening queue row 254) | every REA workflow run refuses `THESE PACKAGES DO NOT MATCH THE HASHES` for `cffi==2.0.0` at dependency provisioning (runner cp313 wheel `c8d3...` vs signed `3e17...`) | s249 (REA runs 36031277703, 36031705962) | BUILT: govML #234 (`8dfdc56d`); every runner wheel hash verified by pip download and sha256; carried by release 3 |
 | 18 | Pre-push source adoption compares an incomplete closure (hardening queue row 255) | `REFUSE(APP_PROBE_RUN_FAILED)` on every REA push: the workflow bytes equal the remote default, so the pre-push App probe runs on the remote's broken dependency closure (class 17), including for the push carrying the repair | s249 (REA backlog push) | BUILT: govML #234 (`8dfdc56d`); adoption compares the complete signed CI closure; carried by release 3 |
 | 19 | Hook-exported Git environment overrides an explicit engine repository (hardening queue row 256) | `APP_ADOPTION_ENGINE_REPOSITORY_INVALID` on a push from a linked worktree: Git exports an absolute `GIT_DIR` to hooks, so the enrollment tool's `git -C <govML> config --get remote.origin.url` resolves REA's origin instead of govML | s249 (direct reproduction with and without `GIT_DIR`; first release-3 landing push) | BUILT: govML #238 (`4ec6d7dd`); repository-selecting Git subprocesses clear ambient `GIT_*` variables, with planted linked-worktree and hostile-environment tests; carried by release 4 |
+| 20 | Signed population lacks the canonical Stage 5 scaffold sources | `init_research_working_root.py` must refuse materialization because one or more Stage 5 template subjects cannot be authenticated from the signed member population; population 300 contains none of the five canonical sources | s250 (Moonshots split-root Stage 5 materializer and govML signed-template tests) | BUILT: govML #240 (`c6580767`, merged as `13a78fa5`) and rex population-305 successor; takes effect only after REA pins converge and a kernel-owned release freezes the 305-member contract |

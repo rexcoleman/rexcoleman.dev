@@ -410,6 +410,29 @@ install, or activate an authority; the repair takes effect only by release.
 Because it adds a new active builder flag, an REA-pinned engine that predates
 it refuses the new adapters (failure class 3) until REA moves its pins.
 
+## Stage 5 build-template successor
+
+The s250 successor extends the immutable population-300 contract with the five
+canonical, intentionally unfilled govML Stage 5 scaffolds consumed by the
+authenticated research working-root materializer: `ARTIFACT_CONTRACT.tmpl.md`,
+`RUNTIME_EMIT_SPEC.tmpl.md`, `ACCEPTANCE_CRITERIA.tmpl.md`,
+`construction_manifest_spec.tmpl.json`, and
+`construction_manifest.tmpl.json`. The resulting exact closed population is
+305, derived by `stage5_build_template_successor_members()`. All six
+population-305 adapters select the distinct
+`--stage5-build-template-successor` builder contract and differ from their
+population-300 predecessors only in `adapter_id`, `expected_member_count`, and
+`manifest_builder_flag`; population 300 remains registered and active for
+audit. The five sources must all be ordinary `100644` blobs, and any partial,
+substituted, missing, or executable template refuses before manifest emission.
+
+This source registration does not freeze, tag, issue, install, or activate an
+authority. It also does not fill a Branch C Stage 5 artifact: the signed
+sources are explicit incomplete scaffolds whose cycle content remains owned by
+Build-Runner after lock. Because the successor adds a new builder flag and new
+adapter identities, an REA-pinned convergence engine and adapter set must move
+before a population-305 release can be issued without failure classes 3 or 4.
+
 The callable independent-second-principal reviewer reads the protected
 convergence index and selects the unique highest active REA generation-5
 population adapter. The reviewer derives the selector from that adapter's

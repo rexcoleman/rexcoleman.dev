@@ -116,6 +116,17 @@ ROLE_CHECKLIST_ADAPTERS = tuple(
         "newsletter_generation_architecture", "research_engine_release",
     )
 )
+STAGE5_TEMPLATE_COUNT = len(tool.member_contract(
+    ROOT.parents[1], "stage5_build_template_successor_members"
+))
+STAGE5_TEMPLATE_ADAPTERS = tuple(
+    ROOT / f"adapters/{name}.population-{STAGE5_TEMPLATE_COUNT}-v1.json"
+    for name in (
+        "research_enforcement_activation", "adversarial_ml_landscape",
+        "agent_boundary_learning_landscape", "newsletter_hybrid_path",
+        "newsletter_generation_architecture", "research_engine_release",
+    )
+)
 
 
 
@@ -1164,6 +1175,10 @@ def test_index_is_closed_and_resolves_every_registered_adapter():
         "research-enforcement-activation", "adversarial-ml-landscape",
         "agent-boundary-learning-landscape", "newsletter-hybrid-path",
         "newsletter-generation-architecture", "research-engine-release")]
+    + [f"{name}-generation-5-population-{STAGE5_TEMPLATE_COUNT}-v1" for name in (
+        "research-enforcement-activation", "adversarial-ml-landscape",
+        "agent-boundary-learning-landscape", "newsletter-hybrid-path",
+        "newsletter-generation-architecture", "research-engine-release")]
     )
     status = {row["adapter_id"]: row["status"] for row in value["adapters"]}
     assert {
@@ -1233,6 +1248,8 @@ def test_index_refuses_duplicate_unknown_retired_and_traversing_rows(
         for adapter_path in RESEARCH_RUNTIME_ADAPTERS:
             shutil.copyfile(adapter_path, adapters / adapter_path.name)
         for adapter_path in ROLE_CHECKLIST_ADAPTERS:
+            shutil.copyfile(adapter_path, adapters / adapter_path.name)
+        for adapter_path in STAGE5_TEMPLATE_ADAPTERS:
             shutil.copyfile(adapter_path, adapters / adapter_path.name)
     shutil.copyfile(WORKFLOW, tmp_path / "workflows" / WORKFLOW.name)
 
@@ -2691,6 +2708,77 @@ def test_role_checklist_impact_selector_resolves_the_new_contract():
     )
     assert len(expected) == adapter["expected_member_count"]
     assert set(ROLE_CHECKLIST_MEMBERS) <= set(expected)
+
+
+STAGE5_TEMPLATE_MEMBERS = {
+    "stage5-template-artifact-contract": (
+        "govML", "templates/build/ARTIFACT_CONTRACT.tmpl.md",
+    ),
+    "stage5-template-runtime-emit-spec": (
+        "govML", "templates/build/RUNTIME_EMIT_SPEC.tmpl.md",
+    ),
+    "stage5-template-acceptance-criteria": (
+        "govML", "templates/build/ACCEPTANCE_CRITERIA.tmpl.md",
+    ),
+    "stage5-template-construction-manifest-spec": (
+        "govML", "templates/build/construction_manifest_spec.tmpl.json",
+    ),
+    "stage5-template-construction-manifest": (
+        "govML", "templates/build/construction_manifest.tmpl.json",
+    ),
+}
+
+
+def test_stage5_template_adapters_derive_population_305_from_300():
+    """s250: only the population-bearing fields move from 300."""
+    successor_contract = tool.member_contract(
+        ROOT.parents[1], "stage5_build_template_successor_members"
+    )
+    prior_contract = tool.member_contract(
+        ROOT.parents[1], "role_checklist_successor_members"
+    )
+    assert STAGE5_TEMPLATE_COUNT == ROLE_CHECKLIST_COUNT + 5 == 305
+    assert {
+        key: successor_contract[key]
+        for key in set(successor_contract) - set(prior_contract)
+    } == STAGE5_TEMPLATE_MEMBERS
+    for old, new in zip(ROLE_CHECKLIST_ADAPTERS, STAGE5_TEMPLATE_ADAPTERS):
+        prior = tool.load_adapter(old)
+        successor = tool.load_adapter(new)
+        assert successor["adapter_id"] == prior["adapter_id"].replace(
+            f"-population-{ROLE_CHECKLIST_COUNT}-v1",
+            f"-population-{STAGE5_TEMPLATE_COUNT}-v1",
+        )
+        assert successor["expected_member_count"] == STAGE5_TEMPLATE_COUNT
+        assert successor["manifest_builder_flag"] == (
+            "--stage5-build-template-successor"
+        )
+        assert prior["expected_member_count"] == ROLE_CHECKLIST_COUNT
+        assert prior["manifest_builder_flag"] == "--role-checklist-successor"
+        population_fields = {
+            "adapter_id", "expected_member_count", "manifest_builder_flag",
+        }
+        assert set(successor) == set(prior)
+        assert {
+            key for key in successor if successor[key] != prior[key]
+        } == population_fields
+        assert tool.resolve_adapter(INDEX, prior["adapter_id"]) == old.resolve()
+        assert tool.resolve_adapter(INDEX, successor["adapter_id"]) == new.resolve()
+
+
+@pytest.mark.parametrize("adapter_path", STAGE5_TEMPLATE_ADAPTERS)
+def test_stage5_template_adapter_refuses_a_300_member_build(
+    tmp_path, adapter_path,
+):
+    adapter = tool.load_adapter(adapter_path)
+    evidence = tmp_path / "evidence"
+    (evidence / "receipts").mkdir(parents=True)
+    for name in ("manifest-a.json", "manifest-b.json"):
+        (evidence / "receipts" / name).write_text(json.dumps({
+            "result": build_result(member_count=ROLE_CHECKLIST_COUNT),
+        }))
+    with pytest.raises(tool.Refusal, match="BUILT_MANIFEST_CONTRACT_REFUSED"):
+        tool.contract_snapshot(adapter, evidence, "plan", None)
 
 
 def test_hermetic_cross_repository_fixture_uses_configured_root(tmp_path, monkeypatch):

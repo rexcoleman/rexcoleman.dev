@@ -92,9 +92,9 @@ def test_member_population_is_complete_and_two_method_count():
     )
     independent = load("independent_review")
     terminal_selector = independent._terminal_successor_selector()
-    assert terminal_selector == "role_checklist_successor_members"
-    terminal = contract.role_checklist_successor_members()
-    assert len(terminal) == 300
+    assert terminal_selector == "stage5_build_template_successor_members"
+    terminal = contract.stage5_build_template_successor_members()
+    assert len(terminal) == 305
     assert set(successor) < set(terminal)
     assert terminal["final-runtime-rollout"] == (
         "research_enforcement_activation",
@@ -324,7 +324,7 @@ def _materialize_candidate_subjects(
 ) -> dict[str, Path]:
     tmp_path.mkdir(parents=True)
     roots = {}
-    current = contract.role_checklist_successor_members()
+    current = contract.stage5_build_template_successor_members()
     for repository, specs in contract.group_member_contract(current).items():
         root = tmp_path / repository
         root.mkdir()
@@ -389,7 +389,7 @@ def _run_five_root_builder(
         "--ruleset-json", str(ruleset),
     ]
     if terminal:
-        arguments.append("--role-checklist-successor")
+        arguments.append("--stage5-build-template-successor")
     for repository in builder.MEMBERS:
         slug = repository.lower().replace("_", "-").replace(".", "-")
         arguments.extend(["--root-" + slug, str(roots[repository])])
@@ -419,8 +419,8 @@ def test_exact_five_candidate_roots_close_installed_runtime_population(
     honest = tmp_path / "honest" / contract.GENERATION_MANIFEST_NAME
     honest.parent.mkdir()
     assert _run_five_root_builder(monkeypatch, roots, ruleset, honest) == 0
-    current = contract.role_checklist_successor_members()
-    assert len(json.loads(honest.read_bytes())["members"]) == len(current) == 300
+    current = contract.stage5_build_template_successor_members()
+    assert len(json.loads(honest.read_bytes())["members"]) == len(current) == 305
     repeated = tmp_path / "repeated" / contract.GENERATION_MANIFEST_NAME
     repeated.parent.mkdir()
     assert _run_five_root_builder(monkeypatch, roots, ruleset, repeated) == 0
@@ -454,10 +454,10 @@ def test_exact_five_candidate_roots_close_installed_runtime_population(
                       if subject == removed_subject)
     del reduced[removed_id]
     monkeypatch.setattr(
-        builder, "role_checklist_successor_members", lambda: reduced,
+        builder, "stage5_build_template_successor_members", lambda: reduced,
     )
     with pytest.raises(
-        ValueError, match="role checklist member set refused"
+        ValueError, match="stage5 build template member set refused"
     ):
         _run_five_root_builder(
             monkeypatch, roots, ruleset,
@@ -465,8 +465,8 @@ def test_exact_five_candidate_roots_close_installed_runtime_population(
         )
     monkeypatch.setattr(
         builder,
-        "role_checklist_successor_members",
-        contract.role_checklist_successor_members,
+        "stage5_build_template_successor_members",
+        contract.stage5_build_template_successor_members,
     )
 
     govml = roots["govML"]

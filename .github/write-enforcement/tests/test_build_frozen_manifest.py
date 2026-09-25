@@ -594,6 +594,38 @@ def test_role_checklist_successor_flag_is_mutually_exclusive(monkeypatch, tmp_pa
         builder.main()
 
 
+def test_stage5_build_template_successor_flag_builds_generation5(
+    monkeypatch, tmp_path,
+):
+    root, _commit = fixture_repository(tmp_path)
+    ruleset(tmp_path / "ruleset.json")
+    monkeypatch.setattr(
+        builder, "MEMBERS", {"fixture": (("fixture-member", "member.txt"),)},
+    )
+    monkeypatch.setattr(sys, "argv", _role_checklist_flag_argv(
+        tmp_path, root, "--stage5-build-template-successor",
+    ))
+    assert builder.main() == 0
+    output = tmp_path / GENERATION_MANIFEST_NAME
+    assert json.loads(output.read_bytes())["authority_generation"] == 5
+
+
+def test_stage5_build_template_successor_flag_is_mutually_exclusive(
+    monkeypatch, tmp_path,
+):
+    root, _commit = fixture_repository(tmp_path)
+    ruleset(tmp_path / "ruleset.json")
+    monkeypatch.setattr(
+        builder, "MEMBERS", {"fixture": (("fixture-member", "member.txt"),)},
+    )
+    monkeypatch.setattr(sys, "argv", _role_checklist_flag_argv(
+        tmp_path, root,
+        "--stage5-build-template-successor", "--role-checklist-successor",
+    ))
+    with pytest.raises(ValueError, match="mutually exclusive"):
+        builder.main()
+
+
 def test_builder_refuses_unknown_successor_flag(monkeypatch, tmp_path):
     root, _commit = fixture_repository(tmp_path)
     ruleset(tmp_path / "ruleset.json")

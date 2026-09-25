@@ -1173,6 +1173,60 @@ def validate_role_checklist_member_ids(observed):
         raise ValueError("role checklist member set refused")
 
 
+# s250 signs the five canonical, intentionally unfilled Stage 5 scaffolds that
+# the authenticated research working-root materializer consumes. Population
+# 300 remains immutable; selecting any one of these subjects requires all five.
+STAGE5_BUILD_TEMPLATE_ADDITIONAL_MEMBERS = {
+    "stage5-template-artifact-contract": (
+        "govML", "templates/build/ARTIFACT_CONTRACT.tmpl.md",
+    ),
+    "stage5-template-runtime-emit-spec": (
+        "govML", "templates/build/RUNTIME_EMIT_SPEC.tmpl.md",
+    ),
+    "stage5-template-acceptance-criteria": (
+        "govML", "templates/build/ACCEPTANCE_CRITERIA.tmpl.md",
+    ),
+    "stage5-template-construction-manifest-spec": (
+        "govML", "templates/build/construction_manifest_spec.tmpl.json",
+    ),
+    "stage5-template-construction-manifest": (
+        "govML", "templates/build/construction_manifest.tmpl.json",
+    ),
+}
+
+
+def stage5_build_template_successor_members():
+    value = role_checklist_successor_members()
+    if set(value) & set(STAGE5_BUILD_TEMPLATE_ADDITIONAL_MEMBERS):
+        raise ValueError("stage5 build template member id collision")
+    value.update(STAGE5_BUILD_TEMPLATE_ADDITIONAL_MEMBERS)
+    if len(set(value.values())) != len(value):
+        raise ValueError("stage5 build template member subject collision")
+    return value
+
+
+def validate_stage5_build_template_member_ids(observed):
+    if set(observed) != set(stage5_build_template_successor_members()):
+        raise ValueError("stage5 build template member set refused")
+
+
+def validate_stage5_build_template_modes(source_modes, contract):
+    """Require all five canonical Stage 5 scaffolds as regular blobs."""
+    required = set(STAGE5_BUILD_TEMPLATE_ADDITIONAL_MEMBERS)
+    present = required & set(contract)
+    if not present:
+        return
+    if present != required or any(
+        contract.get(member_id)
+        != STAGE5_BUILD_TEMPLATE_ADDITIONAL_MEMBERS[member_id]
+        for member_id in required
+    ):
+        raise ValueError("stage5 build template contract incomplete")
+    for member_id in sorted(required):
+        if source_modes.get(member_id) != "100644":
+            raise ValueError(f"stage5 build template mode:{member_id}")
+
+
 def production_members_for_manifest(manifest, baseline=None):
     """Select the exact closed set for one known generation; never a subset."""
     rows = manifest.get("members") if isinstance(manifest, dict) else None
@@ -1208,13 +1262,19 @@ def production_members_for_manifest(manifest, baseline=None):
     )
     role_checklist_successor = dict(research_runtime_successor)
     role_checklist_successor.update(ROLE_CHECKLIST_ADDITIONAL_MEMBERS)
+    stage5_build_template_successor = dict(role_checklist_successor)
+    stage5_build_template_successor.update(
+        STAGE5_BUILD_TEMPLATE_ADDITIONAL_MEMBERS
+    )
     generation = manifest.get("authority_generation") if isinstance(manifest, dict) else None
     if generation is None and baseline is not None:
         # Unit-level byte/membership checks historically pass a reduced explicit
         # contract without the outer manifest loader. Production entrypoints
         # validate the generation before reaching this selector.
         return (
-            role_checklist_successor
+            stage5_build_template_successor
+            if observed & set(STAGE5_BUILD_TEMPLATE_ADDITIONAL_MEMBERS)
+            else role_checklist_successor
             if observed & set(ROLE_CHECKLIST_ADDITIONAL_MEMBERS)
             else research_runtime_successor
             if observed & set(RESEARCH_RUNTIME_DEPENDENCY_ADDITIONAL_MEMBERS)
@@ -1230,7 +1290,9 @@ def production_members_for_manifest(manifest, baseline=None):
         return base
     if generation == AUTHORITY_GENERATION:
         return (
-            role_checklist_successor
+            stage5_build_template_successor
+            if observed & set(STAGE5_BUILD_TEMPLATE_ADDITIONAL_MEMBERS)
+            else role_checklist_successor
             if observed & set(ROLE_CHECKLIST_ADDITIONAL_MEMBERS)
             else research_runtime_successor
             if observed & set(RESEARCH_RUNTIME_DEPENDENCY_ADDITIONAL_MEMBERS)
@@ -1425,6 +1487,7 @@ def validate_managed_live_member_aliases(
 ) -> None:
     """Close every authoring alias over the authenticated managed contract."""
     validate_research_working_root_template_modes(source_modes, contract)
+    validate_stage5_build_template_modes(source_modes, contract)
     table = MANAGED_LIVE_MEMBER_ALIASES
     expected_count = 15
     if set(contract) & set(DURABLE_HISTORY_ADDITIONAL_MEMBERS):
@@ -1434,6 +1497,7 @@ def validate_managed_live_member_aliases(
             research_working_root_template_successor_members(),
             research_runtime_dependency_successor_members(),
             role_checklist_successor_members(),
+            stage5_build_template_successor_members(),
         ):
             raise ValueError("managed live durable successor contract incomplete")
         table += DURABLE_HISTORY_MANAGED_LIVE_MEMBER_ALIASES

@@ -1606,3 +1606,67 @@ def test_role_checklist_substituted_path_refuses_by_collision_guard():
         member_contract.ROLE_CHECKLIST_ADDITIONAL_MEMBERS.clear()
         member_contract.ROLE_CHECKLIST_ADDITIONAL_MEMBERS.update(original)
     assert member_contract.role_checklist_successor_members() == successor
+
+
+def test_stage5_build_templates_are_exact_closed_successor():
+    from member_contract import (
+        STAGE5_BUILD_TEMPLATE_ADDITIONAL_MEMBERS,
+        production_members_for_manifest,
+        role_checklist_successor_members,
+        stage5_build_template_successor_members,
+        validate_role_checklist_member_ids,
+        validate_stage5_build_template_member_ids,
+        validate_stage5_build_template_modes,
+    )
+
+    historical = role_checklist_successor_members()
+    successor = stage5_build_template_successor_members()
+    expected = {
+        "stage5-template-artifact-contract": (
+            "govML", "templates/build/ARTIFACT_CONTRACT.tmpl.md",
+        ),
+        "stage5-template-runtime-emit-spec": (
+            "govML", "templates/build/RUNTIME_EMIT_SPEC.tmpl.md",
+        ),
+        "stage5-template-acceptance-criteria": (
+            "govML", "templates/build/ACCEPTANCE_CRITERIA.tmpl.md",
+        ),
+        "stage5-template-construction-manifest-spec": (
+            "govML", "templates/build/construction_manifest_spec.tmpl.json",
+        ),
+        "stage5-template-construction-manifest": (
+            "govML", "templates/build/construction_manifest.tmpl.json",
+        ),
+    }
+    assert STAGE5_BUILD_TEMPLATE_ADDITIONAL_MEMBERS == expected
+    assert len(historical) == 300
+    assert len(successor) == 305
+    assert set(successor) == set(historical) | set(expected)
+    assert all(successor[key] == historical[key] for key in historical)
+    validate_stage5_build_template_member_ids(successor)
+    validate_stage5_build_template_modes(
+        {key: "100644" for key in successor}, successor,
+    )
+    assert production_members_for_manifest({
+        "authority_generation": 5,
+        "members": [{"member_id": key} for key in successor],
+    }) == successor
+    assert production_members_for_manifest({
+        "authority_generation": 5,
+        "members": [{"member_id": key} for key in historical],
+    }) == historical
+
+    for key in expected:
+        omitted = dict(successor)
+        omitted.pop(key)
+        with pytest.raises(ValueError, match="stage5 build template member set refused"):
+            validate_stage5_build_template_member_ids(omitted)
+        modes = {member_id: "100644" for member_id in successor}
+        modes[key] = "100755"
+        with pytest.raises(ValueError, match=f"stage5 build template mode:{key}"):
+            validate_stage5_build_template_modes(modes, successor)
+
+    with pytest.raises(ValueError, match="stage5 build template member set refused"):
+        validate_stage5_build_template_member_ids(historical)
+    with pytest.raises(ValueError, match="role checklist member set refused"):
+        validate_role_checklist_member_ids(successor)
