@@ -2,13 +2,30 @@
   "assertion": "COMMIT_PREFLIGHT_PASS",
   "caller": "git-pre-commit",
   "changed_paths": [
-    ".github/write-enforcement/SIGNED_RELEASE_CONVERGENCE_INDEX.md"
+    ".github/write-enforcement/SIGNED_RELEASE_CONVERGENCE.md",
+    ".github/write-enforcement/SIGNED_RELEASE_CONVERGENCE_INDEX.md",
+    ".github/write-enforcement/adapters/adversarial_ml_landscape.population-305-v1.json",
+    ".github/write-enforcement/adapters/agent_boundary_learning_landscape.population-305-v1.json",
+    ".github/write-enforcement/adapters/newsletter_generation_architecture.population-305-v1.json",
+    ".github/write-enforcement/adapters/newsletter_hybrid_path.population-305-v1.json",
+    ".github/write-enforcement/adapters/research_enforcement_activation.population-305-v1.json",
+    ".github/write-enforcement/adapters/research_engine_release.population-305-v1.json",
+    ".github/write-enforcement/build_frozen_manifest.py",
+    ".github/write-enforcement/evidence/s250/POPULATION305_STAGE5_SUCCESSOR.md",
+    ".github/write-enforcement/member_contract.py",
+    ".github/write-enforcement/signed_release_convergence.py",
+    ".github/write-enforcement/signed_release_convergence_index.json",
+    ".github/write-enforcement/tests/test_build_frozen_manifest.py",
+    ".github/write-enforcement/tests/test_independent_review.py",
+    ".github/write-enforcement/tests/test_member_contract.py",
+    ".github/write-enforcement/tests/test_s131_convergence.py",
+    ".github/write-enforcement/tests/test_signed_release_convergence.py"
   ],
-  "changed_paths_count": 1,
-  "changed_paths_sha256": "4263c2d89130d6d153c2f0c23b9697744b9db00ab3df20ee32cbf4d718b95f83",
+  "changed_paths_count": 18,
+  "changed_paths_sha256": "048198f801ab9074c3ec4b2a9e0e62f1079a0d5b91cceca5f2ab60adae401cd1",
   "mode": "commit-preflight",
-  "parent_head": "ede5e402f484307712ff0f844710082dad23e8d6",
-  "run_id": "pre-commit-702e23a72472b2a085e50af8",
+  "parent_head": "f0a919ea51581cfe5fe0756618133570cb55aeb9",
+  "run_id": "pre-commit-8e6f724cc556518d6aaf1704",
   "schema_version": "rea.pre-commit-boundary.v1",
-  "utc_asserted_at": "2026-09-25T01:41:49Z"
+  "utc_asserted_at": "2026-09-25T02:18:51Z"
 }
