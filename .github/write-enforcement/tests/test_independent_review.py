@@ -579,8 +579,9 @@ def test_next_contract_manifest_is_an_exact_positive_control():
 
 
 def test_current_registered_manifest_is_the_exact_installed_population():
-    # Release 4 froze population 300. The s250 Stage 5 template successor
-    # registers population 305 as terminal source, but does not issue it.
+    # Release 5 froze the population-305 contract. Earlier tests keep the
+    # historical 300-member successor control, but the installed manifest itself
+    # is now the exact terminal contract.
     raw = CURRENT_MANIFEST.read_bytes()
     value = json.loads(raw)
     observed = {
@@ -588,21 +589,13 @@ def test_current_registered_manifest_is_the_exact_installed_population():
         for row in value["members"]
     }
     unsigned = {key: item for key, item in value.items() if key != "manifest_digest"}
-    frozen = MODULE.structural_members("role_checklist_successor_members")
     terminal = MODULE.expected_members()
-    assert observed == frozen
-    assert len(frozen) == 300
+    assert observed == terminal
     assert len(terminal) == 305
-    assert set(terminal) - set(frozen) == {
-        "stage5-template-artifact-contract",
-        "stage5-template-runtime-emit-spec",
-        "stage5-template-acceptance-criteria",
-        "stage5-template-construction-manifest-spec",
-        "stage5-template-construction-manifest",
-    }
     assert value["manifest_digest"] == digest(unsigned)
-    with pytest.raises(MODULE.Refusal, match="generation-5 manifest contract differs"):
-        MODULE.manifest_contract(raw)
+    report = MODULE.manifest_contract(raw)
+    assert report["member_count"] == 305
+    assert report["member_contract"] == "EXACT"
 
 
 def test_manifest_only_identity_refresh_preserves_the_structural_positive():
