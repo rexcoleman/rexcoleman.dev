@@ -1,0 +1,11 @@
+# s254 forward release-pin correction
+
+Date: 2026-09-29 UTC. Scope: shared release source only; no issuance, finalize, runtime repoint, installed-state mutation, or manual governance edit.
+
+PR #256's equality rule created a genuine recovery cycle. REA governance still pins `7bee6abc7a7d96488313457cd3981ca92a9bd0aa`; a corrected release must select a later common descendant such as protected govML main `da4887f99a7bb7af7f50fe72eeed279310c46112`. The signed installer at `govML/templates/build/enforcement/install_write_enforcement.py:3015-3110` permits a governance advance only to the engine commit in a verified new bundle. Requiring REA governance to equal that new commit *before* the bundle is frozen prevents the bundle from ever existing.
+
+The builder now requires the committed REA pin to be an ancestor of or equal to its selected govML commit. It resolves both commit objects and refuses divergence or missing objects. It separately queries GitHub's protected `govML` main comparison and accepts only `ahead` or `identical`, so an unmerged descendant cannot enter a release plan. Missing, malformed, duplicate, nested, and dirty pins continue to refuse. The check runs before opening the frozen member population.
+
+Hermetic tests cover equal and forward commit graphs, a divergent graph, malformed/absent/dirty pin cases, protected-default compare statuses, and pre-freeze ordering. Full builder suite: `full_builder_tests.raw.txt`, 66 passed, rc 0. Direct read-only source proof: `live_ancestry_proof.raw.txt` accepts real `7bee→da488` and refuses old r3 `7bee→07cb`; `protected_default_reachability.raw.txt` and `github_compare_status.raw.txt` record the GitHub main comparison (`identical`).
+
+Remaining route if kc-101 explicitly permits another signed release: freeze a corrected manifest over current protected-default-reachable sources, issue/finalize/publish it through the registered route, then use the registered standalone forward governance advance to the new signed target before ordinary install. The recovery-mode advance separately requires the working pin to equal the predecessor signed engine and is not the route for this divergent predecessor. All normal packet, ancestry, source, and transition checks remain binding. The existing one-release limit remains unresolved by this source correction.

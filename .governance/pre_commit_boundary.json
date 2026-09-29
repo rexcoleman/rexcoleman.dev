@@ -3,17 +3,18 @@
   "caller": "git-pre-commit",
   "changed_paths": [
     ".github/write-enforcement/build_frozen_manifest.py",
-    ".github/write-enforcement/tests/evidence/s254_release_engine_pin/FINDING.md",
-    ".github/write-enforcement/tests/evidence/s254_release_engine_pin/full_builder_tests.raw.txt",
-    ".github/write-enforcement/tests/evidence/s254_release_engine_pin/r3_pin_refusal.raw.txt",
-    ".github/write-enforcement/tests/evidence/s254_release_engine_pin/targeted_tests.raw.txt",
+    ".github/write-enforcement/tests/evidence/s254_forward_release_pin/FINDING.md",
+    ".github/write-enforcement/tests/evidence/s254_forward_release_pin/full_builder_tests.raw.txt",
+    ".github/write-enforcement/tests/evidence/s254_forward_release_pin/github_compare_status.raw.txt",
+    ".github/write-enforcement/tests/evidence/s254_forward_release_pin/live_ancestry_proof.raw.txt",
+    ".github/write-enforcement/tests/evidence/s254_forward_release_pin/protected_default_reachability.raw.txt",
     ".github/write-enforcement/tests/test_build_frozen_manifest.py"
   ],
-  "changed_paths_count": 6,
-  "changed_paths_sha256": "7d8a9c8e967aa170224e5e10ef23420bb75488ebe73f231868f8876426556158",
+  "changed_paths_count": 7,
+  "changed_paths_sha256": "160bd420a9049fbe711c4b1884b3a01fe49bc13caf965abb2d460935913bf64d",
   "mode": "commit-preflight",
-  "parent_head": "66a9b2848d75bc094d3bc07658e0fe03a087a9f4",
-  "run_id": "pre-commit-a2dbc7ce00888453728c3eb9",
+  "parent_head": "a792e0b6b60a5c722da7e8190b920c6c3b1dd57a",
+  "run_id": "pre-commit-f89a315ca5625fb02d7a2ec1",
   "schema_version": "rea.pre-commit-boundary.v1",
-  "utc_asserted_at": "2026-09-29T16:50:20Z"
+  "utc_asserted_at": "2026-09-29T17:08:16Z"
 }

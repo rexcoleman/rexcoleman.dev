@@ -89,7 +89,7 @@ def test_release_engine_pin_matches_selected_member_commit(tmp_path, quoted):
     (
         ("profile: research-build\n", "pin absent"),
         ("govml_lock_commit: malformed\n", "pin malformed"),
-        ("govml_lock_commit: " + "1" * 40 + "\n", "pin mismatch"),
+        ("govml_lock_commit: " + "1" * 40 + "\n", "pin unresolved"),
         ("govml_lock_commit: " + "1" * 40 + "\ngovml_lock_commit: " + "2" * 40 + "\n", "pin duplicate"),
         ("  govml_lock_commit: " + "1" * 40 + "\n", "pin malformed"),
         ("govml_lock_commit: " + "1" * 40 + "\n'govml_lock_commit': " + "2" * 40 + "\n", "pin duplicate"),
@@ -108,6 +108,63 @@ def test_release_engine_pin_refuses_dirty_governance(tmp_path):
     )
     with pytest.raises(ValueError, match="dirty bound member"):
         builder.validate_release_engine_pin(roots, commits)
+
+
+def test_release_engine_pin_allows_forward_upgrade_before_bundle_exists(tmp_path):
+    roots, commits = release_pin_repositories(tmp_path, None)
+    old_pin = commits["govML"]
+    govml = roots["govML"]
+    (govml / "member.py").write_text("# corrected release member\n")
+    git(govml, "add", "member.py")
+    git(govml, "commit", "-q", "-m", "merged forward source")
+    commits["govML"] = git(govml, "rev-parse", "HEAD")
+    assert git(govml, "merge-base", "--is-ancestor", old_pin, commits["govML"]) == ""
+    builder.validate_release_engine_pin(roots, commits)
+
+
+def test_release_engine_pin_refuses_divergent_upgrade(tmp_path):
+    roots, commits = release_pin_repositories(tmp_path, None)
+    base = commits["govML"]
+    govml = roots["govML"]
+    (govml / "old_branch.py").write_text("# old REA pin\n")
+    git(govml, "add", "old_branch.py")
+    git(govml, "commit", "-q", "-m", "old pin branch")
+    old_pin = git(govml, "rev-parse", "HEAD")
+    git(govml, "checkout", "-q", "-b", "selected", base)
+    (govml / "selected_branch.py").write_text("# divergent selected member\n")
+    git(govml, "add", "selected_branch.py")
+    git(govml, "commit", "-q", "-m", "selected release branch")
+    commits["govML"] = git(govml, "rev-parse", "HEAD")
+    rea = roots["research_enforcement_activation"]
+    (rea / "governance.yaml").write_text(f"govml_lock_commit: {old_pin}\n")
+    git(rea, "add", "governance.yaml")
+    git(rea, "commit", "-q", "-m", "pin old branch")
+    commits["research_enforcement_activation"] = git(rea, "rev-parse", "HEAD")
+    with pytest.raises(ValueError, match="pin nonforward"):
+        builder.validate_release_engine_pin(roots, commits)
+
+
+@pytest.mark.parametrize(("raw_exit", "status", "accepted"), (
+    (0, "identical", True), (0, "ahead", True),
+    (0, "behind", False), (0, "diverged", False), (1, "", False),
+))
+def test_release_engine_pin_requires_protected_default_reachability(
+    monkeypatch, raw_exit, status, accepted
+):
+    def compare(argv, **kwargs):
+        assert argv == [
+            "gh", "api", "repos/rexcoleman/govML/compare/" + "a" * 40 + "...main",
+            "--jq", ".status",
+        ]
+        assert kwargs["timeout"] == 30
+        return subprocess.CompletedProcess(argv, raw_exit, status + "\n", "")
+
+    monkeypatch.setattr(builder.subprocess, "run", compare)
+    if accepted:
+        builder.verify_govml_protected_default_reachability("a" * 40)
+    else:
+        with pytest.raises(ValueError, match="protected-default reachability refused"):
+            builder.verify_govml_protected_default_reachability("a" * 40)
 
 
 @pytest.mark.parametrize("matching", (True, False))
@@ -130,6 +187,7 @@ def test_release_builder_checks_pin_before_opening_frozen_population(
         raise PopulationReached()
 
     monkeypatch.setattr(builder, "open_frozen_population", population_probe)
+    monkeypatch.setattr(builder, "verify_govml_protected_default_reachability", lambda _commit: None)
     output = tmp_path / GENERATION_MANIFEST_NAME
     monkeypatch.setattr(sys, "argv", [
         "build_frozen_manifest.py", "--staged-nonproduction",
@@ -138,7 +196,7 @@ def test_release_builder_checks_pin_before_opening_frozen_population(
         "--root-govml", str(roots["govML"]),
     ])
     with pytest.raises(PopulationReached if matching else ValueError,
-                       match=None if matching else "pin mismatch"):
+                       match=None if matching else "pin unresolved"):
         builder.main()
     assert not output.exists()
 
