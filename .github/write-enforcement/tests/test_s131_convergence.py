@@ -365,6 +365,37 @@ def _materialize_candidate_subjects(
         _commit(root, "exact candidate subjects")
         roots[repository] = root
     assert set(roots) == set(contract.group_member_contract(current))
+    # The real builder now authenticates REA's committed engine pin before
+    # opening the frozen population. Give these synthetic repositories the
+    # same forward-upgrade relationship as the release under test.
+    govml = roots["govML"]
+    predecessor = subprocess.check_output(
+        ["git", "-C", str(govml), "rev-parse", "HEAD"], text=True,
+    ).strip()
+    (govml / ".fixture-forward-marker").write_text("selected successor\n")
+    _commit(govml, "selected govML successor")
+    rea = roots["research_enforcement_activation"]
+    governance = rea / "governance.yaml"
+    source_governance = (
+        source_roots["research_enforcement_activation"] / "governance.yaml"
+    ).read_text(encoding="utf-8")
+    pinned_governance, replacements = re.subn(
+        r"^govml_lock_commit: [0-9a-f]{40}$",
+        f"govml_lock_commit: {predecessor}",
+        source_governance,
+        flags=re.MULTILINE,
+    )
+    assert replacements == 1
+    governance.write_text(pinned_governance, encoding="utf-8")
+    _commit(rea, "REA governance pins govML predecessor")
+    selected = subprocess.check_output(
+        ["git", "-C", str(govml), "rev-parse", "HEAD"], text=True,
+    ).strip()
+    assert selected != predecessor
+    subprocess.run(
+        ["git", "-C", str(govml), "merge-base", "--is-ancestor", predecessor, selected],
+        check=True,
+    )
     return roots
 
 
@@ -407,6 +438,9 @@ def test_exact_five_candidate_roots_close_installed_runtime_population(
     ruleset = tmp_path / "ruleset.json"
     _ruleset(ruleset)
     monkeypatch.setattr(builder, "verify_remote_reachability", lambda *_: None)
+    monkeypatch.setattr(
+        builder, "verify_govml_protected_default_reachability", lambda *_: None,
+    )
 
     old_flag = tmp_path / "old-flag" / contract.GENERATION_MANIFEST_NAME
     old_flag.parent.mkdir()
