@@ -119,12 +119,13 @@ def committed_member_mode(root: Path, commit: str, path: str) -> str:
 def validate_release_engine_pin(
     roots: dict[str, Path], commits: dict[str, str]
 ) -> None:
-    """Bind REA's committed governance pin to the govML release member ref.
+    """Require a forward move from REA's committed pin to the release ref.
 
     The manifest does not package governance.yaml, so byte-exact member checks
-    alone cannot detect a plan whose REA consumer will reject the selected
-    govML commit.  Check the immutable REA source before opening/finalizing the
-    frozen population.
+    alone cannot detect a divergent pair.  Equality is too strict: an existing
+    project can advance its pin only after a new signed bundle exists.  Check
+    ancestry before freezing that new bundle, then the registered installer
+    can advance the project pin in a separate authenticated transaction.
     """
     if set(roots) != set(commits) or not {
         "research_enforcement_activation", "govML"
@@ -159,10 +160,35 @@ def validate_release_engine_pin(
     if match is None:
         raise ValueError("release REA governance pin malformed")
     pinned = next(value for value in match.groups() if value is not None)
-    if pinned != selected_govml:
+    govml = roots["govML"]
+    for commit in (pinned, selected_govml):
+        found = subprocess.run(
+            ["git", "-C", str(govml), "cat-file", "-e", commit + "^{commit}"],
+            check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+        )
+        if found.returncode:
+            raise ValueError("release REA governance govML pin unresolved")
+    forward = subprocess.run(
+        ["git", "-C", str(govml), "merge-base", "--is-ancestor", pinned, selected_govml],
+        check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+    )
+    if forward.returncode:
         raise ValueError(
-            "release REA governance govML pin mismatch:"
+            "release REA governance govML pin nonforward:"
             f"pinned={pinned}:selected={selected_govml}"
+        )
+
+
+def verify_govml_protected_default_reachability(commit: str) -> None:
+    """Refuse a selected engine commit not reachable from protected main."""
+    checked = subprocess.run(
+        ["gh", "api", f"repos/rexcoleman/govML/compare/{commit}...main", "--jq", ".status"],
+        check=False, capture_output=True, text=True, timeout=30,
+    )
+    if checked.returncode or checked.stdout.strip() not in {"ahead", "identical"}:
+        raise ValueError(
+            "release govML protected-default reachability refused:"
+            f"commit={commit};raw_exit={checked.returncode};status={checked.stdout.strip()!r}"
         )
 
 
@@ -542,6 +568,7 @@ def main() -> int:
     commits = {repository: head(root) for repository, root in roots.items()}
     if not synthetic_contract:
         validate_release_engine_pin(roots, commits)
+        verify_govml_protected_default_reachability(commits["govML"])
     loaded = open_frozen_population(roots, commits, expected_members)
     if "govML" in roots:
         validate_installed_population(
