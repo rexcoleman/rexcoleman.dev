@@ -116,6 +116,56 @@ def committed_member_mode(root: Path, commit: str, path: str) -> str:
     return match.group(1)
 
 
+def validate_release_engine_pin(
+    roots: dict[str, Path], commits: dict[str, str]
+) -> None:
+    """Bind REA's committed governance pin to the govML release member ref.
+
+    The manifest does not package governance.yaml, so byte-exact member checks
+    alone cannot detect a plan whose REA consumer will reject the selected
+    govML commit.  Check the immutable REA source before opening/finalizing the
+    frozen population.
+    """
+    if set(roots) != set(commits) or not {
+        "research_enforcement_activation", "govML"
+    } <= set(roots):
+        raise ValueError("release engine pin repository mapping invalid")
+    selected_govml = commits["govML"]
+    if not isinstance(selected_govml, str) or re.fullmatch(
+        r"[0-9a-f]{40}", selected_govml
+    ) is None:
+        raise ValueError("release selected govML commit invalid")
+    raw = committed_member_bytes(
+        roots["research_enforcement_activation"],
+        commits["research_enforcement_activation"],
+        "governance.yaml",
+    )
+    try:
+        lines = raw.decode("utf-8").splitlines()
+    except UnicodeDecodeError as exc:
+        raise ValueError("release REA governance pin malformed") from exc
+    candidates = [
+        line for line in lines
+        if re.match(r"^[ \t]*(?:govml_lock_commit|['\"]govml_lock_commit['\"])[ \t]*:", line)
+    ]
+    if not candidates:
+        raise ValueError("release REA governance pin absent")
+    if len(candidates) != 1:
+        raise ValueError("release REA governance pin duplicate")
+    match = re.fullmatch(
+        r"govml_lock_commit:[ \t]*(?:([0-9a-f]{40})|\"([0-9a-f]{40})\"|'([0-9a-f]{40})')[ \t]*",
+        candidates[0],
+    )
+    if match is None:
+        raise ValueError("release REA governance pin malformed")
+    pinned = next(value for value in match.groups() if value is not None)
+    if pinned != selected_govml:
+        raise ValueError(
+            "release REA governance govML pin mismatch:"
+            f"pinned={pinned}:selected={selected_govml}"
+        )
+
+
 def open_frozen_population(
     roots: dict[str, Path],
     commits: dict[str, str],
@@ -490,6 +540,8 @@ def main() -> int:
         )
     roots = {name: getattr(args, "root_" + name.lower().replace(".", "_")) for name in members}
     commits = {repository: head(root) for repository, root in roots.items()}
+    if not synthetic_contract:
+        validate_release_engine_pin(roots, commits)
     loaded = open_frozen_population(roots, commits, expected_members)
     if "govML" in roots:
         validate_installed_population(

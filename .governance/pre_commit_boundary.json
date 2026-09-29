@@ -2,13 +2,18 @@
   "assertion": "COMMIT_PREFLIGHT_PASS",
   "caller": "git-pre-commit",
   "changed_paths": [
-    ".github/write-enforcement/frozen_bundle_manifest.generation-5.json"
+    ".github/write-enforcement/build_frozen_manifest.py",
+    ".github/write-enforcement/tests/evidence/s254_release_engine_pin/FINDING.md",
+    ".github/write-enforcement/tests/evidence/s254_release_engine_pin/full_builder_tests.raw.txt",
+    ".github/write-enforcement/tests/evidence/s254_release_engine_pin/r3_pin_refusal.raw.txt",
+    ".github/write-enforcement/tests/evidence/s254_release_engine_pin/targeted_tests.raw.txt",
+    ".github/write-enforcement/tests/test_build_frozen_manifest.py"
   ],
-  "changed_paths_count": 1,
-  "changed_paths_sha256": "0e50f527ad13467749dcd58967b714e8b6e5b0b91970adfa7dab4bae4ff957de",
+  "changed_paths_count": 6,
+  "changed_paths_sha256": "7d8a9c8e967aa170224e5e10ef23420bb75488ebe73f231868f8876426556158",
   "mode": "commit-preflight",
-  "parent_head": "c595a4ceba0f1e75971ebbe399d316e2625dd859",
-  "run_id": "pre-commit-445344ce39d34e728823d7dd",
+  "parent_head": "66a9b2848d75bc094d3bc07658e0fe03a087a9f4",
+  "run_id": "pre-commit-a2dbc7ce00888453728c3eb9",
   "schema_version": "rea.pre-commit-boundary.v1",
-  "utc_asserted_at": "2026-09-29T15:37:32Z"
+  "utc_asserted_at": "2026-09-29T16:50:20Z"
 }
