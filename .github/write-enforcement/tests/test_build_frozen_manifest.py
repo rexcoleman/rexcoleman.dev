@@ -43,6 +43,106 @@ def fixture_repository(tmp_path: Path) -> tuple[Path, str]:
     return root, git(root, "rev-parse", "HEAD")
 
 
+def release_pin_repositories(tmp_path: Path, governance: str | None):
+    govml = tmp_path / "govML"
+    govml.mkdir()
+    git(govml, "init", "-q")
+    git(govml, "config", "user.email", "s254-fixture@example.invalid")
+    git(govml, "config", "user.name", "s254 fixture")
+    (govml / "member.py").write_text("# selected release member\n")
+    git(govml, "add", "member.py")
+    git(govml, "commit", "-q", "-m", "selected govML member")
+    selected = git(govml, "rev-parse", "HEAD")
+
+    rea = tmp_path / "research_enforcement_activation"
+    rea.mkdir()
+    git(rea, "init", "-q")
+    git(rea, "config", "user.email", "s254-fixture@example.invalid")
+    git(rea, "config", "user.name", "s254 fixture")
+    (rea / "governance.yaml").write_text(
+        governance if governance is not None else f"govml_lock_commit: {selected}\n"
+    )
+    git(rea, "add", "governance.yaml")
+    git(rea, "commit", "-q", "-m", "selected REA governance")
+    return (
+        {"govML": govml, "research_enforcement_activation": rea},
+        {"govML": selected, "research_enforcement_activation": git(rea, "rev-parse", "HEAD")},
+    )
+
+
+@pytest.mark.parametrize("quoted", (False, True))
+def test_release_engine_pin_matches_selected_member_commit(tmp_path, quoted):
+    roots, commits = release_pin_repositories(tmp_path, None)
+    if quoted:
+        rea = roots["research_enforcement_activation"]
+        (rea / "governance.yaml").write_text(
+            f'govml_lock_commit: "{commits["govML"]}"\n'
+        )
+        git(rea, "add", "governance.yaml")
+        git(rea, "commit", "-q", "-m", "quoted release pin")
+        commits["research_enforcement_activation"] = git(rea, "rev-parse", "HEAD")
+    builder.validate_release_engine_pin(roots, commits)
+
+
+@pytest.mark.parametrize(
+    ("governance", "refusal"),
+    (
+        ("profile: research-build\n", "pin absent"),
+        ("govml_lock_commit: malformed\n", "pin malformed"),
+        ("govml_lock_commit: " + "1" * 40 + "\n", "pin mismatch"),
+        ("govml_lock_commit: " + "1" * 40 + "\ngovml_lock_commit: " + "2" * 40 + "\n", "pin duplicate"),
+        ("  govml_lock_commit: " + "1" * 40 + "\n", "pin malformed"),
+        ("govml_lock_commit: " + "1" * 40 + "\n'govml_lock_commit': " + "2" * 40 + "\n", "pin duplicate"),
+    ),
+)
+def test_release_engine_pin_refuses_planted_governance(tmp_path, governance, refusal):
+    roots, commits = release_pin_repositories(tmp_path, governance)
+    with pytest.raises(ValueError, match=refusal):
+        builder.validate_release_engine_pin(roots, commits)
+
+
+def test_release_engine_pin_refuses_dirty_governance(tmp_path):
+    roots, commits = release_pin_repositories(tmp_path, None)
+    (roots["research_enforcement_activation"] / "governance.yaml").write_text(
+        "govml_lock_commit: " + "f" * 40 + "\n"
+    )
+    with pytest.raises(ValueError, match="dirty bound member"):
+        builder.validate_release_engine_pin(roots, commits)
+
+
+@pytest.mark.parametrize("matching", (True, False))
+def test_release_builder_checks_pin_before_opening_frozen_population(
+    tmp_path, monkeypatch, matching
+):
+    governance = None if matching else "govml_lock_commit: " + "f" * 40 + "\n"
+    roots, _commits = release_pin_repositories(tmp_path, governance)
+    members = {
+        "rea-fixture": ("research_enforcement_activation", "governance.yaml"),
+        "govml-fixture": ("govML", "member.py"),
+    }
+    monkeypatch.setattr(builder, "MEMBERS", builder.group_member_contract(members))
+    monkeypatch.setattr(builder, "staged_nonproduction_members", lambda: members)
+
+    class PopulationReached(Exception):
+        pass
+
+    def population_probe(*_args):
+        raise PopulationReached()
+
+    monkeypatch.setattr(builder, "open_frozen_population", population_probe)
+    output = tmp_path / GENERATION_MANIFEST_NAME
+    monkeypatch.setattr(sys, "argv", [
+        "build_frozen_manifest.py", "--staged-nonproduction",
+        "--output", str(output), "--ruleset-json", str(tmp_path / "ruleset.json"),
+        "--root-research-enforcement-activation", str(roots["research_enforcement_activation"]),
+        "--root-govml", str(roots["govML"]),
+    ])
+    with pytest.raises(PopulationReached if matching else ValueError,
+                       match=None if matching else "pin mismatch"):
+        builder.main()
+    assert not output.exists()
+
+
 def full_population_repositories(
     tmp_path: Path, contract=None,
 ) -> tuple[dict[str, Path], dict[str, str]]:
