@@ -8,8 +8,8 @@
   "changed_paths_count": 2,
   "changed_paths_sha256": "ae67540cfb39411e1c3f07649e3eff63e17b8deb38df0e723ff3f8c871345d32",
   "mode": "commit-preflight",
-  "parent_head": "e950fa66eabcefd0c1ee424da5b354928679aff5",
-  "run_id": "pre-commit-cd124a980e8c2cc0b972a616",
+  "parent_head": "dade861a33b787440995376fa43ac9eba75930c9",
+  "run_id": "pre-commit-7a7c1f94a380e191c9cf944f",
   "schema_version": "rea.pre-commit-boundary.v1",
-  "utc_asserted_at": "2026-09-30T19:53:43Z"
+  "utc_asserted_at": "2026-09-30T20:04:28Z"
 }
