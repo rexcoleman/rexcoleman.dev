@@ -1146,6 +1146,13 @@ def test_workflow_exposes_credential_only_after_environment_review():
     assert "sudo ln -sf /usr/bin/openssl.real /home/azureuser/miniconda3/bin/openssl" in text
     assert "OpenSSL 1.1.1-hosted-review-compat" in text
     assert "rawin unsupported by hosted review compatibility OpenSSL 1.1.1" in text
+    assert "Prepare hosted identity preflight shims" in text
+    assert "sudo tee /usr/local/bin/hostname" in text
+    assert "sudo tee /usr/local/bin/id" in text
+    assert "sudo tee /usr/local/bin/crontab" in text
+    assert 'test "$(hostname -s)" = "gios-dev"' in text
+    assert 'test "$(id -u)" = "1000"' in text
+    assert "hosted review crontab shim refuses mutation" in text
     assert "Upload failed hosted release plan evidence" in text
     assert "actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02" in text
     assert "hosted-release-plan-failure-${{ github.run_id }}" in text

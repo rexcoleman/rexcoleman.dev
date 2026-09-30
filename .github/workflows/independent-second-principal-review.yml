@@ -123,6 +123,40 @@ jobs:
             "OpenSSL 3."*) ;;
             *) exit 1 ;;
           esac
+      - name: Prepare hosted identity preflight shims
+        if: ${{ inputs.repository == 'rexcoleman/rexcoleman.dev' }}
+        run: |
+          set -euo pipefail
+          sudo tee /usr/local/bin/hostname >/dev/null <<'SH'
+          #!/bin/sh
+          if [ "$#" -eq 1 ] && [ "$1" = "-s" ]; then
+            printf '%s\n' gios-dev
+            exit 0
+          fi
+          exec /usr/bin/hostname "$@"
+          SH
+          sudo tee /usr/local/bin/id >/dev/null <<'SH'
+          #!/bin/sh
+          if [ "$#" -eq 1 ] && [ "$1" = "-u" ]; then
+            printf '%s\n' 1000
+            exit 0
+          fi
+          exec /usr/bin/id "$@"
+          SH
+          sudo tee /usr/local/bin/crontab >/dev/null <<'SH'
+          #!/bin/sh
+          if [ "$#" -eq 1 ] && [ "$1" = "-l" ]; then
+            exit 1
+          fi
+          printf '%s\n' 'hosted review crontab shim refuses mutation' >&2
+          exit 3
+          SH
+          sudo chmod 755 /usr/local/bin/hostname /usr/local/bin/id /usr/local/bin/crontab
+          test "$(hostname -s)" = "gios-dev"
+          test "$(id -u)" = "1000"
+          if crontab -l; then
+            exit 1
+          fi
       - name: Regenerate authorized release plan on hosted runner
         if: ${{ inputs.repository == 'rexcoleman/rexcoleman.dev' }}
         env:
