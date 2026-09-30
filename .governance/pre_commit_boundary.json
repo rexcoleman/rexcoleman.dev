@@ -2,13 +2,19 @@
   "assertion": "COMMIT_PREFLIGHT_PASS",
   "caller": "git-pre-commit",
   "changed_paths": [
-    ".github/write-enforcement/frozen_bundle_manifest.generation-5.json"
+    ".github/write-enforcement/FREEZE_SEQUENCE.md",
+    ".github/write-enforcement/SIGNED_RELEASE_CONVERGENCE_INDEX.md",
+    ".github/write-enforcement/adapters/research_enforcement_activation.exact-plan-recovery-drive-v1.json",
+    ".github/write-enforcement/independent_review.py",
+    ".github/write-enforcement/signed_release_convergence.py",
+    ".github/write-enforcement/tests/test_independent_review.py",
+    ".github/write-enforcement/tests/test_signed_release_convergence.py"
   ],
-  "changed_paths_count": 1,
-  "changed_paths_sha256": "0e50f527ad13467749dcd58967b714e8b6e5b0b91970adfa7dab4bae4ff957de",
+  "changed_paths_count": 7,
+  "changed_paths_sha256": "7fdca83c835656716213f9d3ecc2d0d849a1cf762a7b82f2db5cb3728d7fbfc8",
   "mode": "commit-preflight",
-  "parent_head": "159e5e93a33e3fa79bd8097e11a25f9600a010f1",
-  "run_id": "pre-commit-887fc0d4acd32a8bf279eb1f",
+  "parent_head": "30a78eff78bcabfd5f47bbcbcf3ed2eb363528e5",
+  "run_id": "pre-commit-12b17ba04e2916afafd9ac2f",
   "schema_version": "rea.pre-commit-boundary.v1",
-  "utc_asserted_at": "2026-09-29T20:30:44Z"
+  "utc_asserted_at": "2026-09-30T01:35:47Z"
 }

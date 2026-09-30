@@ -6,6 +6,7 @@ import json
 import os
 import shutil
 import stat
+import subprocess
 import sys
 from pathlib import Path
 
@@ -2922,7 +2923,7 @@ def test_exact_plan_recovery_drive_adapter_binds_phase_and_surfaces():
     assert value["manifest_builder_flag"] == "--stage5-build-template-successor"
     assert tool.phases_for_adapter(value) == (
         "roots", "impact", "hermetic", "manifest-a", "manifest-b", "contract",
-        "exact-plan-recovery-drive", "poststate",
+        "exact-plan-recovery-drive", "release-quality-loop", "poststate",
     )
     policy = value["exact_plan_recovery_drive"]
     assert policy["required_bindings"] == list(
@@ -3031,6 +3032,162 @@ def test_exact_plan_recovery_drive_refuses_wrong_staged_nonproduction_count(tmp_
         tool.exact_plan_recovery_drive_snapshot(
             adapter, mapping, tmp_path / "evidence"
         )
+
+
+_RELEASE_QUALITY_GATE = b'''#!/usr/bin/env python3
+import argparse, json, sys
+from pathlib import Path
+p = argparse.ArgumentParser()
+p.add_argument("--project-dir")
+p.add_argument("--report")
+p.add_argument("--emit")
+a = p.parse_args()
+value = json.loads(Path(a.report).read_text())
+excepted = bool(value.get("excepted"))
+clean = value.get("t3_status") == "complete" and (
+    value.get("score", 0) >= 8 or excepted)
+verdict = {"verdict": "CLEAN" if clean else "NOT_CLEAN", "clean": clean,
+           "exit": 0 if clean else 1,
+           "excepted_steps": [{"step_id": "disposed-semantic"}] if excepted else []}
+Path(a.emit).write_text(json.dumps(verdict))
+sys.exit(verdict["exit"])
+'''
+
+
+def _release_quality_loop_source(report, raw_exit=0):
+    return ("#!/bin/bash\nmkdir -p \"$1/outputs\"\n"
+            "cat > \"$1/outputs/quality_loop_report.json\" <<'JSON'\n"
+            + json.dumps(report) + "\nJSON\nexit %s\n" % raw_exit).encode()
+
+
+def test_release_quality_loop_executes_clean_candidate(tmp_path):
+    project = tmp_path / "project"
+    project.mkdir()
+    report = {"score": 8.4, "t3_status": "complete", "t3_composite": 8.3}
+    result = tool.run_release_quality_loop(
+        project, _release_quality_loop_source(report), _RELEASE_QUALITY_GATE,
+        tmp_path / "evidence", 8.0,
+    )
+    assert result["verdict"] == "CLEAN"
+    assert result["t3_composite"] == 8.3
+    assert (tmp_path / "evidence/quality-loop.stdout.raw").is_file()
+    assert (tmp_path / "evidence/ccql-verdict.json").is_file()
+
+
+def test_release_quality_preserves_named_ccql_exception(tmp_path):
+    project = tmp_path / "project"
+    project.mkdir()
+    report = {"score": 7.9, "t3_status": "complete", "t3_composite": 8.3,
+              "excepted": True}
+    result = tool.run_release_quality_loop(
+        project, _release_quality_loop_source(report, 1), _RELEASE_QUALITY_GATE,
+        tmp_path / "evidence", 8.0,
+    )
+    assert result["quality_loop_exit"] == 1
+    assert result["excepted_step_count"] == 1
+    assert result["t3_composite"] == 8.3
+
+
+@pytest.mark.parametrize("report,raw_exit", [
+    ({"score": 7.9, "t3_status": "skipped_structural_fails",
+      "t3_composite": None}, 1),
+    ({"score": 8.4, "t3_status": "complete", "t3_composite": 7.9}, 0),
+    ({"score": 8.4, "t3_status": "complete", "t3_composite": 8.3}, 1),
+    ({"score": 8.4, "t3_status": "complete", "t3_composite": "8.3"}, 0),
+])
+def test_release_quality_loop_refuses_dirty_or_unparseable(
+    tmp_path, report, raw_exit,
+):
+    project = tmp_path / "project"
+    project.mkdir()
+    with pytest.raises(tool.Refusal, match="RELEASE_QUALITY_LOOP_NOT_CLEAN"):
+        tool.run_release_quality_loop(
+            project, _release_quality_loop_source(report, raw_exit),
+            _RELEASE_QUALITY_GATE, tmp_path / "evidence", 8.0,
+        )
+
+
+def test_release_quality_loop_refuses_stale_committed_report(tmp_path):
+    project = tmp_path / "project"
+    (project / "outputs").mkdir(parents=True)
+    (project / "outputs/quality_loop_report.json").write_text(json.dumps({
+        "score": 10.0, "t3_status": "complete", "t3_composite": 10.0,
+    }))
+    with pytest.raises(tool.Refusal, match="RELEASE_QUALITY_REPORT_ABSENT"):
+        tool.run_release_quality_loop(
+            project, b"#!/bin/bash\nexit 0\n", _RELEASE_QUALITY_GATE,
+            tmp_path / "evidence", 8.0,
+        )
+
+
+def test_release_quality_loop_adapter_cannot_be_gutted(tmp_path):
+    value = json.loads(EXACT_PLAN_RECOVERY_ADAPTER.read_text())
+    del value["release_quality_loop"]
+    planted = tmp_path / "adapter.json"
+    planted.write_text(json.dumps(value))
+    with pytest.raises(tool.Refusal, match="ADAPTER"):
+        tool.load_adapter(planted)
+
+
+def test_historical_noop_does_not_score_or_authorize_new_freeze(monkeypatch):
+    def scoring_would_be_wrong(*_args):
+        raise AssertionError("historical no-op ran a new quality score")
+    monkeypatch.setattr(tool, "release_quality_loop_snapshot", scoring_would_be_wrong)
+    value = tool.phase_result(
+        tool.RELEASE_QUALITY_LOOP_PHASE, {}, {}, Path("/unused"),
+        "noop-rehearsal", Path("/unused-baseline"),
+    )
+    assert value == {"phase": tool.RELEASE_QUALITY_LOOP_PHASE,
+                     "status": "NOT_APPLICABLE_HISTORICAL_NOOP",
+                     "release_freeze_authority": False}
+
+
+def test_release_quality_phase_uses_exact_commits_and_candidate_scripts(
+    tmp_path, monkeypatch,
+):
+    def committed_repo(name, files):
+        root = tmp_path / name
+        root.mkdir()
+        subprocess.run(["git", "init", "-q", str(root)], check=True)
+        for relative, raw in files.items():
+            target = root / relative
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_bytes(raw)
+        subprocess.run(["git", "-C", str(root), "add", "--", "."], check=True)
+        env = dict(os.environ, GIT_AUTHOR_NAME="Test", GIT_AUTHOR_EMAIL="test@example.com",
+                   GIT_COMMITTER_NAME="Test", GIT_COMMITTER_EMAIL="test@example.com")
+        subprocess.run(["git", "-C", str(root), "commit", "-qm", "exact candidate"],
+                       env=env, check=True)
+        commit = subprocess.check_output(
+            ["git", "-C", str(root), "rev-parse", "HEAD"], text=True,
+        ).strip()
+        return root, commit
+
+    report = {"score": 8.4, "t3_status": "complete", "t3_composite": 8.3}
+    rea, rea_sha = committed_repo("rea", {
+        "outputs/quality_loop_report.json": json.dumps({
+            "score": 1, "t3_status": "skipped", "t3_composite": None,
+        }).encode(),
+        "scripts/quality_loop.sh": b"#!/bin/bash\nexit 1\n",
+    })
+    gov, gov_sha = committed_repo("gov", {
+        "scripts/quality_loop.sh": _release_quality_loop_source(report),
+        "templates/build/enforcement/quality_loop_cleanliness_gate.py":
+            _RELEASE_QUALITY_GATE,
+    })
+    monkeypatch.setattr(tool, "root_rows_by_name", lambda _evidence: {
+        "research_enforcement_activation": {"commit": rea_sha},
+        "govML": {"commit": gov_sha},
+    })
+    adapter = tool.load_adapter(EXACT_PLAN_RECOVERY_ADAPTER)
+    result = tool.release_quality_loop_snapshot(
+        adapter, {"research_enforcement_activation": rea, "govML": gov},
+        tmp_path / "evidence",
+    )
+    assert result["project_commit"] == rea_sha
+    assert result["govml_commit"] == gov_sha
+    assert result["t3_composite"] == 8.3
+    assert (tmp_path / "evidence/release-quality-loop/quality-loop-report.json").is_file()
 
 
 def test_hermetic_cross_repository_fixture_uses_configured_root(tmp_path, monkeypatch):

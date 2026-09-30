@@ -72,6 +72,13 @@
     ]
   },
   "expected_member_count": 305,
+  "release_quality_loop": {
+    "phase": "release-quality-loop",
+    "repository": "govML",
+    "loop_path": "scripts/quality_loop.sh",
+    "gate_path": "templates/build/enforcement/quality_loop_cleanliness_gate.py",
+    "minimum_t3_composite": 8.0
+  },
   "hermetic_fixture": {
     "durable_root_repository": "research_enforcement_activation",
     "kind": "authenticated-public-packet-home",
