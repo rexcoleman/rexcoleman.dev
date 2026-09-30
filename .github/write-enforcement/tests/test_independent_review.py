@@ -577,14 +577,15 @@ def test_current_freeze_remains_exact_after_logical_policy_key_repair():
 
 def test_next_contract_manifest_is_an_exact_positive_control():
     report=MODULE.manifest_contract(reseal(next_contract_manifest()))
-    assert report["member_count"] == len(MODULE.expected_members()) == 306
+    assert report["member_count"] == len(MODULE.expected_members()) == 307
     assert report["member_contract"] == "EXACT"
 
 
-def test_current_registered_manifest_is_preconvergence_population_305():
-    # Release 5 froze the population-305 contract. Branch C Unit 1 registers
-    # population 306 before the replacement manifest is built, so the currently
-    # installed manifest is now an authenticated predecessor, not the terminal.
+def test_current_registered_manifest_is_preconvergence_population_306():
+    # The installed manifest already carries the Unit1 verifier member, but not
+    # the hosted issuer workflow. Branch C Unit 1 now registers population 307
+    # before the replacement manifest is built, so the current manifest is an
+    # authenticated predecessor, not the terminal.
     raw = CURRENT_MANIFEST.read_bytes()
     value = json.loads(raw)
     observed = {
@@ -592,12 +593,15 @@ def test_current_registered_manifest_is_preconvergence_population_305():
         for row in value["members"]
     }
     unsigned = {key: item for key, item in value.items() if key != "manifest_digest"}
-    stage5 = MODULE.structural_members("stage5_build_template_successor_members")
     terminal = MODULE.expected_members()
-    assert observed == stage5
     assert set(observed) < set(terminal)
-    assert len(observed) == 305
-    assert len(terminal) == 306
+    assert observed["non-expiring-enforcement"] == (
+        "rexcoleman.dev",
+        ".github/write-enforcement/non_expiring_enforcement.py",
+    )
+    assert "non-expiring-enforcement-workflow" not in observed
+    assert len(observed) == 306
+    assert len(terminal) == 307
     assert value["manifest_digest"] == digest(unsigned)
     with pytest.raises(MODULE.Refusal, match="generation-5 manifest contract differs"):
         MODULE.manifest_contract(raw)
@@ -629,7 +633,7 @@ def test_registered_adapter_selects_structurally_derived_unit1_non_expiring_cont
         f"research_enforcement_activation.population-{population}-v1.json"
     )
     assert set(old) < set(current)
-    assert len(current) == adapter["expected_member_count"] == population == 306
+    assert len(current) == adapter["expected_member_count"] == population == 307
     assert "final-runtime-rollout" in current
     assert {
         "research-template-observation-log",
@@ -748,7 +752,7 @@ def test_lower_only_registered_population_refuses_as_a_downgrade(
         row
         for row in index["adapters"]
         if row["adapter_id"]
-        != "research-enforcement-activation-generation-5-population-306-v1"
+        != "research-enforcement-activation-generation-5-population-307-v1"
     ]
     paths["index"].write_text(json.dumps(index), encoding="utf-8")
     with pytest.raises(MODULE.Refusal, match="terminal successor"):
@@ -768,11 +772,11 @@ def test_retired_historical_population_does_not_block_active_terminal(
     historical["status"] = "retired"
     paths["index"].write_text(json.dumps(index), encoding="utf-8")
     selected, population = MODULE._registered_adapter_path()
-    assert population == 306
+    assert population == 307
     assert selected.name == (
-        "research_enforcement_activation.population-306-v1.json"
+        "research_enforcement_activation.population-307-v1.json"
     )
-    assert len(MODULE.expected_members()) == 306
+    assert len(MODULE.expected_members()) == 307
 
 
 def test_retired_terminal_with_only_lower_active_population_refuses(
@@ -783,7 +787,7 @@ def test_retired_terminal_with_only_lower_active_population_refuses(
         row
         for row in index["adapters"]
         if row["adapter_id"]
-        == "research-enforcement-activation-generation-5-population-306-v1"
+        == "research-enforcement-activation-generation-5-population-307-v1"
     )
     terminal["status"] = "retired"
     paths["index"].write_text(json.dumps(index), encoding="utf-8")
@@ -834,7 +838,7 @@ def test_structural_member_derivation_does_not_execute_source(tmp_path, monkeypa
         encoding="utf-8",
     )
     monkeypatch.setattr(MODULE, "MEMBER_CONTRACT", planted)
-    assert len(MODULE.expected_members()) == 306
+    assert len(MODULE.expected_members()) == 307
     assert not marker.exists()
 
 
@@ -1022,16 +1026,16 @@ def test_site_freeze_review_accepts_integrity_plan_with_dirty_quality_loop(tmp_p
     assert json.loads((evidence / "quality-loop-report.json").read_text())["score"] == 7.9
 
 
-def test_site_freeze_review_accepts_population_306_plan_without_legacy_preflight(
+def test_site_freeze_review_accepts_population_307_plan_without_legacy_preflight(
     tmp_path,
 ):
     expected, engine, _evidence, state_path = _integrity_plan_evidence(
         tmp_path,
-        adapter_name="research_enforcement_activation.population-306-v1.json",
+        adapter_name="research_enforcement_activation.population-307-v1.json",
     )
     adapter = engine.load_adapter(
         MODULE_PATH.with_name("adapters")
-        / "research_enforcement_activation.population-306-v1.json"
+        / "research_enforcement_activation.population-307-v1.json"
     )
     assert engine.CANDIDATE_INTEGRITY_PREFLIGHT_PHASE not in engine.phases_for_adapter(
         adapter
@@ -1039,7 +1043,7 @@ def test_site_freeze_review_accepts_population_306_plan_without_legacy_preflight
     state = json.loads(state_path.read_text())
     assert (
         state["adapter_id"]
-        == "research-enforcement-activation-generation-5-population-306-v1"
+        == "research-enforcement-activation-generation-5-population-307-v1"
     )
     assert MODULE.verify_release_integrity_plan(expected) == state["receipt_sha256"][
         "manifest-a"
@@ -1049,7 +1053,7 @@ def test_site_freeze_review_accepts_population_306_plan_without_legacy_preflight
 def test_site_freeze_review_refuses_plan_adapter_different_from_authority(tmp_path):
     expected, _engine, _evidence, _state_path = _integrity_plan_evidence(
         tmp_path,
-        adapter_name="research_enforcement_activation.population-306-v1.json",
+        adapter_name="research_enforcement_activation.population-307-v1.json",
     )
     expected.expected_plan_adapter_id = (
         "research-enforcement-activation-generation-5-exact-plan-recovery-drive-v1"

@@ -10,6 +10,7 @@ import hashlib
 import json
 import os
 import shutil
+import subprocess
 import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
@@ -119,6 +120,19 @@ def load_private_key(path: Path) -> Ed25519PrivateKey:
     return key
 
 
+def public_bytes(private_key: Ed25519PrivateKey) -> bytes:
+    return private_key.public_key().public_bytes(
+        encoding=serialization.Encoding.PEM,
+        format=serialization.PublicFormat.SubjectPublicKeyInfo,
+    )
+
+
+def trusted_public_bytes(path: Path | None) -> bytes:
+    if path is None:
+        raise EnforcementRefusal("TRUST_ROOT_MISSING", "trusted_public_key")
+    return path.read_bytes()
+
+
 def verify_signature(public: Ed25519PublicKey, payload: dict[str, Any],
                      signature: object) -> None:
     signed_digest = digest(canonical(payload))
@@ -150,6 +164,152 @@ def sign_payload(payload: dict[str, Any], private_key: Ed25519PrivateKey) -> dic
     return signed
 
 
+def _git_output(args: list[str], cwd: Path) -> str:
+    result = subprocess.run(
+        ["git", *args],
+        cwd=str(cwd),
+        check=False,
+        capture_output=True,
+        text=True,
+        timeout=30,
+    )
+    if result.returncode:
+        raise EnforcementRefusal("PROTECTED_DEFAULT_INVALID", result.stderr.strip())
+    return result.stdout.strip()
+
+
+def protected_default_commit(repo_root: Path) -> str:
+    commit = _git_output(["rev-parse", "HEAD"], repo_root)
+    if not _hex40(commit):
+        raise EnforcementRefusal("PROTECTED_DEFAULT_INVALID", "head")
+    dirty = _git_output(["status", "--porcelain"], repo_root)
+    if dirty:
+        raise EnforcementRefusal("PROTECTED_DEFAULT_INVALID", "dirty")
+    return commit
+
+
+def packet_subject_digest(
+    *,
+    source_manifest_raw: bytes,
+    public_raw: bytes,
+    repository: str,
+    ref: str,
+    commit: str,
+    scope: list[str],
+    surfaces: list[str],
+) -> str:
+    subject = {
+        "protected_default_commit": commit,
+        "protected_default_ref": ref,
+        "protected_default_repository": repository,
+        "publishing_capability_scope": scope,
+        "required_surfaces": surfaces,
+        "source_manifest_digest": digest(source_manifest_raw),
+        "trusted_public_key_sha256": digest(public_raw),
+    }
+    return digest(canonical(subject))
+
+
+def write_packet_files(
+    output: Path,
+    packet: dict[str, Any],
+    revocations: dict[str, Any],
+    public_raw: bytes,
+) -> None:
+    output.mkdir(parents=True, exist_ok=True)
+    payloads = {
+        PACKET_NAME: canonical(packet) + b"\n",
+        REVOCATION_NAME: canonical(revocations) + b"\n",
+        PUBLIC_KEY_NAME: public_raw,
+    }
+    for name, raw in payloads.items():
+        (output / name).write_bytes(raw)
+    (output / CHECKSUM_NAME).write_text(
+        "".join(
+            f"{digest((output / name).read_bytes())}  {name}\n"
+            for name in sorted(payloads)
+        ),
+        encoding="ascii",
+    )
+
+
+def issue_packet(
+    *,
+    repo_root: Path,
+    source_manifest: Path,
+    private_key: Path,
+    trusted_public_key: Path,
+    output: Path,
+    repository: str,
+    ref: str,
+    packet_version: str,
+    scope: list[str],
+    revoked_packet_digests: list[str] | None = None,
+    revoked_packet_versions: list[str] | None = None,
+    now: datetime | None = None,
+) -> dict[str, Any]:
+    private = load_private_key(private_key)
+    public_raw = public_bytes(private)
+    anchor_raw = trusted_public_bytes(trusted_public_key)
+    if public_raw != anchor_raw:
+        raise EnforcementRefusal("TRUST_ROOT_MISMATCH", "private_public_anchor")
+    source_manifest_raw = source_manifest.read_bytes()
+    commit = protected_default_commit(repo_root)
+    current = (now or datetime.now(timezone.utc)).astimezone(timezone.utc)
+    issued_at = current.replace(microsecond=0).isoformat().replace("+00:00", "Z")
+    surfaces = sorted(SURFACES)
+    revocation_payload = {
+        "schema_version": REVOCATION_SCHEMA,
+        "issuer": "rexcoleman.dev protected default",
+        "issued_at": issued_at,
+        "protected_default_commit": commit,
+        "revoked_packet_digests": revoked_packet_digests or [],
+        "revoked_packet_versions": revoked_packet_versions or [],
+    }
+    revocations = sign_payload(revocation_payload, private)
+    revocation_raw = canonical(revocations) + b"\n"
+    packet_payload = {
+        "schema_version": PACKET_SCHEMA,
+        "purpose": PURPOSE,
+        "state": "ENFORCING",
+        "authority_generation": 5,
+        "packet_version": packet_version,
+        "issuer": "rexcoleman.dev protected default",
+        "issuer_mode": ISSUER_MODE,
+        "protected_default_repository": repository,
+        "protected_default_ref": ref,
+        "protected_default_commit": commit,
+        "source_manifest_digest": digest(source_manifest_raw),
+        "subject_digest": packet_subject_digest(
+            source_manifest_raw=source_manifest_raw,
+            public_raw=public_raw,
+            repository=repository,
+            ref=ref,
+            commit=commit,
+            scope=scope,
+            surfaces=surfaces,
+        ),
+        "issued_at": issued_at,
+        "not_before": issued_at,
+        "publishing_capability_scope": scope,
+        "required_surfaces": surfaces,
+        "revocation_list_digest": digest(revocation_raw),
+        "trusted_key_id": f"rea-nonexpiring-ed25519-{digest(public_raw)[:16]}",
+    }
+    packet = sign_payload(packet_payload, private)
+    write_packet_files(output, packet, revocations, public_raw)
+    report = verify_packet(output, trusted_public_key=trusted_public_key, now=current)
+    return {
+        "schema_version": "rea.write.non-expiring-enforcement.issue-report.v1",
+        "verdict": "ISSUED",
+        "packet_digest": report["packet_digest"],
+        "packet_version": packet_version,
+        "protected_default_commit": commit,
+        "source_manifest_digest": packet_payload["source_manifest_digest"],
+        "subject_digest": packet_payload["subject_digest"],
+    }
+
+
 def verify_checksums(packet_root: Path) -> dict[str, str]:
     names = {path.name for path in packet_root.iterdir() if path.is_file()}
     if names != PACKET_FILES:
@@ -176,9 +336,17 @@ def load_signed_object(raw: bytes, public: Ed25519PublicKey, label: str) -> tupl
     return payload, digest(raw)
 
 
-def verify_packet(packet_root: Path, *, now: datetime | None = None) -> dict[str, Any]:
+def verify_packet(
+    packet_root: Path,
+    *,
+    trusted_public_key: Path | None = None,
+    now: datetime | None = None,
+) -> dict[str, Any]:
     checksums = verify_checksums(packet_root)
     public_raw = (packet_root / PUBLIC_KEY_NAME).read_bytes()
+    anchor_raw = trusted_public_bytes(trusted_public_key)
+    if public_raw != anchor_raw:
+        raise EnforcementRefusal("TRUST_ROOT_MISMATCH", "packet_public_key")
     public = load_public_key(public_raw)
     revocations_raw = (packet_root / REVOCATION_NAME).read_bytes()
     revocations, revocations_digest = load_signed_object(
@@ -285,15 +453,25 @@ def atomic_copy_packet(source: Path, destination: Path) -> None:
         raise
 
 
-def reconcile(source: Path, state_root: Path, *, now: datetime | None = None) -> dict[str, Any]:
+def reconcile(
+    source: Path,
+    state_root: Path,
+    *,
+    trusted_public_key: Path | None = None,
+    now: datetime | None = None,
+) -> dict[str, Any]:
     current = state_root / "current"
     alerts = state_root / "alerts"
     alerts.mkdir(parents=True, exist_ok=True)
     try:
-        candidate = verify_packet(source, now=now)
+        candidate = verify_packet(
+            source, trusted_public_key=trusted_public_key, now=now
+        )
     except EnforcementRefusal as exc:
         if current.is_dir():
-            last = verify_packet(current, now=now)
+            last = verify_packet(
+                current, trusted_public_key=trusted_public_key, now=now
+            )
             alert = {
                 "schema_version": "rea.write.non-expiring-enforcement.alert.v1",
                 "reason_code": exc.reason_code,
@@ -322,17 +500,53 @@ def reconcile(source: Path, state_root: Path, *, now: datetime | None = None) ->
 def main() -> int:
     parser = argparse.ArgumentParser()
     sub = parser.add_subparsers(dest="command", required=True)
+    issue_parser = sub.add_parser("issue")
+    issue_parser.add_argument("--repo-root", required=True, type=Path)
+    issue_parser.add_argument("--source-manifest", required=True, type=Path)
+    issue_parser.add_argument("--private-key", required=True, type=Path)
+    issue_parser.add_argument("--trusted-public-key", required=True, type=Path)
+    issue_parser.add_argument("--output", required=True, type=Path)
+    issue_parser.add_argument("--repository", default="rexcoleman/rexcoleman.dev")
+    issue_parser.add_argument("--ref", default="refs/heads/main")
+    issue_parser.add_argument("--packet-version", required=True)
+    issue_parser.add_argument(
+        "--scope", action="append", default=["research"],
+        help="Publishing capability scope; repeat for multiple values.",
+    )
+    issue_parser.add_argument("--revoked-packet-digest", action="append", default=[])
+    issue_parser.add_argument("--revoked-packet-version", action="append", default=[])
     verify_parser = sub.add_parser("verify")
     verify_parser.add_argument("--packet-root", required=True, type=Path)
+    verify_parser.add_argument("--trusted-public-key", required=True, type=Path)
     reconcile_parser = sub.add_parser("reconcile")
     reconcile_parser.add_argument("--source", required=True, type=Path)
     reconcile_parser.add_argument("--state-root", required=True, type=Path)
+    reconcile_parser.add_argument("--trusted-public-key", required=True, type=Path)
     args = parser.parse_args()
     try:
-        if args.command == "verify":
-            report = verify_packet(args.packet_root)
+        if args.command == "issue":
+            report = issue_packet(
+                repo_root=args.repo_root,
+                source_manifest=args.source_manifest,
+                private_key=args.private_key,
+                trusted_public_key=args.trusted_public_key,
+                output=args.output,
+                repository=args.repository,
+                ref=args.ref,
+                packet_version=args.packet_version,
+                scope=args.scope,
+                revoked_packet_digests=args.revoked_packet_digest,
+                revoked_packet_versions=args.revoked_packet_version,
+            )
+        elif args.command == "verify":
+            report = verify_packet(
+                args.packet_root, trusted_public_key=args.trusted_public_key
+            )
         else:
-            report = reconcile(args.source, args.state_root)
+            report = reconcile(
+                args.source, args.state_root,
+                trusted_public_key=args.trusted_public_key,
+            )
         print(json.dumps(report, sort_keys=True, separators=(",", ":")))
         return 0
     except EnforcementRefusal as exc:

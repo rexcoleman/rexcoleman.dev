@@ -1690,16 +1690,21 @@ def test_unit1_non_expiring_enforcement_is_exact_closed_successor():
             "rexcoleman.dev",
             ".github/write-enforcement/non_expiring_enforcement.py",
         ),
+        "non-expiring-enforcement-workflow": (
+            "rexcoleman.dev",
+            ".github/workflows/issue-non-expiring-enforcement-packet.yml",
+        ),
     }
     assert UNIT1_NON_EXPIRING_ENFORCEMENT_ADDITIONAL_MEMBERS == expected
     assert len(historical) == 305
-    assert len(successor) == 306
+    assert len(successor) == 307
     assert set(successor) == set(historical) | set(expected)
     assert all(successor[key] == historical[key] for key in historical)
     validate_unit1_non_expiring_enforcement_member_ids(successor)
     validate_unit1_non_expiring_enforcement_modes(
         {key: "100644" for key in historical} | {
-            "non-expiring-enforcement": "100755"
+            "non-expiring-enforcement": "100755",
+            "non-expiring-enforcement-workflow": "100644",
         },
         successor,
     )
@@ -1718,6 +1723,11 @@ def test_unit1_non_expiring_enforcement_is_exact_closed_successor():
         validate_unit1_non_expiring_enforcement_member_ids(omitted)
     modes = {member_id: "100644" for member_id in successor}
     with pytest.raises(ValueError, match="unit1 non-expiring mode:non-expiring-enforcement"):
+        validate_unit1_non_expiring_enforcement_modes(modes, successor)
+    modes = {member_id: "100644" for member_id in successor}
+    modes["non-expiring-enforcement"] = "100755"
+    modes["non-expiring-enforcement-workflow"] = "100755"
+    with pytest.raises(ValueError, match="unit1 non-expiring mode:non-expiring-enforcement-workflow"):
         validate_unit1_non_expiring_enforcement_modes(modes, successor)
     with pytest.raises(ValueError, match="stage5 build template member set refused"):
         validate_stage5_build_template_member_ids(successor)

@@ -94,7 +94,7 @@ def test_member_population_is_complete_and_two_method_count():
     terminal_selector = independent._terminal_successor_selector()
     assert terminal_selector == "unit1_non_expiring_enforcement_successor_members"
     terminal = contract.unit1_non_expiring_enforcement_successor_members()
-    assert len(terminal) == 306
+    assert len(terminal) == 307
     assert set(successor) < set(terminal)
     assert terminal["final-runtime-rollout"] == (
         "research_enforcement_activation",

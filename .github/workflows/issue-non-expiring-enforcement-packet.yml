@@ -1,0 +1,118 @@
+name: Issue non-expiring enforcement packet
+run-name: Non-expiring WEA packet
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/issue-non-expiring-enforcement-packet.yml"
+      - ".github/write-enforcement/non_expiring_enforcement.py"
+      - ".github/write-enforcement/frozen_bundle_manifest.generation-5.json"
+      - ".github/write-enforcement/trusted_wea_public.pem"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: rea-non-expiring-enforcement-packet
+  cancel-in-progress: false
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  issue:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    environment: rea-write-enforcement-issuer
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+          fetch-depth: 1
+      - name: Refuse non-protected ref
+        run: |
+          set -euo pipefail
+          test "${GITHUB_REPOSITORY}" = "rexcoleman/rexcoleman.dev"
+          test "${GITHUB_REF}" = "refs/heads/main"
+      - name: Materialize protected signing key
+        env:
+          WEA_KEY_B64: ${{ secrets.REA_WEA_ED25519_PRIVATE_KEY_B64 }}
+        run: |
+          set -euo pipefail
+          test -n "$WEA_KEY_B64"
+          umask 077
+          printf '%s' "$WEA_KEY_B64" | base64 --decode > "$RUNNER_TEMP/wea-private.pem"
+      - name: Issue non-expiring packet
+        run: |
+          set -euo pipefail
+          version="rea-non-expiring-${GITHUB_SHA}"
+          python3 .github/write-enforcement/non_expiring_enforcement.py issue \
+            --repo-root . \
+            --source-manifest .github/write-enforcement/frozen_bundle_manifest.generation-5.json \
+            --private-key "$RUNNER_TEMP/wea-private.pem" \
+            --trusted-public-key .github/write-enforcement/trusted_wea_public.pem \
+            --output non-expiring-packet \
+            --repository "$GITHUB_REPOSITORY" \
+            --ref "$GITHUB_REF" \
+            --packet-version "$version" \
+            | tee non-expiring-issue-report.json
+          python3 .github/write-enforcement/non_expiring_enforcement.py verify \
+            --packet-root non-expiring-packet \
+            --trusted-public-key .github/write-enforcement/trusted_wea_public.pem \
+            | tee non-expiring-verify-report.json
+          (cd non-expiring-packet && sha256sum -c SHA256SUMS)
+      - name: Prove artifact has public custody only
+        run: |
+          set -euo pipefail
+          expected=$'SHA256SUMS\nenforcement_packet.json\nrevocations.json\ntrusted_wea_public.pem'
+          observed="$(find non-expiring-packet -maxdepth 1 -type f -printf '%f\n' | LC_ALL=C sort)"
+          test "$observed" = "$expected"
+          while IFS= read -r name; do
+            test ! non-expiring-packet/"$name" -ef "$RUNNER_TEMP/wea-private.pem"
+            if cmp -s non-expiring-packet/"$name" "$RUNNER_TEMP/wea-private.pem"; then
+              echo "private signing key copied into artifact: $name" >&2
+              exit 1
+            fi
+            if grep -aEq -- '-----BEGIN ([A-Z0-9]+ )*PRIVATE KEY-----' non-expiring-packet/"$name"; then
+              echo "private PEM material present in artifact: $name" >&2
+              exit 1
+            fi
+          done <<< "$observed"
+          echo "NON_EXPIRING_PUBLIC_ONLY_ARTIFACT_PASS files=4"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: rea-non-expiring-enforcement-packet-${{ github.run_id }}
+          path: |
+            non-expiring-packet/
+            non-expiring-issue-report.json
+            non-expiring-verify-report.json
+          if-no-files-found: error
+          retention-days: 30
+      - name: Publish release packet
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          tag="rea-non-expiring-enforcement-${GITHUB_SHA:0:12}"
+          if gh release view "$tag" >/dev/null 2>&1; then
+            gh release upload "$tag" \
+              non-expiring-packet/enforcement_packet.json \
+              non-expiring-packet/revocations.json \
+              non-expiring-packet/trusted_wea_public.pem \
+              non-expiring-packet/SHA256SUMS \
+              --clobber
+          else
+            gh release create "$tag" \
+              non-expiring-packet/enforcement_packet.json \
+              non-expiring-packet/revocations.json \
+              non-expiring-packet/trusted_wea_public.pem \
+              non-expiring-packet/SHA256SUMS \
+              --target "$GITHUB_SHA" \
+              --title "$tag" \
+              --notes "Automated non-expiring REA enforcement packet for ${GITHUB_SHA}." \
+              --latest
+          fi
