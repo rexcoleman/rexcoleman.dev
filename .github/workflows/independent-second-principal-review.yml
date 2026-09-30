@@ -163,6 +163,14 @@ jobs:
             printf 'PLAN_STATE=%s\n' "${plan_root}/state.json"
             printf 'PLAN_EVIDENCE_DIR=%s\n' "${plan_root}/evidence"
           } >>"${GITHUB_ENV}"
+      - name: Upload failed hosted release plan evidence
+        if: ${{ failure() && inputs.repository == 'rexcoleman/rexcoleman.dev' }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: hosted-release-plan-failure-${{ github.run_id }}
+          path: ${{ runner.temp }}/hosted-release-plan
+          if-no-files-found: error
+          retention-days: 7
       - name: Emit read-only exact-head detection evidence
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
