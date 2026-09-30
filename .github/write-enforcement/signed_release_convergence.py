@@ -2185,6 +2185,19 @@ def release_quality_loop_snapshot(adapter, roots, evidence_dir):
         )
         if clone.returncode:
             raise Refusal("RELEASE_QUALITY_SCRATCH_CLONE_REFUSED")
+        origin = git(source, "config", "--get", "remote.origin.url")
+        normalized_origin = origin[:-4] if origin.endswith(".git") else origin
+        if normalized_origin.lower() not in (
+            "https://github.com/rexcoleman/research_enforcement_activation",
+            "git@github.com:rexcoleman/research_enforcement_activation",
+        ):
+            raise Refusal("RELEASE_QUALITY_SOURCE_ORIGIN_REFUSED")
+        remap = subprocess.run(
+            ["git", "-C", str(project), "remote", "set-url", "origin", origin],
+            capture_output=True, timeout=30, check=False,
+        )
+        if remap.returncode:
+            raise Refusal("RELEASE_QUALITY_SCRATCH_ORIGIN_REFUSED")
         checkout = subprocess.run(
             ["git", "-C", str(project), "checkout", "--quiet", "--detach",
              rows["research_enforcement_activation"]["commit"]],

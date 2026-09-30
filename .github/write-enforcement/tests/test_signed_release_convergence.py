@@ -3149,6 +3149,11 @@ def test_release_quality_phase_uses_exact_commits_and_candidate_scripts(
         root = tmp_path / name
         root.mkdir()
         subprocess.run(["git", "init", "-q", str(root)], check=True)
+        if name == "rea":
+            subprocess.run([
+                "git", "-C", str(root), "remote", "add", "origin",
+                "https://github.com/rexcoleman/research_enforcement_activation.git",
+            ], check=True)
         for relative, raw in files.items():
             target = root / relative
             target.parent.mkdir(parents=True, exist_ok=True)
