@@ -1962,6 +1962,32 @@ def test_builder_token_is_transient_and_only_added_to_build_child(monkeypatch):
     assert '"GH_TOKEN":' not in source
 
 
+def test_ruleset_read_token_is_scoped_to_ruleset_api_call(monkeypatch):
+    captured = []
+    adapter = json.loads(ADAPTER.read_text(encoding="utf-8"))
+
+    class Completed:
+        stdout = json.dumps({
+            "id": adapter["ruleset_id"],
+            "enforcement": "active",
+        })
+
+    def planted_run(argv, **kwargs):
+        captured.append((argv, kwargs))
+        return Completed()
+
+    monkeypatch.setenv("REA_RULESET_READ_TOKEN", "ruleset-token")
+    monkeypatch.setattr(tool, "run", planted_run)
+    raw = tool.ruleset_bytes(adapter)
+
+    assert json.loads(raw) == {
+        "id": adapter["ruleset_id"],
+        "enforcement": "active",
+    }
+    assert captured[0][0][:2] == ["gh", "api"]
+    assert captured[0][1]["env"]["GH_TOKEN"] == "ruleset-token"
+
+
 def test_pytest_interpreter_is_resolved_before_minimal_child_env(
     tmp_path, monkeypatch
 ):

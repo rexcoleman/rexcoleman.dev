@@ -1817,6 +1817,13 @@ def hermetic_snapshot(adapter, roots, authenticated_rows=None):
 
 
 def ruleset_bytes(adapter):
+    env = None
+    ruleset_token = os.environ.get("REA_RULESET_READ_TOKEN", "")
+    if ruleset_token:
+        if any(char.isspace() for char in ruleset_token):
+            raise Refusal("RULESET_READ_TOKEN_REFUSED")
+        env = dict(os.environ)
+        env["GH_TOKEN"] = ruleset_token
     completed = run(
         [
             "gh",
@@ -1824,6 +1831,7 @@ def ruleset_bytes(adapter):
             "repos/%s/rulesets/%s"
             % (adapter["ruleset_repository"], adapter["ruleset_id"]),
         ],
+        env=env,
         timeout=60,
     )
     try:

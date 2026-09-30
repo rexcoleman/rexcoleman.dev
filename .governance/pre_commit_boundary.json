@@ -2,13 +2,15 @@
   "assertion": "COMMIT_PREFLIGHT_PASS",
   "caller": "git-pre-commit",
   "changed_paths": [
-    ".github/workflows/independent-second-principal-review.yml"
+    ".github/workflows/independent-second-principal-review.yml",
+    ".github/write-enforcement/signed_release_convergence.py",
+    ".github/write-enforcement/tests/test_signed_release_convergence.py"
   ],
-  "changed_paths_count": 1,
-  "changed_paths_sha256": "7ad7c923ee11a64557b1dd6aa9890b09ed5861236f38fc65162ac17fcc9c2cb8",
+  "changed_paths_count": 3,
+  "changed_paths_sha256": "dbda842e37a51e4d7c21f06541b53b5b3c440b47c922c7891031e230a7d77203",
   "mode": "commit-preflight",
-  "parent_head": "a47f09f888204af60b1c55af9f0c52170e9c7940",
-  "run_id": "pre-commit-20dc79edb9b10286fce1aca6",
+  "parent_head": "970018b4f954b32aac5f406911d8a981702b8176",
+  "run_id": "pre-commit-ee846646fa136a3e6186366c",
   "schema_version": "rea.pre-commit-boundary.v1",
-  "utc_asserted_at": "2026-09-30T20:19:37Z"
+  "utc_asserted_at": "2026-09-30T20:24:45Z"
 }
