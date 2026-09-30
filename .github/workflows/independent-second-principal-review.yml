@@ -83,6 +83,14 @@ jobs:
           repositories: |-
             research_enforcement_activation
             rexcoleman.dev
+      - name: Prepare hosted fixed ephemeral roots
+        if: ${{ inputs.repository == 'rexcoleman/rexcoleman.dev' }}
+        run: |
+          set -euo pipefail
+          sudo mkdir -p /data/tmp
+          sudo chmod 1777 /data/tmp
+          test -d /data/tmp
+          test "$(stat -c '%a' /data/tmp)" = "1777"
       - name: Regenerate authorized release plan on hosted runner
         if: ${{ inputs.repository == 'rexcoleman/rexcoleman.dev' }}
         env:
