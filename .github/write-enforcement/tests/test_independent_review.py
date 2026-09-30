@@ -74,6 +74,9 @@ def args(repo="rexcoleman/rexcoleman.dev", mode="preflight"):
         expected_head=HEAD_SHA,
         expected_files_sha256=digest(files),
         expected_manifest_sha256="c" * 64 if repo.endswith(".dev") else "",
+        expected_plan_adapter_id="",
+        plan_state="",
+        plan_evidence_dir="",
         mode=mode,
     )
 
@@ -957,15 +960,17 @@ def test_site_freeze_review_refuses_absent_integrity_plan():
         MODULE.verify_release_integrity_plan(args())
 
 
-def _integrity_plan_evidence(tmp_path, mode="plan"):
+def _integrity_plan_evidence(
+    tmp_path,
+    mode="plan",
+    adapter_name="research_enforcement_activation.exact-plan-recovery-drive-v1.json",
+):
     engine_path = MODULE_PATH.with_name("signed_release_convergence.py")
     spec = importlib.util.spec_from_file_location("integrity_plan_test_engine", engine_path)
     engine = importlib.util.module_from_spec(spec)
     assert spec.loader
     spec.loader.exec_module(engine)
-    adapter_path = MODULE_PATH.with_name("adapters") / (
-        "research_enforcement_activation.exact-plan-recovery-drive-v1.json"
-    )
+    adapter_path = MODULE_PATH.with_name("adapters") / adapter_name
     adapter_raw = adapter_path.read_bytes()
     adapter = engine.load_adapter(adapter_path)
     evidence = tmp_path / "plan-evidence"
@@ -998,6 +1003,7 @@ def _integrity_plan_evidence(tmp_path, mode="plan"):
     expected = args()
     expected.plan_state = str(state_path)
     expected.plan_evidence_dir = str(evidence)
+    expected.expected_plan_adapter_id = adapter["adapter_id"]
     # This is deliberately non-clean close evidence. It cannot block an
     # infrastructure freeze when all registered integrity receipts pass.
     (evidence / "quality-loop-report.json").write_text(json.dumps({
@@ -1014,6 +1020,52 @@ def test_site_freeze_review_accepts_integrity_plan_with_dirty_quality_loop(tmp_p
                             "research_enforcement_activation.exact-plan-recovery-drive-v1.json"))
     assert len(MODULE.verify_release_integrity_plan(expected)) == 64
     assert json.loads((evidence / "quality-loop-report.json").read_text())["score"] == 7.9
+
+
+def test_site_freeze_review_accepts_population_306_plan_without_legacy_preflight(
+    tmp_path,
+):
+    expected, engine, _evidence, state_path = _integrity_plan_evidence(
+        tmp_path,
+        adapter_name="research_enforcement_activation.population-306-v1.json",
+    )
+    adapter = engine.load_adapter(
+        MODULE_PATH.with_name("adapters")
+        / "research_enforcement_activation.population-306-v1.json"
+    )
+    assert engine.CANDIDATE_INTEGRITY_PREFLIGHT_PHASE not in engine.phases_for_adapter(
+        adapter
+    )
+    state = json.loads(state_path.read_text())
+    assert (
+        state["adapter_id"]
+        == "research-enforcement-activation-generation-5-population-306-v1"
+    )
+    assert MODULE.verify_release_integrity_plan(expected) == state["receipt_sha256"][
+        "manifest-a"
+    ]
+
+
+def test_site_freeze_review_refuses_plan_adapter_different_from_authority(tmp_path):
+    expected, _engine, _evidence, _state_path = _integrity_plan_evidence(
+        tmp_path,
+        adapter_name="research_enforcement_activation.population-306-v1.json",
+    )
+    expected.expected_plan_adapter_id = (
+        "research-enforcement-activation-generation-5-exact-plan-recovery-drive-v1"
+    )
+    with pytest.raises(MODULE.Refusal, match="PLAN_ADAPTER_AUTHORITY_REFUSED"):
+        MODULE.verify_release_integrity_plan(expected)
+
+
+def test_site_freeze_review_refuses_unregistered_plan_adapter(tmp_path):
+    expected, _engine, _evidence, state_path = _integrity_plan_evidence(tmp_path)
+    state = json.loads(state_path.read_text())
+    state["adapter_id"] = "research-enforcement-activation-generation-5-unknown-v1"
+    state_path.write_text(json.dumps(state), encoding="utf-8")
+    expected.expected_plan_adapter_id = state["adapter_id"]
+    with pytest.raises(MODULE.Refusal, match="INDEX_ADAPTER_UNKNOWN"):
+        MODULE.verify_release_integrity_plan(expected)
 
 
 def test_release_freeze_preflight_passes_dirty_loop_with_integrity_green(
@@ -1082,6 +1134,9 @@ def test_workflow_exposes_credential_only_after_environment_review():
         "--expected-head",
         "--expected-files-sha256",
         "--expected-manifest-sha256",
+        "--expected-plan-adapter-id",
+        "--plan-state",
+        "--plan-evidence-dir",
     ):
         assert text.count(argument) == 1
     assert text.count(".github/write-enforcement/independent_review.py") == 1
