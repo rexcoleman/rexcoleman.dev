@@ -80,13 +80,12 @@ normal-hook two-file contract, not the historical manifest-only form:
    manifest-only PR or a hand-written receipt refuses.
    For the active REA exact-plan adapter, the reviewer also requires
    `--plan-state` and `--plan-evidence-dir` from the just-completed plan. It
-   authenticates that plan's `release-quality-loop` receipt, its manifest-a
-   SHA-256, a newly executed candidate-source quality loop, a CLEAN CC-QL
-   verdict, and authoritative T3 at or above 8.0. A stale report, skipped T3,
-   dirty loop, or omitted evidence refuses the freeze review. The gate preserves
-   CC-QL's two named per-step exceptions: a raw loop exit of 1 is admitted only
-   when CC-QL records CLEAN and names at least one excepted step; T3 still must
-   complete at the bar.
+   authenticates the plan's manifest-a SHA-256, exact-commit candidate
+   integrity preflight, protected-default reachability, complete release tests,
+   installed-manifest comparison, and planted-violation refusals. Missing or
+   stale integrity evidence refuses the freeze review. Quality score, CC-QL
+   cleanliness, and T3 at bar are enforced at research close/publication, not
+   at an infrastructure release freeze.
 4. Let `F` be that reviewed two-file feature commit. Merge it through the
    protected normal route and require the fetched default commit `M` to have a
    tree identical to `F`. Derive the annotated tag as

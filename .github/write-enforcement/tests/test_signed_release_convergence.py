@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import copy
+import hashlib
 import importlib.util
 import json
 import os
@@ -2923,7 +2924,7 @@ def test_exact_plan_recovery_drive_adapter_binds_phase_and_surfaces():
     assert value["manifest_builder_flag"] == "--stage5-build-template-successor"
     assert tool.phases_for_adapter(value) == (
         "roots", "impact", "hermetic", "manifest-a", "manifest-b", "contract",
-        "exact-plan-recovery-drive", "release-quality-loop", "poststate",
+        "exact-plan-recovery-drive", "candidate-integrity-preflight", "poststate",
     )
     policy = value["exact_plan_recovery_drive"]
     assert policy["required_bindings"] == list(
@@ -3034,127 +3035,17 @@ def test_exact_plan_recovery_drive_refuses_wrong_staged_nonproduction_count(tmp_
         )
 
 
-_RELEASE_QUALITY_GATE = b'''#!/usr/bin/env python3
-import argparse, json, sys
-from pathlib import Path
-p = argparse.ArgumentParser()
-p.add_argument("--project-dir")
-p.add_argument("--report")
-p.add_argument("--emit")
-a = p.parse_args()
-value = json.loads(Path(a.report).read_text())
-excepted = bool(value.get("excepted"))
-clean = value.get("t3_status") == "complete" and (
-    value.get("score", 0) >= 8 or excepted)
-verdict = {"verdict": "CLEAN" if clean else "NOT_CLEAN", "clean": clean,
-           "exit": 0 if clean else 1,
-           "excepted_steps": [{"step_id": "disposed-semantic"}] if excepted else []}
-Path(a.emit).write_text(json.dumps(verdict))
-sys.exit(verdict["exit"])
-'''
-
-
-def _release_quality_loop_source(report, raw_exit=0):
-    return ("#!/bin/bash\nmkdir -p \"$1/outputs\"\n"
-            "cat > \"$1/outputs/quality_loop_report.json\" <<'JSON'\n"
-            + json.dumps(report) + "\nJSON\nexit %s\n" % raw_exit).encode()
-
-
-def test_release_quality_loop_executes_clean_candidate(tmp_path):
-    project = tmp_path / "project"
-    project.mkdir()
-    report = {"score": 8.4, "t3_status": "complete", "t3_composite": 8.3}
-    result = tool.run_release_quality_loop(
-        project, _release_quality_loop_source(report), _RELEASE_QUALITY_GATE,
-        tmp_path / "evidence", 8.0,
-    )
-    assert result["verdict"] == "CLEAN"
-    assert result["t3_composite"] == 8.3
-    assert (tmp_path / "evidence/quality-loop.stdout.raw").is_file()
-    assert (tmp_path / "evidence/ccql-verdict.json").is_file()
-
-
-def test_release_quality_preserves_named_ccql_exception(tmp_path):
-    project = tmp_path / "project"
-    project.mkdir()
-    report = {"score": 7.9, "t3_status": "complete", "t3_composite": 8.3,
-              "excepted": True}
-    result = tool.run_release_quality_loop(
-        project, _release_quality_loop_source(report, 1), _RELEASE_QUALITY_GATE,
-        tmp_path / "evidence", 8.0,
-    )
-    assert result["quality_loop_exit"] == 1
-    assert result["excepted_step_count"] == 1
-    assert result["t3_composite"] == 8.3
-
-
-@pytest.mark.parametrize("report,raw_exit", [
-    ({"score": 7.9, "t3_status": "skipped_structural_fails",
-      "t3_composite": None}, 1),
-    ({"score": 8.4, "t3_status": "complete", "t3_composite": 7.9}, 0),
-    ({"score": 8.4, "t3_status": "complete", "t3_composite": 8.3}, 1),
-    ({"score": 8.4, "t3_status": "complete", "t3_composite": "8.3"}, 0),
-])
-def test_release_quality_loop_refuses_dirty_or_unparseable(
-    tmp_path, report, raw_exit,
-):
-    project = tmp_path / "project"
-    project.mkdir()
-    with pytest.raises(tool.Refusal, match="RELEASE_QUALITY_LOOP_NOT_CLEAN"):
-        tool.run_release_quality_loop(
-            project, _release_quality_loop_source(report, raw_exit),
-            _RELEASE_QUALITY_GATE, tmp_path / "evidence", 8.0,
-        )
-
-
-def test_release_quality_loop_refuses_stale_committed_report(tmp_path):
-    project = tmp_path / "project"
-    (project / "outputs").mkdir(parents=True)
-    (project / "outputs/quality_loop_report.json").write_text(json.dumps({
-        "score": 10.0, "t3_status": "complete", "t3_composite": 10.0,
-    }))
-    with pytest.raises(tool.Refusal, match="RELEASE_QUALITY_REPORT_ABSENT"):
-        tool.run_release_quality_loop(
-            project, b"#!/bin/bash\nexit 0\n", _RELEASE_QUALITY_GATE,
-            tmp_path / "evidence", 8.0,
-        )
-
-
-def test_release_quality_loop_adapter_cannot_be_gutted(tmp_path):
-    value = json.loads(EXACT_PLAN_RECOVERY_ADAPTER.read_text())
-    del value["release_quality_loop"]
-    planted = tmp_path / "adapter.json"
-    planted.write_text(json.dumps(value))
-    with pytest.raises(tool.Refusal, match="ADAPTER"):
-        tool.load_adapter(planted)
-
-
-def test_historical_noop_does_not_score_or_authorize_new_freeze(monkeypatch):
-    def scoring_would_be_wrong(*_args):
-        raise AssertionError("historical no-op ran a new quality score")
-    monkeypatch.setattr(tool, "release_quality_loop_snapshot", scoring_would_be_wrong)
-    value = tool.phase_result(
-        tool.RELEASE_QUALITY_LOOP_PHASE, {}, {}, Path("/unused"),
-        "noop-rehearsal", Path("/unused-baseline"),
-    )
-    assert value == {"phase": tool.RELEASE_QUALITY_LOOP_PHASE,
-                     "status": "NOT_APPLICABLE_HISTORICAL_NOOP",
-                     "release_freeze_authority": False}
-
-
-def _committed_release_quality_repo(tmp_path, name, files):
-    root = tmp_path / name
+def _committed_candidate_repo(tmp_path, script):
+    root = tmp_path / "rea"
     root.mkdir()
     subprocess.run(["git", "init", "-q", str(root)], check=True)
-    if name == "rea":
-        subprocess.run([
-            "git", "-C", str(root), "remote", "add", "origin",
-            "https://github.com/rexcoleman/research_enforcement_activation.git",
-        ], check=True)
-    for relative, raw in files.items():
-        target = root / relative
-        target.parent.mkdir(parents=True, exist_ok=True)
-        target.write_bytes(raw)
+    subprocess.run([
+        "git", "-C", str(root), "remote", "add", "origin",
+        "https://github.com/rexcoleman/research_enforcement_activation.git",
+    ], check=True)
+    runner = root / "scripts/run_gates.sh"
+    runner.parent.mkdir()
+    runner.write_bytes(script)
     subprocess.run(["git", "-C", str(root), "add", "--", "."], check=True)
     env = dict(os.environ, GIT_AUTHOR_NAME="Test", GIT_AUTHOR_EMAIL="test@example.com",
                GIT_COMMITTER_NAME="Test", GIT_COMMITTER_EMAIL="test@example.com")
@@ -3166,82 +3057,23 @@ def _committed_release_quality_repo(tmp_path, name, files):
     return root, commit
 
 
-def test_release_quality_phase_uses_exact_commits_and_candidate_scripts(
+def _remote_default(monkeypatch, commit):
+    original_run = tool.run
+    def run(argv, **kwargs):
+        if argv[:3] == ["gh", "api", "repos/rexcoleman/research_enforcement_activation/branches/master"]:
+            return type("Completed", (), {"stdout": commit + "\n"})()
+        return original_run(argv, **kwargs)
+    monkeypatch.setattr(tool, "run", run)
+
+
+def test_candidate_integrity_preflight_binds_protected_default_and_runner(
     tmp_path, monkeypatch,
 ):
-
-    report = {"score": 8.4, "t3_status": "complete", "t3_composite": 8.3}
-    rea, rea_sha = _committed_release_quality_repo(tmp_path, "rea", {
-        "outputs/quality_loop_report.json": json.dumps({
-            "score": 1, "t3_status": "skipped", "t3_composite": None,
-        }).encode(),
-        "scripts/quality_loop.sh": b"#!/bin/bash\nexit 1\n",
-        "scripts/run_gates.sh": (
-            b"#!/bin/bash\n"
-            b"test \"$1\" = --engine-preflight || exit 5\n"
-            b"printf 'ENGINE_PREFLIGHT_PASS fixture\\n'\n"
-        ),
-    })
-    subprocess.run([
-        "git", "-C", str(rea), "update-ref", "refs/remotes/origin/master", rea_sha,
-    ], check=True)
-    gov, gov_sha = _committed_release_quality_repo(tmp_path, "gov", {
-        "scripts/quality_loop.sh": _release_quality_loop_source(report),
-        "templates/build/enforcement/quality_loop_cleanliness_gate.py":
-            _RELEASE_QUALITY_GATE,
-    })
-    monkeypatch.setattr(tool, "root_rows_by_name", lambda _evidence: {
-        "research_enforcement_activation": {"commit": rea_sha},
-        "govML": {"commit": gov_sha},
-    })
-    adapter = tool.load_adapter(EXACT_PLAN_RECOVERY_ADAPTER)
-    result = tool.release_quality_loop_snapshot(
-        adapter, {"research_enforcement_activation": rea, "govML": gov},
-        tmp_path / "evidence",
-    )
-    assert result["project_commit"] == rea_sha
-    assert result["govml_commit"] == gov_sha
-    assert result["t3_composite"] == 8.3
-    assert result["default_commit"] == rea_sha
-    assert result["preflight_exit"] == 0
-    assert (tmp_path / "evidence/release-quality-loop/quality-loop-report.json").is_file()
-
-
-@pytest.mark.parametrize("plant,match", [
-    ("missing_default", "RELEASE_QUALITY_DEFAULT_REF_ABSENT"),
-    ("wrong_default", "RELEASE_QUALITY_DEFAULT_REF_MISMATCH"),
-    ("preflight_refuses", "RELEASE_QUALITY_PREFLIGHT_REFUSED"),
-    ("preflight_dirty", "RELEASE_QUALITY_PREFLIGHT_DIRTY"),
-])
-def test_release_quality_candidate_requires_bound_default_and_real_preflight(
-    tmp_path, plant, match,
-):
     script = b"#!/bin/bash\nprintf 'ENGINE_PREFLIGHT_PASS fixture\\n'\n"
-    if plant == "preflight_refuses":
-        script += b"exit 3\n"
-    if plant == "preflight_dirty":
-        script += b"printf dirty > untracked-after-preflight\n"
-    source, commit = _committed_release_quality_repo(
-        tmp_path, "rea", {"scripts/run_gates.sh": script})
-    if plant != "missing_default":
-        default = commit
-        if plant == "wrong_default":
-            (source / "branch-only.txt").write_text("not on protected default\n")
-            subprocess.run(["git", "-C", str(source), "add", "--", "branch-only.txt"],
-                           check=True)
-            env = dict(os.environ, GIT_AUTHOR_NAME="Test",
-                       GIT_AUTHOR_EMAIL="test@example.com",
-                       GIT_COMMITTER_NAME="Test",
-                       GIT_COMMITTER_EMAIL="test@example.com")
-            subprocess.run(["git", "-C", str(source), "commit", "-qm", "branch-only"],
-                           env=env, check=True)
-            commit = subprocess.check_output(
-                ["git", "-C", str(source), "rev-parse", "HEAD"], text=True,
-            ).strip()
-        subprocess.run([
-            "git", "-C", str(source), "update-ref",
-            "refs/remotes/origin/master", default,
-        ], check=True)
+    source, commit = _committed_candidate_repo(tmp_path, script)
+    subprocess.run(["git", "-C", str(source), "update-ref",
+                    "refs/remotes/origin/master", commit], check=True)
+    _remote_default(monkeypatch, commit)
     project = tmp_path / "project"
     subprocess.run(["git", "clone", "-q", "--shared", str(source), str(project)],
                    check=True)
@@ -3249,8 +3081,142 @@ def test_release_quality_candidate_requires_bound_default_and_real_preflight(
                    check=True)
     evidence = tmp_path / "evidence"
     evidence.mkdir()
+    result = tool.prepare_candidate_integrity_preflight(
+        project, source, commit, evidence,
+    )
+    assert result["preflight_exit"] == 0
+    assert result["default_commit"] == result["remote_default_commit"] == commit
+    assert (evidence / "candidate-preflight.stdout.raw").is_file()
+    assert not (evidence / "quality-loop-report.json").exists()
+
+
+def test_exact_plan_checks_every_source_on_protected_default(tmp_path, monkeypatch):
+    adapter = tool.load_adapter(EXACT_PLAN_RECOVERY_ADAPTER)
+    roots = {row["logical_name"]: tmp_path / row["logical_name"]
+             for row in adapter["repositories"]}
+    by_root = {str(path): row for row in adapter["repositories"]
+               for path in [roots[row["logical_name"]]]}
+    commit = "a" * 40
+    checked = []
+    def fake_git(root, *argv):
+        if argv == ("rev-parse", "HEAD"):
+            return commit
+        if argv == ("status", "--porcelain=v1", "--untracked-files=all"):
+            return ""
+        if argv == ("remote", "get-url", "origin"):
+            return "https://github.com/rexcoleman/%s.git" % by_root[str(root)]["slug"]
+        raise AssertionError(argv)
+    monkeypatch.setattr(tool, "git", fake_git)
+    monkeypatch.setattr(tool, "run", lambda *_args, **_kwargs:
+                        type("Completed", (), {"stdout": commit + "\n"})())
+    def check_default(_root, repository, observed):
+        assert observed == commit
+        checked.append(repository["logical_name"])
+        return commit
+    monkeypatch.setattr(tool, "protected_default_commit", check_default)
+    rows = tool.root_snapshot(adapter, roots, None)
+    assert len(rows) == len(adapter["repositories"]) == 5
+    assert set(checked) == set(roots)
+    assert all(row["protected_default_commit"] == commit for row in rows)
+
+
+@pytest.mark.parametrize("plant,match", [
+    ("missing_default", "PROTECTED_DEFAULT_REF_ABSENT"),
+    ("wrong_default", "PROTECTED_DEFAULT_REACHABILITY_REFUSED"),
+    ("wrong_remote", "PROTECTED_DEFAULT_REMOTE_MISMATCH"),
+    ("preflight_refuses", "CANDIDATE_PREFLIGHT_REFUSED"),
+    ("preflight_dirty", "CANDIDATE_PREFLIGHT_DIRTY"),
+    ("runner_drift", "CANDIDATE_PREFLIGHT_SOURCE_REFUSED"),
+])
+def test_candidate_integrity_preflight_refuses_planted_integrity_violation(
+    tmp_path, monkeypatch, plant, match,
+):
+    script = b"#!/bin/bash\nprintf 'ENGINE_PREFLIGHT_PASS fixture\\n'\n"
+    if plant == "preflight_refuses":
+        script += b"exit 3\n"
+    if plant == "preflight_dirty":
+        script += b"printf dirty > untracked-after-preflight\n"
+    source, initial = _committed_candidate_repo(tmp_path, script)
+    commit = initial
+    if plant == "wrong_default":
+        (source / "branch-only.txt").write_text("not on protected default\n")
+        subprocess.run(["git", "-C", str(source), "add", "--", "branch-only.txt"],
+                       check=True)
+        env = dict(os.environ, GIT_AUTHOR_NAME="Test", GIT_AUTHOR_EMAIL="test@example.com",
+                   GIT_COMMITTER_NAME="Test", GIT_COMMITTER_EMAIL="test@example.com")
+        subprocess.run(["git", "-C", str(source), "commit", "-qm", "branch-only"],
+                       env=env, check=True)
+        commit = subprocess.check_output(
+            ["git", "-C", str(source), "rev-parse", "HEAD"], text=True,
+        ).strip()
+    if plant != "missing_default":
+        subprocess.run(["git", "-C", str(source), "update-ref",
+                        "refs/remotes/origin/master", initial], check=True)
+    _remote_default(monkeypatch, "f" * 40 if plant == "wrong_remote" else initial)
+    project = tmp_path / "project"
+    subprocess.run(["git", "clone", "-q", "--shared", str(source), str(project)],
+                   check=True)
+    subprocess.run(["git", "-C", str(project), "checkout", "-q", "--detach", commit],
+                   check=True)
+    if plant == "runner_drift":
+        (project / "scripts/run_gates.sh").write_text("#!/bin/bash\nexit 0\n")
+    evidence = tmp_path / "evidence"
+    evidence.mkdir()
     with pytest.raises(tool.Refusal, match=match):
-        tool.prepare_release_quality_candidate(project, source, commit, evidence)
+        tool.prepare_candidate_integrity_preflight(project, source, commit, evidence)
+
+
+def test_exact_plan_adapter_rejects_reintroduced_score_phase(tmp_path):
+    value = json.loads(EXACT_PLAN_RECOVERY_ADAPTER.read_text())
+    value["release_quality_loop"] = {"phase": "release-quality-loop"}
+    planted = tmp_path / "adapter.json"
+    planted.write_text(json.dumps(value))
+    with pytest.raises(tool.Refusal, match="ADAPTER_FIELDS_REFUSED"):
+        tool.load_adapter(planted)
+    del value["candidate_integrity_preflight"]
+    value.pop("release_quality_loop")
+    planted.write_text(json.dumps(value))
+    with pytest.raises(tool.Refusal, match="ADAPTER_FIELDS_REFUSED"):
+        tool.load_adapter(planted)
+
+
+def test_signed_close_gate_still_refuses_dirty_loop():
+    manifest = json.loads((ROOT / "frozen_bundle_manifest.generation-5.json").read_text())
+    rows = [row for row in manifest["members"]
+            if row["member_id"] == "quality-loop-cleanliness-gate"]
+    assert len(rows) == 1
+    assert rows[0]["repository"] == "govML"
+    assert rows[0]["path"] == (
+        "templates/build/enforcement/quality_loop_cleanliness_gate.py"
+    )
+    assert rows[0]["commit"] == "4a0341647ec196bf2764ec3995845812cf421195"
+    signed_gate = ROOT / "tests/fixtures/signed_quality_loop_cleanliness_gate_4a034.py"
+    raw = signed_gate.read_bytes()
+    assert len(raw) == rows[0]["byte_length"]
+    assert hashlib.sha256(raw).hexdigest() == rows[0]["sha256"]
+    assert tool.member_contract(
+        ROOT.parents[1], "stage5_build_template_successor_members"
+    )["quality-loop-cleanliness-gate"] == (
+        "govML", rows[0]["path"],
+    )
+    result = subprocess.run(
+        [sys.executable, str(signed_gate), "--self-test"],
+        capture_output=True, text=True, check=False,
+        env=dict(os.environ, PYTHONDONTWRITEBYTECODE="1"),
+    )
+    assert result.returncode == 0
+    assert "PASS  skipped T3 is NOT_CLEAN" in result.stdout
+    assert "CC-QL self-test: 10/10 passed" in result.stdout
+
+
+def test_historical_noop_cannot_authorize_candidate_preflight():
+    value = tool.phase_result(
+        tool.CANDIDATE_INTEGRITY_PREFLIGHT_PHASE, {}, {}, Path("/unused"),
+        "noop-rehearsal", Path("/unused-baseline"),
+    )
+    assert value == {"phase": tool.CANDIDATE_INTEGRITY_PREFLIGHT_PHASE,
+                     "status": "NOT_APPLICABLE_HISTORICAL_NOOP",
+                     "release_freeze_authority": False}
 
 
 def test_hermetic_cross_repository_fixture_uses_configured_root(tmp_path, monkeypatch):

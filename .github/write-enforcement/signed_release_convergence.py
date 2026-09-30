@@ -15,7 +15,6 @@ import contextlib
 import errno
 import hashlib
 import json
-import math
 import os
 import re
 import secrets
@@ -52,7 +51,7 @@ BASE_PHASES = (
 )
 PHASES = BASE_PHASES
 EXACT_PLAN_RECOVERY_DRIVE_PHASE = "exact-plan-recovery-drive"
-RELEASE_QUALITY_LOOP_PHASE = "release-quality-loop"
+CANDIDATE_INTEGRITY_PREFLIGHT_PHASE = "candidate-integrity-preflight"
 EXACT_PLAN_RECOVERY_DRIVE_REQUIRED_BINDINGS = (
     "plan_manifest",
     "adapter",
@@ -309,7 +308,7 @@ def load_adapter(path: Path):
         required.add("hermetic_fixture")
     if "exact_plan_recovery_drive" in value:
         required.add("exact_plan_recovery_drive")
-        required.add("release_quality_loop")
+        required.add("candidate_integrity_preflight")
     if value.get("schema_version") == DEPENDENT_ADAPTER_SCHEMA:
         required.add("dependent_project")
     closed_dict(value, required, "ADAPTER")
@@ -454,7 +453,9 @@ def load_adapter(path: Path):
         validate_exact_plan_recovery_drive_adapter(
             value["exact_plan_recovery_drive"], logical_names
         )
-        validate_release_quality_loop_adapter(value["release_quality_loop"])
+        validate_candidate_integrity_preflight_adapter(
+            value["candidate_integrity_preflight"]
+        )
     if value["schema_version"] == DEPENDENT_ADAPTER_SCHEMA:
         dependent = value["dependent_project"]
         closed_dict(
@@ -506,17 +507,15 @@ def load_adapter(path: Path):
     return value
 
 
-def validate_release_quality_loop_adapter(value):
-    closed_dict(value, {"phase", "repository", "loop_path", "gate_path",
-                        "minimum_t3_composite"}, "RELEASE_QUALITY_LOOP")
+def validate_candidate_integrity_preflight_adapter(value):
+    closed_dict(value, {"phase", "repository", "runner_path"},
+                "CANDIDATE_INTEGRITY_PREFLIGHT")
     if value != {
-        "phase": RELEASE_QUALITY_LOOP_PHASE,
-        "repository": "govML",
-        "loop_path": "scripts/quality_loop.sh",
-        "gate_path": "templates/build/enforcement/quality_loop_cleanliness_gate.py",
-        "minimum_t3_composite": 8.0,
+        "phase": CANDIDATE_INTEGRITY_PREFLIGHT_PHASE,
+        "repository": "research_enforcement_activation",
+        "runner_path": "scripts/run_gates.sh",
     }:
-        raise Refusal("RELEASE_QUALITY_LOOP_ADAPTER_REFUSED")
+        raise Refusal("CANDIDATE_INTEGRITY_PREFLIGHT_ADAPTER_REFUSED")
 
 
 def validate_exact_plan_recovery_drive_adapter(value, logical_names):
@@ -784,6 +783,31 @@ def git(root, *args):
     return run(["git", "-C", str(root)] + list(args), timeout=120).stdout.strip()
 
 
+def protected_default_commit(root, repository, commit):
+    """Require selected source bytes to be reachable from the live default."""
+    logical = repository["logical_name"]
+    branch = repository["default_branch"]
+    try:
+        default = git(root, "rev-parse", "refs/remotes/origin/%s" % branch)
+    except Refusal:
+        raise Refusal("PROTECTED_DEFAULT_REF_ABSENT:%s" % logical)
+    if not HEX40.fullmatch(default):
+        raise Refusal("PROTECTED_DEFAULT_REF_INVALID:%s" % logical)
+    ancestor = subprocess.run(
+        ["git", "-C", str(root), "merge-base", "--is-ancestor", commit, default],
+        capture_output=True, timeout=30, check=False,
+    )
+    if ancestor.returncode:
+        raise Refusal("PROTECTED_DEFAULT_REACHABILITY_REFUSED:%s" % logical)
+    remote = run(
+        ["gh", "api", "repos/rexcoleman/%s/branches/%s" %
+         (repository["slug"], branch), "--jq", ".commit.sha"], timeout=60,
+    ).stdout.strip()
+    if remote != default or not HEX40.fullmatch(remote):
+        raise Refusal("PROTECTED_DEFAULT_REMOTE_MISMATCH:%s" % logical)
+    return default
+
+
 def root_snapshot(adapter, roots, baseline):
     expected_commits = {}
     if baseline is not None:
@@ -828,14 +852,17 @@ def root_snapshot(adapter, roots, baseline):
         ).stdout.strip()
         if remote != commit:
             raise Refusal("ROOT_REMOTE_REACHABILITY_REFUSED:%s" % logical)
-        rows.append(
-            {
+        row = {
                 "logical_name": logical,
                 "slug": repository["slug"],
                 "default_branch": repository["default_branch"],
                 "commit": commit,
-            }
-        )
+        }
+        if "exact_plan_recovery_drive" in adapter:
+            row["protected_default_commit"] = protected_default_commit(
+                root, repository, commit,
+            )
+        rows.append(row)
     return rows
 
 
@@ -1902,7 +1929,7 @@ def phases_for_adapter(adapter):
     phases = list(BASE_PHASES)
     if "exact_plan_recovery_drive" in adapter:
         phases.insert(phases.index("poststate"), EXACT_PLAN_RECOVERY_DRIVE_PHASE)
-        phases.insert(phases.index("poststate"), RELEASE_QUALITY_LOOP_PHASE)
+        phases.insert(phases.index("poststate"), CANDIDATE_INTEGRITY_PREFLIGHT_PHASE)
     return tuple(phases)
 
 
@@ -2064,120 +2091,27 @@ def committed_bytes(root, commit, relative):
         check=False,
     )
     if result.returncode:
-        raise Refusal("RELEASE_QUALITY_SOURCE_ABSENT:%s" % relative)
+        raise Refusal("CANDIDATE_PREFLIGHT_SOURCE_ABSENT:%s" % relative)
     return result.stdout
 
 
-def run_release_quality_loop(project, loop_source, gate_source, evidence_dir,
-                             minimum_t3):
-    """Execute candidate source against a disposable exact-commit project copy."""
-    report = project / "outputs" / "quality_loop_report.json"
-    report.unlink(missing_ok=True)  # A committed stale report cannot be the proof.
-    (project / "outputs" / "quality_loop_cleanliness.json").unlink(missing_ok=True)
-    # Production executes source in the exact clean govML checkout. Copying it
-    # into the REA checkout would create a dirty tree and make its integrity
-    # gate refuse the very candidate being measured. Byte inputs are only the
-    # focused test seam for the subprocess contract.
-    if isinstance(loop_source, Path) and isinstance(gate_source, Path):
-        loop, gate = loop_source, gate_source
-    elif isinstance(loop_source, bytes) and isinstance(gate_source, bytes):
-        loop = project / "scripts" / "quality_loop.sh"
-        gate = project / "scripts" / "quality_loop_cleanliness_gate.py"
-        loop.parent.mkdir(parents=True, exist_ok=True)
-        loop.write_bytes(loop_source)
-        loop.chmod(0o755)
-        gate.write_bytes(gate_source)
-        gate.chmod(0o755)
-    else:
-        raise Refusal("RELEASE_QUALITY_SOURCE_TYPE_REFUSED")
-    evidence_dir.mkdir(parents=True, exist_ok=True)
-    child_env = dict(os.environ)
-    child_env["PYTHONDONTWRITEBYTECODE"] = "1"
-    child_env["SINGULARITY_DB"] = str(evidence_dir / "quality-loop.sqlite3")
-    child_env["XDG_CACHE_HOME"] = str(evidence_dir / "cache")
-    outputs = {}
-    for name, argv, timeout in (
-        ("quality-loop", ["bash", str(loop), str(project)], 1800),
-        ("ccql", [sys.executable, str(gate), "--project-dir", str(project),
-                  "--report", str(report), "--emit",
-                  str(evidence_dir / "ccql-verdict.json")], 180),
-    ):
-        with (evidence_dir / (name + ".stdout.raw")).open("wb") as stdout, \
-             (evidence_dir / (name + ".stderr.raw")).open("wb") as stderr:
-            try:
-                completed = subprocess.run(argv, cwd=str(project), stdout=stdout,
-                                           stderr=stderr, timeout=timeout,
-                                           env=child_env,
-                                           check=False)
-            except subprocess.TimeoutExpired:
-                raise Refusal("RELEASE_QUALITY_TIMEOUT:%s" % name)
-        outputs[name] = completed.returncode
-        if name == "quality-loop" and not report.is_file():
-            raise Refusal("RELEASE_QUALITY_REPORT_ABSENT")
-    try:
-        report_raw = regular_bytes(report)
-        report_value = json.loads(report_raw)
-        verdict_raw = regular_bytes(evidence_dir / "ccql-verdict.json")
-        verdict = json.loads(verdict_raw)
-        t3 = report_value["t3_composite"]
-        score = report_value["score"]
-        valid_scores = (
-            type(t3) in (int, float) and math.isfinite(t3)
-            and type(score) in (int, float) and math.isfinite(score)
-        )
-    except (OSError, ValueError, KeyError, TypeError):
-        raise Refusal("RELEASE_QUALITY_VERDICT_UNPARSEABLE")
-    (evidence_dir / "quality-loop-report.json").write_bytes(report_raw)
-    excepted = verdict.get("excepted_steps")
-    loop_exit_admitted = (
-        outputs["quality-loop"] == 0
-        or (outputs["quality-loop"] == 1
-            and isinstance(excepted, list) and bool(excepted))
-    )
-    if (
-        not loop_exit_admitted
-        or outputs["ccql"] != 0
-        or verdict.get("verdict") != "CLEAN"
-        or verdict.get("clean") is not True
-        or verdict.get("exit") != 0
-        or report_value.get("t3_status") != "complete"
-        or not valid_scores
-        or t3 < minimum_t3
-    ):
-        raise Refusal("RELEASE_QUALITY_LOOP_NOT_CLEAN:loop=%s:ccql=%s:t3=%s" % (
-            outputs["quality-loop"], outputs["ccql"],
-            report_value.get("t3_status")))
-    return {
-        "verdict": "CLEAN", "quality_loop_exit": outputs["quality-loop"],
-        "ccql_exit": 0, "excepted_step_count": len(excepted or []),
-        "t3_status": "complete", "t3_composite": t3, "score": score,
-        "report_sha256": sha256(report_raw), "ccql_sha256": sha256(verdict_raw),
-        "minimum_t3_composite": minimum_t3,
-    }
-
-
-def prepare_release_quality_candidate(project, source, commit, evidence_dir):
-    """Install the exact candidate's authenticated runtime before scoring it."""
-    try:
-        default_commit = git(source, "rev-parse", "refs/remotes/origin/master")
-    except Refusal:
-        raise Refusal("RELEASE_QUALITY_DEFAULT_REF_ABSENT")
-    ancestry = subprocess.run(
-        ["git", "-C", str(source), "merge-base", "--is-ancestor",
-         commit, default_commit], capture_output=True, timeout=30, check=False,
-    )
-    if ancestry.returncode:
-        raise Refusal("RELEASE_QUALITY_DEFAULT_REF_MISMATCH")
+def prepare_candidate_integrity_preflight(project, source, commit, evidence_dir):
+    """Authenticate the protected REA candidate and execute its real preflight."""
+    default_commit = protected_default_commit(source, {
+        "logical_name": "research_enforcement_activation",
+        "slug": "research_enforcement_activation",
+        "default_branch": "master",
+    }, commit)
     bound = subprocess.run(
         ["git", "-C", str(project), "update-ref",
          "refs/remotes/origin/master", default_commit],
         capture_output=True, timeout=30, check=False,
     )
     if bound.returncode or git(project, "rev-parse", "origin/master") != default_commit:
-        raise Refusal("RELEASE_QUALITY_DEFAULT_REF_BINDING_REFUSED")
+        raise Refusal("CANDIDATE_PREFLIGHT_DEFAULT_REF_BINDING_REFUSED")
     runner = project / "scripts" / "run_gates.sh"
     if regular_bytes(runner) != committed_bytes(source, commit, "scripts/run_gates.sh"):
-        raise Refusal("RELEASE_QUALITY_PREFLIGHT_SOURCE_REFUSED")
+        raise Refusal("CANDIDATE_PREFLIGHT_SOURCE_REFUSED")
     child_env = {key: os.environ[key] for key in (
         "HOME", "PATH", "LANG", "LC_ALL", "TZ") if key in os.environ}
     child_env["PYTHONDONTWRITEBYTECODE"] = "1"
@@ -2190,84 +2124,72 @@ def prepare_release_quality_candidate(project, source, commit, evidence_dir):
                 check=False,
             )
         except subprocess.TimeoutExpired:
-            raise Refusal("RELEASE_QUALITY_PREFLIGHT_TIMEOUT")
+            raise Refusal("CANDIDATE_PREFLIGHT_TIMEOUT")
     preflight_raw = regular_bytes(evidence_dir / "candidate-preflight.stdout.raw")
     if completed.returncode or b"ENGINE_PREFLIGHT_PASS " not in preflight_raw:
-        raise Refusal("RELEASE_QUALITY_PREFLIGHT_REFUSED:exit=%s" % completed.returncode)
+        raise Refusal("CANDIDATE_PREFLIGHT_REFUSED:exit=%s" % completed.returncode)
     if git(project, "status", "--porcelain=v1", "--untracked-files=all"):
-        raise Refusal("RELEASE_QUALITY_PREFLIGHT_DIRTY")
+        raise Refusal("CANDIDATE_PREFLIGHT_DIRTY")
     return {
         "preflight_exit": 0,
         "preflight_sha256": sha256(preflight_raw),
         "default_commit": default_commit,
+        "remote_default_commit": default_commit,
     }
 
 
-def release_quality_loop_snapshot(adapter, roots, evidence_dir):
-    policy = adapter["release_quality_loop"]
+def candidate_integrity_preflight_snapshot(adapter, roots, evidence_dir):
+    policy = adapter["candidate_integrity_preflight"]
     rows = root_rows_by_name(evidence_dir)
-    for logical in ("research_enforcement_activation", "govML"):
-        if git(roots[logical], "rev-parse", "HEAD") != rows[logical]["commit"]:
-            raise Refusal("RELEASE_QUALITY_ROOT_DRIFT:%s" % logical)
-        if git(roots[logical], "status", "--porcelain=v1", "--untracked-files=all"):
-            raise Refusal("RELEASE_QUALITY_ROOT_DIRTY:%s" % logical)
-    gov = roots["govML"]
-    commit = rows["govML"]["commit"]
-    sources = {}
-    for key, path in (("loop", policy["loop_path"]), ("gate", policy["gate_path"])):
-        observed = committed_surface(gov, commit, path)
-        raw = committed_bytes(gov, commit, path)
-        if sha256(raw) != observed["sha256"]:
-            raise Refusal("RELEASE_QUALITY_SOURCE_DRIFT:%s" % key)
-        sources[key] = {"path": path, "sha256": observed["sha256"], "raw": raw}
-    output = evidence_dir / RELEASE_QUALITY_LOOP_PHASE
+    logical = policy["repository"]
+    source = roots[logical]
+    commit = rows[logical]["commit"]
+    if git(source, "rev-parse", "HEAD") != commit:
+        raise Refusal("CANDIDATE_PREFLIGHT_ROOT_DRIFT")
+    if git(source, "status", "--porcelain=v1", "--untracked-files=all"):
+        raise Refusal("CANDIDATE_PREFLIGHT_ROOT_DIRTY")
+    runner_path = policy["runner_path"]
+    observed = committed_surface(source, commit, runner_path)
+    runner_raw = committed_bytes(source, commit, runner_path)
+    if sha256(runner_raw) != observed["sha256"]:
+        raise Refusal("CANDIDATE_PREFLIGHT_SOURCE_DRIFT")
+    output = evidence_dir / CANDIDATE_INTEGRITY_PREFLIGHT_PHASE
     output.mkdir(mode=0o700, parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix="project-", dir=output) as temporary:
         project = Path(temporary) / "project"
-        source = roots["research_enforcement_activation"]
         clone = subprocess.run(
             ["git", "clone", "--quiet", "--shared", "--no-checkout",
              str(source), str(project)], capture_output=True, timeout=300,
             check=False,
         )
         if clone.returncode:
-            raise Refusal("RELEASE_QUALITY_SCRATCH_CLONE_REFUSED")
+            raise Refusal("CANDIDATE_PREFLIGHT_SCRATCH_CLONE_REFUSED")
         origin = git(source, "config", "--get", "remote.origin.url")
         normalized_origin = origin[:-4] if origin.endswith(".git") else origin
         if normalized_origin.lower() not in (
             "https://github.com/rexcoleman/research_enforcement_activation",
             "git@github.com:rexcoleman/research_enforcement_activation",
         ):
-            raise Refusal("RELEASE_QUALITY_SOURCE_ORIGIN_REFUSED")
+            raise Refusal("CANDIDATE_PREFLIGHT_SOURCE_ORIGIN_REFUSED")
         remap = subprocess.run(
             ["git", "-C", str(project), "remote", "set-url", "origin", origin],
             capture_output=True, timeout=30, check=False,
         )
         if remap.returncode:
-            raise Refusal("RELEASE_QUALITY_SCRATCH_ORIGIN_REFUSED")
+            raise Refusal("CANDIDATE_PREFLIGHT_SCRATCH_ORIGIN_REFUSED")
         checkout = subprocess.run(
-            ["git", "-C", str(project), "checkout", "--quiet", "--detach",
-             rows["research_enforcement_activation"]["commit"]],
+            ["git", "-C", str(project), "checkout", "--quiet", "--detach", commit],
             capture_output=True, timeout=300, check=False,
         )
         if checkout.returncode:
-            raise Refusal("RELEASE_QUALITY_SCRATCH_CHECKOUT_REFUSED")
-        setup = prepare_release_quality_candidate(
-            project, source, rows["research_enforcement_activation"]["commit"],
-            output,
+            raise Refusal("CANDIDATE_PREFLIGHT_SCRATCH_CHECKOUT_REFUSED")
+        setup = prepare_candidate_integrity_preflight(
+            project, source, commit, output,
         )
-        result = run_release_quality_loop(
-            project, gov / policy["loop_path"], gov / policy["gate_path"],
-            output, policy["minimum_t3_composite"],
-        )
-        for key in ("loop", "gate"):
-            if sha256(regular_bytes(gov / sources[key]["path"])) != sources[key]["sha256"]:
-                raise Refusal("RELEASE_QUALITY_SOURCE_DRIFT:%s" % key)
-    return dict(result, **setup, phase=RELEASE_QUALITY_LOOP_PHASE,
-                project_commit=rows["research_enforcement_activation"]["commit"],
-                govml_commit=commit,
-                loop_source_sha256=sources["loop"]["sha256"],
-                gate_source_sha256=sources["gate"]["sha256"])
+    if sha256(regular_bytes(source / runner_path)) != observed["sha256"]:
+        raise Refusal("CANDIDATE_PREFLIGHT_SOURCE_DRIFT")
+    return dict(setup, phase=CANDIDATE_INTEGRITY_PREFLIGHT_PHASE,
+                project_commit=commit, runner_source_sha256=observed["sha256"])
 
 
 def receipt_path(evidence_dir, phase):
@@ -2377,12 +2299,12 @@ def phase_result(phase, adapter, roots, evidence_dir, mode, baseline):
         return contract_snapshot(adapter, evidence_dir, mode, baseline)
     if phase == EXACT_PLAN_RECOVERY_DRIVE_PHASE:
         return exact_plan_recovery_drive_snapshot(adapter, roots, evidence_dir)
-    if phase == RELEASE_QUALITY_LOOP_PHASE:
+    if phase == CANDIDATE_INTEGRITY_PREFLIGHT_PHASE:
         if mode == "noop-rehearsal":
-            return {"phase": RELEASE_QUALITY_LOOP_PHASE,
+            return {"phase": CANDIDATE_INTEGRITY_PREFLIGHT_PHASE,
                     "status": "NOT_APPLICABLE_HISTORICAL_NOOP",
                     "release_freeze_authority": False}
-        return release_quality_loop_snapshot(adapter, roots, evidence_dir)
+        return candidate_integrity_preflight_snapshot(adapter, roots, evidence_dir)
     if phase == "poststate":
         return poststate_snapshot(adapter, roots, evidence_dir, baseline)
     raise Refusal("PHASE_UNKNOWN:%s" % phase)
