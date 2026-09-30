@@ -1297,11 +1297,15 @@ def revalidate_authenticated_roots(adapter, roots, authenticated_rows):
     if not isinstance(authenticated_rows, list):
         raise Refusal("HERMETIC_ROOT_AUTHORITY_ABSENT")
     expected = {row["logical_name"] for row in adapter["repositories"]}
+    exact_plan = "exact_plan_recovery_drive" in adapter
+    row_fields = {"logical_name", "slug", "default_branch", "commit"}
+    if exact_plan:
+        row_fields.add("protected_default_commit")
     by_name = {}
     for row in authenticated_rows:
         closed_dict(
             row,
-            {"logical_name", "slug", "default_branch", "commit"},
+            row_fields,
             "HERMETIC_ROOT_AUTHORITY_ROW",
         )
         logical = row["logical_name"]
@@ -1327,6 +1331,12 @@ def revalidate_authenticated_roots(adapter, roots, authenticated_rows):
                 "HERMETIC_ROOT_DRIFT:%s:expected=%s:observed=%s"
                 % (logical, row["commit"], observed)
             )
+        if exact_plan:
+            default = row["protected_default_commit"]
+            if not isinstance(default, str) or not HEX40.fullmatch(default):
+                raise Refusal("HERMETIC_ROOT_PROTECTED_DEFAULT_INVALID:%s" % logical)
+            if protected_default_commit(root, repository, observed) != default:
+                raise Refusal("HERMETIC_ROOT_PROTECTED_DEFAULT_DRIFT:%s" % logical)
         if git(root, "status", "--porcelain=v1", "--untracked-files=all"):
             raise Refusal("HERMETIC_ROOT_DIRTY:%s" % logical)
 

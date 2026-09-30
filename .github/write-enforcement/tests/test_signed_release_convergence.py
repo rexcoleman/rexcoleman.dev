@@ -3121,6 +3121,85 @@ def test_exact_plan_checks_every_source_on_protected_default(tmp_path, monkeypat
 
 
 @pytest.mark.parametrize("plant,match", [
+    ("clean", None),
+    ("stale_default", "HERMETIC_ROOT_PROTECTED_DEFAULT_DRIFT"),
+    ("invalid_default", "HERMETIC_ROOT_PROTECTED_DEFAULT_INVALID"),
+    ("missing_default", "HERMETIC_ROOT_AUTHORITY_ROW_FIELDS_REFUSED"),
+])
+def test_exact_plan_revalidates_protected_default_root_receipt(
+    tmp_path, monkeypatch, plant, match,
+):
+    adapter = tool.load_adapter(EXACT_PLAN_RECOVERY_ADAPTER)
+    commit, default = "a" * 40, "b" * 40
+    mapping = {}
+    rows = []
+    for repository in adapter["repositories"]:
+        logical = repository["logical_name"]
+        root = tmp_path / logical
+        root.mkdir()
+        mapping[logical] = root
+        rows.append({
+            "logical_name": logical,
+            "slug": repository["slug"],
+            "default_branch": repository["default_branch"],
+            "commit": commit,
+            "protected_default_commit": default,
+        })
+    if plant == "stale_default":
+        rows[0]["protected_default_commit"] = "c" * 40
+    elif plant == "invalid_default":
+        rows[0]["protected_default_commit"] = "not-a-commit"
+    elif plant == "missing_default":
+        del rows[0]["protected_default_commit"]
+
+    def fake_git(_root, *argv):
+        if argv == ("rev-parse", "HEAD"):
+            return commit
+        if argv == ("status", "--porcelain=v1", "--untracked-files=all"):
+            return ""
+        raise AssertionError(argv)
+
+    checked = []
+    monkeypatch.setattr(tool, "git", fake_git)
+    def check_default(root, repository, observed):
+        assert root == mapping[repository["logical_name"]]
+        assert observed == commit
+        checked.append(repository["logical_name"])
+        return default
+    monkeypatch.setattr(tool, "protected_default_commit", check_default)
+    if match:
+        with pytest.raises(tool.Refusal, match=match):
+            tool.revalidate_authenticated_roots(adapter, mapping, rows)
+    else:
+        tool.revalidate_authenticated_roots(adapter, mapping, rows)
+        assert set(checked) == set(mapping)
+
+
+def test_non_exact_plan_rejects_protected_default_root_field(tmp_path, monkeypatch):
+    adapter = tool.load_adapter(ADAPTER)
+    mapping = {}
+    rows = []
+    for repository in adapter["repositories"]:
+        logical = repository["logical_name"]
+        root = tmp_path / logical
+        root.mkdir()
+        mapping[logical] = root
+        rows.append({
+            "logical_name": logical,
+            "slug": repository["slug"],
+            "default_branch": repository["default_branch"],
+            "commit": "a" * 40,
+        })
+    monkeypatch.setattr(
+        tool, "git", lambda _root, *argv: "a" * 40 if argv == ("rev-parse", "HEAD") else "",
+    )
+    tool.revalidate_authenticated_roots(adapter, mapping, rows)
+    rows[0]["protected_default_commit"] = "b" * 40
+    with pytest.raises(tool.Refusal, match="HERMETIC_ROOT_AUTHORITY_ROW_FIELDS_REFUSED"):
+        tool.revalidate_authenticated_roots(adapter, mapping, rows)
+
+
+@pytest.mark.parametrize("plant,match", [
     ("missing_default", "PROTECTED_DEFAULT_REF_ABSENT"),
     ("wrong_default", "PROTECTED_DEFAULT_REACHABILITY_REFUSED"),
     ("wrong_remote", "PROTECTED_DEFAULT_REMOTE_MISMATCH"),
