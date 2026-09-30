@@ -1127,8 +1127,16 @@ def test_workflow_exposes_credential_only_after_environment_review():
     assert text.count("secrets.GOVML_REA_READ_APP_ID") == 1
     assert text.count("secrets.GOVML_REA_READ_APP_PRIVATE_KEY_B64") == 1
     assert "persist-credentials: false" in text
-    assert "permissions:\n  contents: read" in text
+    assert "permissions:\n  actions: read\n  contents: read" in text
     assert "Exact manifest plus normal-hook receipt file-set SHA-256" in text
+    assert "public_packet_run_id:" in text
+    assert "PUBLIC_PACKET_RUN_ID: ${{ inputs.public_packet_run_id }}" in text
+    assert '""|*[!0-9]*)' in text
+    assert "gh run download \"${PUBLIC_PACKET_RUN_ID}\"" in text
+    assert "--name \"rea-write-enforcement-attestation-${PUBLIC_PACKET_RUN_ID}\"" in text
+    assert ".local/state/rea_enforcement/remote_wea" in text
+    assert "sha256sum -c SHA256SUMS" in text
+    assert "claim_registry.json" in text
     for argument in (
         "--mode",
         "--repository",

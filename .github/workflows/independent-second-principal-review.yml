@@ -42,8 +42,14 @@ on:
         required: false
         default: ""
         type: string
+      public_packet_run_id:
+        description: Hosted issuer workflow run id carrying the public attestation packet
+        required: false
+        default: ""
+        type: string
 
 permissions:
+  actions: read
   contents: read
 
 concurrency:
@@ -82,10 +88,30 @@ jobs:
         env:
           GOVML_REA_READ_APP_ID: ${{ secrets.GOVML_REA_READ_APP_ID }}
           GOVML_REA_READ_APP_PRIVATE_KEY_B64: ${{ secrets.GOVML_REA_READ_APP_PRIVATE_KEY_B64 }}
+          PUBLIC_PACKET_RUN_ID: ${{ inputs.public_packet_run_id }}
+          PUBLIC_PACKET_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           test "${{ inputs.expected_plan_adapter_id }}" = "research-enforcement-activation-generation-5-population-306-v1"
           test "${{ inputs.expected_manifest_sha256 }}" = "3e67c821a6041de6d695caea67cd485c296e9cd0aa5f579519f06f1cee7333ba"
+          case "${PUBLIC_PACKET_RUN_ID}" in
+            ""|*[!0-9]*)
+              echo "public_packet_run_id must be a decimal hosted issuer run id" >&2
+              exit 1
+              ;;
+          esac
+
+          packet_root="${HOME}/.local/state/rea_enforcement/remote_wea"
+          rm -rf "${packet_root}"
+          mkdir -p "${packet_root}"
+          GH_TOKEN="${PUBLIC_PACKET_TOKEN}" gh run download "${PUBLIC_PACKET_RUN_ID}" \
+            --repo rexcoleman/rexcoleman.dev \
+            --name "rea-write-enforcement-attestation-${PUBLIC_PACKET_RUN_ID}" \
+            --dir "${packet_root}"
+          expected=$'SHA256SUMS\nclaim_policy.json\nclaim_registry.json\nenforcement_bundle_manifest.json\nhybrid_capability_authority.json\nhybrid_capability_provider\nissuance_receipt.json\npredecessor_write_enforcement_attestation.json\nruntime_mount.py\ntrusted_wea_public.pem\nwrite_enforcement_attestation.json'
+          observed="$(find "${packet_root}" -maxdepth 1 -type f -printf '%f\n' | LC_ALL=C sort)"
+          test "${observed}" = "${expected}"
+          (cd "${packet_root}" && sha256sum -c SHA256SUMS)
 
           token_file="${RUNNER_TEMP}/govml-read-token.txt"
           python3 .github/write-enforcement/github_app_installation_token.py --output "${token_file}"
