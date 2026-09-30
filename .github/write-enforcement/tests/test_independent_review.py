@@ -1137,6 +1137,11 @@ def test_workflow_exposes_credential_only_after_environment_review():
     assert ".local/state/rea_enforcement/remote_wea" in text
     assert "sha256sum -c SHA256SUMS" in text
     assert "claim_registry.json" in text
+    assert "Upload failed hosted release plan evidence" in text
+    assert "actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02" in text
+    assert "hosted-release-plan-failure-${{ github.run_id }}" in text
+    assert "path: ${{ runner.temp }}/hosted-release-plan" in text
+    assert "if-no-files-found: error" in text
     for argument in (
         "--mode",
         "--repository",
