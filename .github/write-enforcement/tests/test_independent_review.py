@@ -939,7 +939,7 @@ def test_preflight_mode_has_no_mutating_api_path(monkeypatch, capsys):
     value = state()
     monkeypatch.setenv("GH_TOKEN", "test-token-not-a-credential")
     monkeypatch.setattr(MODULE, "read_state", lambda _token, _args: value)
-    monkeypatch.setattr(MODULE, "verify_release_quality_plan", lambda _args: "f" * 64)
+    monkeypatch.setattr(MODULE, "verify_release_integrity_plan", lambda _args: "f" * 64)
 
     def refuse_api(*_args, **_kwargs):
         raise AssertionError("preflight attempted an API mutation")
@@ -949,14 +949,14 @@ def test_preflight_mode_has_no_mutating_api_path(monkeypatch, capsys):
     assert capsys.readouterr().out.startswith("OPTION_A_POSTHOC_PREFLIGHT_PASS ")
 
 
-def test_site_freeze_review_refuses_absent_quality_plan():
-    with pytest.raises(MODULE.Refusal, match="requires exact-plan quality evidence"):
-        MODULE.verify_release_quality_plan(args())
+def test_site_freeze_review_refuses_absent_integrity_plan():
+    with pytest.raises(MODULE.Refusal, match="requires exact-plan integrity evidence"):
+        MODULE.verify_release_integrity_plan(args())
 
 
-def _quality_plan_evidence(tmp_path, excepted=False):
+def _integrity_plan_evidence(tmp_path, mode="plan"):
     engine_path = MODULE_PATH.with_name("signed_release_convergence.py")
-    spec = importlib.util.spec_from_file_location("quality_plan_test_engine", engine_path)
+    spec = importlib.util.spec_from_file_location("integrity_plan_test_engine", engine_path)
     engine = importlib.util.module_from_spec(spec)
     assert spec.loader
     spec.loader.exec_module(engine)
@@ -968,30 +968,22 @@ def _quality_plan_evidence(tmp_path, excepted=False):
     evidence = tmp_path / "plan-evidence"
     evidence.mkdir()
     state_path = tmp_path / "plan-state.json"
-    state = engine.new_state(adapter_raw, adapter, "plan", evidence, None)
+    state = engine.new_state(adapter_raw, adapter, mode, evidence, None)
     phases = list(engine.phases_for_adapter(adapter))
-    score = 7.9 if excepted else 8.4
-    report_raw = json.dumps({"score": score, "t3_status": "complete",
-                             "t3_composite": 8.3}).encode()
-    ccql_raw = json.dumps({"verdict": "CLEAN", "clean": True,
-                           "exit": 0, "excepted_steps":
-                           [{"step_id": "disposed-semantic"}] if excepted else []}).encode()
-    quality_dir = evidence / engine.RELEASE_QUALITY_LOOP_PHASE
-    quality_dir.mkdir()
-    (quality_dir / "quality-loop-report.json").write_bytes(report_raw)
-    (quality_dir / "ccql-verdict.json").write_bytes(ccql_raw)
     for phase in phases:
         result = {"phase": phase}
+        if phase == "roots":
+            result = [{"logical_name": "research_enforcement_activation",
+                       "commit": "b" * 40}]
         if phase == "manifest-a":
             result["sha256"] = "c" * 64
-        if phase == engine.RELEASE_QUALITY_LOOP_PHASE:
-            result = {
-                "verdict": "CLEAN", "quality_loop_exit": 1 if excepted else 0,
-                "ccql_exit": 0, "excepted_step_count": 1 if excepted else 0,
-                "t3_status": "complete", "t3_composite": 8.3, "score": score,
-                "report_sha256": hashlib.sha256(report_raw).hexdigest(),
-                "ccql_sha256": hashlib.sha256(ccql_raw).hexdigest(),
-            }
+        if phase == engine.CANDIDATE_INTEGRITY_PREFLIGHT_PHASE:
+            result = {"phase": phase, "preflight_exit": 0,
+                      "preflight_sha256": "d" * 64,
+                      "runner_source_sha256": "e" * 64,
+                      "project_commit": "b" * 40,
+                      "default_commit": "b" * 40,
+                      "remote_default_commit": "b" * 40}
         receipt = engine.receipt(evidence, phase, result)
         state["completed"].append(phase)
         state["receipt_sha256"][phase] = receipt["result_sha256"]
@@ -1003,27 +995,50 @@ def _quality_plan_evidence(tmp_path, excepted=False):
     expected = args()
     expected.plan_state = str(state_path)
     expected.plan_evidence_dir = str(evidence)
-    return expected, quality_dir
+    # This is deliberately non-clean close evidence. It cannot block an
+    # infrastructure freeze when all registered integrity receipts pass.
+    (evidence / "quality-loop-report.json").write_text(json.dumps({
+        "score": 7.9, "t3_status": "skipped_structural_fails",
+        "t3_composite": None,
+    }))
+    return expected, engine, evidence, state_path
 
 
-def test_site_freeze_review_accepts_complete_clean_quality_plan(tmp_path):
-    expected, _ = _quality_plan_evidence(tmp_path)
-    assert len(MODULE.verify_release_quality_plan(expected)) == 64
+def test_site_freeze_review_accepts_integrity_plan_with_dirty_quality_loop(tmp_path):
+    expected, engine, evidence, _ = _integrity_plan_evidence(tmp_path)
+    assert "release-quality-loop" not in engine.phases_for_adapter(
+        engine.load_adapter(MODULE_PATH.with_name("adapters") /
+                            "research_enforcement_activation.exact-plan-recovery-drive-v1.json"))
+    assert len(MODULE.verify_release_integrity_plan(expected)) == 64
+    assert json.loads((evidence / "quality-loop-report.json").read_text())["score"] == 7.9
 
 
-def test_site_freeze_review_preserves_named_ccql_exception(tmp_path):
-    expected, _ = _quality_plan_evidence(tmp_path, excepted=True)
-    assert len(MODULE.verify_release_quality_plan(expected)) == 64
+def test_release_freeze_preflight_passes_dirty_loop_with_integrity_green(
+    tmp_path, monkeypatch, capsys,
+):
+    expected, _, _, _ = _integrity_plan_evidence(tmp_path)
+    value = state()
+    monkeypatch.setenv("GH_TOKEN", "test-token-not-a-credential")
+    monkeypatch.setattr(MODULE, "read_state", lambda _token, _args: value)
+    monkeypatch.setattr(MODULE, "api", lambda *_args, **_kwargs:
+                        (_ for _ in ()).throw(AssertionError("mutation attempted")))
+    assert MODULE.run(expected) == 0
+    assert capsys.readouterr().out.startswith("OPTION_A_POSTHOC_PREFLIGHT_PASS ")
 
 
-def test_site_freeze_review_refuses_dirty_or_changed_quality_report(tmp_path):
-    expected, quality_dir = _quality_plan_evidence(tmp_path)
-    report = quality_dir / "quality-loop-report.json"
-    report.write_text(json.dumps({"score": 7.9,
-                                  "t3_status": "skipped_structural_fails",
-                                  "t3_composite": None}))
-    with pytest.raises(MODULE.Refusal, match="did not prove a clean"):
-        MODULE.verify_release_quality_plan(expected)
+@pytest.mark.parametrize("plant", ["manifest", "preflight", "summary", "noop"])
+def test_site_freeze_review_refuses_failed_integrity_despite_dirty_loop(tmp_path, plant):
+    expected, engine, evidence, state_path = _integrity_plan_evidence(
+        tmp_path, mode="noop-rehearsal" if plant == "noop" else "plan")
+    if plant == "manifest":
+        expected.expected_manifest_sha256 = "f" * 64
+    elif plant == "preflight":
+        receipt = engine.receipt_path(evidence, engine.CANDIDATE_INTEGRITY_PREFLIGHT_PHASE)
+        receipt.write_text("{}")
+    elif plant == "summary":
+        (evidence / "summary.json").write_text(json.dumps({"status": "FAIL"}))
+    with pytest.raises(MODULE.Refusal):
+        MODULE.verify_release_integrity_plan(expected)
 
 
 def test_parser_exposes_no_approval_mode():

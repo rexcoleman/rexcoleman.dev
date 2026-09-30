@@ -447,20 +447,18 @@ surface before poststate. The s249 scratch drive is input-only context and is
 not trusted code. The focused test file plants omitted-member, changed-byte,
 wrong-mode, wrong-predecessor, wrong-root-commit, exact staged nonproduction
 count and mixed-packet refusals.
-The s254 `release-quality-loop` phase follows the recovery drive and precedes
-poststate. It executes the protected govML candidate quality loop and CC-QL
-source against a disposable checkout of the exact REA root commit, deletes
-the copied report before execution, and requires a CLEAN CC-QL verdict and
-authoritative T3 at or above 8.0. The independent freeze reviewer binds that
-phase receipt and its manifest SHA-256; a historical no-op rehearsal cannot
-authorize a new freeze. The adapter plans evidence only; it does not release,
-install, repoint, merge, or run commit preflight.
-Before scoring, the disposable checkout binds the source root's selected
-protected-default ref and runs that checkout's registered authenticated
-`--engine-preflight`. The preflight installs and verifies the signed packet and
-managed bundle required by the whole test suite. A missing or branch-only
-default ref, refused preflight, or dirty checkout refuses the phase; the
-preflight's raw output remains in the phase evidence.
+The s254 `candidate-integrity-preflight` phase follows the recovery drive and
+precedes poststate. The roots phase requires all five selected commits to be
+reachable from independently read protected defaults. Candidate preflight
+binds the exact REA root commit again and runs that checkout's authenticated
+`--engine-preflight`, and preserves its raw output. The preflight verifies the
+installed signed packet and managed bundle. A missing or branch-only default
+ref, refused preflight, or dirty checkout refuses the phase. The independent
+freeze reviewer binds its receipt and the manifest-a SHA-256; a historical
+no-op rehearsal cannot authorize a new freeze. The adapter plans evidence only;
+it does not release, install, repoint, merge, or run commit preflight. Quality
+score, CC-QL cleanliness, and T3 at bar remain research close/publication
+checks under `kc101_SCORES_ARE_TARGETS_RULING.json`.
 
 ## Known failure classes (s250 catalogue)
 
