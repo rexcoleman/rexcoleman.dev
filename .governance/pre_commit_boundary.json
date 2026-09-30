@@ -2,13 +2,24 @@
   "assertion": "COMMIT_PREFLIGHT_PASS",
   "caller": "git-pre-commit",
   "changed_paths": [
-    ".github/workflows/independent-second-principal-review.yml"
+    "release-evidence/pop306-20260930T202551Z/unit1_pop306_protected/inputs/ruleset.json",
+    "release-evidence/pop306-20260930T202551Z/unit1_pop306_protected/manifest-a/frozen_bundle_manifest.generation-5.json",
+    "release-evidence/pop306-20260930T202551Z/unit1_pop306_protected/manifest-b/frozen_bundle_manifest.generation-5.json",
+    "release-evidence/pop306-20260930T202551Z/unit1_pop306_protected/receipts/contract.json",
+    "release-evidence/pop306-20260930T202551Z/unit1_pop306_protected/receipts/hermetic.json",
+    "release-evidence/pop306-20260930T202551Z/unit1_pop306_protected/receipts/impact.json",
+    "release-evidence/pop306-20260930T202551Z/unit1_pop306_protected/receipts/manifest-a.json",
+    "release-evidence/pop306-20260930T202551Z/unit1_pop306_protected/receipts/manifest-b.json",
+    "release-evidence/pop306-20260930T202551Z/unit1_pop306_protected/receipts/poststate.json",
+    "release-evidence/pop306-20260930T202551Z/unit1_pop306_protected/receipts/roots.json",
+    "release-evidence/pop306-20260930T202551Z/unit1_pop306_protected/summary.json",
+    "release-evidence/pop306-20260930T202551Z/unit1_pop306_protected_state.json"
   ],
-  "changed_paths_count": 1,
-  "changed_paths_sha256": "7ad7c923ee11a64557b1dd6aa9890b09ed5861236f38fc65162ac17fcc9c2cb8",
+  "changed_paths_count": 12,
+  "changed_paths_sha256": "a811843b643ac8885bb980f46b3eb58b137bd57d64df7b71d5e50928b2cbf649",
   "mode": "commit-preflight",
-  "parent_head": "a47f09f888204af60b1c55af9f0c52170e9c7940",
-  "run_id": "pre-commit-20dc79edb9b10286fce1aca6",
+  "parent_head": "970018b4f954b32aac5f406911d8a981702b8176",
+  "run_id": "pre-commit-9ff9e982bb8633661c847f2c",
   "schema_version": "rea.pre-commit-boundary.v1",
-  "utc_asserted_at": "2026-09-30T20:19:37Z"
+  "utc_asserted_at": "2026-09-30T20:28:01Z"
 }
