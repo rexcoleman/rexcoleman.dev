@@ -1943,16 +1943,38 @@ def phases_for_adapter(adapter):
     return tuple(phases)
 
 
-def root_rows_by_name(evidence_dir):
+def root_rows_by_name(adapter, roots, evidence_dir):
+    if "exact_plan_recovery_drive" not in adapter:
+        raise Refusal("EXACT_PLAN_RECOVERY_ADAPTER_REQUIRED")
     rows = json.loads(regular_bytes(receipt_path(evidence_dir, "roots")))["result"]
+    repositories = {row["logical_name"]: row for row in adapter["repositories"]}
     result = {}
     for row in rows:
         closed_dict(
             row,
-            {"logical_name", "slug", "default_branch", "commit"},
+            {"logical_name", "slug", "default_branch", "commit",
+             "protected_default_commit"},
             "EXACT_PLAN_RECOVERY_ROOT_ROW",
         )
-        result[row["logical_name"]] = row
+        logical = row["logical_name"]
+        repository = repositories.get(logical)
+        if (
+            repository is None or logical in result
+            or row["slug"] != repository["slug"]
+            or row["default_branch"] != repository["default_branch"]
+            or not isinstance(row["commit"], str)
+            or not HEX40.fullmatch(row["commit"])
+            or not isinstance(row["protected_default_commit"], str)
+            or not HEX40.fullmatch(row["protected_default_commit"])
+        ):
+            raise Refusal("EXACT_PLAN_RECOVERY_ROOT_ROW_IDENTITY_REFUSED:%s" % logical)
+        if protected_default_commit(roots[logical], repository, row["commit"]) != (
+            row["protected_default_commit"]
+        ):
+            raise Refusal("EXACT_PLAN_RECOVERY_PROTECTED_DEFAULT_DRIFT:%s" % logical)
+        result[logical] = row
+    if set(result) != set(repositories):
+        raise Refusal("EXACT_PLAN_RECOVERY_ROOT_SET_REFUSED")
     return result
 
 
@@ -2036,7 +2058,7 @@ def exact_plan_recovery_drive_snapshot(adapter, roots, evidence_dir):
         or manifest_a["member_count"] != contract["member_count"]
     ):
         raise Refusal("EXACT_PLAN_RECOVERY_PLAN_MANIFEST_REFUSED")
-    root_rows = root_rows_by_name(evidence_dir)
+    root_rows = root_rows_by_name(adapter, roots, evidence_dir)
     remeasured_roots = {}
     for logical, row in sorted(root_rows.items()):
         observed = git(roots[logical], "rev-parse", "HEAD")
@@ -2150,7 +2172,7 @@ def prepare_candidate_integrity_preflight(project, source, commit, evidence_dir)
 
 def candidate_integrity_preflight_snapshot(adapter, roots, evidence_dir):
     policy = adapter["candidate_integrity_preflight"]
-    rows = root_rows_by_name(evidence_dir)
+    rows = root_rows_by_name(adapter, roots, evidence_dir)
     logical = policy["repository"]
     source = roots[logical]
     commit = rows[logical]["commit"]

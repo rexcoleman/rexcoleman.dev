@@ -2821,12 +2821,15 @@ def write_exact_plan_recovery_receipts(evidence, manifest, roots_map, packet_row
         "stdout_sha256": "c" * 64,
         "stderr_sha256": "d" * 64,
     }
+    repositories = {row["logical_name"]: row for row in
+                    tool.load_adapter(EXACT_PLAN_RECOVERY_ADAPTER)["repositories"]}
     roots_result = [
         {
             "logical_name": name,
-            "slug": name,
-            "default_branch": "main",
+            "slug": repositories[name]["slug"],
+            "default_branch": repositories[name]["default_branch"],
             "commit": "a" * 40,
+            "protected_default_commit": "d" * 40,
         }
         for name in roots_map
     ]
@@ -2912,6 +2915,8 @@ def install_exact_plan_recovery_fakes(monkeypatch, roots_map, modes=None, drift_
     monkeypatch.setattr(tool, "git", fake_git)
     monkeypatch.setattr(tool, "run", fake_run)
     monkeypatch.setattr(tool, "member_contract", fake_member_contract)
+    monkeypatch.setattr(tool, "protected_default_commit",
+                        lambda _root, _repository, _commit: "d" * 40)
 
 
 def test_exact_plan_recovery_drive_adapter_binds_phase_and_surfaces():
@@ -2959,6 +2964,10 @@ def test_exact_plan_recovery_drive_phase_binds_evidence(tmp_path, monkeypatch):
     manifest = tmp_path / "candidate-manifest.json"
     write_exact_plan_recovery_receipts(tmp_path / "evidence", manifest, mapping)
     install_exact_plan_recovery_fakes(monkeypatch, mapping)
+    rows = tool.root_rows_by_name(adapter, mapping, tmp_path / "evidence")
+    assert set(rows) == set(mapping)
+    assert all(row["protected_default_commit"] == "d" * 40
+               for row in rows.values())
     result = tool.exact_plan_recovery_drive_snapshot(
         adapter, mapping, tmp_path / "evidence"
     )
@@ -2986,6 +2995,9 @@ def test_exact_plan_recovery_drive_phase_binds_evidence(tmp_path, monkeypatch):
         ("wrong_predecessor", "EXACT_PLAN_RECOVERY_PREDECESSOR_PACKET_REFUSED"),
         ("wrong_root_commit", "EXACT_PLAN_RECOVERY_ROOT_COMMIT_REFUSED"),
         ("mixed_packet", "EXACT_PLAN_RECOVERY_MIXED_PACKET_REFUSED"),
+        ("stale_protected_default", "EXACT_PLAN_RECOVERY_PROTECTED_DEFAULT_DRIFT"),
+        ("missing_protected_default", "EXACT_PLAN_RECOVERY_ROOT_ROW_FIELDS_REFUSED"),
+        ("forged_slug", "EXACT_PLAN_RECOVERY_ROOT_ROW_IDENTITY_REFUSED"),
     ],
 )
 def test_exact_plan_recovery_drive_negative_polarities(
@@ -3002,6 +3014,18 @@ def test_exact_plan_recovery_drive_negative_polarities(
     if plant == "mixed_packet":
         packets = [exact_packet(marker="a"), exact_packet(marker="d")]
     write_exact_plan_recovery_receipts(tmp_path / "evidence", manifest, mapping, packets)
+    if plant in ("stale_protected_default", "missing_protected_default", "forged_slug"):
+        target = tmp_path / "evidence/receipts/roots.json"
+        value = json.loads(target.read_text())
+        first = value["result"][0]
+        if plant == "stale_protected_default":
+            first["protected_default_commit"] = "e" * 40
+        elif plant == "missing_protected_default":
+            del first["protected_default_commit"]
+        else:
+            first["slug"] = "attacker-repository"
+        value["result_sha256"] = tool.sha256(tool.canonical(value["result"]))
+        tool.atomic_json(target, value)
     if plant == "changed_byte":
         manifest.write_bytes(b"changed\n")
         os.chmod(manifest, 0o600)
@@ -3012,6 +3036,26 @@ def test_exact_plan_recovery_drive_negative_polarities(
         tool.exact_plan_recovery_drive_snapshot(
             adapter, mapping, tmp_path / "evidence"
         )
+
+
+def test_candidate_integrity_preflight_refuses_stale_protected_default_receipt(
+    tmp_path, monkeypatch,
+):
+    adapter = tool.load_adapter(EXACT_PLAN_RECOVERY_ADAPTER)
+    mapping = roots(tmp_path)
+    for path in mapping.values():
+        path.mkdir()
+    manifest = tmp_path / "candidate-manifest.json"
+    evidence = tmp_path / "evidence"
+    write_exact_plan_recovery_receipts(evidence, manifest, mapping)
+    install_exact_plan_recovery_fakes(monkeypatch, mapping)
+    target = evidence / "receipts/roots.json"
+    value = json.loads(target.read_text())
+    value["result"][0]["protected_default_commit"] = "e" * 40
+    value["result_sha256"] = tool.sha256(tool.canonical(value["result"]))
+    tool.atomic_json(target, value)
+    with pytest.raises(tool.Refusal, match="EXACT_PLAN_RECOVERY_PROTECTED_DEFAULT_DRIFT"):
+        tool.candidate_integrity_preflight_snapshot(adapter, mapping, evidence)
 
 
 def test_exact_plan_recovery_drive_refuses_wrong_staged_nonproduction_count(tmp_path, monkeypatch):
