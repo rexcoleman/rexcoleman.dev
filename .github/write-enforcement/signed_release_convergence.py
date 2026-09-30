@@ -338,10 +338,11 @@ def load_adapter(path: Path):
         "--durable-history-successor",
         "--final-runtime-rollout-successor",
         "--research-working-root-template-successor",
-        "--research-runtime-dependency-successor",
-        "--role-checklist-successor",
-        "--stage5-build-template-successor",
-    }:
+            "--research-runtime-dependency-successor",
+            "--role-checklist-successor",
+            "--stage5-build-template-successor",
+            "--unit1-non-expiring-enforcement-successor",
+        }:
         raise Refusal("MANIFEST_BUILDER_FLAG_REFUSED")
     if not isinstance(value["ruleset_id"], int) or isinstance(
         value["ruleset_id"], bool
@@ -911,6 +912,9 @@ def impact_snapshot(adapter, roots, root_rows):
         "--role-checklist-successor": "role_checklist_successor_members",
         "--stage5-build-template-successor": (
             "stage5_build_template_successor_members"
+        ),
+        "--unit1-non-expiring-enforcement-successor": (
+            "unit1_non_expiring_enforcement_successor_members"
         ),
     }[adapter["manifest_builder_flag"]]
     expected = member_contract(rex_root, selector_name)

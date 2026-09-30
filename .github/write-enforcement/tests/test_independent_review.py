@@ -574,14 +574,14 @@ def test_current_freeze_remains_exact_after_logical_policy_key_repair():
 
 def test_next_contract_manifest_is_an_exact_positive_control():
     report=MODULE.manifest_contract(reseal(next_contract_manifest()))
-    assert report["member_count"] == len(MODULE.expected_members()) == 305
+    assert report["member_count"] == len(MODULE.expected_members()) == 306
     assert report["member_contract"] == "EXACT"
 
 
-def test_current_registered_manifest_is_the_exact_installed_population():
-    # Release 5 froze the population-305 contract. Earlier tests keep the
-    # historical 300-member successor control, but the installed manifest itself
-    # is now the exact terminal contract.
+def test_current_registered_manifest_is_preconvergence_population_305():
+    # Release 5 froze the population-305 contract. Branch C Unit 1 registers
+    # population 306 before the replacement manifest is built, so the currently
+    # installed manifest is now an authenticated predecessor, not the terminal.
     raw = CURRENT_MANIFEST.read_bytes()
     value = json.loads(raw)
     observed = {
@@ -589,13 +589,15 @@ def test_current_registered_manifest_is_the_exact_installed_population():
         for row in value["members"]
     }
     unsigned = {key: item for key, item in value.items() if key != "manifest_digest"}
+    stage5 = MODULE.structural_members("stage5_build_template_successor_members")
     terminal = MODULE.expected_members()
-    assert observed == terminal
-    assert len(terminal) == 305
+    assert observed == stage5
+    assert set(observed) < set(terminal)
+    assert len(observed) == 305
+    assert len(terminal) == 306
     assert value["manifest_digest"] == digest(unsigned)
-    report = MODULE.manifest_contract(raw)
-    assert report["member_count"] == 305
-    assert report["member_contract"] == "EXACT"
+    with pytest.raises(MODULE.Refusal, match="generation-5 manifest contract differs"):
+        MODULE.manifest_contract(raw)
 
 
 def test_manifest_only_identity_refresh_preserves_the_structural_positive():
@@ -614,7 +616,7 @@ def test_manifest_only_identity_refresh_preserves_the_structural_positive():
     assert refreshed["manifest_digest"] != current["manifest_digest"]
 
 
-def test_registered_adapter_selects_structurally_derived_stage5_template_contract():
+def test_registered_adapter_selects_structurally_derived_unit1_non_expiring_contract():
     path, population = MODULE._registered_adapter_path()
     adapter = MODULE._registered_adapter()
     selector = adapter["manifest_builder_flag"][2:].replace("-", "_") + "_members"
@@ -624,7 +626,7 @@ def test_registered_adapter_selects_structurally_derived_stage5_template_contrac
         f"research_enforcement_activation.population-{population}-v1.json"
     )
     assert set(old) < set(current)
-    assert len(current) == adapter["expected_member_count"] == population == 305
+    assert len(current) == adapter["expected_member_count"] == population == 306
     assert "final-runtime-rollout" in current
     assert {
         "research-template-observation-log",
@@ -647,6 +649,7 @@ def test_registered_adapter_selects_structurally_derived_stage5_template_contrac
         "stage5-template-construction-manifest-spec",
         "stage5-template-construction-manifest",
     } <= set(current)
+    assert "non-expiring-enforcement" in current
 
 
 def registered_fixture(tmp_path, monkeypatch):
@@ -719,7 +722,7 @@ REVIEWER_ADDITIONAL_MEMBERS = {
     "future-reviewer-fixture": ("rexcoleman.dev", "future/reviewer.py"),
 }
 def reviewer_successor_members():
-    value = stage5_build_template_successor_members()
+    value = unit1_non_expiring_enforcement_successor_members()
     value.update(REVIEWER_ADDITIONAL_MEMBERS)
     return value
 """
@@ -742,7 +745,7 @@ def test_lower_only_registered_population_refuses_as_a_downgrade(
         row
         for row in index["adapters"]
         if row["adapter_id"]
-        != "research-enforcement-activation-generation-5-population-305-v1"
+        != "research-enforcement-activation-generation-5-population-306-v1"
     ]
     paths["index"].write_text(json.dumps(index), encoding="utf-8")
     with pytest.raises(MODULE.Refusal, match="terminal successor"):
@@ -762,11 +765,11 @@ def test_retired_historical_population_does_not_block_active_terminal(
     historical["status"] = "retired"
     paths["index"].write_text(json.dumps(index), encoding="utf-8")
     selected, population = MODULE._registered_adapter_path()
-    assert population == 305
+    assert population == 306
     assert selected.name == (
-        "research_enforcement_activation.population-305-v1.json"
+        "research_enforcement_activation.population-306-v1.json"
     )
-    assert len(MODULE.expected_members()) == 305
+    assert len(MODULE.expected_members()) == 306
 
 
 def test_retired_terminal_with_only_lower_active_population_refuses(
@@ -777,14 +780,14 @@ def test_retired_terminal_with_only_lower_active_population_refuses(
         row
         for row in index["adapters"]
         if row["adapter_id"]
-        == "research-enforcement-activation-generation-5-population-305-v1"
+        == "research-enforcement-activation-generation-5-population-306-v1"
     )
     terminal["status"] = "retired"
     paths["index"].write_text(json.dumps(index), encoding="utf-8")
     selected, population = MODULE._registered_adapter_path()
-    assert population == 300
+    assert population == 305
     assert selected.name == (
-        "research_enforcement_activation.population-300-v1.json"
+        "research_enforcement_activation.population-305-v1.json"
     )
     with pytest.raises(MODULE.Refusal, match="terminal successor"):
         MODULE._registered_adapter()
@@ -828,7 +831,7 @@ def test_structural_member_derivation_does_not_execute_source(tmp_path, monkeypa
         encoding="utf-8",
     )
     monkeypatch.setattr(MODULE, "MEMBER_CONTRACT", planted)
-    assert len(MODULE.expected_members()) == 305
+    assert len(MODULE.expected_members()) == 306
     assert not marker.exists()
 
 

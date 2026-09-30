@@ -1670,3 +1670,54 @@ def test_stage5_build_templates_are_exact_closed_successor():
         validate_stage5_build_template_member_ids(historical)
     with pytest.raises(ValueError, match="role checklist member set refused"):
         validate_role_checklist_member_ids(successor)
+
+
+def test_unit1_non_expiring_enforcement_is_exact_closed_successor():
+    from member_contract import (
+        UNIT1_NON_EXPIRING_ENFORCEMENT_ADDITIONAL_MEMBERS,
+        production_members_for_manifest,
+        stage5_build_template_successor_members,
+        unit1_non_expiring_enforcement_successor_members,
+        validate_stage5_build_template_member_ids,
+        validate_unit1_non_expiring_enforcement_member_ids,
+        validate_unit1_non_expiring_enforcement_modes,
+    )
+
+    historical = stage5_build_template_successor_members()
+    successor = unit1_non_expiring_enforcement_successor_members()
+    expected = {
+        "non-expiring-enforcement": (
+            "rexcoleman.dev",
+            ".github/write-enforcement/non_expiring_enforcement.py",
+        ),
+    }
+    assert UNIT1_NON_EXPIRING_ENFORCEMENT_ADDITIONAL_MEMBERS == expected
+    assert len(historical) == 305
+    assert len(successor) == 306
+    assert set(successor) == set(historical) | set(expected)
+    assert all(successor[key] == historical[key] for key in historical)
+    validate_unit1_non_expiring_enforcement_member_ids(successor)
+    validate_unit1_non_expiring_enforcement_modes(
+        {key: "100644" for key in historical} | {
+            "non-expiring-enforcement": "100755"
+        },
+        successor,
+    )
+    assert production_members_for_manifest({
+        "authority_generation": 5,
+        "members": [{"member_id": key} for key in successor],
+    }) == successor
+    assert production_members_for_manifest({
+        "authority_generation": 5,
+        "members": [{"member_id": key} for key in historical],
+    }) == historical
+
+    omitted = dict(successor)
+    omitted.pop("non-expiring-enforcement")
+    with pytest.raises(ValueError, match="unit1 non-expiring member set refused"):
+        validate_unit1_non_expiring_enforcement_member_ids(omitted)
+    modes = {member_id: "100644" for member_id in successor}
+    with pytest.raises(ValueError, match="unit1 non-expiring mode:non-expiring-enforcement"):
+        validate_unit1_non_expiring_enforcement_modes(modes, successor)
+    with pytest.raises(ValueError, match="stage5 build template member set refused"):
+        validate_stage5_build_template_member_ids(successor)
