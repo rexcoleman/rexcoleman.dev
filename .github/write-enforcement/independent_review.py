@@ -7,7 +7,9 @@ import argparse
 import ast
 import base64
 import hashlib
+import importlib.util
 import json
+import math
 import os
 import re
 import sys
@@ -872,6 +874,78 @@ def assert_policy(state: dict, args: argparse.Namespace) -> None:
             raise Refusal("site required status check contexts differ")
 
 
+def verify_release_quality_plan(args: argparse.Namespace) -> str | None:
+    """Bind a manifest freeze review to a completed, clean exact-plan phase."""
+    if args.repository != "rexcoleman/rexcoleman.dev":
+        return None
+    state_arg = getattr(args, "plan_state", "")
+    evidence_arg = getattr(args, "plan_evidence_dir", "")
+    if not state_arg or not evidence_arg:
+        raise Refusal("site freeze review requires exact-plan quality evidence")
+    engine_path = Path(__file__).with_name("signed_release_convergence.py")
+    spec = importlib.util.spec_from_file_location("release_convergence_review", engine_path)
+    if spec is None or spec.loader is None:
+        raise Refusal("registered release engine could not be loaded")
+    engine = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(engine)
+    evidence = Path(evidence_arg).resolve()
+    state_path = Path(state_arg).resolve()
+    adapter_path = engine_path.with_name("adapters") / (
+        "research_enforcement_activation.exact-plan-recovery-drive-v1.json"
+    )
+    try:
+        adapter_raw = engine.regular_bytes(adapter_path)
+        adapter = engine.load_adapter(adapter_path)
+        original = json.loads(engine.regular_bytes(state_path))
+        engine.load_state(state_path, adapter_raw, adapter, evidence, None)
+        phases = list(engine.phases_for_adapter(adapter))
+        if original.get("status") != "complete" or original.get("completed") != phases:
+            raise Refusal("exact plan did not complete all registered phases")
+        summary = json.loads(engine.regular_bytes(evidence / "summary.json"))
+        manifest = json.loads(engine.regular_bytes(
+            engine.receipt_path(evidence, "manifest-a")))["result"]
+        quality = json.loads(engine.regular_bytes(
+            engine.receipt_path(evidence, engine.RELEASE_QUALITY_LOOP_PHASE)))["result"]
+        quality_dir = evidence / engine.RELEASE_QUALITY_LOOP_PHASE
+        report_raw = engine.regular_bytes(quality_dir / "quality-loop-report.json")
+        ccql_raw = engine.regular_bytes(quality_dir / "ccql-verdict.json")
+        report = json.loads(report_raw)
+        ccql = json.loads(ccql_raw)
+    except (OSError, ValueError, KeyError, TypeError, engine.Refusal) as exc:
+        raise Refusal("release-quality plan evidence refused: %s" % exc) from exc
+    if (
+        summary.get("status") != "PASS"
+        or summary.get("phases") != phases
+        or manifest.get("sha256") != args.expected_manifest_sha256
+        or quality.get("verdict") != "CLEAN"
+        or type(quality.get("quality_loop_exit")) is not int
+        or quality["quality_loop_exit"] not in (0, 1)
+        or (quality["quality_loop_exit"] == 1
+            and quality.get("excepted_step_count", 0) < 1)
+        or type(quality.get("excepted_step_count", 0)) is not int
+        or quality.get("ccql_exit") != 0
+        or quality.get("t3_status") != "complete"
+        or type(quality.get("t3_composite")) not in (int, float)
+        or not math.isfinite(quality["t3_composite"])
+        or quality["t3_composite"] < 8.0
+        or type(quality.get("score")) not in (int, float)
+        or not math.isfinite(quality["score"])
+        or report.get("t3_status") != "complete"
+        or report.get("t3_composite") != quality["t3_composite"]
+        or report.get("score") != quality["score"]
+        or ccql.get("verdict") != "CLEAN"
+        or ccql.get("clean") is not True
+        or ccql.get("exit") != 0
+        or not isinstance(ccql.get("excepted_steps", []), list)
+        or quality.get("excepted_step_count", 0)
+           != len(ccql.get("excepted_steps", []))
+        or hashlib.sha256(report_raw).hexdigest() != quality.get("report_sha256")
+        or hashlib.sha256(ccql_raw).hexdigest() != quality.get("ccql_sha256")
+    ):
+        raise Refusal("release-quality plan did not prove a clean T3-at-bar loop")
+    return original["receipt_sha256"][engine.RELEASE_QUALITY_LOOP_PHASE]
+
+
 def run(args: argparse.Namespace) -> int:
     token = os.environ.get("GH_TOKEN", "")
     if not token:
@@ -892,6 +966,8 @@ def run(args: argparse.Namespace) -> int:
         ):
             raise Refusal(f"{name} is not a lowercase SHA-256")
 
+    quality_receipt_sha256 = verify_release_quality_plan(args)
+
     before = read_state(token, args)
     assert_policy(before, args)
     second = read_state(token, args)
@@ -908,6 +984,7 @@ def run(args: argparse.Namespace) -> int:
         "files_sha256": args.expected_files_sha256,
         "manifest_sha256": args.expected_manifest_sha256 or None,
         "receipt_sha256": before.get("receipt", {}).get("receipt_sha256"),
+        "release_quality_receipt_sha256": quality_receipt_sha256,
         "base_sha": before["pull_request"].get("base_sha"),
         "state_sha256": canonical_digest(before),
         "mutation_count": 0,
@@ -927,6 +1004,8 @@ def parser() -> argparse.ArgumentParser:
     value.add_argument("--expected-head", required=True)
     value.add_argument("--expected-files-sha256", required=True)
     value.add_argument("--expected-manifest-sha256", default="")
+    value.add_argument("--plan-state", default="")
+    value.add_argument("--plan-evidence-dir", default="")
     return value
 
 

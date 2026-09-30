@@ -447,8 +447,14 @@ surface before poststate. The s249 scratch drive is input-only context and is
 not trusted code. The focused test file plants omitted-member, changed-byte,
 wrong-mode, wrong-predecessor, wrong-root-commit, exact staged nonproduction
 count and mixed-packet refusals.
-The adapter plans evidence only; it does not release, install, repoint, merge,
-or run commit preflight.
+The s254 `release-quality-loop` phase follows the recovery drive and precedes
+poststate. It executes the protected govML candidate quality loop and CC-QL
+source against a disposable checkout of the exact REA root commit, deletes
+the copied report before execution, and requires a CLEAN CC-QL verdict and
+authoritative T3 at or above 8.0. The independent freeze reviewer binds that
+phase receipt and its manifest SHA-256; a historical no-op rehearsal cannot
+authorize a new freeze. The adapter plans evidence only; it does not release,
+install, repoint, merge, or run commit preflight.
 
 ## Known failure classes (s250 catalogue)
 
