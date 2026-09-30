@@ -1227,6 +1227,49 @@ def validate_stage5_build_template_modes(source_modes, contract):
             raise ValueError(f"stage5 build template mode:{member_id}")
 
 
+# Branch C Unit 1 adds the project-carried non-expiring enforcement verifier
+# and reconciler as signed release bytes. Population 305 remains a valid
+# historical successor; selecting this one subject requires the complete Unit 1
+# closed extension.
+UNIT1_NON_EXPIRING_ENFORCEMENT_ADDITIONAL_MEMBERS = {
+    "non-expiring-enforcement": (
+        "rexcoleman.dev",
+        ".github/write-enforcement/non_expiring_enforcement.py",
+    ),
+}
+
+
+def unit1_non_expiring_enforcement_successor_members():
+    value = stage5_build_template_successor_members()
+    if set(value) & set(UNIT1_NON_EXPIRING_ENFORCEMENT_ADDITIONAL_MEMBERS):
+        raise ValueError("unit1 non-expiring member id collision")
+    value.update(UNIT1_NON_EXPIRING_ENFORCEMENT_ADDITIONAL_MEMBERS)
+    if len(set(value.values())) != len(value):
+        raise ValueError("unit1 non-expiring member subject collision")
+    return value
+
+
+def validate_unit1_non_expiring_enforcement_member_ids(observed):
+    if set(observed) != set(unit1_non_expiring_enforcement_successor_members()):
+        raise ValueError("unit1 non-expiring member set refused")
+
+
+def validate_unit1_non_expiring_enforcement_modes(source_modes, contract):
+    required = set(UNIT1_NON_EXPIRING_ENFORCEMENT_ADDITIONAL_MEMBERS)
+    present = required & set(contract)
+    if not present:
+        return
+    if present != required or any(
+        contract.get(member_id)
+        != UNIT1_NON_EXPIRING_ENFORCEMENT_ADDITIONAL_MEMBERS[member_id]
+        for member_id in required
+    ):
+        raise ValueError("unit1 non-expiring contract incomplete")
+    for member_id in sorted(required):
+        if source_modes.get(member_id) != "100755":
+            raise ValueError(f"unit1 non-expiring mode:{member_id}")
+
+
 def production_members_for_manifest(manifest, baseline=None):
     """Select the exact closed set for one known generation; never a subset."""
     rows = manifest.get("members") if isinstance(manifest, dict) else None
@@ -1266,13 +1309,19 @@ def production_members_for_manifest(manifest, baseline=None):
     stage5_build_template_successor.update(
         STAGE5_BUILD_TEMPLATE_ADDITIONAL_MEMBERS
     )
+    unit1_non_expiring_successor = dict(stage5_build_template_successor)
+    unit1_non_expiring_successor.update(
+        UNIT1_NON_EXPIRING_ENFORCEMENT_ADDITIONAL_MEMBERS
+    )
     generation = manifest.get("authority_generation") if isinstance(manifest, dict) else None
     if generation is None and baseline is not None:
         # Unit-level byte/membership checks historically pass a reduced explicit
         # contract without the outer manifest loader. Production entrypoints
         # validate the generation before reaching this selector.
         return (
-            stage5_build_template_successor
+            unit1_non_expiring_successor
+            if observed & set(UNIT1_NON_EXPIRING_ENFORCEMENT_ADDITIONAL_MEMBERS)
+            else stage5_build_template_successor
             if observed & set(STAGE5_BUILD_TEMPLATE_ADDITIONAL_MEMBERS)
             else role_checklist_successor
             if observed & set(ROLE_CHECKLIST_ADDITIONAL_MEMBERS)
@@ -1290,7 +1339,9 @@ def production_members_for_manifest(manifest, baseline=None):
         return base
     if generation == AUTHORITY_GENERATION:
         return (
-            stage5_build_template_successor
+            unit1_non_expiring_successor
+            if observed & set(UNIT1_NON_EXPIRING_ENFORCEMENT_ADDITIONAL_MEMBERS)
+            else stage5_build_template_successor
             if observed & set(STAGE5_BUILD_TEMPLATE_ADDITIONAL_MEMBERS)
             else role_checklist_successor
             if observed & set(ROLE_CHECKLIST_ADDITIONAL_MEMBERS)
@@ -1488,6 +1539,7 @@ def validate_managed_live_member_aliases(
     """Close every authoring alias over the authenticated managed contract."""
     validate_research_working_root_template_modes(source_modes, contract)
     validate_stage5_build_template_modes(source_modes, contract)
+    validate_unit1_non_expiring_enforcement_modes(source_modes, contract)
     table = MANAGED_LIVE_MEMBER_ALIASES
     expected_count = 15
     if set(contract) & set(DURABLE_HISTORY_ADDITIONAL_MEMBERS):
@@ -1498,6 +1550,7 @@ def validate_managed_live_member_aliases(
             research_runtime_dependency_successor_members(),
             role_checklist_successor_members(),
             stage5_build_template_successor_members(),
+            unit1_non_expiring_enforcement_successor_members(),
         ):
             raise ValueError("managed live durable successor contract incomplete")
         table += DURABLE_HISTORY_MANAGED_LIVE_MEMBER_ALIASES

@@ -121,6 +121,9 @@ ROLE_CHECKLIST_ADAPTERS = tuple(
 STAGE5_TEMPLATE_COUNT = len(tool.member_contract(
     ROOT.parents[1], "stage5_build_template_successor_members"
 ))
+UNIT1_NON_EXPIRING_COUNT = len(tool.member_contract(
+    ROOT.parents[1], "unit1_non_expiring_enforcement_successor_members"
+))
 STAGED_NONPRODUCTION_COUNT = len(tool.member_contract(
     ROOT.parents[1], "staged_nonproduction_members"
 ))
@@ -131,6 +134,9 @@ STAGE5_TEMPLATE_ADAPTERS = tuple(
         "agent_boundary_learning_landscape", "newsletter_hybrid_path",
         "newsletter_generation_architecture", "research_engine_release",
     )
+)
+UNIT1_NON_EXPIRING_ADAPTER = (
+    ROOT / f"adapters/research_enforcement_activation.population-{UNIT1_NON_EXPIRING_COUNT}-v1.json"
 )
 EXACT_PLAN_RECOVERY_ADAPTER = (
     ROOT / "adapters/research_enforcement_activation.exact-plan-recovery-drive-v1.json"
@@ -1187,6 +1193,7 @@ def test_index_is_closed_and_resolves_every_registered_adapter():
         "research-enforcement-activation", "adversarial-ml-landscape",
         "agent-boundary-learning-landscape", "newsletter-hybrid-path",
         "newsletter-generation-architecture", "research-engine-release")]
+    + [f"research-enforcement-activation-generation-5-population-{UNIT1_NON_EXPIRING_COUNT}-v1"]
     + ["research-enforcement-activation-generation-5-exact-plan-recovery-drive-v1"]
     )
     status = {row["adapter_id"]: row["status"] for row in value["adapters"]}
@@ -1246,6 +1253,7 @@ def test_index_refuses_duplicate_unknown_retired_and_traversing_rows(
                 S210_GOVERNED_READ_ADAPTER,
                 POPULATION_265_ADAPTER,
                 POPULATION_273_ADAPTER,
+                UNIT1_NON_EXPIRING_ADAPTER,
                 EXACT_PLAN_RECOVERY_ADAPTER,
                 ):
         shutil.copyfile(adapter_path, adapters / adapter_path.name)
@@ -3312,7 +3320,7 @@ def test_signed_close_gate_still_refuses_dirty_loop():
     assert rows[0]["path"] == (
         "templates/build/enforcement/quality_loop_cleanliness_gate.py"
     )
-    assert rows[0]["commit"] == "4a0341647ec196bf2764ec3995845812cf421195"
+    assert rows[0]["commit"] == "7443a5f77fb519cd5173cd68d23d31b1a1d9e8de"
     signed_gate = ROOT / "tests/fixtures/signed_quality_loop_cleanliness_gate_4a034.py"
     raw = signed_gate.read_bytes()
     assert len(raw) == rows[0]["byte_length"]

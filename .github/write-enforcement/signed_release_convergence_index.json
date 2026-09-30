@@ -331,6 +331,11 @@
       "status": "active"
     },
     {
+      "adapter_id": "research-enforcement-activation-generation-5-population-306-v1",
+      "path": "adapters/research_enforcement_activation.population-306-v1.json",
+      "status": "active"
+    },
+    {
       "adapter_id": "research-enforcement-activation-generation-5-exact-plan-recovery-drive-v1",
       "path": "adapters/research_enforcement_activation.exact-plan-recovery-drive-v1.json",
       "status": "active"
