@@ -1124,6 +1124,8 @@ def test_workflow_exposes_credential_only_after_environment_review():
     assert "\n  pull_request_target:" not in text
     assert "environment: rea-write-enforcement-issuer" in text
     assert text.count("secrets.REA_SECOND_PRINCIPAL_PRIVATE_KEY") == 1
+    assert text.count("secrets.GOVML_REA_READ_APP_ID") == 1
+    assert text.count("secrets.GOVML_REA_READ_APP_PRIVATE_KEY_B64") == 1
     assert "persist-credentials: false" in text
     assert "permissions:\n  contents: read" in text
     assert "Exact manifest plus normal-hook receipt file-set SHA-256" in text
@@ -1139,6 +1141,21 @@ def test_workflow_exposes_credential_only_after_environment_review():
         "--plan-evidence-dir",
     ):
         assert text.count(argument) == 1
+    assert "plan_state:" not in text
+    assert "plan_evidence_dir:" not in text
+    assert ".github/write-enforcement/github_app_installation_token.py --output" in text
+    assert ".github/write-enforcement/signed_release_convergence.py \\" in text
+    assert "--adapter-id \"${{ inputs.expected_plan_adapter_id }}\"" in text
+    assert "3e67c821a6041de6d695caea67cd485c296e9cd0aa5f579519f06f1cee7333ba" in text
+    for commit in (
+        "1707c54ebc7ff5e6e49d18a2c40ba069c0eef037",
+        "7443a5f77fb519cd5173cd68d23d31b1a1d9e8de",
+        "40985ff0c9ac692741cf9ed9b3f755a9dea9afae",
+        "bca5981d0a466b72af14f1d0c15113623568300e",
+        "d15e2130fea48fdc6d3f7c89a674fd41ddcc41e3",
+    ):
+        assert commit in text
+    assert 'test "${actual_manifest_sha256}" = "${{ inputs.expected_manifest_sha256 }}"' in text
     assert text.count(".github/write-enforcement/independent_review.py") == 1
     convergence = (
         Path(__file__).parents[2] / "workflows/signed-release-convergence.yml"
