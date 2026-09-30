@@ -37,6 +37,21 @@ on:
         required: false
         default: ""
         type: string
+      expected_plan_adapter_id:
+        description: Authorized signed-release convergence adapter id for rexcoleman.dev freeze review
+        required: false
+        default: ""
+        type: string
+      plan_state:
+        description: Local signed-release convergence plan state path for rexcoleman.dev freeze review
+        required: false
+        default: ""
+        type: string
+      plan_evidence_dir:
+        description: Local signed-release convergence evidence directory for rexcoleman.dev freeze review
+        required: false
+        default: ""
+        type: string
 
 permissions:
   contents: read
@@ -76,4 +91,7 @@ jobs:
             --pull-request "${{ inputs.pull_request }}" \
             --expected-head "${{ inputs.expected_head }}" \
             --expected-files-sha256 "${{ inputs.expected_files_sha256 }}" \
-            --expected-manifest-sha256 "${{ inputs.expected_manifest_sha256 }}"
+            --expected-manifest-sha256 "${{ inputs.expected_manifest_sha256 }}" \
+            --expected-plan-adapter-id "${{ inputs.expected_plan_adapter_id }}" \
+            --plan-state "${{ inputs.plan_state }}" \
+            --plan-evidence-dir "${{ inputs.plan_evidence_dir }}"

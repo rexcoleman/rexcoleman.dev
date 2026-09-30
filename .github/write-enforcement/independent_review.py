@@ -879,8 +879,11 @@ def verify_release_integrity_plan(args: argparse.Namespace) -> str | None:
         return None
     state_arg = getattr(args, "plan_state", "")
     evidence_arg = getattr(args, "plan_evidence_dir", "")
+    expected_adapter_id = getattr(args, "expected_plan_adapter_id", "")
     if not state_arg or not evidence_arg:
         raise Refusal("site freeze review requires exact-plan integrity evidence")
+    if not expected_adapter_id:
+        raise Refusal("site freeze review requires an authorized plan adapter id")
     engine_path = Path(__file__).with_name("signed_release_convergence.py")
     spec = importlib.util.spec_from_file_location("release_convergence_review", engine_path)
     if spec is None or spec.loader is None:
@@ -889,13 +892,17 @@ def verify_release_integrity_plan(args: argparse.Namespace) -> str | None:
     spec.loader.exec_module(engine)
     evidence = Path(evidence_arg).resolve()
     state_path = Path(state_arg).resolve()
-    adapter_path = engine_path.with_name("adapters") / (
-        "research_enforcement_activation.exact-plan-recovery-drive-v1.json"
-    )
     try:
+        original = json.loads(engine.regular_bytes(state_path))
+        state_adapter_id = original.get("adapter_id")
+        if state_adapter_id != expected_adapter_id:
+            raise Refusal("PLAN_ADAPTER_AUTHORITY_REFUSED")
+        adapter_path = engine.resolve_adapter(
+            engine_path.with_name("signed_release_convergence_index.json"),
+            state_adapter_id,
+        )
         adapter_raw = engine.regular_bytes(adapter_path)
         adapter = engine.load_adapter(adapter_path)
-        original = json.loads(engine.regular_bytes(state_path))
         engine.load_state(state_path, adapter_raw, adapter, evidence, None)
         phases = list(engine.phases_for_adapter(adapter))
         if (original.get("mode") != "plan"
@@ -905,10 +912,12 @@ def verify_release_integrity_plan(args: argparse.Namespace) -> str | None:
         summary = json.loads(engine.regular_bytes(evidence / "summary.json"))
         manifest = json.loads(engine.regular_bytes(
             engine.receipt_path(evidence, "manifest-a")))["result"]
-        preflight = json.loads(engine.regular_bytes(
-            engine.receipt_path(
-                evidence, engine.CANDIDATE_INTEGRITY_PREFLIGHT_PHASE,
-            )))["result"]
+        preflight = None
+        if engine.CANDIDATE_INTEGRITY_PREFLIGHT_PHASE in phases:
+            preflight = json.loads(engine.regular_bytes(
+                engine.receipt_path(
+                    evidence, engine.CANDIDATE_INTEGRITY_PREFLIGHT_PHASE,
+                )))["result"]
         roots = json.loads(engine.regular_bytes(
             engine.receipt_path(evidence, "roots")))["result"]
         rea_rows = [row for row in roots if row.get("logical_name")
@@ -920,7 +929,12 @@ def verify_release_integrity_plan(args: argparse.Namespace) -> str | None:
         or summary.get("phases") != phases
         or manifest.get("sha256") != args.expected_manifest_sha256
         or len(rea_rows) != 1
-        or preflight.get("phase") != engine.CANDIDATE_INTEGRITY_PREFLIGHT_PHASE
+    ):
+        raise Refusal("release integrity plan did not prove manifest roots")
+    if preflight is None:
+        return original["receipt_sha256"]["manifest-a"]
+    if (
+        preflight.get("phase") != engine.CANDIDATE_INTEGRITY_PREFLIGHT_PHASE
         or type(preflight.get("preflight_exit")) is not int
         or preflight["preflight_exit"] != 0
         or preflight.get("project_commit") != rea_rows[0].get("commit")
@@ -995,6 +1009,7 @@ def parser() -> argparse.ArgumentParser:
     value.add_argument("--expected-head", required=True)
     value.add_argument("--expected-files-sha256", required=True)
     value.add_argument("--expected-manifest-sha256", default="")
+    value.add_argument("--expected-plan-adapter-id", default="")
     value.add_argument("--plan-state", default="")
     value.add_argument("--plan-evidence-dir", default="")
     return value
