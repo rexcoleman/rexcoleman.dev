@@ -338,10 +338,11 @@ def load_adapter(path: Path):
         "--durable-history-successor",
         "--final-runtime-rollout-successor",
         "--research-working-root-template-successor",
-        "--research-runtime-dependency-successor",
-        "--role-checklist-successor",
-        "--stage5-build-template-successor",
-    }:
+            "--research-runtime-dependency-successor",
+            "--role-checklist-successor",
+            "--stage5-build-template-successor",
+            "--unit1-non-expiring-enforcement-successor",
+        }:
         raise Refusal("MANIFEST_BUILDER_FLAG_REFUSED")
     if not isinstance(value["ruleset_id"], int) or isinstance(
         value["ruleset_id"], bool

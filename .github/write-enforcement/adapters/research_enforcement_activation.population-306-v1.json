@@ -101,7 +101,7 @@
     }
   ],
   "manifest_builder": ".github/write-enforcement/build_frozen_manifest.py",
-  "manifest_builder_flag": "--stage5-build-template-successor",
+  "manifest_builder_flag": "--unit1-non-expiring-enforcement-successor",
   "manifest_path": ".github/write-enforcement/frozen_bundle_manifest.generation-5.json",
   "repositories": [
     {

@@ -92,13 +92,17 @@ def test_member_population_is_complete_and_two_method_count():
     )
     independent = load("independent_review")
     terminal_selector = independent._terminal_successor_selector()
-    assert terminal_selector == "stage5_build_template_successor_members"
-    terminal = contract.stage5_build_template_successor_members()
-    assert len(terminal) == 305
+    assert terminal_selector == "unit1_non_expiring_enforcement_successor_members"
+    terminal = contract.unit1_non_expiring_enforcement_successor_members()
+    assert len(terminal) == 306
     assert set(successor) < set(terminal)
     assert terminal["final-runtime-rollout"] == (
         "research_enforcement_activation",
         "scripts/s231_final_runtime_rollout.py",
+    )
+    assert terminal["non-expiring-enforcement"] == (
+        "rexcoleman.dev",
+        ".github/write-enforcement/non_expiring_enforcement.py",
     )
     assert independent.structural_members(terminal_selector) == terminal
     independently_parsed = independent.expected_members()

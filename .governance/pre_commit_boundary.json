@@ -3,18 +3,16 @@
   "caller": "git-pre-commit",
   "changed_paths": [
     ".github/write-enforcement/adapters/research_enforcement_activation.population-306-v1.json",
-    ".github/write-enforcement/member_contract.py",
-    ".github/write-enforcement/non_expiring_enforcement.py",
-    ".github/write-enforcement/signed_release_convergence_index.json",
-    ".github/write-enforcement/tests/test_member_contract.py",
-    ".github/write-enforcement/tests/test_non_expiring_enforcement.py",
-    ".github/write-enforcement/tests/test_signed_release_convergence.py"
+    ".github/write-enforcement/build_frozen_manifest.py",
+    ".github/write-enforcement/signed_release_convergence.py",
+    ".github/write-enforcement/tests/test_independent_review.py",
+    ".github/write-enforcement/tests/test_s131_convergence.py"
   ],
-  "changed_paths_count": 7,
-  "changed_paths_sha256": "83ddba4f16210890f8f29ae668396d324c2779be839bfa59d98073b853597c4d",
+  "changed_paths_count": 5,
+  "changed_paths_sha256": "55c5b1f03c61e8fc7c36803f31d347372ec0bbe435e3ebc80efad2a5c2b8b601",
   "mode": "commit-preflight",
-  "parent_head": "31cada94088fc4c3024b1c187ee11729858347b3",
-  "run_id": "pre-commit-4e38fb2a173fc56c161a8006",
+  "parent_head": "550811c64c6e0b28dbe6154c04aeeed5f52da778",
+  "run_id": "pre-commit-5ccf48955ddbbc3637aab3f4",
   "schema_version": "rea.pre-commit-boundary.v1",
-  "utc_asserted_at": "2026-09-30T17:23:15Z"
+  "utc_asserted_at": "2026-09-30T17:33:52Z"
 }
