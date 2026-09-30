@@ -1124,40 +1124,39 @@ def test_workflow_exposes_credential_only_after_environment_review():
     assert "\n  pull_request_target:" not in text
     assert "environment: rea-write-enforcement-issuer" in text
     assert text.count("secrets.REA_SECOND_PRINCIPAL_PRIVATE_KEY") == 1
-    assert text.count("secrets.GOVML_REA_READ_APP_ID") == 1
-    assert text.count("secrets.GOVML_REA_READ_APP_PRIVATE_KEY_B64") == 1
+    assert "secrets.GOVML_REA_READ_APP_ID" not in text
+    assert "secrets.GOVML_REA_READ_APP_PRIVATE_KEY_B64" not in text
+    assert "secrets.REA_RULESET_READ_TOKEN" not in text
     assert "persist-credentials: false" in text
     assert "permissions:\n  actions: read\n  contents: read" in text
     assert "Exact manifest plus normal-hook receipt file-set SHA-256" in text
-    assert "public_packet_run_id:" in text
-    assert "PUBLIC_PACKET_RUN_ID: ${{ inputs.public_packet_run_id }}" in text
-    assert '""|*[!0-9]*)' in text
-    assert "gh run download \"${PUBLIC_PACKET_RUN_ID}\"" in text
-    assert "--name \"rea-write-enforcement-attestation-${PUBLIC_PACKET_RUN_ID}\"" in text
-    assert ".local/state/rea_enforcement/remote_wea" in text
-    assert "sha256sum -c SHA256SUMS" in text
-    assert "claim_registry.json" in text
-    assert "Prepare hosted fixed ephemeral roots" in text
-    assert "sudo mkdir -p /data/tmp" in text
-    assert "sudo chmod 1777 /data/tmp" in text
-    assert 'test "$(stat -c \'%a\' /data/tmp)" = "1777"' in text
-    assert "Prepare hosted OpenSSL compatibility fixtures" in text
-    assert "sudo cp /usr/bin/openssl /usr/bin/openssl.real" in text
-    assert "sudo ln -sf /usr/bin/openssl.real /home/azureuser/miniconda3/bin/openssl" in text
-    assert "OpenSSL 1.1.1-hosted-review-compat" in text
-    assert "rawin unsupported by hosted review compatibility OpenSSL 1.1.1" in text
-    assert "Prepare hosted identity preflight shims" in text
-    assert "sudo tee /usr/local/bin/hostname" in text
-    assert "sudo tee /usr/local/bin/id" in text
-    assert "sudo tee /usr/local/bin/crontab" in text
-    assert 'test "$(hostname -s)" = "gios-dev"' in text
-    assert 'test "$(id -u)" = "1000"' in text
-    assert "hosted review crontab shim refuses mutation" in text
-    assert "Upload failed hosted release plan evidence" in text
+    assert "release_evidence_branch:" in text
+    assert "RELEASE_EVIDENCE_BRANCH: ${{ inputs.release_evidence_branch }}" in text
+    assert "release-evidence/pop306-*)" in text
+    assert "Verify published release plan evidence branch" in text
+    assert "git clone --quiet --depth 1 --branch" in text
+    assert "release-evidence/${evidence_leaf}" in text
+    assert "STATE_OR_EVIDENCE_EXISTS" not in text
+    assert "public_packet_run_id:" not in text
+    assert "gh run download" not in text
+    assert ".local/state/rea_enforcement/remote_wea" not in text
+    assert ".github/write-enforcement/signed_release_convergence.py" not in text
+    assert "Prepare hosted fixed ephemeral roots" not in text
+    assert "sudo mkdir -p /data/tmp" not in text
+    assert "Prepare hosted OpenSSL compatibility fixtures" not in text
+    assert "OpenSSL 1.1.1-hosted-review-compat" not in text
+    assert "Prepare hosted identity preflight shims" not in text
+    assert "hosted review crontab shim refuses mutation" not in text
+    assert "Upload failed release evidence branch checkout" in text
     assert "actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02" in text
-    assert "hosted-release-plan-failure-${{ github.run_id }}" in text
-    assert "path: ${{ runner.temp }}/hosted-release-plan" in text
-    assert "if-no-files-found: error" in text
+    assert "release-evidence-branch-failure-${{ github.run_id }}" in text
+    assert "path: ${{ runner.temp }}/release-evidence-repo" in text
+    assert "if-no-files-found: ignore" in text
+    assert "dd28ab10f72b5dd076c632758eb714189941b952a4b1a8d205455d9c94b45400" in text
+    assert "32a71bedebaf93758e58a3a535efc75b08d383c72df574fc5459584f2f831093" in text
+    assert "3e67c821a6041de6d695caea67cd485c296e9cd0aa5f579519f06f1cee7333ba" in text
+    assert "/data/s256_branch_c_durable/evidence/unit1_pop306_protected_state.json" in text
+    assert "/data/s256_branch_c_durable/evidence/unit1_pop306_protected" in text
     for argument in (
         "--mode",
         "--repository",
@@ -1172,20 +1171,6 @@ def test_workflow_exposes_credential_only_after_environment_review():
         assert text.count(argument) == 1
     assert "plan_state:" not in text
     assert "plan_evidence_dir:" not in text
-    assert ".github/write-enforcement/github_app_installation_token.py --output" in text
-    assert 'export GH_TOKEN="$(tr -d \'\\n\' <"${token_file}")"' in text
-    assert ".github/write-enforcement/signed_release_convergence.py \\" in text
-    assert "--adapter-id \"${{ inputs.expected_plan_adapter_id }}\"" in text
-    assert "3e67c821a6041de6d695caea67cd485c296e9cd0aa5f579519f06f1cee7333ba" in text
-    for commit in (
-        "1707c54ebc7ff5e6e49d18a2c40ba069c0eef037",
-        "7443a5f77fb519cd5173cd68d23d31b1a1d9e8de",
-        "40985ff0c9ac692741cf9ed9b3f755a9dea9afae",
-        "bca5981d0a466b72af14f1d0c15113623568300e",
-        "d15e2130fea48fdc6d3f7c89a674fd41ddcc41e3",
-    ):
-        assert commit in text
-    assert 'test "${actual_manifest_sha256}" = "${{ inputs.expected_manifest_sha256 }}"' in text
     assert text.count(".github/write-enforcement/independent_review.py") == 1
     convergence = (
         Path(__file__).parents[2] / "workflows/signed-release-convergence.yml"

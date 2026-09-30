@@ -42,8 +42,8 @@ on:
         required: false
         default: ""
         type: string
-      public_packet_run_id:
-        description: Hosted issuer workflow run id carrying the public attestation packet
+      release_evidence_branch:
+        description: Non-default branch carrying unchanged local release plan evidence
         required: false
         default: ""
         type: string
@@ -83,121 +83,29 @@ jobs:
           repositories: |-
             research_enforcement_activation
             rexcoleman.dev
-      - name: Prepare hosted fixed ephemeral roots
-        if: ${{ inputs.repository == 'rexcoleman/rexcoleman.dev' }}
-        run: |
-          set -euo pipefail
-          sudo mkdir -p /data/tmp
-          sudo chmod 1777 /data/tmp
-          test -d /data/tmp
-          test "$(stat -c '%a' /data/tmp)" = "1777"
-      - name: Prepare hosted OpenSSL compatibility fixtures
-        if: ${{ inputs.repository == 'rexcoleman/rexcoleman.dev' }}
-        run: |
-          set -euo pipefail
-          test -x /usr/bin/openssl
-          if [ ! -x /usr/bin/openssl.real ]; then
-            sudo cp /usr/bin/openssl /usr/bin/openssl.real
-          fi
-          sudo mkdir -p /home/azureuser/miniconda3/bin
-          sudo ln -sf /usr/bin/openssl.real /home/azureuser/miniconda3/bin/openssl
-          sudo tee /usr/bin/openssl >/dev/null <<'SH'
-          #!/bin/sh
-          if [ "$1" = "version" ]; then
-            printf '%s\n' 'OpenSSL 1.1.1-hosted-review-compat'
-            exit 0
-          fi
-          if [ "$1" = "pkeyutl" ]; then
-            for argument in "$@"; do
-              if [ "$argument" = "-rawin" ]; then
-                printf '%s\n' 'rawin unsupported by hosted review compatibility OpenSSL 1.1.1' >&2
-                exit 1
-              fi
-            done
-          fi
-          exec /usr/bin/openssl.real "$@"
-          SH
-          sudo chmod 755 /usr/bin/openssl
-          test "$(/usr/bin/openssl version)" = "OpenSSL 1.1.1-hosted-review-compat"
-          case "$(/home/azureuser/miniconda3/bin/openssl version)" in
-            "OpenSSL 3."*) ;;
-            *) exit 1 ;;
-          esac
-      - name: Prepare hosted identity preflight shims
-        if: ${{ inputs.repository == 'rexcoleman/rexcoleman.dev' }}
-        run: |
-          set -euo pipefail
-          sudo tee /usr/local/bin/hostname >/dev/null <<'SH'
-          #!/bin/sh
-          if [ "$#" -eq 1 ] && [ "$1" = "-s" ]; then
-            printf '%s\n' gios-dev
-            exit 0
-          fi
-          exec /usr/bin/hostname "$@"
-          SH
-          sudo tee /usr/local/bin/id >/dev/null <<'SH'
-          #!/bin/sh
-          if [ "$#" -eq 1 ] && [ "$1" = "-u" ]; then
-            printf '%s\n' 1000
-            exit 0
-          fi
-          exec /usr/bin/id "$@"
-          SH
-          sudo tee /usr/local/bin/crontab >/dev/null <<'SH'
-          #!/bin/sh
-          if [ "$#" -eq 1 ] && [ "$1" = "-l" ]; then
-            exit 1
-          fi
-          printf '%s\n' 'hosted review crontab shim refuses mutation' >&2
-          exit 3
-          SH
-          sudo chmod 755 /usr/local/bin/hostname /usr/local/bin/id /usr/local/bin/crontab
-          test "$(hostname -s)" = "gios-dev"
-          test "$(id -u)" = "1000"
-          if crontab -l; then
-            exit 1
-          fi
-      - name: Regenerate authorized release plan on hosted runner
+      - name: Verify published release plan evidence branch
         if: ${{ inputs.repository == 'rexcoleman/rexcoleman.dev' }}
         env:
-          GOVML_REA_READ_APP_ID: ${{ secrets.GOVML_REA_READ_APP_ID }}
-          GOVML_REA_READ_APP_PRIVATE_KEY_B64: ${{ secrets.GOVML_REA_READ_APP_PRIVATE_KEY_B64 }}
-          REA_RULESET_READ_TOKEN: ${{ secrets.REA_RULESET_READ_TOKEN }}
-          PUBLIC_PACKET_RUN_ID: ${{ inputs.public_packet_run_id }}
-          PUBLIC_PACKET_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          RELEASE_EVIDENCE_BRANCH: ${{ inputs.release_evidence_branch }}
         run: |
           set -euo pipefail
           test "${{ inputs.expected_plan_adapter_id }}" = "research-enforcement-activation-generation-5-population-306-v1"
           test "${{ inputs.expected_manifest_sha256 }}" = "3e67c821a6041de6d695caea67cd485c296e9cd0aa5f579519f06f1cee7333ba"
-          case "${PUBLIC_PACKET_RUN_ID}" in
-            ""|*[!0-9]*)
-              echo "public_packet_run_id must be a decimal hosted issuer run id" >&2
-              exit 1
-              ;;
+          case "${RELEASE_EVIDENCE_BRANCH}" in
+            release-evidence/pop306-*) ;;
+            *) echo "release_evidence_branch must be a non-default pop306 evidence branch" >&2; exit 1 ;;
           esac
 
-          packet_root="${HOME}/.local/state/rea_enforcement/remote_wea"
-          rm -rf "${packet_root}"
-          mkdir -p "${packet_root}"
-          GH_TOKEN="${PUBLIC_PACKET_TOKEN}" gh run download "${PUBLIC_PACKET_RUN_ID}" \
-            --repo rexcoleman/rexcoleman.dev \
-            --name "rea-write-enforcement-attestation-${PUBLIC_PACKET_RUN_ID}" \
-            --dir "${packet_root}"
-          expected=$'SHA256SUMS\nclaim_policy.json\nclaim_registry.json\nenforcement_bundle_manifest.json\nhybrid_capability_authority.json\nhybrid_capability_provider\nissuance_receipt.json\npredecessor_write_enforcement_attestation.json\nruntime_mount.py\ntrusted_wea_public.pem\nwrite_enforcement_attestation.json'
-          observed="$(find "${packet_root}" -maxdepth 1 -type f -printf '%f\n' | LC_ALL=C sort)"
-          test "${observed}" = "${expected}"
-          (cd "${packet_root}" && sha256sum -c SHA256SUMS)
-
-          token_file="${RUNNER_TEMP}/govml-read-token.txt"
-          python3 .github/write-enforcement/github_app_installation_token.py --output "${token_file}"
-          export GH_TOKEN="$(tr -d '\n' <"${token_file}")"
-
+          token_file="${RUNNER_TEMP}/second-principal-token.txt"
+          printf '%s' "${GH_TOKEN}" >"${token_file}"
+          chmod 600 "${token_file}"
           askpass="${RUNNER_TEMP}/git-askpass.sh"
           cat >"${askpass}" <<'SH'
           #!/bin/sh
           case "$1" in
             *Username*) printf '%s\n' x-access-token ;;
-            *Password*) tr -d '\n' <"${RUNNER_TEMP}/govml-read-token.txt" ;;
+            *Password*) tr -d '\n' <"${RUNNER_TEMP}/second-principal-token.txt" ;;
             *) exit 1 ;;
           esac
           SH
@@ -205,64 +113,38 @@ jobs:
           export GIT_ASKPASS="${askpass}"
           export GIT_TERMINAL_PROMPT=0
 
-          roots="${RUNNER_TEMP}/release-roots"
-          mkdir -p "${roots}"
-          clone_root() {
-            logical="$1"
-            repo="$2"
-            commit="$3"
-            git clone --quiet --no-checkout "https://github.com/rexcoleman/${repo}.git" "${roots}/${logical}"
-            git -C "${roots}/${logical}" checkout --quiet --detach "${commit}"
-          }
-          clone_root research_enforcement_activation research_enforcement_activation 1707c54ebc7ff5e6e49d18a2c40ba069c0eef037
-          clone_root govML govML 7443a5f77fb519cd5173cd68d23d31b1a1d9e8de
-          clone_root Moonshots_Career_Thesis_v2 Moonshots_Career_Thesis 40985ff0c9ac692741cf9ed9b3f755a9dea9afae
-          clone_root newsletter newsletter bca5981d0a466b72af14f1d0c15113623568300e
-          clone_root rexcoleman.dev rexcoleman.dev d15e2130fea48fdc6d3f7c89a674fd41ddcc41e3
+          evidence_checkout="${RUNNER_TEMP}/release-evidence-repo"
+          git clone --quiet --depth 1 --branch "${RELEASE_EVIDENCE_BRANCH}" \
+            https://github.com/rexcoleman/rexcoleman.dev.git "${evidence_checkout}"
+          evidence_leaf="${RELEASE_EVIDENCE_BRANCH#release-evidence/}"
+          published="${evidence_checkout}/release-evidence/${evidence_leaf}"
+          test -f "${published}/unit1_pop306_protected_state.json"
+          test -d "${published}/unit1_pop306_protected"
+          test "$(sha256sum "${published}/unit1_pop306_protected_state.json" | cut -d' ' -f1)" = "dd28ab10f72b5dd076c632758eb714189941b952a4b1a8d205455d9c94b45400"
+          test "$(sha256sum "${published}/unit1_pop306_protected/summary.json" | cut -d' ' -f1)" = "32a71bedebaf93758e58a3a535efc75b08d383c72df574fc5459584f2f831093"
+          test "$(sha256sum "${published}/unit1_pop306_protected/manifest-a/frozen_bundle_manifest.generation-5.json" | cut -d' ' -f1)" = "${{ inputs.expected_manifest_sha256 }}"
+          test "$(sha256sum "${published}/unit1_pop306_protected/manifest-b/frozen_bundle_manifest.generation-5.json" | cut -d' ' -f1)" = "${{ inputs.expected_manifest_sha256 }}"
 
-          plan_root="${RUNNER_TEMP}/hosted-release-plan"
-          ruleset_input="${plan_root}/evidence/inputs/ruleset.json"
-          mkdir -p "$(dirname "${ruleset_input}")"
-          GH_TOKEN="${REA_RULESET_READ_TOKEN}" gh api \
-            repos/rexcoleman/newsletter/rulesets/19564990 >"${ruleset_input}"
-          python3 - "${ruleset_input}" <<'PY'
-          import json
-          import sys
+          sudo mkdir -p /data/s256_branch_c_durable/evidence
+          test ! -e /data/s256_branch_c_durable/evidence/unit1_pop306_protected_state.json
+          test ! -e /data/s256_branch_c_durable/evidence/unit1_pop306_protected
+          sudo cp -a "${published}/unit1_pop306_protected_state.json" \
+            /data/s256_branch_c_durable/evidence/unit1_pop306_protected_state.json
+          sudo cp -a "${published}/unit1_pop306_protected" \
+            /data/s256_branch_c_durable/evidence/unit1_pop306_protected
+          sudo chown -R "$(id -u):$(id -g)" /data/s256_branch_c_durable/evidence
 
-          with open(sys.argv[1], encoding="utf-8") as handle:
-              ruleset = json.load(handle)
-          if (
-              ruleset.get("id") != 19564990
-              or ruleset.get("enforcement") != "active"
-              or "bypass_actors" not in ruleset
-          ):
-              raise SystemExit("ruleset read missing capability-gated fields")
-          PY
-          chmod 600 "${ruleset_input}"
-          PYTHONDONTWRITEBYTECODE=1 python3 .github/write-enforcement/signed_release_convergence.py \
-            --adapter-id "${{ inputs.expected_plan_adapter_id }}" \
-            --state "${plan_root}/state.json" \
-            --evidence-dir "${plan_root}/evidence" \
-            --root "research_enforcement_activation=${roots}/research_enforcement_activation" \
-            --root "govML=${roots}/govML" \
-            --root "Moonshots_Career_Thesis_v2=${roots}/Moonshots_Career_Thesis_v2" \
-            --root "newsletter=${roots}/newsletter" \
-            --root "rexcoleman.dev=${roots}/rexcoleman.dev" \
-            --plan
-
-          actual_manifest_sha256="$(sha256sum "${plan_root}/evidence/manifest-a/frozen_bundle_manifest.generation-5.json" | cut -d' ' -f1)"
-          test "${actual_manifest_sha256}" = "${{ inputs.expected_manifest_sha256 }}"
           {
-            printf 'PLAN_STATE=%s\n' "${plan_root}/state.json"
-            printf 'PLAN_EVIDENCE_DIR=%s\n' "${plan_root}/evidence"
+            printf 'PLAN_STATE=%s\n' /data/s256_branch_c_durable/evidence/unit1_pop306_protected_state.json
+            printf 'PLAN_EVIDENCE_DIR=%s\n' /data/s256_branch_c_durable/evidence/unit1_pop306_protected
           } >>"${GITHUB_ENV}"
-      - name: Upload failed hosted release plan evidence
+      - name: Upload failed release evidence branch checkout
         if: ${{ failure() && inputs.repository == 'rexcoleman/rexcoleman.dev' }}
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
-          name: hosted-release-plan-failure-${{ github.run_id }}
-          path: ${{ runner.temp }}/hosted-release-plan
-          if-no-files-found: error
+          name: release-evidence-branch-failure-${{ github.run_id }}
+          path: ${{ runner.temp }}/release-evidence-repo
+          if-no-files-found: ignore
           retention-days: 7
       - name: Emit read-only exact-head detection evidence
         env:
