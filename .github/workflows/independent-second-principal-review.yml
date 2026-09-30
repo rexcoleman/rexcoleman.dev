@@ -89,6 +89,7 @@ jobs:
 
           token_file="${RUNNER_TEMP}/govml-read-token.txt"
           python3 .github/write-enforcement/github_app_installation_token.py --output "${token_file}"
+          export GH_TOKEN="$(tr -d '\n' <"${token_file}")"
 
           askpass="${RUNNER_TEMP}/git-askpass.sh"
           cat >"${askpass}" <<'SH'

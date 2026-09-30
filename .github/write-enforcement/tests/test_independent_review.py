@@ -1144,6 +1144,7 @@ def test_workflow_exposes_credential_only_after_environment_review():
     assert "plan_state:" not in text
     assert "plan_evidence_dir:" not in text
     assert ".github/write-enforcement/github_app_installation_token.py --output" in text
+    assert 'export GH_TOKEN="$(tr -d \'\\n\' <"${token_file}")"' in text
     assert ".github/write-enforcement/signed_release_convergence.py \\" in text
     assert "--adapter-id \"${{ inputs.expected_plan_adapter_id }}\"" in text
     assert "3e67c821a6041de6d695caea67cd485c296e9cd0aa5f579519f06f1cee7333ba" in text
