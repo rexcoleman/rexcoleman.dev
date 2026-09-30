@@ -913,6 +913,9 @@ def impact_snapshot(adapter, roots, root_rows):
         "--stage5-build-template-successor": (
             "stage5_build_template_successor_members"
         ),
+        "--unit1-non-expiring-enforcement-successor": (
+            "unit1_non_expiring_enforcement_successor_members"
+        ),
     }[adapter["manifest_builder_flag"]]
     expected = member_contract(rex_root, selector_name)
     by_subject = {}

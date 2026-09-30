@@ -2,17 +2,13 @@
   "assertion": "COMMIT_PREFLIGHT_PASS",
   "caller": "git-pre-commit",
   "changed_paths": [
-    ".github/write-enforcement/adapters/research_enforcement_activation.population-306-v1.json",
-    ".github/write-enforcement/build_frozen_manifest.py",
-    ".github/write-enforcement/signed_release_convergence.py",
-    ".github/write-enforcement/tests/test_independent_review.py",
-    ".github/write-enforcement/tests/test_s131_convergence.py"
+    ".github/write-enforcement/signed_release_convergence.py"
   ],
-  "changed_paths_count": 5,
-  "changed_paths_sha256": "55c5b1f03c61e8fc7c36803f31d347372ec0bbe435e3ebc80efad2a5c2b8b601",
+  "changed_paths_count": 1,
+  "changed_paths_sha256": "c405118670350020236e081362f9cdef0e09ec9bae904e0749712b3cbd4153bd",
   "mode": "commit-preflight",
-  "parent_head": "550811c64c6e0b28dbe6154c04aeeed5f52da778",
-  "run_id": "pre-commit-5ccf48955ddbbc3637aab3f4",
+  "parent_head": "75ac78e452a29ece7101192f6e5f2481a384c6d4",
+  "run_id": "pre-commit-f3e8731263e2fa94d12f3def",
   "schema_version": "rea.pre-commit-boundary.v1",
-  "utc_asserted_at": "2026-09-30T17:33:52Z"
+  "utc_asserted_at": "2026-09-30T17:35:30Z"
 }
