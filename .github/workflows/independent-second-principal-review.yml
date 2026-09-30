@@ -162,6 +162,7 @@ jobs:
         env:
           GOVML_REA_READ_APP_ID: ${{ secrets.GOVML_REA_READ_APP_ID }}
           GOVML_REA_READ_APP_PRIVATE_KEY_B64: ${{ secrets.GOVML_REA_READ_APP_PRIVATE_KEY_B64 }}
+          REA_RULESET_READ_TOKEN: ${{ secrets.REA_RULESET_READ_TOKEN }}
           PUBLIC_PACKET_RUN_ID: ${{ inputs.public_packet_run_id }}
           PUBLIC_PACKET_TOKEN: ${{ github.token }}
         run: |
@@ -220,6 +221,24 @@ jobs:
           clone_root rexcoleman.dev rexcoleman.dev d15e2130fea48fdc6d3f7c89a674fd41ddcc41e3
 
           plan_root="${RUNNER_TEMP}/hosted-release-plan"
+          ruleset_input="${plan_root}/evidence/inputs/ruleset.json"
+          mkdir -p "$(dirname "${ruleset_input}")"
+          GH_TOKEN="${REA_RULESET_READ_TOKEN}" gh api \
+            repos/rexcoleman/newsletter/rulesets/19564990 >"${ruleset_input}"
+          python3 - "${ruleset_input}" <<'PY'
+          import json
+          import sys
+
+          with open(sys.argv[1], encoding="utf-8") as handle:
+              ruleset = json.load(handle)
+          if (
+              ruleset.get("id") != 19564990
+              or ruleset.get("enforcement") != "active"
+              or "bypass_actors" not in ruleset
+          ):
+              raise SystemExit("ruleset read missing capability-gated fields")
+          PY
+          chmod 600 "${ruleset_input}"
           PYTHONDONTWRITEBYTECODE=1 python3 .github/write-enforcement/signed_release_convergence.py \
             --adapter-id "${{ inputs.expected_plan_adapter_id }}" \
             --state "${plan_root}/state.json" \
