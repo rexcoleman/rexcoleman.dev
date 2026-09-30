@@ -3142,40 +3142,50 @@ def test_historical_noop_does_not_score_or_authorize_new_freeze(monkeypatch):
                      "release_freeze_authority": False}
 
 
+def _committed_release_quality_repo(tmp_path, name, files):
+    root = tmp_path / name
+    root.mkdir()
+    subprocess.run(["git", "init", "-q", str(root)], check=True)
+    if name == "rea":
+        subprocess.run([
+            "git", "-C", str(root), "remote", "add", "origin",
+            "https://github.com/rexcoleman/research_enforcement_activation.git",
+        ], check=True)
+    for relative, raw in files.items():
+        target = root / relative
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes(raw)
+    subprocess.run(["git", "-C", str(root), "add", "--", "."], check=True)
+    env = dict(os.environ, GIT_AUTHOR_NAME="Test", GIT_AUTHOR_EMAIL="test@example.com",
+               GIT_COMMITTER_NAME="Test", GIT_COMMITTER_EMAIL="test@example.com")
+    subprocess.run(["git", "-C", str(root), "commit", "-qm", "exact candidate"],
+                   env=env, check=True)
+    commit = subprocess.check_output(
+        ["git", "-C", str(root), "rev-parse", "HEAD"], text=True,
+    ).strip()
+    return root, commit
+
+
 def test_release_quality_phase_uses_exact_commits_and_candidate_scripts(
     tmp_path, monkeypatch,
 ):
-    def committed_repo(name, files):
-        root = tmp_path / name
-        root.mkdir()
-        subprocess.run(["git", "init", "-q", str(root)], check=True)
-        if name == "rea":
-            subprocess.run([
-                "git", "-C", str(root), "remote", "add", "origin",
-                "https://github.com/rexcoleman/research_enforcement_activation.git",
-            ], check=True)
-        for relative, raw in files.items():
-            target = root / relative
-            target.parent.mkdir(parents=True, exist_ok=True)
-            target.write_bytes(raw)
-        subprocess.run(["git", "-C", str(root), "add", "--", "."], check=True)
-        env = dict(os.environ, GIT_AUTHOR_NAME="Test", GIT_AUTHOR_EMAIL="test@example.com",
-                   GIT_COMMITTER_NAME="Test", GIT_COMMITTER_EMAIL="test@example.com")
-        subprocess.run(["git", "-C", str(root), "commit", "-qm", "exact candidate"],
-                       env=env, check=True)
-        commit = subprocess.check_output(
-            ["git", "-C", str(root), "rev-parse", "HEAD"], text=True,
-        ).strip()
-        return root, commit
 
     report = {"score": 8.4, "t3_status": "complete", "t3_composite": 8.3}
-    rea, rea_sha = committed_repo("rea", {
+    rea, rea_sha = _committed_release_quality_repo(tmp_path, "rea", {
         "outputs/quality_loop_report.json": json.dumps({
             "score": 1, "t3_status": "skipped", "t3_composite": None,
         }).encode(),
         "scripts/quality_loop.sh": b"#!/bin/bash\nexit 1\n",
+        "scripts/run_gates.sh": (
+            b"#!/bin/bash\n"
+            b"test \"$1\" = --engine-preflight || exit 5\n"
+            b"printf 'ENGINE_PREFLIGHT_PASS fixture\\n'\n"
+        ),
     })
-    gov, gov_sha = committed_repo("gov", {
+    subprocess.run([
+        "git", "-C", str(rea), "update-ref", "refs/remotes/origin/master", rea_sha,
+    ], check=True)
+    gov, gov_sha = _committed_release_quality_repo(tmp_path, "gov", {
         "scripts/quality_loop.sh": _release_quality_loop_source(report),
         "templates/build/enforcement/quality_loop_cleanliness_gate.py":
             _RELEASE_QUALITY_GATE,
@@ -3192,7 +3202,55 @@ def test_release_quality_phase_uses_exact_commits_and_candidate_scripts(
     assert result["project_commit"] == rea_sha
     assert result["govml_commit"] == gov_sha
     assert result["t3_composite"] == 8.3
+    assert result["default_commit"] == rea_sha
+    assert result["preflight_exit"] == 0
     assert (tmp_path / "evidence/release-quality-loop/quality-loop-report.json").is_file()
+
+
+@pytest.mark.parametrize("plant,match", [
+    ("missing_default", "RELEASE_QUALITY_DEFAULT_REF_ABSENT"),
+    ("wrong_default", "RELEASE_QUALITY_DEFAULT_REF_MISMATCH"),
+    ("preflight_refuses", "RELEASE_QUALITY_PREFLIGHT_REFUSED"),
+    ("preflight_dirty", "RELEASE_QUALITY_PREFLIGHT_DIRTY"),
+])
+def test_release_quality_candidate_requires_bound_default_and_real_preflight(
+    tmp_path, plant, match,
+):
+    script = b"#!/bin/bash\nprintf 'ENGINE_PREFLIGHT_PASS fixture\\n'\n"
+    if plant == "preflight_refuses":
+        script += b"exit 3\n"
+    if plant == "preflight_dirty":
+        script += b"printf dirty > untracked-after-preflight\n"
+    source, commit = _committed_release_quality_repo(
+        tmp_path, "rea", {"scripts/run_gates.sh": script})
+    if plant != "missing_default":
+        default = commit
+        if plant == "wrong_default":
+            (source / "branch-only.txt").write_text("not on protected default\n")
+            subprocess.run(["git", "-C", str(source), "add", "--", "branch-only.txt"],
+                           check=True)
+            env = dict(os.environ, GIT_AUTHOR_NAME="Test",
+                       GIT_AUTHOR_EMAIL="test@example.com",
+                       GIT_COMMITTER_NAME="Test",
+                       GIT_COMMITTER_EMAIL="test@example.com")
+            subprocess.run(["git", "-C", str(source), "commit", "-qm", "branch-only"],
+                           env=env, check=True)
+            commit = subprocess.check_output(
+                ["git", "-C", str(source), "rev-parse", "HEAD"], text=True,
+            ).strip()
+        subprocess.run([
+            "git", "-C", str(source), "update-ref",
+            "refs/remotes/origin/master", default,
+        ], check=True)
+    project = tmp_path / "project"
+    subprocess.run(["git", "clone", "-q", "--shared", str(source), str(project)],
+                   check=True)
+    subprocess.run(["git", "-C", str(project), "checkout", "-q", "--detach", commit],
+                   check=True)
+    evidence = tmp_path / "evidence"
+    evidence.mkdir()
+    with pytest.raises(tool.Refusal, match=match):
+        tool.prepare_release_quality_candidate(project, source, commit, evidence)
 
 
 def test_hermetic_cross_repository_fixture_uses_configured_root(tmp_path, monkeypatch):
