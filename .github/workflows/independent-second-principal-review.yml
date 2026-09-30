@@ -42,16 +42,6 @@ on:
         required: false
         default: ""
         type: string
-      plan_state:
-        description: Local signed-release convergence plan state path for rexcoleman.dev freeze review
-        required: false
-        default: ""
-        type: string
-      plan_evidence_dir:
-        description: Local signed-release convergence evidence directory for rexcoleman.dev freeze review
-        required: false
-        default: ""
-        type: string
 
 permissions:
   contents: read
@@ -64,12 +54,19 @@ jobs:
   option-a-post-hoc-detection:
     environment: rea-write-enforcement-issuer
     runs-on: ubuntu-24.04
-    timeout-minutes: 10
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           persist-credentials: false
-          fetch-depth: 1
+          fetch-depth: 0
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: "3.13"
+      - name: Install plan/test dependencies
+        run: >-
+          python -m pip install --disable-pip-version-check
+          pytest==8.4.1 cryptography==46.0.3 PyYAML==6.0.3
       - name: Create installation token scoped to exactly two repositories
         id: app-token
         uses: actions/create-github-app-token@fee1f7d63c2ff003460e3d139729b119787bc349
@@ -80,6 +77,65 @@ jobs:
           repositories: |-
             research_enforcement_activation
             rexcoleman.dev
+      - name: Regenerate authorized release plan on hosted runner
+        if: ${{ inputs.repository == 'rexcoleman/rexcoleman.dev' }}
+        env:
+          GOVML_REA_READ_APP_ID: ${{ secrets.GOVML_REA_READ_APP_ID }}
+          GOVML_REA_READ_APP_PRIVATE_KEY_B64: ${{ secrets.GOVML_REA_READ_APP_PRIVATE_KEY_B64 }}
+        run: |
+          set -euo pipefail
+          test "${{ inputs.expected_plan_adapter_id }}" = "research-enforcement-activation-generation-5-population-306-v1"
+          test "${{ inputs.expected_manifest_sha256 }}" = "3e67c821a6041de6d695caea67cd485c296e9cd0aa5f579519f06f1cee7333ba"
+
+          token_file="${RUNNER_TEMP}/govml-read-token.txt"
+          python3 .github/write-enforcement/github_app_installation_token.py --output "${token_file}"
+
+          askpass="${RUNNER_TEMP}/git-askpass.sh"
+          cat >"${askpass}" <<'SH'
+          #!/bin/sh
+          case "$1" in
+            *Username*) printf '%s\n' x-access-token ;;
+            *Password*) tr -d '\n' <"${RUNNER_TEMP}/govml-read-token.txt" ;;
+            *) exit 1 ;;
+          esac
+          SH
+          chmod 700 "${askpass}"
+          export GIT_ASKPASS="${askpass}"
+          export GIT_TERMINAL_PROMPT=0
+
+          roots="${RUNNER_TEMP}/release-roots"
+          mkdir -p "${roots}"
+          clone_root() {
+            logical="$1"
+            repo="$2"
+            commit="$3"
+            git clone --quiet --no-checkout "https://github.com/rexcoleman/${repo}.git" "${roots}/${logical}"
+            git -C "${roots}/${logical}" checkout --quiet --detach "${commit}"
+          }
+          clone_root research_enforcement_activation research_enforcement_activation 1707c54ebc7ff5e6e49d18a2c40ba069c0eef037
+          clone_root govML govML 7443a5f77fb519cd5173cd68d23d31b1a1d9e8de
+          clone_root Moonshots_Career_Thesis_v2 Moonshots_Career_Thesis 40985ff0c9ac692741cf9ed9b3f755a9dea9afae
+          clone_root newsletter newsletter bca5981d0a466b72af14f1d0c15113623568300e
+          clone_root rexcoleman.dev rexcoleman.dev d15e2130fea48fdc6d3f7c89a674fd41ddcc41e3
+
+          plan_root="${RUNNER_TEMP}/hosted-release-plan"
+          PYTHONDONTWRITEBYTECODE=1 python3 .github/write-enforcement/signed_release_convergence.py \
+            --adapter-id "${{ inputs.expected_plan_adapter_id }}" \
+            --state "${plan_root}/state.json" \
+            --evidence-dir "${plan_root}/evidence" \
+            --root "research_enforcement_activation=${roots}/research_enforcement_activation" \
+            --root "govML=${roots}/govML" \
+            --root "Moonshots_Career_Thesis_v2=${roots}/Moonshots_Career_Thesis_v2" \
+            --root "newsletter=${roots}/newsletter" \
+            --root "rexcoleman.dev=${roots}/rexcoleman.dev" \
+            --plan
+
+          actual_manifest_sha256="$(sha256sum "${plan_root}/evidence/manifest-a/frozen_bundle_manifest.generation-5.json" | cut -d' ' -f1)"
+          test "${actual_manifest_sha256}" = "${{ inputs.expected_manifest_sha256 }}"
+          {
+            printf 'PLAN_STATE=%s\n' "${plan_root}/state.json"
+            printf 'PLAN_EVIDENCE_DIR=%s\n' "${plan_root}/evidence"
+          } >>"${GITHUB_ENV}"
       - name: Emit read-only exact-head detection evidence
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
@@ -93,5 +149,5 @@ jobs:
             --expected-files-sha256 "${{ inputs.expected_files_sha256 }}" \
             --expected-manifest-sha256 "${{ inputs.expected_manifest_sha256 }}" \
             --expected-plan-adapter-id "${{ inputs.expected_plan_adapter_id }}" \
-            --plan-state "${{ inputs.plan_state }}" \
-            --plan-evidence-dir "${{ inputs.plan_evidence_dir }}"
+            --plan-state "${PLAN_STATE:-}" \
+            --plan-evidence-dir "${PLAN_EVIDENCE_DIR:-}"

@@ -3,14 +3,13 @@
   "caller": "git-pre-commit",
   "changed_paths": [
     ".github/workflows/independent-second-principal-review.yml",
-    ".github/write-enforcement/independent_review.py",
     ".github/write-enforcement/tests/test_independent_review.py"
   ],
-  "changed_paths_count": 3,
-  "changed_paths_sha256": "99089f2323857971e55a844307789cc0f3c16a79432cf9ba00b0f8ee3aa1e96b",
+  "changed_paths_count": 2,
+  "changed_paths_sha256": "ae67540cfb39411e1c3f07649e3eff63e17b8deb38df0e723ff3f8c871345d32",
   "mode": "commit-preflight",
-  "parent_head": "d15e2130fea48fdc6d3f7c89a674fd41ddcc41e3",
-  "run_id": "pre-commit-6c6bca492512b9d6b2d440cc",
+  "parent_head": "0320c0fb1d96487d7343aace1a14b60eb5343fa0",
+  "run_id": "pre-commit-0040d1937ed1ccbc7a92e6c4",
   "schema_version": "rea.pre-commit-boundary.v1",
-  "utc_asserted_at": "2026-09-30T18:37:37Z"
+  "utc_asserted_at": "2026-09-30T18:48:13Z"
 }
