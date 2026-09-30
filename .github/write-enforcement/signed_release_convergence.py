@@ -2156,6 +2156,53 @@ def run_release_quality_loop(project, loop_source, gate_source, evidence_dir,
     }
 
 
+def prepare_release_quality_candidate(project, source, commit, evidence_dir):
+    """Install the exact candidate's authenticated runtime before scoring it."""
+    try:
+        default_commit = git(source, "rev-parse", "refs/remotes/origin/master")
+    except Refusal:
+        raise Refusal("RELEASE_QUALITY_DEFAULT_REF_ABSENT")
+    ancestry = subprocess.run(
+        ["git", "-C", str(source), "merge-base", "--is-ancestor",
+         commit, default_commit], capture_output=True, timeout=30, check=False,
+    )
+    if ancestry.returncode:
+        raise Refusal("RELEASE_QUALITY_DEFAULT_REF_MISMATCH")
+    bound = subprocess.run(
+        ["git", "-C", str(project), "update-ref",
+         "refs/remotes/origin/master", default_commit],
+        capture_output=True, timeout=30, check=False,
+    )
+    if bound.returncode or git(project, "rev-parse", "origin/master") != default_commit:
+        raise Refusal("RELEASE_QUALITY_DEFAULT_REF_BINDING_REFUSED")
+    runner = project / "scripts" / "run_gates.sh"
+    if regular_bytes(runner) != committed_bytes(source, commit, "scripts/run_gates.sh"):
+        raise Refusal("RELEASE_QUALITY_PREFLIGHT_SOURCE_REFUSED")
+    child_env = {key: os.environ[key] for key in (
+        "HOME", "PATH", "LANG", "LC_ALL", "TZ") if key in os.environ}
+    child_env["PYTHONDONTWRITEBYTECODE"] = "1"
+    with (evidence_dir / "candidate-preflight.stdout.raw").open("wb") as stdout, \
+         (evidence_dir / "candidate-preflight.stderr.raw").open("wb") as stderr:
+        try:
+            completed = subprocess.run(
+                ["bash", str(runner), "--engine-preflight"], cwd=str(project),
+                stdout=stdout, stderr=stderr, env=child_env, timeout=900,
+                check=False,
+            )
+        except subprocess.TimeoutExpired:
+            raise Refusal("RELEASE_QUALITY_PREFLIGHT_TIMEOUT")
+    preflight_raw = regular_bytes(evidence_dir / "candidate-preflight.stdout.raw")
+    if completed.returncode or b"ENGINE_PREFLIGHT_PASS " not in preflight_raw:
+        raise Refusal("RELEASE_QUALITY_PREFLIGHT_REFUSED:exit=%s" % completed.returncode)
+    if git(project, "status", "--porcelain=v1", "--untracked-files=all"):
+        raise Refusal("RELEASE_QUALITY_PREFLIGHT_DIRTY")
+    return {
+        "preflight_exit": 0,
+        "preflight_sha256": sha256(preflight_raw),
+        "default_commit": default_commit,
+    }
+
+
 def release_quality_loop_snapshot(adapter, roots, evidence_dir):
     policy = adapter["release_quality_loop"]
     rows = root_rows_by_name(evidence_dir)
@@ -2205,6 +2252,10 @@ def release_quality_loop_snapshot(adapter, roots, evidence_dir):
         )
         if checkout.returncode:
             raise Refusal("RELEASE_QUALITY_SCRATCH_CHECKOUT_REFUSED")
+        setup = prepare_release_quality_candidate(
+            project, source, rows["research_enforcement_activation"]["commit"],
+            output,
+        )
         result = run_release_quality_loop(
             project, gov / policy["loop_path"], gov / policy["gate_path"],
             output, policy["minimum_t3_composite"],
@@ -2212,7 +2263,7 @@ def release_quality_loop_snapshot(adapter, roots, evidence_dir):
         for key in ("loop", "gate"):
             if sha256(regular_bytes(gov / sources[key]["path"])) != sources[key]["sha256"]:
                 raise Refusal("RELEASE_QUALITY_SOURCE_DRIFT:%s" % key)
-    return dict(result, phase=RELEASE_QUALITY_LOOP_PHASE,
+    return dict(result, **setup, phase=RELEASE_QUALITY_LOOP_PHASE,
                 project_commit=rows["research_enforcement_activation"]["commit"],
                 govml_commit=commit,
                 loop_source_sha256=sources["loop"]["sha256"],

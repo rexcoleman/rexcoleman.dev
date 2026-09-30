@@ -455,6 +455,12 @@ authoritative T3 at or above 8.0. The independent freeze reviewer binds that
 phase receipt and its manifest SHA-256; a historical no-op rehearsal cannot
 authorize a new freeze. The adapter plans evidence only; it does not release,
 install, repoint, merge, or run commit preflight.
+Before scoring, the disposable checkout binds the source root's selected
+protected-default ref and runs that checkout's registered authenticated
+`--engine-preflight`. The preflight installs and verifies the signed packet and
+managed bundle required by the whole test suite. A missing or branch-only
+default ref, refused preflight, or dirty checkout refuses the phase; the
+preflight's raw output remains in the phase evidence.
 
 ## Known failure classes (s250 catalogue)
 
