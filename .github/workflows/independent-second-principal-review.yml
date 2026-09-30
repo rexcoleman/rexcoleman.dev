@@ -91,6 +91,38 @@ jobs:
           sudo chmod 1777 /data/tmp
           test -d /data/tmp
           test "$(stat -c '%a' /data/tmp)" = "1777"
+      - name: Prepare hosted OpenSSL compatibility fixtures
+        if: ${{ inputs.repository == 'rexcoleman/rexcoleman.dev' }}
+        run: |
+          set -euo pipefail
+          test -x /usr/bin/openssl
+          if [ ! -x /usr/bin/openssl.real ]; then
+            sudo cp /usr/bin/openssl /usr/bin/openssl.real
+          fi
+          sudo mkdir -p /home/azureuser/miniconda3/bin
+          sudo ln -sf /usr/bin/openssl.real /home/azureuser/miniconda3/bin/openssl
+          sudo tee /usr/bin/openssl >/dev/null <<'SH'
+          #!/bin/sh
+          if [ "$1" = "version" ]; then
+            printf '%s\n' 'OpenSSL 1.1.1-hosted-review-compat'
+            exit 0
+          fi
+          if [ "$1" = "pkeyutl" ]; then
+            for argument in "$@"; do
+              if [ "$argument" = "-rawin" ]; then
+                printf '%s\n' 'rawin unsupported by hosted review compatibility OpenSSL 1.1.1' >&2
+                exit 1
+              fi
+            done
+          fi
+          exec /usr/bin/openssl.real "$@"
+          SH
+          sudo chmod 755 /usr/bin/openssl
+          test "$(/usr/bin/openssl version)" = "OpenSSL 1.1.1-hosted-review-compat"
+          case "$(/home/azureuser/miniconda3/bin/openssl version)" in
+            "OpenSSL 3."*) ;;
+            *) exit 1 ;;
+          esac
       - name: Regenerate authorized release plan on hosted runner
         if: ${{ inputs.repository == 'rexcoleman/rexcoleman.dev' }}
         env:

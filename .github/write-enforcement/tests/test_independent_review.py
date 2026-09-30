@@ -1141,6 +1141,11 @@ def test_workflow_exposes_credential_only_after_environment_review():
     assert "sudo mkdir -p /data/tmp" in text
     assert "sudo chmod 1777 /data/tmp" in text
     assert 'test "$(stat -c \'%a\' /data/tmp)" = "1777"' in text
+    assert "Prepare hosted OpenSSL compatibility fixtures" in text
+    assert "sudo cp /usr/bin/openssl /usr/bin/openssl.real" in text
+    assert "sudo ln -sf /usr/bin/openssl.real /home/azureuser/miniconda3/bin/openssl" in text
+    assert "OpenSSL 1.1.1-hosted-review-compat" in text
+    assert "rawin unsupported by hosted review compatibility OpenSSL 1.1.1" in text
     assert "Upload failed hosted release plan evidence" in text
     assert "actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02" in text
     assert "hosted-release-plan-failure-${{ github.run_id }}" in text
