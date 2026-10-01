@@ -7,8 +7,8 @@
   "changed_paths_count": 1,
   "changed_paths_sha256": "0e50f527ad13467749dcd58967b714e8b6e5b0b91970adfa7dab4bae4ff957de",
   "mode": "commit-preflight",
-  "parent_head": "458c6c2f38bee348bcd1f654b106a425219709c1",
-  "run_id": "pre-commit-55aeddcdd21a878ad073d3d8",
+  "parent_head": "bb41243ffa41fa927bb82c3862079b43fd62bfe8",
+  "run_id": "pre-commit-s258-site-wea-manifest-hosted-unfinished",
   "schema_version": "rea.pre-commit-boundary.v1",
-  "utc_asserted_at": "2026-10-01T01:15:09Z"
+  "utc_asserted_at": "2026-10-01T01:56:20Z"
 }
