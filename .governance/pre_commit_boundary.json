@@ -2,14 +2,14 @@
   "assertion": "COMMIT_PREFLIGHT_PASS",
   "caller": "git-pre-commit",
   "changed_paths": [
-    ".github/write-enforcement/CREDENTIAL_CUSTODY.md",
-    ".github/write-enforcement/credential_custody.json"
+    ".github/write-enforcement/k3_pat_residuals.json",
+    ".github/write-enforcement/tests/test_s258_k3_pat_residuals.py"
   ],
   "changed_paths_count": 2,
-  "changed_paths_sha256": "d870b50b18609a55f660488d2ab66829b1dd0e682c9f722b34987ad43142e0bd",
+  "changed_paths_sha256": "6ded221118dfc25830428e8052c7a0ff5ca9ada05c8f5d7bfd63f0e3a4e7f597",
   "mode": "commit-preflight",
-  "parent_head": "d356aa6d1fffb4f1f588d58e019c1c61c2f2e646",
-  "run_id": "pre-commit-s258-custody-app-read-residuals",
+  "parent_head": "b46e595cb963304b223b1d92357a73c3128b86a4",
+  "run_id": "pre-commit-s258-k3-pat-residual-ledger",
   "schema_version": "rea.pre-commit-boundary.v1",
-  "utc_asserted_at": "2026-10-01T03:36:38Z"
+  "utc_asserted_at": "2026-10-01T03:40:59Z"
 }
