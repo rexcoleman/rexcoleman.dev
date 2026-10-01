@@ -672,26 +672,22 @@ def test_the_external_judge_refuses_an_unset_issuer_pin_before_the_checkout():
 
 
 # ==========================================================================
-# The reusable consumer verifier: migrated WITHOUT changing what its one
-# pinned caller must supply.
+# The reusable consumer verifier: App-only for governed project reads.
 # ==========================================================================
-ORIGINAL_REQUIRED_SECRETS = {"REA_WEA_READ_TOKEN", "REA_BUNDLE_READ_TOKEN"}
+REQUIRED_VERIFIER_SECRETS = {
+    "REA_WEA_READ_TOKEN",
+    "GOVML_REA_READ_APP_ID",
+    "GOVML_REA_READ_APP_PRIVATE_KEY_B64",
+}
 
 
-def test_the_verifier_secrets_interface_stays_backward_compatible():
+def test_the_verifier_secrets_interface_requires_the_app_pair():
     document = yaml.safe_load(VERIFIER.read_text())
     call = document[True]["workflow_call"]
     secrets = call["secrets"]
-    # Nothing an existing caller supplies may change meaning or become optional.
-    for name in ORIGINAL_REQUIRED_SECRETS:
+    for name in REQUIRED_VERIFIER_SECRETS:
         assert secrets[name]["required"] is True, name
-    # A reusable workflow only sees declared secrets, so the App pair had to be
-    # declared -- but only as OPTIONAL, which is additive for every caller.
-    assert secrets["GOVML_REA_READ_APP_ID"]["required"] is False
-    assert secrets["GOVML_REA_READ_APP_PRIVATE_KEY_B64"]["required"] is False
-    assert set(secrets) == ORIGINAL_REQUIRED_SECRETS | {
-        "GOVML_REA_READ_APP_ID", "GOVML_REA_READ_APP_PRIVATE_KEY_B64",
-    }
+    assert set(secrets) == REQUIRED_VERIFIER_SECRETS
     # The input interface is untouched.
     assert set(call["inputs"]) == {
         "consumer_id", "surface", "issuance_run_id", "control_sha",
@@ -749,29 +745,37 @@ def _run_selection_step(tmp_path, *, modules_present, environment):
     return completed, runner_temp
 
 
-def test_the_verifier_falls_back_when_the_control_sha_predates_the_lane(tmp_path):
-    """The one real caller pins control_sha 13f6efd2, which has no selector."""
+def test_the_verifier_refuses_when_the_control_sha_predates_the_lane(tmp_path):
     completed, runner_temp = _run_selection_step(
         tmp_path, modules_present=False,
-        environment={"REA_BUNDLE_READ_TOKEN": LEGACY_TOKEN},
+        environment={
+            "GOVML_REA_READ_APP_ID": "4412331",
+            "GOVML_REA_READ_APP_PRIVATE_KEY_B64": _throwaway_private_key(tmp_path),
+        },
     )
-    assert completed.returncode == 0, completed.stdout + completed.stderr
-    assert "GOVERNED_READ_LANE_ABSENT_AT_CONTROL_SHA" in completed.stdout
-    assert (runner_temp / "governed-read-route").read_text().strip() == "compatibility"
+    assert completed.returncode != 0, completed.stdout + completed.stderr
+    assert "GOVERNED_READ_LANE_ABSENT_AT_CONTROL_SHA" in completed.stderr
     assert not (runner_temp / "governed-read-credential").exists()
 
 
-def test_the_verifier_uses_the_governed_lane_when_the_control_sha_carries_it(tmp_path):
+def test_the_verifier_uses_the_governed_lane_when_the_control_sha_carries_it(
+    tmp_path, app_api,
+):
+    _, root = app_api
     completed, runner_temp = _run_selection_step(
         tmp_path, modules_present=True,
-        environment={"REA_BUNDLE_READ_TOKEN": LEGACY_TOKEN},
+        environment={
+            "GOVML_REA_READ_APP_ID": "4412331",
+            "GOVML_REA_READ_APP_PRIVATE_KEY_B64": _throwaway_private_key(tmp_path),
+            "GOVML_GOVERNED_READ_TEST_MODE": "1",
+            "GOVML_GOVERNED_READ_TEST_API_ROOT": root,
+        },
     )
     assert completed.returncode == 0, completed.stdout + completed.stderr
-    assert (runner_temp / "governed-read-route").read_text().strip() == "governed"
     credential = runner_temp / "governed-read-credential"
-    assert credential.read_text().strip() == LEGACY_TOKEN
+    assert credential.read_text().strip() == MINTED_TOKEN
     assert oct(credential.stat().st_mode & 0o777) == "0o600"
-    assert LEGACY_TOKEN not in completed.stdout + completed.stderr
+    assert MINTED_TOKEN not in completed.stdout + completed.stderr
 
 
 def test_the_verifier_has_no_fallback_past_a_present_selector(tmp_path):
@@ -781,7 +785,6 @@ def test_the_verifier_has_no_fallback_past_a_present_selector(tmp_path):
         environment={
             "GOVML_REA_READ_APP_ID": "4412331",
             "GOVML_REA_READ_APP_PRIVATE_KEY_B64": "",
-            "REA_BUNDLE_READ_TOKEN": LEGACY_TOKEN,
         },
     )
     assert completed.returncode != 0, completed.stdout + completed.stderr
@@ -789,15 +792,8 @@ def test_the_verifier_has_no_fallback_past_a_present_selector(tmp_path):
     assert not (runner_temp / "governed-read-credential").exists()
 
 
-def test_the_verifier_checkout_step_honours_both_routes():
+def test_the_verifier_checkout_step_uses_the_app_token_file_only():
     script = _verifier_step_script("Checkout frozen members")
     assert '--token-file "$RUNNER_TEMP/governed-read-credential"' in script
-    # The compatibility branch must be the ORIGINAL invocation, argument for
-    # argument, so a historical control_sha behaves exactly as it does today.
-    assert (
-        "python3 repos/rexcoleman.dev/.github/write-enforcement/checkout_manifest.py \\\n"
-        "              issuance/enforcement_bundle_manifest.json repos\n"
-    ) in script.replace("\\\n", "\\\n") or (
-        "issuance/enforcement_bundle_manifest.json repos" in script
-    )
-    assert script.count("checkout_manifest.py") == 2
+    assert "REA_BUNDLE_READ_TOKEN" not in script
+    assert script.count("checkout_manifest.py") == 1

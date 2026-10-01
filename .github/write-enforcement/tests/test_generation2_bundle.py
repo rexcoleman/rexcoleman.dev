@@ -34,7 +34,12 @@ def test_issuer_and_verifier_workflow_syntax_and_secret_wiring():
     assert "ubuntu-24.04" in issuer_raw and "ubuntu-latest" not in issuer_raw
     assert "ubuntu-24.04" in verifier_raw and "ubuntu-latest" not in verifier_raw
     assert "REA_BUNDLE_READ_TOKEN" in issuer_raw
-    assert "REA_BUNDLE_READ_TOKEN" in verifier["on"]["workflow_call"]["secrets"]
+    assert "REA_BUNDLE_READ_TOKEN" not in verifier["on"]["workflow_call"]["secrets"]
+    assert "GOVML_REA_READ_APP_ID" in verifier["on"]["workflow_call"]["secrets"]
+    assert (
+        "GOVML_REA_READ_APP_PRIVATE_KEY_B64"
+        in verifier["on"]["workflow_call"]["secrets"]
+    )
     assert GENERATION_MANIFEST_NAME in issuer_raw
     for raw in (issuer_raw, verifier_raw):
         assert "actions/checkout@v4" not in raw
