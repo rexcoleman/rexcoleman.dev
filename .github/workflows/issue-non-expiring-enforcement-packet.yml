@@ -23,6 +23,9 @@ defaults:
   run:
     shell: bash
 
+env:
+  PYTHONDONTWRITEBYTECODE: "1"
+
 jobs:
   issue:
     runs-on: ubuntu-24.04
