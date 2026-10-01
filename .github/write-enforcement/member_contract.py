@@ -1236,6 +1236,14 @@ UNIT1_NON_EXPIRING_ENFORCEMENT_ADDITIONAL_MEMBERS = {
         "rexcoleman.dev",
         ".github/write-enforcement/non_expiring_enforcement.py",
     ),
+    "non-expiring-enforcement-workflow": (
+        "rexcoleman.dev",
+        ".github/workflows/issue-non-expiring-enforcement-packet.yml",
+    ),
+}
+UNIT1_NON_EXPIRING_ENFORCEMENT_MEMBER_MODES = {
+    "non-expiring-enforcement": "100755",
+    "non-expiring-enforcement-workflow": "100644",
 }
 
 
@@ -1266,7 +1274,7 @@ def validate_unit1_non_expiring_enforcement_modes(source_modes, contract):
     ):
         raise ValueError("unit1 non-expiring contract incomplete")
     for member_id in sorted(required):
-        if source_modes.get(member_id) != "100755":
+        if source_modes.get(member_id) != UNIT1_NON_EXPIRING_ENFORCEMENT_MEMBER_MODES[member_id]:
             raise ValueError(f"unit1 non-expiring mode:{member_id}")
 
 

@@ -76,10 +76,19 @@ def _write_packet(root, private, *, version="v1", revoked_digests=None,
     return MODULE.digest(packet_raw)
 
 
+def _anchor(root, private):
+    path = root / "trusted.pem"
+    path.write_bytes(_public(private))
+    return path
+
+
 def test_non_expiring_packet_verifies_offline_and_has_no_expiry(tmp_path):
     private = Ed25519PrivateKey.generate()
+    trusted = _anchor(tmp_path, private)
     _write_packet(tmp_path / "packet", private)
-    report = MODULE.verify_packet(tmp_path / "packet", now=NOW)
+    report = MODULE.verify_packet(
+        tmp_path / "packet", trusted_public_key=trusted, now=NOW
+    )
     assert report["verdict"] == "PASS"
     assert report["expires_at"] is None
     assert report["manual_activation_required"] is False
@@ -88,26 +97,41 @@ def test_non_expiring_packet_verifies_offline_and_has_no_expiry(tmp_path):
 
 def test_tampered_packet_bytes_refuse_before_admission(tmp_path):
     private = Ed25519PrivateKey.generate()
+    trusted = _anchor(tmp_path, private)
     packet = tmp_path / "packet"
     _write_packet(packet, private)
     path = packet / MODULE.PACKET_NAME
     path.write_bytes(path.read_bytes().replace(b'"state":"ENFORCING"', b'"state":"DISABLED"'))
     with pytest.raises(MODULE.EnforcementRefusal) as captured:
-        MODULE.verify_packet(packet, now=NOW)
+        MODULE.verify_packet(packet, trusted_public_key=trusted, now=NOW)
     assert captured.value.reason_code == "PACKET_WRONG_BUNDLE"
+
+
+def test_foreign_resigned_packet_refuses_against_birth_pinned_anchor(tmp_path):
+    trusted_private = Ed25519PrivateKey.generate()
+    foreign_private = Ed25519PrivateKey.generate()
+    trusted = _anchor(tmp_path, trusted_private)
+    _write_packet(tmp_path / "packet", foreign_private)
+    with pytest.raises(MODULE.EnforcementRefusal) as captured:
+        MODULE.verify_packet(
+            tmp_path / "packet", trusted_public_key=trusted, now=NOW
+        )
+    assert captured.value.reason_code == "TRUST_ROOT_MISMATCH"
 
 
 def test_signed_revocation_list_refuses_named_version(tmp_path):
     private = Ed25519PrivateKey.generate()
+    trusted = _anchor(tmp_path, private)
     revoked_by_version = tmp_path / "revoked-by-version"
     _write_packet(revoked_by_version, private, version="v9", revoked_versions=["v9"])
     with pytest.raises(MODULE.EnforcementRefusal) as captured:
-        MODULE.verify_packet(revoked_by_version, now=NOW)
+        MODULE.verify_packet(revoked_by_version, trusted_public_key=trusted, now=NOW)
     assert captured.value.reason_code == "PACKET_REVOKED"
 
 
 def test_reconciler_installs_new_version_and_keeps_last_verified_on_bad_candidate(tmp_path):
     private = Ed25519PrivateKey.generate()
+    trusted = _anchor(tmp_path, private)
     source_v1 = tmp_path / "source-v1"
     source_v2 = tmp_path / "source-v2"
     bad = tmp_path / "bad"
@@ -117,9 +141,9 @@ def test_reconciler_installs_new_version_and_keeps_last_verified_on_bad_candidat
     _write_packet(bad, private, version="v3", subject_digest="3" * 64)
     (bad / MODULE.PACKET_NAME).write_bytes(b'{"tampered":true}\n')
 
-    first = MODULE.reconcile(source_v1, state, now=NOW)
-    second = MODULE.reconcile(source_v2, state, now=NOW)
-    kept = MODULE.reconcile(bad, state, now=NOW)
+    first = MODULE.reconcile(source_v1, state, trusted_public_key=trusted, now=NOW)
+    second = MODULE.reconcile(source_v2, state, trusted_public_key=trusted, now=NOW)
+    kept = MODULE.reconcile(bad, state, trusted_public_key=trusted, now=NOW)
 
     assert first["verdict"] == "INSTALLED"
     assert second["verdict"] == "INSTALLED"
@@ -127,3 +151,47 @@ def test_reconciler_installs_new_version_and_keeps_last_verified_on_bad_candidat
     assert kept["verdict"] == "KEPT_LAST_VERIFIED"
     assert kept["current_packet_digest"] == second["current_packet_digest"]
     assert (state / "alerts" / "last_failure.json").is_file()
+
+
+def test_issue_command_writes_verifiable_non_expiring_packet(tmp_path, monkeypatch):
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    (repo / "tracked.txt").write_text("protected bytes\n", encoding="utf-8")
+    import subprocess
+    subprocess.run(["git", "init"], cwd=repo, check=True, capture_output=True)
+    subprocess.run(["git", "config", "user.email", "test@example.invalid"], cwd=repo, check=True)
+    subprocess.run(["git", "config", "user.name", "Test"], cwd=repo, check=True)
+    subprocess.run(["git", "add", "tracked.txt"], cwd=repo, check=True)
+    subprocess.run(["git", "commit", "-m", "seed"], cwd=repo, check=True, capture_output=True)
+
+    private = Ed25519PrivateKey.generate()
+    private_path = tmp_path / "private.pem"
+    private_path.write_bytes(
+        private.private_bytes(
+            serialization.Encoding.PEM,
+            serialization.PrivateFormat.PKCS8,
+            serialization.NoEncryption(),
+        )
+    )
+    trusted = _anchor(tmp_path, private)
+    manifest = tmp_path / "manifest.json"
+    manifest.write_text('{"member":"bytes"}\n', encoding="utf-8")
+    output = tmp_path / "packet"
+
+    report = MODULE.issue_packet(
+        repo_root=repo,
+        source_manifest=manifest,
+        private_key=private_path,
+        trusted_public_key=trusted,
+        output=output,
+        repository="rexcoleman/rexcoleman.dev",
+        ref="refs/heads/main",
+        packet_version="test-version",
+        scope=["research"],
+        now=NOW,
+    )
+
+    assert report["verdict"] == "ISSUED"
+    verified = MODULE.verify_packet(output, trusted_public_key=trusted, now=NOW)
+    assert verified["packet_version"] == "test-version"
+    assert verified["expires_at"] is None

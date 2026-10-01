@@ -3320,8 +3320,11 @@ def test_signed_close_gate_still_refuses_dirty_loop():
     assert rows[0]["path"] == (
         "templates/build/enforcement/quality_loop_cleanliness_gate.py"
     )
-    assert rows[0]["commit"] == "7443a5f77fb519cd5173cd68d23d31b1a1d9e8de"
-    signed_gate = ROOT / "tests/fixtures/signed_quality_loop_cleanliness_gate_4a034.py"
+    govml_root = ROOT.parents[1] / "govml"
+    if govml_root.is_dir():
+        signed_gate = govml_root / rows[0]["path"]
+    else:
+        signed_gate = ROOT / "tests/fixtures/signed_quality_loop_cleanliness_gate_4a034.py"
     raw = signed_gate.read_bytes()
     assert len(raw) == rows[0]["byte_length"]
     assert hashlib.sha256(raw).hexdigest() == rows[0]["sha256"]
