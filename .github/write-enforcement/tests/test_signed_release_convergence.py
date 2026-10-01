@@ -135,8 +135,13 @@ STAGE5_TEMPLATE_ADAPTERS = tuple(
         "newsletter_generation_architecture", "research_engine_release",
     )
 )
-UNIT1_NON_EXPIRING_ADAPTER = (
-    ROOT / f"adapters/research_enforcement_activation.population-{UNIT1_NON_EXPIRING_COUNT}-v1.json"
+UNIT1_NON_EXPIRING_ADAPTERS = tuple(
+    ROOT / f"adapters/{name}.population-{UNIT1_NON_EXPIRING_COUNT}-v1.json"
+    for name in (
+        "research_enforcement_activation", "adversarial_ml_landscape",
+        "agent_boundary_learning_landscape", "newsletter_hybrid_path",
+        "newsletter_generation_architecture", "research_engine_release",
+    )
 )
 EXACT_PLAN_RECOVERY_ADAPTER = (
     ROOT / "adapters/research_enforcement_activation.exact-plan-recovery-drive-v1.json"
@@ -1193,7 +1198,10 @@ def test_index_is_closed_and_resolves_every_registered_adapter():
         "research-enforcement-activation", "adversarial-ml-landscape",
         "agent-boundary-learning-landscape", "newsletter-hybrid-path",
         "newsletter-generation-architecture", "research-engine-release")]
-    + [f"research-enforcement-activation-generation-5-population-{UNIT1_NON_EXPIRING_COUNT}-v1"]
+    + [f"{name}-generation-5-population-{UNIT1_NON_EXPIRING_COUNT}-v1" for name in (
+        "research-enforcement-activation", "adversarial-ml-landscape",
+        "agent-boundary-learning-landscape", "newsletter-hybrid-path",
+        "newsletter-generation-architecture", "research-engine-release")]
     + ["research-enforcement-activation-generation-5-exact-plan-recovery-drive-v1"]
     )
     status = {row["adapter_id"]: row["status"] for row in value["adapters"]}
@@ -1253,7 +1261,6 @@ def test_index_refuses_duplicate_unknown_retired_and_traversing_rows(
                 S210_GOVERNED_READ_ADAPTER,
                 POPULATION_265_ADAPTER,
                 POPULATION_273_ADAPTER,
-                UNIT1_NON_EXPIRING_ADAPTER,
                 EXACT_PLAN_RECOVERY_ADAPTER,
                 ):
         shutil.copyfile(adapter_path, adapters / adapter_path.name)
@@ -1268,6 +1275,8 @@ def test_index_refuses_duplicate_unknown_retired_and_traversing_rows(
         for adapter_path in ROLE_CHECKLIST_ADAPTERS:
             shutil.copyfile(adapter_path, adapters / adapter_path.name)
         for adapter_path in STAGE5_TEMPLATE_ADAPTERS:
+            shutil.copyfile(adapter_path, adapters / adapter_path.name)
+        for adapter_path in UNIT1_NON_EXPIRING_ADAPTERS:
             shutil.copyfile(adapter_path, adapters / adapter_path.name)
     shutil.copyfile(WORKFLOW, tmp_path / "workflows" / WORKFLOW.name)
 

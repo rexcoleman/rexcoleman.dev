@@ -2,13 +2,19 @@
   "assertion": "COMMIT_PREFLIGHT_PASS",
   "caller": "git-pre-commit",
   "changed_paths": [
-    ".github/write-enforcement/frozen_bundle_manifest.generation-5.json"
+    ".github/write-enforcement/adapters/adversarial_ml_landscape.population-307-v1.json",
+    ".github/write-enforcement/adapters/agent_boundary_learning_landscape.population-307-v1.json",
+    ".github/write-enforcement/adapters/newsletter_generation_architecture.population-307-v1.json",
+    ".github/write-enforcement/adapters/newsletter_hybrid_path.population-307-v1.json",
+    ".github/write-enforcement/adapters/research_engine_release.population-307-v1.json",
+    ".github/write-enforcement/signed_release_convergence_index.json",
+    ".github/write-enforcement/tests/test_signed_release_convergence.py"
   ],
-  "changed_paths_count": 1,
-  "changed_paths_sha256": "0e50f527ad13467749dcd58967b714e8b6e5b0b91970adfa7dab4bae4ff957de",
+  "changed_paths_count": 7,
+  "changed_paths_sha256": "a8da31f65b73853500b067839ad9501f0f69bbd1ac9f5278a7a723e74e9d4695",
   "mode": "commit-preflight",
-  "parent_head": "581cc16386aa2087d2c981df3ea9f70e5e3270b5",
-  "run_id": "pre-commit-3c016195d77d189d7a15d7e7",
+  "parent_head": "2ea1140f4a745185b6f3d42cfc85eea56405fb2d",
+  "run_id": "pre-commit-649ae435377e35b83783ed02",
   "schema_version": "rea.pre-commit-boundary.v1",
-  "utc_asserted_at": "2026-10-01T17:38:49Z"
+  "utc_asserted_at": "2026-10-01T18:51:58Z"
 }
