@@ -8,6 +8,11 @@ from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
 
 TARGET = Path(__file__).resolve().parents[1] / "non_expiring_enforcement.py"
+WORKFLOW = (
+    Path(__file__).resolve().parents[2]
+    / "workflows"
+    / "issue-non-expiring-enforcement-packet.yml"
+)
 SPEC = importlib.util.spec_from_file_location("non_expiring_enforcement", TARGET)
 MODULE = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(MODULE)
@@ -195,3 +200,11 @@ def test_issue_command_writes_verifiable_non_expiring_packet(tmp_path, monkeypat
     verified = MODULE.verify_packet(output, trusted_public_key=trusted, now=NOW)
     assert verified["packet_version"] == "test-version"
     assert verified["expires_at"] is None
+
+
+def test_hosted_issuer_disables_bytecode_before_cleanliness_gate():
+    text = WORKFLOW.read_text()
+    assert 'PYTHONDONTWRITEBYTECODE: "1"' in text
+    assert text.index('PYTHONDONTWRITEBYTECODE: "1"') < text.index(
+        "Issue non-expiring packet"
+    )
