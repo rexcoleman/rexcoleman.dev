@@ -427,16 +427,11 @@ jobs:
         env:
           GOVML_REA_READ_APP_ID: ${{ secrets.GOVML_REA_READ_APP_ID }}
           GOVML_REA_READ_APP_PRIVATE_KEY_B64: ${{ secrets.GOVML_REA_READ_APP_PRIVATE_KEY_B64 }}
-          REA_BUNDLE_READ_TOKEN: ${{ secrets.REA_BUNDLE_READ_TOKEN }}
         run: |
           set -euo pipefail
           umask 077
-          # Custody precedence, implemented by the selector, not by this file:
-          # a COMPLETE GOVML_REA_READ_APP_ID / GOVML_REA_READ_APP_PRIVATE_KEY_B64
-          # pair mints one short-lived installation token and wins even when
-          # the compatibility name is still configured; a PARTIAL pair refuses
-          # rather than downgrading; only a wholly absent pair falls back to the
-          # deprecated REA_BUNDLE_READ_TOKEN label; nothing present refuses.
+          # The frozen checkout path is App-only.  A missing or PARTIAL App
+          # pair refuses in the selector; there is no PAT fallback here.
           python3 repos/rexcoleman.dev/.github/write-enforcement/select_governed_read_credential.py \
             --minter repos/rexcoleman.dev/.github/write-enforcement/github_app_installation_token.py \
             --output "$RUNNER_TEMP/governed-read-credential"
@@ -781,16 +776,11 @@ jobs:
         env:
           GOVML_REA_READ_APP_ID: ${{ secrets.GOVML_REA_READ_APP_ID }}
           GOVML_REA_READ_APP_PRIVATE_KEY_B64: ${{ secrets.GOVML_REA_READ_APP_PRIVATE_KEY_B64 }}
-          REA_BUNDLE_READ_TOKEN: ${{ secrets.REA_BUNDLE_READ_TOKEN }}
         run: |
           set -euo pipefail
           umask 077
-          # Custody precedence, implemented by the selector, not by this file:
-          # a COMPLETE GOVML_REA_READ_APP_ID / GOVML_REA_READ_APP_PRIVATE_KEY_B64
-          # pair mints one short-lived installation token and wins even when
-          # the compatibility name is still configured; a PARTIAL pair refuses
-          # rather than downgrading; only a wholly absent pair falls back to the
-          # deprecated REA_BUNDLE_READ_TOKEN label; nothing present refuses.
+          # The frozen checkout path is App-only.  A missing or PARTIAL App
+          # pair refuses in the selector; there is no PAT fallback here.
           python3 repos/rexcoleman.dev/.github/write-enforcement/select_governed_read_credential.py \
             --minter repos/rexcoleman.dev/.github/write-enforcement/github_app_installation_token.py \
             --output "$RUNNER_TEMP/governed-read-credential"
