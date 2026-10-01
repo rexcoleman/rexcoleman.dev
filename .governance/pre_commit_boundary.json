@@ -2,14 +2,13 @@
   "assertion": "COMMIT_PREFLIGHT_PASS",
   "caller": "git-pre-commit",
   "changed_paths": [
-    ".github/write-enforcement/k3_pat_residuals.json",
-    ".github/write-enforcement/tests/test_s258_k3_pat_residuals.py"
+    ".github/write-enforcement/artifact_contract_versions.json"
   ],
-  "changed_paths_count": 2,
-  "changed_paths_sha256": "6ded221118dfc25830428e8052c7a0ff5ca9ada05c8f5d7bfd63f0e3a4e7f597",
+  "changed_paths_count": 1,
+  "changed_paths_sha256": "663b3c601628cd35518f634d8894364b3b554cef1145a38ef33024ac21bbaaa7",
   "mode": "commit-preflight",
-  "parent_head": "b46e595cb963304b223b1d92357a73c3128b86a4",
-  "run_id": "pre-commit-s258-k3-pat-residual-ledger",
+  "parent_head": "88809d646fbe05baa2f2075b54e8aff15c514893",
+  "run_id": "pre-commit-e602f575b3fa546674c271f8",
   "schema_version": "rea.pre-commit-boundary.v1",
-  "utc_asserted_at": "2026-10-01T03:40:59Z"
+  "utc_asserted_at": "2026-10-01T17:04:34Z"
 }
