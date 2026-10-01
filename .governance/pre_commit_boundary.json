@@ -2,14 +2,15 @@
   "assertion": "COMMIT_PREFLIGHT_PASS",
   "caller": "git-pre-commit",
   "changed_paths": [
-    ".github/workflows/issue-external-judge-authority.yml",
+    ".github/workflows/verify-write-enforcement.yml",
+    ".github/write-enforcement/tests/test_generation2_bundle.py",
     ".github/write-enforcement/tests/test_s210_governed_read_credential.py"
   ],
-  "changed_paths_count": 2,
-  "changed_paths_sha256": "00d5d3b8f0a1e95650ee5f5cd6a59020d3e634b3603bdaf4034f7bc20e8e8a97",
+  "changed_paths_count": 3,
+  "changed_paths_sha256": "38eb70409827525d1c406957130e325f9de2632371e2d4c60b009a3b731cbfa0",
   "mode": "commit-preflight",
-  "parent_head": "916caaa1abd0ee26fd10074cc2223914744b1189",
-  "run_id": "pre-commit-s258-external-judge-app-only-20261001T025830Z",
+  "parent_head": "86ed3aab3cd261b2ccd285ee927ca23b29b7035b",
+  "run_id": "pre-commit-s258-app-only-reusable-verifier",
   "schema_version": "rea.pre-commit-boundary.v1",
-  "utc_asserted_at": "2026-10-01T02:58:30Z"
+  "utc_asserted_at": "2026-10-01T03:07:18Z"
 }
