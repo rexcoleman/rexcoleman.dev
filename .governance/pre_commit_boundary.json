@@ -2,14 +2,14 @@
   "assertion": "COMMIT_PREFLIGHT_PASS",
   "caller": "git-pre-commit",
   "changed_paths": [
-    ".github/workflows/issue-write-enforcement-attestation.yml",
-    ".github/write-enforcement/tests/test_s210_governed_read_credential.py"
+    ".github/write-enforcement/CREDENTIAL_CUSTODY.md",
+    ".github/write-enforcement/credential_custody.json"
   ],
   "changed_paths_count": 2,
-  "changed_paths_sha256": "650c7199cb954ebb61dccb307593c4bf825cc50c44dcdb119d1d6ca43f430363",
+  "changed_paths_sha256": "d870b50b18609a55f660488d2ab66829b1dd0e682c9f722b34987ad43142e0bd",
   "mode": "commit-preflight",
-  "parent_head": "0329bc103c921f8f820f3733e9237fac98707aa3",
-  "run_id": "pre-commit-s258-issuer-app-only-frozen-checkouts",
+  "parent_head": "d356aa6d1fffb4f1f588d58e019c1c61c2f2e646",
+  "run_id": "pre-commit-s258-custody-app-read-residuals",
   "schema_version": "rea.pre-commit-boundary.v1",
-  "utc_asserted_at": "2026-10-01T03:23:34Z"
+  "utc_asserted_at": "2026-10-01T03:36:38Z"
 }
