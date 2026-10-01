@@ -40,7 +40,8 @@ jobs:
       wea_issuance_run_id: ${{ vars.REA_WEA_RUN_ID }}
     secrets:
       REA_WEA_READ_TOKEN: ${{ secrets.REA_WEA_READ_TOKEN }}
-      REA_BUNDLE_READ_TOKEN: ${{ secrets.REA_BUNDLE_READ_TOKEN }}
+      GOVML_REA_READ_APP_ID: ${{ secrets.GOVML_REA_READ_APP_ID }}
+      GOVML_REA_READ_APP_PRIVATE_KEY_B64: ${{ secrets.GOVML_REA_READ_APP_PRIVATE_KEY_B64 }}
 """
 
 TARGET_WORKFLOW = LEGACY_WORKFLOW.replace(
@@ -48,8 +49,7 @@ TARGET_WORKFLOW = LEGACY_WORKFLOW.replace(
     validator.TARGET_AUTHORITY_PIN,
 )
 
-# Literal pins, deliberately NOT derived from validator.TARGET_AUTHORITY_PIN, so
-# that reverting the constant makes the accept case below fail.
+APP_READ_AUTHORITY_PIN = "b8b7592a84ea44742e041c1159d82ef62bb4dc9d"
 GENERATION_5_AUTHORITY_PIN = "e86a3c4ebeec7a1f5cf4cc3c3e849a978a096a54"
 GENERATION_4_AUTHORITY_PIN = "71c7835246171126ab657fba28fad649172c345d"
 
@@ -171,22 +171,29 @@ def test_superseded_ten_artifact_control_pin_refuses():
         validator.validate_legacy_workflow(obsolete)
 
 
-def test_generation_five_authority_pin_is_the_registered_upgrade_target():
-    """The only accepted destination is Moonshots e86a3c4e.
+def test_app_read_authority_pin_is_the_registered_upgrade_target():
+    """The only accepted destination is Moonshots b8b7592a.
 
-    e86a3c4e pins rexcoleman.dev verify-write-enforcement.yml@13f6efd2 with
-    control_sha 13f6efd2 -- the generation-5 verifier, the only one that passes
-    the live 11-artifact issuance. Asserted against a literal so a regression of
-    validator.TARGET_AUTHORITY_PIN fails here rather than silently redefining
-    what "the target" means.
+    b8b7592a pins rexcoleman.dev verify-write-enforcement.yml@451d5b4d with
+    control_sha 451d5b4d -- the App-only verifier that removes
+    REA_BUNDLE_READ_TOKEN from frozen member checkout. Asserted against a
+    literal so a regression of validator.TARGET_AUTHORITY_PIN fails here rather
+    than silently redefining what "the target" means.
     """
-    assert validator.TARGET_AUTHORITY_PIN == GENERATION_5_AUTHORITY_PIN
+    assert validator.TARGET_AUTHORITY_PIN == APP_READ_AUTHORITY_PIN
     assert (
         validator.validate_legacy_workflow(
-            legacy_pinned_to(GENERATION_5_AUTHORITY_PIN)
+            legacy_pinned_to(APP_READ_AUTHORITY_PIN)
         )
         is None
     )
+
+
+def test_superseded_generation_five_authority_pin_refuses():
+    with pytest.raises(validator.Refusal, match="LEGACY_REUSABLE_WORKFLOW_PIN"):
+        validator.validate_legacy_workflow(
+            legacy_pinned_to(GENERATION_5_AUTHORITY_PIN)
+        )
 
 
 def test_superseded_generation_four_authority_pin_refuses():
@@ -204,8 +211,9 @@ def test_bootstrap_accepts_only_the_generation_five_pinned_legacy_control(tmp_pa
     accepted = (root / str(validator.LEGACY_WORKFLOW)).read_text(encoding="utf-8")
     assert (
         "rexcoleman/Moonshots_Career_Thesis/.github/workflows/"
-        f"newsletter-integrity-authority.yml@{GENERATION_5_AUTHORITY_PIN}"
+        f"newsletter-integrity-authority.yml@{APP_READ_AUTHORITY_PIN}"
     ) in accepted
+    assert GENERATION_5_AUTHORITY_PIN not in accepted
     assert GENERATION_4_AUTHORITY_PIN not in accepted
 
 
