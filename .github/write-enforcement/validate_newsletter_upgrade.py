@@ -14,13 +14,11 @@ from pathlib import Path
 
 
 CHECKOUT_PIN = "11bd71901bbe5b1630ceea73d27597364c9af683"
-# Generation-5 authority. Moonshots e86a3c4e pins rexcoleman.dev
-# verify-write-enforcement.yml@13f6efd2 (control_sha 13f6efd2), the
-# generation-5 verifier that expects the 11-artifact PUBLIC_ARTIFACTS set
-# including predecessor_write_enforcement_attestation.json. The superseded
-# 71c78352 pinned the generation-4 verifier c68062541f, which refuses the
-# live manifest with WEA_WRONG_BUNDLE: authority_generation.
-TARGET_AUTHORITY_PIN = "e86a3c4ebeec7a1f5cf4cc3c3e849a978a096a54"
+# App-read authority. Moonshots b8b7592a pins rexcoleman.dev
+# verify-write-enforcement.yml@451d5b4d with control_sha 451d5b4d, the
+# App-only verifier that removes REA_BUNDLE_READ_TOKEN from frozen member
+# checkout while preserving the WEA artifact read token.
+TARGET_AUTHORITY_PIN = "b8b7592a84ea44742e041c1159d82ef62bb4dc9d"
 LEGACY_WORKFLOW = Path(".github/workflows/newsletter-integrity.yml")
 UPGRADE_WORKFLOW = Path(".github/workflows/newsletter-upgrade-integrity.yml")
 CAPABILITY = Path(".github/integrity/newsletter/bootstrap-capability.json")
@@ -438,7 +436,11 @@ def validate_legacy_workflow(raw: str) -> None:
         raise Refusal("LEGACY_CANDIDATE_EXECUTION")
     expected_secret_lines = {
         "REA_WEA_READ_TOKEN: ${{ secrets.REA_WEA_READ_TOKEN }}",
-        "REA_BUNDLE_READ_TOKEN: ${{ secrets.REA_BUNDLE_READ_TOKEN }}",
+        "GOVML_REA_READ_APP_ID: ${{ secrets.GOVML_REA_READ_APP_ID }}",
+        (
+            "GOVML_REA_READ_APP_PRIVATE_KEY_B64: "
+            "${{ secrets.GOVML_REA_READ_APP_PRIVATE_KEY_B64 }}"
+        ),
     }
     observed = {line.strip() for line in raw.splitlines() if "secrets." in line}
     if observed != expected_secret_lines:
