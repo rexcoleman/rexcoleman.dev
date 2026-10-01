@@ -2,14 +2,13 @@
   "assertion": "COMMIT_PREFLIGHT_PASS",
   "caller": "git-pre-commit",
   "changed_paths": [
-    ".github/workflows/issue-non-expiring-enforcement-packet.yml",
-    ".github/write-enforcement/tests/test_non_expiring_enforcement.py"
+    ".github/write-enforcement/frozen_bundle_manifest.generation-5.json"
   ],
-  "changed_paths_count": 2,
-  "changed_paths_sha256": "e42d5eaa006f0592a5430c4a307350ec99248f5cdf0496efe82c4ad546cef994",
+  "changed_paths_count": 1,
+  "changed_paths_sha256": "0e50f527ad13467749dcd58967b714e8b6e5b0b91970adfa7dab4bae4ff957de",
   "mode": "commit-preflight",
-  "parent_head": "d80da0055798db344feed722144be8208b20087d",
-  "run_id": "pre-commit-s258-site-issuer-report-temp",
+  "parent_head": "458c6c2f38bee348bcd1f654b106a425219709c1",
+  "run_id": "pre-commit-55aeddcdd21a878ad073d3d8",
   "schema_version": "rea.pre-commit-boundary.v1",
-  "utc_asserted_at": "2026-10-01T00:52:00Z"
+  "utc_asserted_at": "2026-10-01T01:15:09Z"
 }
