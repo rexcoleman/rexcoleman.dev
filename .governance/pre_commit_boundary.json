@@ -2,13 +2,14 @@
   "assertion": "COMMIT_PREFLIGHT_PASS",
   "caller": "git-pre-commit",
   "changed_paths": [
-    ".github/write-enforcement/frozen_bundle_manifest.generation-5.json"
+    ".github/workflows/issue-external-judge-authority.yml",
+    ".github/write-enforcement/tests/test_s210_governed_read_credential.py"
   ],
-  "changed_paths_count": 1,
-  "changed_paths_sha256": "0e50f527ad13467749dcd58967b714e8b6e5b0b91970adfa7dab4bae4ff957de",
+  "changed_paths_count": 2,
+  "changed_paths_sha256": "00d5d3b8f0a1e95650ee5f5cd6a59020d3e634b3603bdaf4034f7bc20e8e8a97",
   "mode": "commit-preflight",
-  "parent_head": "e1150ac4180f02524100323ed30da923be58e910",
-  "run_id": "pre-commit-s258-site-wea-manifest-live-ruleset",
+  "parent_head": "916caaa1abd0ee26fd10074cc2223914744b1189",
+  "run_id": "pre-commit-s258-external-judge-app-only-20261001T025830Z",
   "schema_version": "rea.pre-commit-boundary.v1",
-  "utc_asserted_at": "2026-10-01T02:02:25Z"
+  "utc_asserted_at": "2026-10-01T02:58:30Z"
 }

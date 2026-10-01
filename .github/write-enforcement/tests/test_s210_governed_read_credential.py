@@ -655,9 +655,9 @@ def test_the_external_judge_checkout_now_carries_a_token():
         assert name in {
             "GOVML_REA_READ_APP_ID",
             "GOVML_REA_READ_APP_PRIVATE_KEY_B64",
-            "REA_BUNDLE_READ_TOKEN",
             "GOVML_EXTERNAL_JUDGE_APPROVING_PRIVATE_KEY_PEM",
         }, name
+    assert "secrets.REA_BUNDLE_READ_TOKEN" not in raw
     # And the credential file is gone before the checked-out issuer executes.
     remove = raw.index('rm -f "$RUNNER_TEMP/governed-read-credential"')
     execute = raw.index("python3 govml/scripts/issue_external_judge_authority.py --help")
