@@ -1,0 +1,105 @@
+{
+  "schema_version": "rea.k3-pat-residuals.v1",
+  "measured_at_utc": "2026-10-01T03:40:59Z",
+  "scope": {
+    "repository": "rexcoleman/rexcoleman.dev",
+    "legacy_secrets": [
+      "REA_BUNDLE_READ_TOKEN",
+      "REA_RULESET_READ_TOKEN",
+      "REA_SECRETS_WRITE_PAT"
+    ],
+    "rule": "Every remaining workflow consumer of these legacy PAT-style credentials must have an explicit K3_RESIDUAL row with the reason it cannot be migrated to the governed Contents-read App route."
+  },
+  "residuals": [
+    {
+      "workflow": ".github/workflows/issue-write-enforcement-attestation.yml",
+      "job": "seal-downstream",
+      "secret": "REA_BUNDLE_READ_TOKEN",
+      "classification": "K3_RESIDUAL",
+      "reason": "seal_downstream installs its payload as a long-lived downstream repository Actions secret. A GitHub App installation token expires in about an hour and must never be sealed as the downstream credential.",
+      "why_app_installation_token_not_sufficient": "The governed App route mints short-lived Contents-read tokens for current-run reads only; this job's output is a durable encrypted secret payload for another repository.",
+      "required_authority_to_retire": "Replace the downstream bundle-secret architecture with a registered non-secret or short-lived proof path, or remove the downstream secret requirement entirely.",
+      "safe_current_boundary": "The selector runs with --legacy-only and refuses a complete App pair here, so this residual cannot accidentally seal an about-to-expire installation token."
+    },
+    {
+      "workflow": ".github/workflows/issue-write-enforcement-attestation.yml",
+      "job": "issue-wea",
+      "secret": "REA_RULESET_READ_TOKEN",
+      "classification": "K3_RESIDUAL",
+      "reason": "The protected newsletter ruleset endpoint requires ruleset/admin authority that the governed Contents-read App intentionally does not hold.",
+      "why_app_installation_token_not_sufficient": "Contents:Read can fetch repository contents but cannot read repos/rexcoleman/newsletter/rulesets/19564990.",
+      "required_authority_to_retire": "Introduce a registered host-OAuth or GitHub App authority with the minimal ruleset-read permission, counted under FA-3, then update the ruleset fetch to that authority.",
+      "safe_current_boundary": "The response is normalized immediately and refusal is before signing if the token is absent, expired, or returns an unexpected ruleset shape."
+    },
+    {
+      "workflow": ".github/workflows/issue-write-enforcement-attestation.yml",
+      "job": "renew-wea",
+      "secret": "REA_RULESET_READ_TOKEN",
+      "classification": "K3_RESIDUAL",
+      "reason": "The protected newsletter ruleset endpoint requires ruleset/admin authority that the governed Contents-read App intentionally does not hold.",
+      "why_app_installation_token_not_sufficient": "Contents:Read can fetch repository contents but cannot read repos/rexcoleman/newsletter/rulesets/19564990.",
+      "required_authority_to_retire": "Introduce a registered host-OAuth or GitHub App authority with the minimal ruleset-read permission, counted under FA-3, then update the ruleset fetch to that authority.",
+      "safe_current_boundary": "The response is normalized immediately and renewal refuses before signing if the token is absent, expired, or returns an unexpected ruleset shape."
+    },
+    {
+      "workflow": ".github/workflows/probe-wea-credentials.yml",
+      "job": "issuer",
+      "secret": "REA_BUNDLE_READ_TOKEN",
+      "classification": "K3_RESIDUAL",
+      "reason": "The s212 recovery probe intentionally observes and replaces legacy hosted credentials; removing the legacy name from the probe would blind the recovery rail to the state it is meant to repair.",
+      "why_app_installation_token_not_sufficient": "The probe must distinguish legacy-token absence, presence, and replacement readiness; an App-only token would not exercise the legacy secret slot.",
+      "required_authority_to_retire": "Retire this probe row only after the s212 recovery successor is replaced by an App-only recovery path and no hosted legacy bundle token remains.",
+      "safe_current_boundary": "The probe prints presence and typed refusals only; it never discloses the token value."
+    },
+    {
+      "workflow": ".github/workflows/probe-wea-credentials.yml",
+      "job": "issuer",
+      "secret": "REA_RULESET_READ_TOKEN",
+      "classification": "K3_RESIDUAL",
+      "reason": "The s212 recovery probe intentionally observes and replaces the legacy ruleset-read credential; the governed Contents-read App cannot prove that ruleset authority.",
+      "why_app_installation_token_not_sufficient": "Contents:Read does not authorize the protected ruleset API.",
+      "required_authority_to_retire": "Retire this probe row only after a registered ruleset-read authority replaces REA_RULESET_READ_TOKEN and the recovery probe validates that successor.",
+      "safe_current_boundary": "The probe prints presence and typed refusals only; it never discloses the token value."
+    },
+    {
+      "workflow": ".github/workflows/probe-wea-credentials.yml",
+      "job": "renewal",
+      "secret": "REA_BUNDLE_READ_TOKEN",
+      "classification": "K3_RESIDUAL",
+      "reason": "The s212 recovery probe intentionally observes and replaces legacy hosted credentials; removing the legacy name from the probe would blind the recovery rail to the state it is meant to repair.",
+      "why_app_installation_token_not_sufficient": "The probe must distinguish legacy-token absence, presence, and replacement readiness; an App-only token would not exercise the legacy secret slot.",
+      "required_authority_to_retire": "Retire this probe row only after the s212 recovery successor is replaced by an App-only recovery path and no hosted legacy bundle token remains.",
+      "safe_current_boundary": "The probe prints presence and typed refusals only; it never discloses the token value."
+    },
+    {
+      "workflow": ".github/workflows/probe-wea-credentials.yml",
+      "job": "renewal",
+      "secret": "REA_RULESET_READ_TOKEN",
+      "classification": "K3_RESIDUAL",
+      "reason": "The s212 recovery probe intentionally observes and replaces the legacy ruleset-read credential; the governed Contents-read App cannot prove that ruleset authority.",
+      "why_app_installation_token_not_sufficient": "Contents:Read does not authorize the protected ruleset API.",
+      "required_authority_to_retire": "Retire this probe row only after a registered ruleset-read authority replaces REA_RULESET_READ_TOKEN and the recovery probe validates that successor.",
+      "safe_current_boundary": "The probe prints presence and typed refusals only; it never discloses the token value."
+    },
+    {
+      "workflow": ".github/workflows/provision-renewal-signing-key.yml",
+      "job": "copy-signing-key",
+      "secret": "REA_SECRETS_WRITE_PAT",
+      "classification": "K3_RESIDUAL",
+      "reason": "Copying the issuer signing key into the renewal environment writes Actions secrets; the governed Contents-read App intentionally has no secrets-write permission.",
+      "why_app_installation_token_not_sufficient": "Contents:Read cannot call the GitHub environment-secrets write API.",
+      "required_authority_to_retire": "Introduce a registered host-OAuth or GitHub App authority with minimal secrets-write permission, counted under FA-3, and prove the same read/write/postcheck boundary.",
+      "safe_current_boundary": "The workflow probes write scope before mutation and refuses unless the observed updated_at proves this run wrote the target secret."
+    },
+    {
+      "workflow": ".github/workflows/s217-governed-read-app-audit.yml",
+      "job": "audit",
+      "secret": "REA_SECRETS_WRITE_PAT",
+      "classification": "K3_RESIDUAL",
+      "reason": "The optional s217 provisioning mode writes the governed App pair into research_enforcement_activation repository secrets; the governed Contents-read App intentionally has no secrets-write permission.",
+      "why_app_installation_token_not_sufficient": "Contents:Read cannot write repository Actions secrets.",
+      "required_authority_to_retire": "Introduce a registered host-OAuth or GitHub App authority with minimal secrets-write permission, counted under FA-3, or retire the provisioning mode after a new enrollment path supersedes it.",
+      "safe_current_boundary": "The mutating step is gated by workflow_dispatch input provision_rea=true and refuses if the secret-write credential is absent."
+    }
+  ]
+}
