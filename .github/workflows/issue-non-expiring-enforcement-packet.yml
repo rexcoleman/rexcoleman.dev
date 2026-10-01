@@ -53,6 +53,8 @@ jobs:
         run: |
           set -euo pipefail
           version="rea-non-expiring-${GITHUB_SHA}"
+          report_dir="$RUNNER_TEMP/non-expiring-reports"
+          mkdir -p "$report_dir"
           python3 .github/write-enforcement/non_expiring_enforcement.py issue \
             --repo-root . \
             --source-manifest .github/write-enforcement/frozen_bundle_manifest.generation-5.json \
@@ -62,11 +64,11 @@ jobs:
             --repository "$GITHUB_REPOSITORY" \
             --ref "$GITHUB_REF" \
             --packet-version "$version" \
-            | tee non-expiring-issue-report.json
+            | tee "$report_dir/non-expiring-issue-report.json"
           python3 .github/write-enforcement/non_expiring_enforcement.py verify \
             --packet-root non-expiring-packet \
             --trusted-public-key .github/write-enforcement/trusted_wea_public.pem \
-            | tee non-expiring-verify-report.json
+            | tee "$report_dir/non-expiring-verify-report.json"
           (cd non-expiring-packet && sha256sum -c SHA256SUMS)
       - name: Prove artifact has public custody only
         run: |
@@ -91,8 +93,8 @@ jobs:
           name: rea-non-expiring-enforcement-packet-${{ github.run_id }}
           path: |
             non-expiring-packet/
-            non-expiring-issue-report.json
-            non-expiring-verify-report.json
+            ${{ runner.temp }}/non-expiring-reports/non-expiring-issue-report.json
+            ${{ runner.temp }}/non-expiring-reports/non-expiring-verify-report.json
           if-no-files-found: error
           retention-days: 30
       - name: Publish release packet

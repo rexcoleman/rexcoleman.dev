@@ -202,9 +202,61 @@ def test_issue_command_writes_verifiable_non_expiring_packet(tmp_path, monkeypat
     assert verified["expires_at"] is None
 
 
+def test_issue_command_refuses_stray_worktree_file(tmp_path):
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    (repo / "tracked.txt").write_text("protected bytes\n", encoding="utf-8")
+    import subprocess
+    subprocess.run(["git", "init"], cwd=repo, check=True, capture_output=True)
+    subprocess.run(["git", "config", "user.email", "test@example.invalid"], cwd=repo, check=True)
+    subprocess.run(["git", "config", "user.name", "Test"], cwd=repo, check=True)
+    subprocess.run(["git", "add", "tracked.txt"], cwd=repo, check=True)
+    subprocess.run(["git", "commit", "-m", "seed"], cwd=repo, check=True, capture_output=True)
+    (repo / "stray-report.json").write_text("{}\n", encoding="utf-8")
+
+    private = Ed25519PrivateKey.generate()
+    private_path = tmp_path / "private.pem"
+    private_path.write_bytes(
+        private.private_bytes(
+            serialization.Encoding.PEM,
+            serialization.PrivateFormat.PKCS8,
+            serialization.NoEncryption(),
+        )
+    )
+    trusted = _anchor(tmp_path, private)
+    manifest = tmp_path / "manifest.json"
+    manifest.write_text('{"member":"bytes"}\n', encoding="utf-8")
+
+    with pytest.raises(MODULE.EnforcementRefusal) as captured:
+        MODULE.issue_packet(
+            repo_root=repo,
+            source_manifest=manifest,
+            private_key=private_path,
+            trusted_public_key=trusted,
+            output=tmp_path / "packet",
+            repository="rexcoleman/rexcoleman.dev",
+            ref="refs/heads/main",
+            packet_version="test-version",
+            scope=["research"],
+            now=NOW,
+        )
+
+    assert captured.value.reason_code == "PROTECTED_DEFAULT_INVALID"
+    assert "dirty" in str(captured.value)
+
+
 def test_hosted_issuer_disables_bytecode_before_cleanliness_gate():
     text = WORKFLOW.read_text()
     assert 'PYTHONDONTWRITEBYTECODE: "1"' in text
     assert text.index('PYTHONDONTWRITEBYTECODE: "1"') < text.index(
         "Issue non-expiring packet"
     )
+
+
+def test_hosted_issuer_writes_reports_under_runner_temp():
+    text = WORKFLOW.read_text()
+    assert "report_dir=\"$RUNNER_TEMP/non-expiring-reports\"" in text
+    assert "| tee \"$report_dir/non-expiring-issue-report.json\"" in text
+    assert "| tee \"$report_dir/non-expiring-verify-report.json\"" in text
+    assert "| tee non-expiring-issue-report.json" not in text
+    assert "| tee non-expiring-verify-report.json" not in text
