@@ -93,15 +93,14 @@ jobs:
         env:
           GOVML_REA_READ_APP_ID: ${{ secrets.GOVML_REA_READ_APP_ID }}
           GOVML_REA_READ_APP_PRIVATE_KEY_B64: ${{ secrets.GOVML_REA_READ_APP_PRIVATE_KEY_B64 }}
-          REA_BUNDLE_READ_TOKEN: ${{ secrets.REA_BUNDLE_READ_TOKEN }}
         run: |
           set -euo pipefail
           umask 077
           # rexcoleman/govML is private and this job's default GITHUB_TOKEN is
           # scoped to rexcoleman.dev, which is why the checkout below returned
-          # "Not Found" on 2026-08-31.  Mint through the SAME custody
-          # precedence the issuer workflow uses; introduce no new long-lived
-          # secret name.
+          # "Not Found" on 2026-08-31.  Mint through the governed App route
+          # only; this external-judge issuer no longer consumes the deprecated
+          # REA_BUNDLE_READ_TOKEN compatibility label.
           python3 .github/write-enforcement/select_governed_read_credential.py \
             --minter .github/write-enforcement/github_app_installation_token.py \
             --output "$RUNNER_TEMP/governed-read-credential"
