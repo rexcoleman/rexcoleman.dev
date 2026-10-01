@@ -2,21 +2,15 @@
   "assertion": "COMMIT_PREFLIGHT_PASS",
   "caller": "git-pre-commit",
   "changed_paths": [
-    ".github/workflows/issue-non-expiring-enforcement-packet.yml",
-    ".github/write-enforcement/adapters/research_enforcement_activation.population-307-v1.json",
-    ".github/write-enforcement/member_contract.py",
-    ".github/write-enforcement/non_expiring_enforcement.py",
-    ".github/write-enforcement/signed_release_convergence_index.json",
+    ".github/write-enforcement/frozen_bundle_manifest.generation-5.json",
     ".github/write-enforcement/tests/test_independent_review.py",
-    ".github/write-enforcement/tests/test_member_contract.py",
-    ".github/write-enforcement/tests/test_non_expiring_enforcement.py",
-    ".github/write-enforcement/tests/test_s131_convergence.py"
+    ".github/write-enforcement/tests/test_signed_release_convergence.py"
   ],
-  "changed_paths_count": 9,
-  "changed_paths_sha256": "34705dda5a73d66b93037fdbded126a77365ed58fca43941694519c7806385a4",
+  "changed_paths_count": 3,
+  "changed_paths_sha256": "4ac5dde3c8e858ce4b9ab4205a61e08efab76cc196f64182bf5fcb7e925831e4",
   "mode": "commit-preflight",
-  "parent_head": "910626029bbedf98f1496641844ff3cec68391ab",
-  "run_id": "pre-commit-12c59524b98a74f644c65767",
+  "parent_head": "53297290fe35e37f5d53f96d0b14ff3af3262e64",
+  "run_id": "pre-commit-523ca4ede47452f4024ca6b6",
   "schema_version": "rea.pre-commit-boundary.v1",
-  "utc_asserted_at": "2026-09-30T23:57:55Z"
+  "utc_asserted_at": "2026-10-01T00:08:22Z"
 }

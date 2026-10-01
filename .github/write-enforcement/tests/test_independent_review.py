@@ -581,11 +581,9 @@ def test_next_contract_manifest_is_an_exact_positive_control():
     assert report["member_contract"] == "EXACT"
 
 
-def test_current_registered_manifest_is_preconvergence_population_306():
-    # The installed manifest already carries the Unit1 verifier member, but not
-    # the hosted issuer workflow. Branch C Unit 1 now registers population 307
-    # before the replacement manifest is built, so the current manifest is an
-    # authenticated predecessor, not the terminal.
+def test_current_registered_manifest_is_terminal_population_307():
+    # The installed manifest now carries the Unit1 verifier and hosted issuer
+    # workflow. Population 307 is the registered terminal contract.
     raw = CURRENT_MANIFEST.read_bytes()
     value = json.loads(raw)
     observed = {
@@ -594,17 +592,18 @@ def test_current_registered_manifest_is_preconvergence_population_306():
     }
     unsigned = {key: item for key, item in value.items() if key != "manifest_digest"}
     terminal = MODULE.expected_members()
-    assert set(observed) < set(terminal)
+    assert observed == terminal
     assert observed["non-expiring-enforcement"] == (
         "rexcoleman.dev",
         ".github/write-enforcement/non_expiring_enforcement.py",
     )
-    assert "non-expiring-enforcement-workflow" not in observed
-    assert len(observed) == 306
+    assert observed["non-expiring-enforcement-workflow"] == (
+        "rexcoleman.dev",
+        ".github/workflows/issue-non-expiring-enforcement-packet.yml",
+    )
     assert len(terminal) == 307
     assert value["manifest_digest"] == digest(unsigned)
-    with pytest.raises(MODULE.Refusal, match="generation-5 manifest contract differs"):
-        MODULE.manifest_contract(raw)
+    assert MODULE.manifest_contract(raw)["member_contract"] == "EXACT"
 
 
 def test_manifest_only_identity_refresh_preserves_the_structural_positive():
