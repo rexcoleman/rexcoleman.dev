@@ -2,14 +2,14 @@
   "assertion": "COMMIT_PREFLIGHT_PASS",
   "caller": "git-pre-commit",
   "changed_paths": [
-    ".github/write-enforcement/tests/test_validate_newsletter_upgrade.py",
-    ".github/write-enforcement/validate_newsletter_upgrade.py"
+    ".github/workflows/issue-write-enforcement-attestation.yml",
+    ".github/write-enforcement/tests/test_s210_governed_read_credential.py"
   ],
   "changed_paths_count": 2,
-  "changed_paths_sha256": "6ce9cd15052ec65459c827290ff16bab0953d00ba82cf837ffa42da0398022da",
+  "changed_paths_sha256": "650c7199cb954ebb61dccb307593c4bf825cc50c44dcdb119d1d6ca43f430363",
   "mode": "commit-preflight",
-  "parent_head": "451d5b4d5603976ed7ccbb8501cfaeb490901c6c",
-  "run_id": "pre-commit-s258-newsletter-validator-app-pin",
+  "parent_head": "0329bc103c921f8f820f3733e9237fac98707aa3",
+  "run_id": "pre-commit-s258-issuer-app-only-frozen-checkouts",
   "schema_version": "rea.pre-commit-boundary.v1",
-  "utc_asserted_at": "2026-10-01T03:15:14Z"
+  "utc_asserted_at": "2026-10-01T03:23:34Z"
 }

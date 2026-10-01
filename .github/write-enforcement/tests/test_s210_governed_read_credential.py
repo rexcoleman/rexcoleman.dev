@@ -611,6 +611,10 @@ def test_every_issuer_consumer_selects_through_the_selector():
     assert raw.count('--token-file "$RUNNER_TEMP/governed-read-credential"') == 2
     assert raw.count('rm -f "$RUNNER_TEMP/governed-read-credential"') == 2
     assert raw.count("GOVERNED_READ_MINTER_DRIFT_PASS") == 2
+    # Only seal_downstream may still reference the long-lived bundle token:
+    # once to prove legacy-only selection and once to seal that exact payload.
+    assert raw.count("secrets.REA_BUNDLE_READ_TOKEN") == 2
+    assert raw.count("REA_BUNDLE_READ_TOKEN: ${{ secrets.REA_BUNDLE_READ_TOKEN }}") == 2
 
 
 def test_the_credential_is_removed_before_any_checked_out_code_runs():
