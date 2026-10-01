@@ -67,7 +67,8 @@
         "tests/test_s229_write_order.py",
         "tests/test_s229_enrollment_inheritance.py",
         "tests/test_s189_runner_digest_pin_binding.py",
-        "tests/test_s229_type_derived_applicability.py"
+        "tests/test_s229_type_derived_applicability.py",
+        "tests/test_s260_non_expiring_packet_consumer.py"
       ],
       "repository": "govML"
     },
@@ -79,7 +80,8 @@
         "tests/test_s170_repository_secret_enrollment.py",
         "tests/test_wea_renewal_health.py",
         "tests/test_s170_signed_research_initializer.py",
-        "tests/test_branch_c_research_prerequisites.py"
+        "tests/test_branch_c_research_prerequisites.py",
+        "tests/test_s260_non_expiring_scaffold.py"
       ],
       "repository": "Moonshots_Career_Thesis_v2"
     },
@@ -95,7 +97,8 @@
         "tests/test_s157_renewal_successor_binding.py",
         "tests/test_s229_runtime_source_closure.py",
         "tests/test_s190_resolver_ephemeral_roots.py",
-        "tests/test_s231_final_runtime_rollout.py"
+        "tests/test_s231_final_runtime_rollout.py",
+        "tests/test_s260_non_expiring_runner.py"
       ],
       "repository": "research_enforcement_activation"
     }
@@ -185,6 +188,8 @@
         "templates/build/enforcement/authenticated_app_tools.py",
         "templates/build/enforcement/repository_app_probe.py",
         "templates/build/enforcement/repository_secret_enrollment.py",
+        "templates/build/enforcement/install_write_enforcement.py",
+        "templates/build/enforcement/write_enforcement_state.py",
         "scripts/run_hosted_landscape_judge.py"
       ],
       "repository": "govML"
@@ -195,9 +200,16 @@
         "write_integrity/attestation/authenticated_head_rebase.py",
         "scripts/durable_attestation_history.py",
         "scripts/registered_research_repositories.py",
-        "scripts/s231_final_runtime_rollout.py"
+        "scripts/s231_final_runtime_rollout.py",
+        "scripts/write_enforcement_state.py"
       ],
       "repository": "research_enforcement_activation"
+    },
+    {
+      "paths": [
+        "scripts/scaffold_research_project.py"
+      ],
+      "repository": "Moonshots_Career_Thesis_v2"
     }
   ]
 }
