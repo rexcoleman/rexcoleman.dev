@@ -88,9 +88,24 @@ jobs:
             fi
           done <<< "$observed"
           echo "NON_EXPIRING_PUBLIC_ONLY_ARTIFACT_PASS files=4"
+      - name: Select the governed read credential under custody precedence
+        id: governed_read
+        env:
+          GOVML_REA_READ_APP_ID: ${{ secrets.GOVML_REA_READ_APP_ID }}
+          GOVML_REA_READ_APP_PRIVATE_KEY_B64: ${{ secrets.GOVML_REA_READ_APP_PRIVATE_KEY_B64 }}
+        run: |
+          set -euo pipefail
+          umask 077
+          python3 .github/write-enforcement/select_governed_read_credential.py \
+            --minter .github/write-enforcement/github_app_installation_token.py \
+            --output "$RUNNER_TEMP/governed-read-credential"
+          test "$(stat -c '%a' "$RUNNER_TEMP/governed-read-credential")" = 600
+          credential="$(cat "$RUNNER_TEMP/governed-read-credential")"
+          echo "::add-mask::$credential"
+          printf 'token=%s\n' "$credential" >> "$GITHUB_OUTPUT"
       - name: End-to-end birth proof before publish
         env:
-          GH_TOKEN: ${{ secrets.REA_BIRTH_REPO_TOKEN || github.token }}
+          GH_TOKEN: ${{ steps.governed_read.outputs.token }}
         run: |
           set -euo pipefail
           python3 .github/write-enforcement/non_expiring_birth_e2e.py \
@@ -98,6 +113,7 @@ jobs:
             --site-root . \
             --source-manifest .github/write-enforcement/frozen_bundle_manifest.generation-5.json \
             --scratch-root "$RUNNER_TEMP/non-expiring-birth-e2e" \
+            --remote-kind local \
             --run-id "${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}" \
             --max-rehearsal-repos 20 \
             --max-runtime-seconds 3600 \
