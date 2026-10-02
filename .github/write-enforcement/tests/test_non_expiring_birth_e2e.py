@@ -78,6 +78,9 @@ def test_issue_test_packet_carries_source_manifest_sidecar(monkeypatch, tmp_path
         if "issue" in argv:
             output = Path(argv[argv.index("--output") + 1])
             output.mkdir(parents=True)
+        if "verify" in argv:
+            packet_root = Path(argv[argv.index("--packet-root") + 1])
+            assert not (packet_root / "source_manifest.json").exists()
         return subprocess.CompletedProcess(argv, 0, "", "")
 
     monkeypatch.setattr(module, "write_test_key", fake_write_test_key)
