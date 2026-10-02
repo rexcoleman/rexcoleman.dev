@@ -18,8 +18,10 @@ from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
 
 REPOSITORIES = {
+    "research_enforcement_activation": "https://github.com/rexcoleman/research_enforcement_activation.git",
     "Moonshots_Career_Thesis_v2": "https://github.com/rexcoleman/Moonshots_Career_Thesis.git",
     "govML": "https://github.com/rexcoleman/govML.git",
+    "newsletter": "https://github.com/rexcoleman/newsletter.git",
 }
 RESEARCH_TYPES = ("build", "synthesis", "computational", "write_publish")
 TEST_PACKET_PREFIX = "rea-non-expiring-candidate-test-"
@@ -133,7 +135,7 @@ def write_test_key(private_key: Path, public_key: Path) -> None:
     public_key.chmod(0o644)
 
 
-def issue_test_packet(args: argparse.Namespace, scratch: Path) -> Path:
+def issue_test_packet(args: argparse.Namespace, scratch: Path) -> tuple[Path, Path]:
     packet = scratch / "candidate-test-packet"
     key_dir = scratch / "test-key"
     key_dir.mkdir(parents=True, exist_ok=True)
@@ -186,7 +188,7 @@ def issue_test_packet(args: argparse.Namespace, scratch: Path) -> Path:
     sidecar = packet / "source_manifest.json"
     shutil.copyfile(clean_source_manifest, sidecar)
     sidecar.chmod(PACKET_FILE_MODE)
-    return packet
+    return packet, clean_site_root
 
 
 def create_private_repo(owner: str, name: str) -> str:
@@ -258,7 +260,20 @@ def push_project(project: Path, repo: str, *, env: dict[str, str] | None = None)
     require(run(["git", "-C", str(project), "push", "-u", "origin", "main"], env=push_env, timeout=300), "git push")
 
 
-def scaffold_project(args: argparse.Namespace, moonshots: Path, govml: Path,
+def source_env(source_roots: dict[str, Path]) -> dict[str, str]:
+    return {
+        "REA_ENFORCEMENT_SOURCE_ROOT": str(
+            source_roots["research_enforcement_activation"]
+        ),
+        "MOONSHOTS_HOME": str(source_roots["Moonshots_Career_Thesis_v2"]),
+        "NEWSLETTER_SOURCE_ROOT": str(source_roots["newsletter"]),
+        "REX_SITE_SOURCE_ROOT": str(source_roots["rexcoleman.dev"]),
+        "GOVML_OBJECT_REPO": str(source_roots["govML"]),
+    }
+
+
+def scaffold_project(args: argparse.Namespace, moonshots: Path,
+                     source_roots: dict[str, Path],
                      packet_root: Path | None, project: Path, repo_name: str,
                      research_type: str) -> subprocess.CompletedProcess:
     env = os.environ.copy()
@@ -268,12 +283,14 @@ def scaffold_project(args: argparse.Namespace, moonshots: Path, govml: Path,
     env.pop("REA_WEA_STATE_ROOT", None)
     env.pop("REX_SITE_SOURCE_ROOT", None)
     env.pop("GOVML_OBJECT_REPO", None)
+    env.pop("REA_ENFORCEMENT_SOURCE_ROOT", None)
+    env.pop("MOONSHOTS_HOME", None)
+    env.pop("NEWSLETTER_SOURCE_ROOT", None)
     if packet_root is not None:
         env["REA_NON_EXPIRING_PACKET_ROOT"] = str(packet_root)
         env["REA_NON_EXPIRING_TEST_TRUST_ROOT"] = "1"
         env["REA_NON_EXPIRING_CANDIDATE_REHEARSAL"] = "1"
-        env["REX_SITE_SOURCE_ROOT"] = str(args.site_root)
-        env["GOVML_OBJECT_REPO"] = str(govml)
+        env.update(source_env(source_roots))
     argv = [
         sys.executable,
         str(moonshots / "scripts/scaffold_research_project.py"),
@@ -291,13 +308,24 @@ def scaffold_project(args: argparse.Namespace, moonshots: Path, govml: Path,
     return completed
 
 
-def gate_env(packet_root: Path | None) -> dict[str, str]:
+def gate_env(packet_root: Path | None,
+             source_roots: dict[str, Path] | None = None) -> dict[str, str]:
     env = os.environ.copy()
     env.pop("REA_WEA_STATE_ROOT", None)
+    for key in (
+        "REA_ENFORCEMENT_SOURCE_ROOT",
+        "MOONSHOTS_HOME",
+        "NEWSLETTER_SOURCE_ROOT",
+        "REX_SITE_SOURCE_ROOT",
+        "GOVML_OBJECT_REPO",
+    ):
+        env.pop(key, None)
     if packet_root is not None:
         env["REA_NON_EXPIRING_PACKET_ROOT"] = str(packet_root)
         env["REA_NON_EXPIRING_TEST_TRUST_ROOT"] = "1"
         env["REA_NON_EXPIRING_CANDIDATE_REHEARSAL"] = "1"
+        if source_roots is not None:
+            env.update(source_env(source_roots))
     return env
 
 
@@ -323,6 +351,8 @@ def run_birth(args: argparse.Namespace) -> dict:
         )
     moonshots_commit = manifest_commit(manifest, "Moonshots_Career_Thesis_v2")
     govml_commit = manifest_commit(manifest, "govML")
+    rea_commit = manifest_commit(manifest, "research_enforcement_activation")
+    newsletter_commit = manifest_commit(manifest, "newsletter")
     moonshots = materialize_repo(
         "Moonshots_Career_Thesis_v2",
         moonshots_commit,
@@ -335,7 +365,29 @@ def run_birth(args: argparse.Namespace) -> dict:
         args.govml_root.resolve() if args.govml_root else None,
         scratch,
     )
-    packet_root = issue_test_packet(args, scratch) if args.mode == "candidate" else None
+    rea = materialize_repo(
+        "research_enforcement_activation",
+        rea_commit,
+        args.rea_root.resolve() if args.rea_root else None,
+        scratch,
+    )
+    newsletter = materialize_repo(
+        "newsletter",
+        newsletter_commit,
+        args.newsletter_root.resolve() if args.newsletter_root else None,
+        scratch,
+    )
+    packet_root = None
+    rex_source = args.site_root
+    if args.mode == "candidate":
+        packet_root, rex_source = issue_test_packet(args, scratch)
+    source_roots = {
+        "research_enforcement_activation": rea,
+        "Moonshots_Career_Thesis_v2": moonshots,
+        "govML": govml,
+        "newsletter": newsletter,
+        "rexcoleman.dev": rex_source,
+    }
     type_reports = []
     for research_type in RESEARCH_TYPES:
         repo_name = (
@@ -353,7 +405,7 @@ def run_birth(args: argparse.Namespace) -> dict:
         }
         try:
             scaffold = scaffold_project(
-                args, moonshots, govml, packet_root, project, repo_name,
+                args, moonshots, source_roots, packet_root, project, repo_name,
                 research_type,
             )
             type_report.update({
@@ -369,11 +421,11 @@ def run_birth(args: argparse.Namespace) -> dict:
             repo = create_rehearsal_repo(args, scratch, repo_name)
             type_report["repo"] = repo
             type_report["remote_kind"] = args.remote_kind
-            push_project(project, repo, env=gate_env(packet_root))
+            push_project(project, repo, env=gate_env(packet_root, source_roots))
             honest = run(
                 ["bash", "scripts/run_gates.sh", "--engine-preflight"],
                 cwd=project,
-                env=gate_env(packet_root),
+                env=gate_env(packet_root, source_roots),
                 timeout=args.per_type_gate_timeout,
             )
             type_report.update({
@@ -395,7 +447,7 @@ def run_birth(args: argparse.Namespace) -> dict:
             planted = run(
                 ["bash", "scripts/run_gates.sh", "--engine-preflight"],
                 cwd=project,
-                env=gate_env(packet_root),
+                env=gate_env(packet_root, source_roots),
                 timeout=args.per_type_gate_timeout,
             )
             type_report.update({
@@ -436,6 +488,8 @@ def run_birth(args: argparse.Namespace) -> dict:
         **manifest_id,
         "moonshots_commit": moonshots_commit,
         "govml_commit": govml_commit,
+        "rea_commit": rea_commit,
+        "newsletter_commit": newsletter_commit,
         "packet_root": str(packet_root) if packet_root else None,
         "research_types": list(RESEARCH_TYPES),
         "rehearsal_repo_count": len(type_reports),
@@ -454,6 +508,8 @@ def main() -> int:
     parser.add_argument("--source-manifest", type=Path, required=True)
     parser.add_argument("--moonshots-root", type=Path)
     parser.add_argument("--govml-root", type=Path)
+    parser.add_argument("--rea-root", type=Path)
+    parser.add_argument("--newsletter-root", type=Path)
     parser.add_argument("--scratch-root", type=Path, required=True)
     parser.add_argument("--repo-owner", default="rexcoleman")
     parser.add_argument("--repo-prefix", default="rea-s261-birth")
