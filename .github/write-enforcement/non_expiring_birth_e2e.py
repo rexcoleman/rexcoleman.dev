@@ -167,6 +167,7 @@ def issue_test_packet(args: argparse.Namespace, scratch: Path) -> Path:
         ),
         "candidate test packet issue",
     )
+    shutil.copyfile(clean_source_manifest, packet / "source_manifest.json")
     require(
         run(
             [

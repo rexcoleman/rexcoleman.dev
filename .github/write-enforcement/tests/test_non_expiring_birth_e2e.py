@@ -1,4 +1,5 @@
 import importlib.util
+import argparse
 import subprocess
 from pathlib import Path
 
@@ -54,3 +55,39 @@ def test_birth_loop_pushes_with_gate_env():
     text = SOURCE.read_text(encoding="utf-8")
 
     assert "push_project(project, repo, env=gate_env(packet_root))" in text
+
+
+def test_issue_test_packet_carries_source_manifest_sidecar(monkeypatch, tmp_path):
+    module = load_module()
+    site = tmp_path / "site"
+    manifest = site / ".github/write-enforcement/frozen_bundle_manifest.generation-5.json"
+    manifest.parent.mkdir(parents=True)
+    manifest.write_text('{"manifest_digest":"' + "a" * 64 + '"}\n', encoding="utf-8")
+    (site / ".github/write-enforcement").mkdir(parents=True, exist_ok=True)
+    (site / ".github/write-enforcement/non_expiring_enforcement.py").write_text(
+        "# fixture\n",
+        encoding="utf-8",
+    )
+
+    def fake_write_test_key(private_key, public_key):
+        private_key.parent.mkdir(parents=True, exist_ok=True)
+        private_key.write_text("private\n", encoding="ascii")
+        public_key.write_text("public\n", encoding="ascii")
+
+    def fake_run(argv, *, cwd=None, env=None, timeout=300):
+        if "issue" in argv:
+            output = Path(argv[argv.index("--output") + 1])
+            output.mkdir(parents=True)
+        return subprocess.CompletedProcess(argv, 0, "", "")
+
+    monkeypatch.setattr(module, "write_test_key", fake_write_test_key)
+    monkeypatch.setattr(module, "materialize_clean_site_root", lambda args, scratch: (site, manifest))
+    monkeypatch.setattr(module, "run", fake_run)
+    args = argparse.Namespace(
+        site_root=site,
+        site_root_head="b" * 40,
+    )
+
+    packet = module.issue_test_packet(args, tmp_path / "scratch")
+
+    assert (packet / "source_manifest.json").read_bytes() == manifest.read_bytes()
