@@ -237,19 +237,19 @@ def archive_repo(args: argparse.Namespace, repo: str) -> dict:
     }
 
 
-def push_project(project: Path, repo: str) -> None:
+def push_project(project: Path, repo: str, *, env: dict[str, str] | None = None) -> None:
     if "://" in repo or repo.count("/") == 1:
         remote_url = f"https://github.com/{repo}.git"
-        require(run(["gh", "auth", "setup-git"], timeout=120), "gh auth setup-git")
+        require(run(["gh", "auth", "setup-git"], env=env, timeout=120), "gh auth setup-git")
     else:
         remote_url = repo
-    require(run(["git", "-C", str(project), "config", "user.name", "REA birth proof"]), "git user.name")
-    require(run(["git", "-C", str(project), "config", "user.email", "rea-birth-proof@example.invalid"]), "git user.email")
-    require(run(["git", "-C", str(project), "add", "."]), "git add")
-    require(run(["git", "-C", str(project), "commit", "-m", "Genesis birth proof"], timeout=120), "git commit")
-    require(run(["git", "-C", str(project), "branch", "-M", "main"]), "git branch main")
-    require(run(["git", "-C", str(project), "remote", "add", "origin", remote_url]), "git remote add")
-    require(run(["git", "-C", str(project), "push", "-u", "origin", "main"], timeout=300), "git push")
+    require(run(["git", "-C", str(project), "config", "user.name", "REA birth proof"], env=env), "git user.name")
+    require(run(["git", "-C", str(project), "config", "user.email", "rea-birth-proof@example.invalid"], env=env), "git user.email")
+    require(run(["git", "-C", str(project), "add", "."], env=env), "git add")
+    require(run(["git", "-C", str(project), "commit", "-m", "Genesis birth proof"], env=env, timeout=120), "git commit")
+    require(run(["git", "-C", str(project), "branch", "-M", "main"], env=env), "git branch main")
+    require(run(["git", "-C", str(project), "remote", "add", "origin", remote_url], env=env), "git remote add")
+    require(run(["git", "-C", str(project), "push", "-u", "origin", "main"], env=env, timeout=300), "git push")
 
 
 def scaffold_project(args: argparse.Namespace, moonshots: Path, govml: Path,
@@ -363,7 +363,7 @@ def run_birth(args: argparse.Namespace) -> dict:
             repo = create_rehearsal_repo(args, scratch, repo_name)
             type_report["repo"] = repo
             type_report["remote_kind"] = args.remote_kind
-            push_project(project, repo)
+            push_project(project, repo, env=gate_env(packet_root))
             honest = run(
                 ["bash", "scripts/run_gates.sh", "--engine-preflight"],
                 cwd=project,
