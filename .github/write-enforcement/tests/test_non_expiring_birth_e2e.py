@@ -75,7 +75,8 @@ def test_push_project_does_not_mark_github_remote_as_local_scratch(monkeypatch, 
 def test_birth_loop_pushes_with_gate_env():
     text = SOURCE.read_text(encoding="utf-8")
 
-    assert "push_project(project, repo, env=gate_env(packet_root))" in text
+    assert "push_project(project, repo, env=gate_env(packet_root, source_roots))" in text
+    assert "env.update(source_env(source_roots))" in text
 
 
 def test_issue_test_packet_carries_source_manifest_sidecar(monkeypatch, tmp_path):
@@ -112,6 +113,26 @@ def test_issue_test_packet_carries_source_manifest_sidecar(monkeypatch, tmp_path
         site_root_head="b" * 40,
     )
 
-    packet = module.issue_test_packet(args, tmp_path / "scratch")
+    packet, clean_site_root = module.issue_test_packet(args, tmp_path / "scratch")
 
+    assert clean_site_root == site
     assert (packet / "source_manifest.json").read_bytes() == manifest.read_bytes()
+
+
+def test_source_env_exports_every_signed_source_root(tmp_path):
+    module = load_module()
+    roots = {
+        "research_enforcement_activation": tmp_path / "rea",
+        "Moonshots_Career_Thesis_v2": tmp_path / "moonshots",
+        "govML": tmp_path / "govml",
+        "newsletter": tmp_path / "newsletter",
+        "rexcoleman.dev": tmp_path / "rex",
+    }
+
+    assert module.source_env(roots) == {
+        "REA_ENFORCEMENT_SOURCE_ROOT": str(tmp_path / "rea"),
+        "MOONSHOTS_HOME": str(tmp_path / "moonshots"),
+        "GOVML_OBJECT_REPO": str(tmp_path / "govml"),
+        "NEWSLETTER_SOURCE_ROOT": str(tmp_path / "newsletter"),
+        "REX_SITE_SOURCE_ROOT": str(tmp_path / "rex"),
+    }
