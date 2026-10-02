@@ -23,6 +23,7 @@ REPOSITORIES = {
 }
 RESEARCH_TYPES = ("build", "synthesis", "computational", "write_publish")
 TEST_PACKET_PREFIX = "rea-non-expiring-candidate-test-"
+PACKET_FILE_MODE = 0o644
 
 
 class Refusal(RuntimeError):
@@ -182,7 +183,9 @@ def issue_test_packet(args: argparse.Namespace, scratch: Path) -> Path:
         ),
         "candidate test packet verify",
     )
-    shutil.copyfile(clean_source_manifest, packet / "source_manifest.json")
+    sidecar = packet / "source_manifest.json"
+    shutil.copyfile(clean_source_manifest, sidecar)
+    sidecar.chmod(PACKET_FILE_MODE)
     return packet
 
 

@@ -1,4 +1,6 @@
 import importlib.util
+import os
+import stat
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -183,23 +185,30 @@ def test_issue_command_writes_verifiable_non_expiring_packet(tmp_path, monkeypat
     manifest.write_text('{"member":"bytes"}\n', encoding="utf-8")
     output = tmp_path / "packet"
 
-    report = MODULE.issue_packet(
-        repo_root=repo,
-        source_manifest=manifest,
-        private_key=private_path,
-        trusted_public_key=trusted,
-        output=output,
-        repository="rexcoleman/rexcoleman.dev",
-        ref="refs/heads/main",
-        packet_version="test-version",
-        scope=["research"],
-        now=NOW,
-    )
+    previous_umask = os.umask(0o002)
+    try:
+        report = MODULE.issue_packet(
+            repo_root=repo,
+            source_manifest=manifest,
+            private_key=private_path,
+            trusted_public_key=trusted,
+            output=output,
+            repository="rexcoleman/rexcoleman.dev",
+            ref="refs/heads/main",
+            packet_version="test-version",
+            scope=["research"],
+            now=NOW,
+        )
+    finally:
+        os.umask(previous_umask)
 
     assert report["verdict"] == "ISSUED"
     verified = MODULE.verify_packet(output, trusted_public_key=trusted, now=NOW)
     assert verified["packet_version"] == "test-version"
     assert verified["expires_at"] is None
+    for name in MODULE.PACKET_FILES:
+        observed = stat.S_IMODE((output / name).lstat().st_mode)
+        assert observed == MODULE.PACKET_FILE_MODE
 
 
 def test_issue_command_refuses_stray_worktree_file(tmp_path):

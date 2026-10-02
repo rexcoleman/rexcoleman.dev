@@ -35,6 +35,7 @@ PACKET_NAME = "enforcement_packet.json"
 REVOCATION_NAME = "revocations.json"
 PUBLIC_KEY_NAME = "trusted_wea_public.pem"
 CHECKSUM_NAME = "SHA256SUMS"
+PACKET_FILE_MODE = 0o644
 PACKET_FILES = frozenset({
     PACKET_NAME,
     REVOCATION_NAME,
@@ -223,14 +224,18 @@ def write_packet_files(
         PUBLIC_KEY_NAME: public_raw,
     }
     for name, raw in payloads.items():
-        (output / name).write_bytes(raw)
-    (output / CHECKSUM_NAME).write_text(
+        path = output / name
+        path.write_bytes(raw)
+        path.chmod(PACKET_FILE_MODE)
+    checksum = output / CHECKSUM_NAME
+    checksum.write_text(
         "".join(
             f"{digest((output / name).read_bytes())}  {name}\n"
             for name in sorted(payloads)
         ),
         encoding="ascii",
     )
+    checksum.chmod(PACKET_FILE_MODE)
 
 
 def issue_packet(
@@ -439,6 +444,7 @@ def atomic_copy_packet(source: Path, destination: Path) -> None:
     try:
         for name in PACKET_FILES:
             shutil.copy2(source / name, temporary / name)
+            (temporary / name).chmod(PACKET_FILE_MODE)
         if backup.exists():
             shutil.rmtree(backup)
         if destination.exists():
