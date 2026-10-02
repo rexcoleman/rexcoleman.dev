@@ -182,7 +182,30 @@ def create_private_repo(owner: str, name: str) -> str:
     return repo
 
 
-def archive_repo(repo: str) -> dict:
+def create_local_repo(scratch: Path, name: str) -> str:
+    remote = scratch / "remotes" / f"{name}.git"
+    remote.parent.mkdir(parents=True, exist_ok=True)
+    require(run(["git", "init", "--bare", str(remote)], timeout=120), "scratch bare repo create")
+    return str(remote)
+
+
+def create_rehearsal_repo(args: argparse.Namespace, scratch: Path, name: str) -> str:
+    if args.remote_kind == "github":
+        return create_private_repo(args.repo_owner, name)
+    if args.remote_kind == "local":
+        return create_local_repo(scratch, name)
+    raise Refusal(f"unknown remote kind: {args.remote_kind}")
+
+
+def archive_repo(args: argparse.Namespace, repo: str) -> dict:
+    if args.remote_kind == "local":
+        return {
+            "repo": repo,
+            "archived": True,
+            "archive_rc": 0,
+            "archive_stdout": "LOCAL_SCRATCH_REMOTE_RETAINED\n",
+            "archive_stderr": "",
+        }
     completed = run(
         ["gh", "api", "--method", "PATCH", f"repos/{repo}", "-f", "archived=true"],
         timeout=120,
@@ -197,13 +220,17 @@ def archive_repo(repo: str) -> dict:
 
 
 def push_project(project: Path, repo: str) -> None:
-    require(run(["gh", "auth", "setup-git"], timeout=120), "gh auth setup-git")
+    if "://" in repo or repo.count("/") == 1:
+        remote_url = f"https://github.com/{repo}.git"
+        require(run(["gh", "auth", "setup-git"], timeout=120), "gh auth setup-git")
+    else:
+        remote_url = repo
     require(run(["git", "-C", str(project), "config", "user.name", "REA birth proof"]), "git user.name")
     require(run(["git", "-C", str(project), "config", "user.email", "rea-birth-proof@example.invalid"]), "git user.email")
     require(run(["git", "-C", str(project), "add", "."]), "git add")
     require(run(["git", "-C", str(project), "commit", "-m", "Genesis birth proof"], timeout=120), "git commit")
     require(run(["git", "-C", str(project), "branch", "-M", "main"]), "git branch main")
-    require(run(["git", "-C", str(project), "remote", "add", "origin", f"https://github.com/{repo}.git"]), "git remote add")
+    require(run(["git", "-C", str(project), "remote", "add", "origin", remote_url]), "git remote add")
     require(run(["git", "-C", str(project), "push", "-u", "origin", "main"], timeout=300), "git push")
 
 
@@ -315,8 +342,9 @@ def run_birth(args: argparse.Namespace) -> dict:
                     f"{research_type} scaffold refused rc={scaffold.returncode}\n"
                     f"STDOUT:\n{scaffold.stdout}\nSTDERR:\n{scaffold.stderr}"
                 )
-            repo = create_private_repo(args.repo_owner, repo_name)
+            repo = create_rehearsal_repo(args, scratch, repo_name)
             type_report["repo"] = repo
+            type_report["remote_kind"] = args.remote_kind
             push_project(project, repo)
             honest = run(
                 ["bash", "scripts/run_gates.sh", "--engine-preflight"],
@@ -361,7 +389,7 @@ def run_birth(args: argparse.Namespace) -> dict:
                 )
         finally:
             if repo:
-                archived = archive_repo(repo)
+                archived = archive_repo(args, repo)
                 type_report["archive"] = archived
             type_reports.append(type_report)
         if archived and not archived["archived"]:
@@ -406,6 +434,7 @@ def main() -> int:
     parser.add_argument("--repo-owner", default="rexcoleman")
     parser.add_argument("--repo-prefix", default="rea-s261-birth")
     parser.add_argument("--repo-name")
+    parser.add_argument("--remote-kind", choices=("github", "local"), default="github")
     parser.add_argument("--run-id")
     parser.add_argument("--max-rehearsal-repos", type=int, default=20)
     parser.add_argument("--max-runtime-seconds", type=float, default=3600.0)

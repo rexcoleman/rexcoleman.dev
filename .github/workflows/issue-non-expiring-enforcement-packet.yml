@@ -89,8 +89,6 @@ jobs:
           done <<< "$observed"
           echo "NON_EXPIRING_PUBLIC_ONLY_ARTIFACT_PASS files=4"
       - name: End-to-end birth proof before publish
-        env:
-          GH_TOKEN: ${{ secrets.REA_BIRTH_REPO_TOKEN || github.token }}
         run: |
           set -euo pipefail
           python3 .github/write-enforcement/non_expiring_birth_e2e.py \
@@ -98,6 +96,7 @@ jobs:
             --site-root . \
             --source-manifest .github/write-enforcement/frozen_bundle_manifest.generation-5.json \
             --scratch-root "$RUNNER_TEMP/non-expiring-birth-e2e" \
+            --remote-kind local \
             --run-id "${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}" \
             --max-rehearsal-repos 20 \
             --max-runtime-seconds 3600 \
