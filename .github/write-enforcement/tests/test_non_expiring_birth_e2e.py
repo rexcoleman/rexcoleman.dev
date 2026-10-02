@@ -84,7 +84,12 @@ def test_issue_test_packet_carries_source_manifest_sidecar(monkeypatch, tmp_path
     site = tmp_path / "site"
     manifest = site / ".github/write-enforcement/frozen_bundle_manifest.generation-5.json"
     manifest.parent.mkdir(parents=True)
-    manifest.write_text('{"manifest_digest":"' + "a" * 64 + '"}\n', encoding="utf-8")
+    manifest.write_text(
+        '{"manifest_digest":"' + "a" * 64
+        + '","members":[{"repository":"rexcoleman.dev","commit":"'
+        + "b" * 40 + '"}]}\n',
+        encoding="utf-8",
+    )
     (site / ".github/write-enforcement").mkdir(parents=True, exist_ok=True)
     (site / ".github/write-enforcement/non_expiring_enforcement.py").write_text(
         "# fixture\n",
@@ -107,6 +112,7 @@ def test_issue_test_packet_carries_source_manifest_sidecar(monkeypatch, tmp_path
 
     monkeypatch.setattr(module, "write_test_key", fake_write_test_key)
     monkeypatch.setattr(module, "materialize_clean_site_root", lambda args, scratch: (site, manifest))
+    monkeypatch.setattr(module, "ensure_commit_available", lambda *args: None)
     monkeypatch.setattr(module, "run", fake_run)
     args = argparse.Namespace(
         site_root=site,
@@ -136,3 +142,27 @@ def test_source_env_exports_every_signed_source_root(tmp_path):
         "NEWSLETTER_SOURCE_ROOT": str(tmp_path / "newsletter"),
         "REX_SITE_SOURCE_ROOT": str(tmp_path / "rex"),
     }
+
+
+def test_clean_site_root_fetches_manifest_bound_rex_commit(monkeypatch, tmp_path):
+    module = load_module()
+    observed = []
+    attempts = {"cat_file": 0}
+
+    def fake_run(argv, *, cwd=None, env=None, timeout=300):
+        observed.append(list(argv))
+        if argv[:4] == ["git", "-C", str(tmp_path / "rex"), "cat-file"]:
+            attempts["cat_file"] += 1
+            if attempts["cat_file"] == 1:
+                return subprocess.CompletedProcess(argv, 128, "", "missing\n")
+        return subprocess.CompletedProcess(argv, 0, "", "")
+
+    monkeypatch.setattr(module, "run", fake_run)
+
+    module.ensure_commit_available(tmp_path / "rex", "rexcoleman.dev", "a" * 40)
+
+    assert [
+        "git", "-C", str(tmp_path / "rex"), "fetch", "--depth=1",
+        module.REPOSITORIES["rexcoleman.dev"], "a" * 40,
+    ] in observed
+    assert attempts["cat_file"] == 2
