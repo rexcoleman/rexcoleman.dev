@@ -2,13 +2,16 @@
   "assertion": "COMMIT_PREFLIGHT_PASS",
   "caller": "git-pre-commit",
   "changed_paths": [
-    ".github/write-enforcement/SIGNED_RELEASE_CONVERGENCE_INDEX.md"
+    ".github/write-enforcement/SIGNED_RELEASE_CONVERGENCE_INDEX.md",
+    ".github/write-enforcement/adapters/research_enforcement_activation.s264-hosted-bundle-v1.json",
+    ".github/write-enforcement/signed_release_convergence_index.json",
+    ".github/write-enforcement/tests/test_signed_release_convergence.py"
   ],
-  "changed_paths_count": 1,
-  "changed_paths_sha256": "4263c2d89130d6d153c2f0c23b9697744b9db00ab3df20ee32cbf4d718b95f83",
+  "changed_paths_count": 4,
+  "changed_paths_sha256": "18999988f538505c7ae524cbfbb9ae172a1eb4f36fd827b2f19bc7eed70692fa",
   "mode": "commit-preflight",
-  "parent_head": "4393db022787a1df6ccaf98ecc76528abb5be444",
-  "run_id": "pre-commit-s264-catalog-author-model-refusal-r2",
+  "parent_head": "a4f2a726f4cdefcbe7a613566d93bf5090d07293",
+  "run_id": "pre-commit-s264-hosted-bundle",
   "schema_version": "rea.pre-commit-boundary.v1",
-  "utc_asserted_at": "2026-10-02T16:32:00Z"
+  "utc_asserted_at": "2026-10-02T17:29:26Z"
 }

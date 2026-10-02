@@ -460,6 +460,13 @@ it does not release, install, repoint, merge, or run commit preflight. Quality
 score, CC-QL cleanliness, and T3 at bar remain research close/publication
 checks under `kc101_SCORES_ARE_TARGETS_RULING.json`.
 
+The s264 hosted-bundle successor is registered as
+`research-enforcement-activation-generation-5-s264-hosted-bundle-v1`. It
+preserves the 307-member non-expiring population and selects the same Unit 1
+manifest-builder contract while freezing the govML repair that rematerializes
+the ignored signed bundle for clean hosted research-integrity checkouts carrying
+a verified non-expiring packet.
+
 ## Known failure classes (s250 catalogue)
 
 Read this table before diagnosing a refusal on the REA release, recovery,
@@ -469,7 +476,7 @@ is a closed mechanism schema (adapter, engine, evidence-suite, test); a class
 enters the inventory only when a registered, tested mechanism guards it, so
 classes without one are catalogued here only. Changing the inventory schema
 would change the engine bytes that REA pins, which is itself class 3.
-The catalogue below is current through release 4 and class 32.
+The catalogue below is current through release 4 and class 34.
 
 | # | Class | Surfaces as | Measured | Status |
 |---|---|---|---|---|
@@ -506,3 +513,4 @@ The catalogue below is current through release 4 and class 32.
 | 31 | Hosted integrity check runs before generated bundle authority exists | hosted `research-integrity` refuses `REFUSE(HOSTED_INTEGRITY_RECEIPT_ABSENT)` or a missing `write_integrity/bundle/.../managed_enforcement_inventory.py` path on a fresh project because ignored `write_integrity/bundle/` is not materialized before `run_gates.sh` consumes signed inventory authority | s262 live proof across four `rea-s262-*` repos; s262 handback `coaching/s262/HANDBACK_KC103.md`; s263 focused materializer regression | repair path is govML CI/project runner: fetch and verify the signed release packet using the existing GitHub App read secret pair, then install the exact signed bundle before invoking `run_gates.sh` |
 | 32 | Current packet retained without rematerializing ignored generated bundle | `NON_EXPIRING_BUNDLE_RETAINED_WITHOUT_MATERIALIZATION`: `ci_materialize_enforcement.py --consumer-gate-refresh` classified the installed packet as `PACKET_CURRENT`, emitted `{"action":"RETAINED"}`, and returned 0 while the ignored `write_integrity/bundle/` tree remained absent | s262 hosted blocker analysis; s263 planted regression `current_missing_bundle` in govML `tests/test_ci_materialize_enforcement.py` | BUILT in s263 govML work: the materializer no longer returns early on `PACKET_CURRENT`; it re-fetches/verifies the certified packet, installs bundle/remote, supplies self-lineage evidence for current packets, and runner variants call it when current/legacy packet state has missing generated bundle authority |
 | 33 | Literal no-env/no-extra-switch build scaffold refuses before birth | `REFUSE(AUTHOR_MODEL_FAMILY_REQUIRED)` from `scaffold_research_project.py /data/tmp/s264_births/rea-s264-build --research-type build`; no project directory is created, so the birth tool, honest branch, planted branch, hosted check, and merge-state checks cannot run | s264 item-1 literal test against Moonshots `origin/main` `f2539696e30f95ec115c544b4c6b9c6e5a71cbcd`; cross-check against s263's Moonshots release root `aa963b5c6db27afbc7fa77affc36a9630a5830f3` also refuses identically; preserved s263 project records `author_model_family: human` | open; this is outside s264's authorized repair order, which names hosted bundle materialization first and required-check/workflow-name mismatch second. Do not bypass by adding `--author-model-family` or `AUTHOR_MODEL_FAMILY`; either the fixed test text must be revised by kc authority, or a source-owned birth/scaffold contract change must make the literal command valid before release |
+| 34 | Clean hosted non-expiring materializer retained the packet before proving generated bundle presence | `FileNotFoundError:[Errno 2] No such file or directory: .../write_integrity/bundle/govML/templates/build/enforcement/managed_enforcement_inventory.py` after hosted `Materialize signed enforcement workspace` reported success, followed by `REFUSE(INHERITED_INTEGRITY_HARD_REFUSAL)` and failed `gate-stack` | s264 live build repo `rea-s264-build`, run `37038610934`, job `110944069275`; govML PR #285 (`c34356b`) | BUILT in govML PR #285: non-consumer materialization now retains a non-expiring packet only when the ignored bundle matches the signed source manifest; otherwise it fetches verified members through the existing App read route and installs the exact bundle. Takes effect only after a guarded non-expiring release freezes `c34356b` |

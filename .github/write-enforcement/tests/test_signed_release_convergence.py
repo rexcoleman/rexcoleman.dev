@@ -51,6 +51,9 @@ S210_GOVERNED_READ_ADAPTER = ROOT / (
 )
 POPULATION_265_ADAPTER = ROOT / "adapters/research_enforcement_activation.population-265-v1.json"
 POPULATION_273_ADAPTER = ROOT / "adapters/research_enforcement_activation.population-273-v1.json"
+S264_HOSTED_BUNDLE_ADAPTER = ROOT / (
+    "adapters/research_enforcement_activation.s264-hosted-bundle-v1.json"
+)
 POPULATION_264_DEPENDENT_ADAPTERS = (
     AML_264_ADAPTER,
     ABLL_264_ADAPTER,
@@ -1202,6 +1205,7 @@ def test_index_is_closed_and_resolves_every_registered_adapter():
         "research-enforcement-activation", "adversarial-ml-landscape",
         "agent-boundary-learning-landscape", "newsletter-hybrid-path",
         "newsletter-generation-architecture", "research-engine-release")]
+    + ["research-enforcement-activation-generation-5-s264-hosted-bundle-v1"]
     + ["research-enforcement-activation-generation-5-exact-plan-recovery-drive-v1"]
     )
     status = {row["adapter_id"]: row["status"] for row in value["adapters"]}
@@ -1261,6 +1265,7 @@ def test_index_refuses_duplicate_unknown_retired_and_traversing_rows(
                 S210_GOVERNED_READ_ADAPTER,
                 POPULATION_265_ADAPTER,
                 POPULATION_273_ADAPTER,
+                S264_HOSTED_BUNDLE_ADAPTER,
                 EXACT_PLAN_RECOVERY_ADAPTER,
                 ):
         shutil.copyfile(adapter_path, adapters / adapter_path.name)
