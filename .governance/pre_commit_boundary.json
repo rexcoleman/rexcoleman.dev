@@ -3,14 +3,13 @@
   "caller": "git-pre-commit",
   "changed_paths": [
     ".github/write-enforcement/non_expiring_birth_e2e.py",
-    ".github/write-enforcement/non_expiring_enforcement.py",
-    ".github/write-enforcement/tests/test_non_expiring_enforcement.py"
+    ".github/write-enforcement/tests/test_non_expiring_birth_e2e.py"
   ],
-  "changed_paths_count": 3,
-  "changed_paths_sha256": "6102c22ad93b94c9c4eefda453e5dbb12172bced828147e7a7eb43e19e3bb920",
+  "changed_paths_count": 2,
+  "changed_paths_sha256": "f1b4378f454ca5dc28c7afcbe7c6e4218a29f7b67f6ec103b75012bad71c1a17",
   "mode": "commit-preflight",
-  "parent_head": "b8a5b3bad52bcf27635484bbb1474022031667cb",
-  "run_id": "pre-commit-7be05d91bdab63d7a91ebd51",
+  "parent_head": "bd198e2029351cccb4819025c0f1ccf5551ff1d6",
+  "run_id": "pre-commit-555dc63ff93016b6902cb040",
   "schema_version": "rea.pre-commit-boundary.v1",
-  "utc_asserted_at": "2026-10-02T06:08:41Z"
+  "utc_asserted_at": "2026-10-02T06:23:58Z"
 }
