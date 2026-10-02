@@ -96,6 +96,23 @@ def materialize_repo(name: str, commit: str, root: Path, scratch: Path) -> Path:
     return destination
 
 
+def materialize_clean_site_root(args: argparse.Namespace, scratch: Path) -> tuple[Path, Path]:
+    destination = scratch / "rex-site-source"
+    require(
+        run(["git", "clone", "--no-checkout", str(args.site_root), str(destination)], timeout=300),
+        "site clean clone",
+    )
+    require(
+        run(["git", "-C", str(destination), "checkout", "--detach", args.site_root_head], timeout=120),
+        "site clean checkout",
+    )
+    try:
+        manifest_rel = args.source_manifest.relative_to(args.site_root)
+    except ValueError as exc:
+        raise Refusal("source manifest is not under site root") from exc
+    return destination, destination / manifest_rel
+
+
 def write_test_key(private_key: Path, public_key: Path) -> None:
     private = Ed25519PrivateKey.generate()
     private_key.write_bytes(
@@ -122,6 +139,7 @@ def issue_test_packet(args: argparse.Namespace, scratch: Path) -> Path:
     private_key = key_dir / "test-private.pem"
     public_key = key_dir / "test-public.pem"
     write_test_key(private_key, public_key)
+    clean_site_root, clean_source_manifest = materialize_clean_site_root(args, scratch)
     require(
         run(
             [
@@ -129,9 +147,9 @@ def issue_test_packet(args: argparse.Namespace, scratch: Path) -> Path:
                 str(args.site_root / ".github/write-enforcement/non_expiring_enforcement.py"),
                 "issue",
                 "--repo-root",
-                str(args.site_root),
+                str(clean_site_root),
                 "--source-manifest",
-                str(args.source_manifest),
+                str(clean_source_manifest),
                 "--private-key",
                 str(private_key),
                 "--trusted-public-key",
