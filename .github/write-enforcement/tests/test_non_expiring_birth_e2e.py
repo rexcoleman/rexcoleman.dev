@@ -47,8 +47,29 @@ def test_push_project_passes_candidate_env_to_git_commit(monkeypatch, tmp_path):
         ]
     ]
     assert len(commit) == 1
-    assert commit[0]["env"] == candidate_env
+    assert commit[0]["env"] == {
+        **candidate_env,
+        "REA_BIRTH_LOCAL_SCRATCH_PUSH": "1",
+    }
     assert commit[0]["timeout"] == 120
+
+
+def test_push_project_does_not_mark_github_remote_as_local_scratch(monkeypatch, tmp_path):
+    module = load_module()
+    observed = []
+
+    def fake_run(argv, *, cwd=None, env=None, timeout=300):
+        observed.append({"argv": list(argv), "env": dict(env or {})})
+        return subprocess.CompletedProcess(argv, 0, "", "")
+
+    monkeypatch.setattr(module, "run", fake_run)
+
+    module.push_project(tmp_path / "project", "rexcoleman/rehearsal", env={})
+
+    assert all(
+        row["env"].get("REA_BIRTH_LOCAL_SCRATCH_PUSH") is None
+        for row in observed
+    )
 
 
 def test_birth_loop_pushes_with_gate_env():

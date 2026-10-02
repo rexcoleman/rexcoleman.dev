@@ -242,18 +242,20 @@ def archive_repo(args: argparse.Namespace, repo: str) -> dict:
 
 
 def push_project(project: Path, repo: str, *, env: dict[str, str] | None = None) -> None:
+    push_env = dict(env or os.environ)
     if "://" in repo or repo.count("/") == 1:
         remote_url = f"https://github.com/{repo}.git"
-        require(run(["gh", "auth", "setup-git"], env=env, timeout=120), "gh auth setup-git")
+        require(run(["gh", "auth", "setup-git"], env=push_env, timeout=120), "gh auth setup-git")
     else:
         remote_url = repo
-    require(run(["git", "-C", str(project), "config", "user.name", "REA birth proof"], env=env), "git user.name")
-    require(run(["git", "-C", str(project), "config", "user.email", "rea-birth-proof@example.invalid"], env=env), "git user.email")
-    require(run(["git", "-C", str(project), "add", "."], env=env), "git add")
-    require(run(["git", "-C", str(project), "commit", "-m", "Genesis birth proof"], env=env, timeout=120), "git commit")
-    require(run(["git", "-C", str(project), "branch", "-M", "main"], env=env), "git branch main")
-    require(run(["git", "-C", str(project), "remote", "add", "origin", remote_url], env=env), "git remote add")
-    require(run(["git", "-C", str(project), "push", "-u", "origin", "main"], env=env, timeout=300), "git push")
+        push_env["REA_BIRTH_LOCAL_SCRATCH_PUSH"] = "1"
+    require(run(["git", "-C", str(project), "config", "user.name", "REA birth proof"], env=push_env), "git user.name")
+    require(run(["git", "-C", str(project), "config", "user.email", "rea-birth-proof@example.invalid"], env=push_env), "git user.email")
+    require(run(["git", "-C", str(project), "add", "."], env=push_env), "git add")
+    require(run(["git", "-C", str(project), "commit", "-m", "Genesis birth proof"], env=push_env, timeout=120), "git commit")
+    require(run(["git", "-C", str(project), "branch", "-M", "main"], env=push_env), "git branch main")
+    require(run(["git", "-C", str(project), "remote", "add", "origin", remote_url], env=push_env), "git remote add")
+    require(run(["git", "-C", str(project), "push", "-u", "origin", "main"], env=push_env, timeout=300), "git push")
 
 
 def scaffold_project(args: argparse.Namespace, moonshots: Path, govml: Path,
