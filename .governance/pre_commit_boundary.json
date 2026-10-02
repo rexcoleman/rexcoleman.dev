@@ -2,14 +2,13 @@
   "assertion": "COMMIT_PREFLIGHT_PASS",
   "caller": "git-pre-commit",
   "changed_paths": [
-    ".github/write-enforcement/GENERATION_5_OWNER_RUNBOOK.md",
     ".github/write-enforcement/SIGNED_RELEASE_CONVERGENCE_INDEX.md"
   ],
-  "changed_paths_count": 2,
-  "changed_paths_sha256": "796340b0b721dd940fd91308e7257a838e38c9d5fa87518c4b44504f02c08a76",
+  "changed_paths_count": 1,
+  "changed_paths_sha256": "4263c2d89130d6d153c2f0c23b9697744b9db00ab3df20ee32cbf4d718b95f83",
   "mode": "commit-preflight",
-  "parent_head": "8049098c70120caf359674c70c748492b4f367bd",
-  "run_id": "pre-commit-994167fa8e567e44b3f4af0f",
+  "parent_head": "648e3e8fd7b49f416e13d95c8c92ab08570c4018",
+  "run_id": "pre-commit-2f00b96273695fecf1c8ef26",
   "schema_version": "rea.pre-commit-boundary.v1",
-  "utc_asserted_at": "2026-10-02T09:12:09Z"
+  "utc_asserted_at": "2026-10-02T09:47:12Z"
 }
