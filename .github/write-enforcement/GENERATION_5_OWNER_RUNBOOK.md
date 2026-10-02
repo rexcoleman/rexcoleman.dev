@@ -6,6 +6,47 @@ selected adapter in `signed_release_convergence_index.json`. It adds
 bundle-secret transition, and the public attestation packet publisher.
 It never edits or reuses the generation-4 manifest.
 
+## Non-expiring guarded release operator route
+
+The non-expiring release route is a protected-default machine route. The
+operator never uses `workflow_dispatch`, a personal login, a mutable local
+checkout, Rex, the old renewal cron, or `~/.local/state/rea_enforcement` as
+release authority. Candidate authority is built by the registered signed release
+convergence engine, then rehearsed by `--noop-rehearsal` against the exact
+candidate manifest bytes. The candidate may be frozen only after the plan and
+noop receipts agree on manifest SHA-256, manifest digest, member count, and all
+five source commits.
+
+The protected manifest PR changes
+`.github/write-enforcement/frozen_bundle_manifest.generation-5.json` and the
+normal `.governance/pre_commit_boundary.json` receipt only. The issuer workflow
+`issue-non-expiring-enforcement-packet.yml` runs on the resulting push to
+`main`; it issues the packet, verifies public custody, reruns
+`non_expiring_birth_e2e.py --mode candidate` on the same manifest bytes, checks
+that the birth receipt matches the issued packet, uploads evidence, and only
+then publishes `rea-non-expiring-enforcement-<main-sha-prefix>`.
+
+Before a real release, the operator also runs
+`non_expiring_birth_e2e.py --mode candidate` locally against the exact freeze
+commit and manifest. The receipt must cover `build`, `synthesis`,
+`computational`, and `write_publish`; each type must scaffold with no ambient
+non-expiring switches, push to a scratch remote, pass honest gates, refuse a
+planted signed-control drift, and archive its rehearsal repository. A release
+birth uses no test-trust switch; production scaffold must refuse that switch.
+
+Rollback is machine-owned through `non_expiring_enforcement.py reconcile`.
+Reconcile installs a verified candidate, keeps the last verified packet when a
+new candidate refuses, and records the refusal under the state root. Signed
+revocation lists are verified as packet authority: a named revoked packet
+version or packet digest refuses with `PACKET_REVOKED`. A rollback rehearsal must
+show both behaviours before the route is treated as closed for a release.
+
+Live proof after publication must use fresh private GitHub repositories and the
+released packet only. The proof is incomplete until the repositories are also
+enrolled for hosted `research-integrity`, protected by a machine-created
+server-side rule, bypass plants are refused by GitHub, and an honest PR merges.
+Local gate success alone is not enough to claim the Branch C birth bar.
+
 ## Frozen identity
 
 The release feature commit must be created through the normal hook and its pull
