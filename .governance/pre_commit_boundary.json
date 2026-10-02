@@ -2,16 +2,13 @@
   "assertion": "COMMIT_PREFLIGHT_PASS",
   "caller": "git-pre-commit",
   "changed_paths": [
-    ".github/write-enforcement/SIGNED_RELEASE_CONVERGENCE_INDEX.md",
-    ".github/write-enforcement/adapters/research_enforcement_activation.s264-hosted-bundle-v1.json",
-    ".github/write-enforcement/signed_release_convergence_index.json",
-    ".github/write-enforcement/tests/test_signed_release_convergence.py"
+    ".github/write-enforcement/frozen_bundle_manifest.generation-5.json"
   ],
-  "changed_paths_count": 4,
-  "changed_paths_sha256": "18999988f538505c7ae524cbfbb9ae172a1eb4f36fd827b2f19bc7eed70692fa",
+  "changed_paths_count": 1,
+  "changed_paths_sha256": "0e50f527ad13467749dcd58967b714e8b6e5b0b91970adfa7dab4bae4ff957de",
   "mode": "commit-preflight",
-  "parent_head": "a4f2a726f4cdefcbe7a613566d93bf5090d07293",
-  "run_id": "pre-commit-s264-hosted-bundle",
+  "parent_head": "c76260d3fc94bf766724a86f06e41d833506dc01",
+  "run_id": "pre-commit-909ec7332cb16717bf8cd338",
   "schema_version": "rea.pre-commit-boundary.v1",
-  "utc_asserted_at": "2026-10-02T17:29:26Z"
+  "utc_asserted_at": "2026-10-02T18:15:05Z"
 }
