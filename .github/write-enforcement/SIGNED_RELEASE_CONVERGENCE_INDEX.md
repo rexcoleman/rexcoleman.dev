@@ -193,6 +193,20 @@ diagnosable after fixture cleanup.
 The index is navigation and contract metadata, not release authority. It does
 not merge, tag, approve, issue, install, or prove a target project green.
 
+## Non-expiring Release Tool Map
+
+Use this map before running a non-expiring REA birth or release replay; it
+names the registered tool, when to use it, and the shortest normal invocation
+shape.
+
+| Tool | Path | When to use | How to run |
+|---|---|---|---|
+| End-to-end birth gate | `.github/write-enforcement/non_expiring_birth_e2e.py` | Prove exact candidate or released non-expiring bytes can birth all four registered research types, push a scratch remote, pass honest gates, and refuse a planted signed-control drift before a release or release replay. | `python3 .github/write-enforcement/non_expiring_birth_e2e.py --mode candidate|release --site-root <rexcoleman.dev-root> --source-manifest <frozen-manifest> --scratch-root <scratch-root> --remote-kind local --report <report.json>` |
+| Build project birth tool | `Moonshots_Career_Thesis_v2/scripts/scaffold_research_project.py` | Birth a fresh project from the authenticated release packet; for the s264 build replay, the plain scaffold is `--research-type build --author-model-family anthropic` with no `REA_NON_EXPIRING_PACKET_ROOT`, no `REX_SITE_SOURCE_ROOT`, and no test-trust switch. | `python3 scripts/scaffold_research_project.py <project-dir> --research-type build --author-model-family anthropic` |
+| Guarded issuer | `.github/workflows/issue-non-expiring-enforcement-packet.yml` | Publish a non-expiring packet only after a protected-default manifest PR lands and the hosted issuer reissues, verifies public custody, runs the birth gate, verifies the birth receipt, uploads evidence, and publishes the release assets. | Push the two-file freeze PR to `main`; the workflow runs from the protected push path, not from `workflow_dispatch` in this route. |
+| Rollback and revocation verifier | `.github/write-enforcement/non_expiring_enforcement.py` | Reconcile a candidate packet while preserving the last verified packet on refusal, and verify signed revocation lists such that a revoked packet version or digest refuses with `PACKET_REVOKED`. | `python3 .github/write-enforcement/non_expiring_enforcement.py reconcile --packet-root <candidate> --state-root <state-root> --trusted-public-key <trusted_wea_public.pem>` |
+| Operator manual | `.github/write-enforcement/GENERATION_5_OWNER_RUNBOOK.md` | Read before any generation-5 freeze, issuance, replay, rollback rehearsal, or live Branch C birth proof. | Open the runbook and follow `Non-expiring guarded release operator route`; it is procedure, not release authority. |
+
 ## Cross-generation inventory and reconciliation
 
 The inventory has 38 closed rows spanning s88, s127, s131, s132, s149, s153,
@@ -476,7 +490,7 @@ is a closed mechanism schema (adapter, engine, evidence-suite, test); a class
 enters the inventory only when a registered, tested mechanism guards it, so
 classes without one are catalogued here only. Changing the inventory schema
 would change the engine bytes that REA pins, which is itself class 3.
-The catalogue below is current through release 4 and class 34.
+The catalogue below is current through release 4 and class 35.
 
 | # | Class | Surfaces as | Measured | Status |
 |---|---|---|---|---|
@@ -514,3 +528,4 @@ The catalogue below is current through release 4 and class 34.
 | 32 | Current packet retained without rematerializing ignored generated bundle | `NON_EXPIRING_BUNDLE_RETAINED_WITHOUT_MATERIALIZATION`: `ci_materialize_enforcement.py --consumer-gate-refresh` classified the installed packet as `PACKET_CURRENT`, emitted `{"action":"RETAINED"}`, and returned 0 while the ignored `write_integrity/bundle/` tree remained absent | s262 hosted blocker analysis; s263 planted regression `current_missing_bundle` in govML `tests/test_ci_materialize_enforcement.py` | BUILT in s263 govML work: the materializer no longer returns early on `PACKET_CURRENT`; it re-fetches/verifies the certified packet, installs bundle/remote, supplies self-lineage evidence for current packets, and runner variants call it when current/legacy packet state has missing generated bundle authority |
 | 33 | Literal no-env/no-extra-switch build scaffold refuses before birth | `REFUSE(AUTHOR_MODEL_FAMILY_REQUIRED)` from `scaffold_research_project.py /data/tmp/s264_births/rea-s264-build --research-type build`; no project directory is created, so the birth tool, honest branch, planted branch, hosted check, and merge-state checks cannot run | s264 item-1 literal test against Moonshots `origin/main` `f2539696e30f95ec115c544b4c6b9c6e5a71cbcd`; cross-check against s263's Moonshots release root `aa963b5c6db27afbc7fa77affc36a9630a5830f3` also refuses identically; preserved s263 project records `author_model_family: human` | open; this is outside s264's authorized repair order, which names hosted bundle materialization first and required-check/workflow-name mismatch second. Do not bypass by adding `--author-model-family` or `AUTHOR_MODEL_FAMILY`; either the fixed test text must be revised by kc authority, or a source-owned birth/scaffold contract change must make the literal command valid before release |
 | 34 | Clean hosted non-expiring materializer retained the packet before proving generated bundle presence | `FileNotFoundError:[Errno 2] No such file or directory: .../write_integrity/bundle/govML/templates/build/enforcement/managed_enforcement_inventory.py` after hosted `Materialize signed enforcement workspace` reported success, followed by `REFUSE(INHERITED_INTEGRITY_HARD_REFUSAL)` and failed `gate-stack` | s264 live build repo `rea-s264-build`, run `37038610934`, job `110944069275`; govML PR #285 (`c34356b`) | BUILT in govML PR #285: non-consumer materialization now retains a non-expiring packet only when the ignored bundle matches the signed source manifest; otherwise it fetches verified members through the existing App read route and installs the exact bundle. Takes effect only after a guarded non-expiring release freezes `c34356b` |
+| 35 | Hosted unfinished-research policy only accepted raw exit 1 | Fresh build hosted CI materialized the signed bundle successfully, then the inherited gate emitted `RESEARCH_READY_NOT_COMMITTED` with `PARENT_EXIT ... raw_exit=2` after `CANNOT_EVALUATE: resolved FINDINGS contains unauthored placeholder residue`; the hosted classifier reported `REFUSE(INHERITED_INTEGRITY_UNCLASSIFIED_FAILURE)` instead of `INHERITED_INTEGRITY_ACCEPTED_UNFINISHED` | s264 live build repo `rea-s264-build-2`, run `37047677465`, job `110973925016`; govML PR #287 (`2fe142b`) | BUILT in govML PR #287: hosted unfinished classifiers accept bound `RESEARCH_READY_NOT_COMMITTED` with raw exit 1 or 2 while preserving hard-refusal and digest/installed-set mismatch negatives. Takes effect only after a guarded non-expiring release freezes the fix |
