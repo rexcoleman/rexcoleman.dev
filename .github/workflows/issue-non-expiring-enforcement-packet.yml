@@ -88,6 +88,51 @@ jobs:
             fi
           done <<< "$observed"
           echo "NON_EXPIRING_PUBLIC_ONLY_ARTIFACT_PASS files=4"
+      - name: End-to-end birth proof before publish
+        env:
+          GH_TOKEN: ${{ secrets.REA_BIRTH_REPO_TOKEN || github.token }}
+        run: |
+          set -euo pipefail
+          python3 .github/write-enforcement/non_expiring_birth_e2e.py \
+            --mode candidate \
+            --site-root . \
+            --source-manifest .github/write-enforcement/frozen_bundle_manifest.generation-5.json \
+            --scratch-root "$RUNNER_TEMP/non-expiring-birth-e2e" \
+            --run-id "${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}" \
+            --max-rehearsal-repos 20 \
+            --max-runtime-seconds 3600 \
+            --report "$RUNNER_TEMP/non-expiring-birth-e2e-report.json"
+      - name: Verify birth proof matches issued packet
+        run: |
+          set -euo pipefail
+          python3 - "$RUNNER_TEMP/non-expiring-reports/non-expiring-issue-report.json" "$RUNNER_TEMP/non-expiring-birth-e2e-report.json" <<'PY'
+          import json
+          import sys
+          issue = json.load(open(sys.argv[1], encoding="utf-8"))
+          receipt = json.load(open(sys.argv[2], encoding="utf-8"))
+          if receipt.get("schema_version") != "rea.non_expiring_birth_gate.receipt.v1":
+              raise SystemExit("birth receipt schema mismatch")
+          if receipt.get("mode") != "candidate":
+              raise SystemExit("birth receipt mode mismatch")
+          if issue.get("protected_default_commit") != receipt.get("site_commit"):
+              raise SystemExit("birth receipt protected-default commit mismatch")
+          if issue.get("source_manifest_digest") != receipt.get("source_manifest_sha256"):
+              raise SystemExit("birth receipt manifest byte digest mismatch")
+          if receipt.get("research_types") != ["build", "synthesis", "computational", "write_publish"]:
+              raise SystemExit("birth receipt did not cover all research types")
+          rows = receipt.get("types")
+          if not isinstance(rows, list) or len(rows) != 4:
+              raise SystemExit("birth receipt type rows missing")
+          for row in rows:
+              if row.get("scaffold_rc") != 0 or row.get("honest_gate_rc") != 0:
+                  raise SystemExit(f"birth receipt honest path failed: {row.get('research_type')}")
+              if row.get("planted_gate_rc") == 0:
+                  raise SystemExit(f"birth receipt planted path passed: {row.get('research_type')}")
+              archive = row.get("archive") or {}
+              if archive.get("archived") is not True:
+                  raise SystemExit(f"birth receipt repo not archived: {row.get('research_type')}")
+          print("NON_EXPIRING_BIRTH_RECEIPT_MATCH_PASS")
+          PY
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: rea-non-expiring-enforcement-packet-${{ github.run_id }}
@@ -95,6 +140,7 @@ jobs:
             non-expiring-packet/
             ${{ runner.temp }}/non-expiring-reports/non-expiring-issue-report.json
             ${{ runner.temp }}/non-expiring-reports/non-expiring-verify-report.json
+            ${{ runner.temp }}/non-expiring-birth-e2e-report.json
           if-no-files-found: error
           retention-days: 30
       - name: Publish release packet
