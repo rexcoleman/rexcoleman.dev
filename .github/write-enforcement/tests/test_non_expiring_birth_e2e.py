@@ -1,0 +1,56 @@
+import importlib.util
+import subprocess
+from pathlib import Path
+
+
+ROOT = Path(__file__).resolve().parents[3]
+SOURCE = ROOT / ".github/write-enforcement/non_expiring_birth_e2e.py"
+
+
+def load_module():
+    spec = importlib.util.spec_from_file_location(
+        "non_expiring_birth_e2e_under_test",
+        SOURCE,
+    )
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_push_project_passes_candidate_env_to_git_commit(monkeypatch, tmp_path):
+    module = load_module()
+    observed = []
+
+    def fake_run(argv, *, cwd=None, env=None, timeout=300):
+        observed.append({
+            "argv": list(argv),
+            "env": dict(env or {}),
+            "timeout": timeout,
+        })
+        return subprocess.CompletedProcess(argv, 0, "", "")
+
+    monkeypatch.setattr(module, "run", fake_run)
+    candidate_env = {
+        "REA_NON_EXPIRING_PACKET_ROOT": str(tmp_path / "packet"),
+        "REA_NON_EXPIRING_TEST_TRUST_ROOT": "1",
+        "REA_NON_EXPIRING_CANDIDATE_REHEARSAL": "1",
+    }
+
+    module.push_project(tmp_path / "project", str(tmp_path / "remote.git"), env=candidate_env)
+
+    commit = [
+        row for row in observed
+        if row["argv"][:5] == [
+            "git", "-C", str(tmp_path / "project"), "commit", "-m"
+        ]
+    ]
+    assert len(commit) == 1
+    assert commit[0]["env"] == candidate_env
+    assert commit[0]["timeout"] == 120
+
+
+def test_birth_loop_pushes_with_gate_env():
+    text = SOURCE.read_text(encoding="utf-8")
+
+    assert "push_project(project, repo, env=gate_env(packet_root))" in text
