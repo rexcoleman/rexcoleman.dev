@@ -108,11 +108,14 @@ jobs:
           GH_TOKEN: ${{ steps.governed_read.outputs.token }}
         run: |
           set -euo pipefail
+          birth_scratch="/tmp/non-expiring-birth-e2e-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          rm -rf "$birth_scratch"
+          mkdir -p "$birth_scratch"
           python3 .github/write-enforcement/non_expiring_birth_e2e.py \
             --mode candidate \
             --site-root . \
             --source-manifest .github/write-enforcement/frozen_bundle_manifest.generation-5.json \
-            --scratch-root "$RUNNER_TEMP/non-expiring-birth-e2e" \
+            --scratch-root "$birth_scratch" \
             --remote-kind local \
             --run-id "${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}" \
             --max-rehearsal-repos 20 \
