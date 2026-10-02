@@ -88,6 +88,18 @@ jobs:
             fi
           done <<< "$observed"
           echo "NON_EXPIRING_PUBLIC_ONLY_ARTIFACT_PASS files=4"
+      - name: End-to-end birth proof before publish
+        env:
+          GH_TOKEN: ${{ secrets.REA_BIRTH_REPO_TOKEN || github.token }}
+        run: |
+          set -euo pipefail
+          python3 .github/write-enforcement/non_expiring_birth_e2e.py \
+            --mode candidate \
+            --site-root . \
+            --source-manifest .github/write-enforcement/frozen_bundle_manifest.generation-5.json \
+            --scratch-root "$RUNNER_TEMP/non-expiring-birth-e2e" \
+            --repo-prefix "rea-birth-guard" \
+            --report "$RUNNER_TEMP/non-expiring-birth-e2e-report.json"
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: rea-non-expiring-enforcement-packet-${{ github.run_id }}
@@ -95,6 +107,7 @@ jobs:
             non-expiring-packet/
             ${{ runner.temp }}/non-expiring-reports/non-expiring-issue-report.json
             ${{ runner.temp }}/non-expiring-reports/non-expiring-verify-report.json
+            ${{ runner.temp }}/non-expiring-birth-e2e-report.json
           if-no-files-found: error
           retention-days: 30
       - name: Publish release packet
