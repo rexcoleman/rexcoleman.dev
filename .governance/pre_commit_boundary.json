@@ -1,14 +1,12 @@
 {
   "assertion": "COMMIT_PREFLIGHT_PASS",
   "caller": "git-pre-commit",
-  "changed_paths": [
-    ".github/write-enforcement/SIGNED_RELEASE_CONVERGENCE_INDEX.md"
-  ],
-  "changed_paths_count": 1,
-  "changed_paths_sha256": "4263c2d89130d6d153c2f0c23b9697744b9db00ab3df20ee32cbf4d718b95f83",
+  "changed_paths": [],
+  "changed_paths_count": 0,
+  "changed_paths_sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
   "mode": "commit-preflight",
-  "parent_head": "2f24420112d7769f1836db4e78c343643e06c6df",
-  "run_id": "pre-commit-7cbb02282f9c719b630f434c",
+  "parent_head": "c3edbda6baa44bc3e3e7edefb7823ef40ee92e00",
+  "run_id": "pre-commit-e2ce7d77140a04d57ab69dab",
   "schema_version": "rea.pre-commit-boundary.v1",
-  "utc_asserted_at": "2026-10-02T10:06:07Z"
+  "utc_asserted_at": "2026-10-02T11:21:57Z"
 }
