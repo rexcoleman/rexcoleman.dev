@@ -22,6 +22,7 @@ REPOSITORIES = {
     "Moonshots_Career_Thesis_v2": "https://github.com/rexcoleman/Moonshots_Career_Thesis.git",
     "govML": "https://github.com/rexcoleman/govML.git",
     "newsletter": "https://github.com/rexcoleman/newsletter.git",
+    "rexcoleman.dev": "https://github.com/rexcoleman/rexcoleman.dev.git",
 }
 RESEARCH_TYPES = ("build", "synthesis", "computational", "write_publish")
 TEST_PACKET_PREFIX = "rea-non-expiring-candidate-test-"
@@ -99,6 +100,32 @@ def materialize_repo(name: str, commit: str, root: Path, scratch: Path) -> Path:
     return destination
 
 
+def ensure_commit_available(root: Path, repository: str, commit: str) -> None:
+    available = run(
+        ["git", "-C", str(root), "cat-file", "-e", f"{commit}^{{commit}}"],
+        timeout=120,
+    )
+    if available.returncode == 0:
+        return
+    require(
+        run(
+            [
+                "git", "-C", str(root), "fetch", "--depth=1",
+                REPOSITORIES[repository], commit,
+            ],
+            timeout=300,
+        ),
+        f"{repository} fetch manifest commit",
+    )
+    require(
+        run(
+            ["git", "-C", str(root), "cat-file", "-e", f"{commit}^{{commit}}"],
+            timeout=120,
+        ),
+        f"{repository} manifest commit available",
+    )
+
+
 def materialize_clean_site_root(args: argparse.Namespace, scratch: Path) -> tuple[Path, Path]:
     destination = scratch / "rex-site-source"
     require(
@@ -143,6 +170,12 @@ def issue_test_packet(args: argparse.Namespace, scratch: Path) -> tuple[Path, Pa
     public_key = key_dir / "test-public.pem"
     write_test_key(private_key, public_key)
     clean_site_root, clean_source_manifest = materialize_clean_site_root(args, scratch)
+    source_manifest = json.loads(clean_source_manifest.read_text(encoding="utf-8"))
+    ensure_commit_available(
+        clean_site_root,
+        "rexcoleman.dev",
+        manifest_commit(source_manifest, "rexcoleman.dev"),
+    )
     require(
         run(
             [
